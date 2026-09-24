@@ -1,6 +1,6 @@
 # Builds both apps - "Wicked Animator.exe" and "Sims Hub.exe", each with .NET inside - whenever their desktop code
-# changes, and publishes them as the downloads on the "apps" release. Each app folder's app.json then names the new
-# build, and every installed copy swaps itself for it the next time it opens (shared/desktop/Updater.cs).
+# changes, and publishes them as the downloads on the "apps" release. Every installed copy swaps itself for a new
+# build the next time it opens (shared/desktop/Updater.cs).
 name: Build the apps
 
 on:
@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write          # to publish the release
 
 concurrency:
   group: build-apps
@@ -49,33 +49,24 @@ jobs:
         run: |
           python -c "import sys; bad = [f for f, m in (('WickedAnimator.exe', 'Novulon.WickedAnimator.AutoUpdate.v1'), ('SimsHub.exe', 'Novulon.SimsHub.AutoUpdate.v1')) if m.encode('utf-16-le') not in open(f, 'rb').read()]; sys.exit('no update marker in ' + ', '.join(bad) if bad else 0)"
 
+      # each download with its checksum next to it: installed copies compare it with their own to know a new build
+      # is there. (Nothing is committed back to the repository.)
       - name: Publish the downloads
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          foreach ($f in 'WickedAnimator.exe', 'SimsHub.exe') {
+            (Get-FileHash $f -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content -Path "$f.sha256" -NoNewline -Encoding ascii
+          }
+          $files = 'WickedAnimator.exe', 'WickedAnimator.exe.sha256', 'SimsHub.exe', 'SimsHub.exe.sha256'
           gh release view apps *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create apps WickedAnimator.exe SimsHub.exe --title "Novulon's apps for The Sims 4" --notes-file .github/release-notes.md --latest
+            gh release create apps @files --title "Novulon's Sims 4 Apps" --notes-file .github/release-notes.md --latest
           } else {
+            # the programs first, their checksums after: a copy that sees the new checksum finds the new program
             gh release upload apps WickedAnimator.exe SimsHub.exe --clobber
+            if ($LASTEXITCODE -eq 0) { gh release upload apps WickedAnimator.exe.sha256 SimsHub.exe.sha256 --clobber }
             if ($LASTEXITCODE -eq 0) { gh release edit apps --notes-file .github/release-notes.md --latest }
           }
           if ($LASTEXITCODE -ne 0) { throw "the downloads could not be published" }
-
-      # only after the downloads are up: installed copies read this to know a new build is there
-      - name: Name the new builds
-        shell: pwsh
-        run: |
-          foreach ($a in @(@{ dir = 'wicked_animator'; asset = 'WickedAnimator.exe' }, @{ dir = 'sims_hub'; asset = 'SimsHub.exe' })) {
-            $sha = (Get-FileHash $a.asset -Algorithm SHA256).Hash.ToLowerInvariant()
-            [ordered]@{ asset = $a.asset; sha256 = $sha } | ConvertTo-Json | Set-Content -Path "$($a.dir)/app.json" -Encoding utf8NoBOM
-          }
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add wicked_animator/app.json sims_hub/app.json
-          git diff --cached --quiet
-          if ($LASTEXITCODE -eq 0) { Write-Host "Neither app changed."; exit 0 }
-          git commit -m "Publish new app builds"
-          git pull --rebase origin $env:GITHUB_REF_NAME
-          git push origin HEAD:$env:GITHUB_REF_NAME

@@ -7,8 +7,9 @@
 //    put in place - an update is never half-applied by a lost connection. Files that are not on GitHub (your own,
 //    caches, logs) are never touched; a file you changed yourself is copied to the update backup before it is
 //    replaced. Windows line ends (CRLF) count as the same text. Files only developers need (Brand.Skip) are left out.
-// 2. The program itself: the app's folder says which build is current (app.json, written when GitHub builds it); a
-//    different one is downloaded from the "apps" release, checked, and swapped in - the app then opens again as it.
+// 2. The program itself: the "apps" release on GitHub holds the newest build of each app, with its checksum next to
+//    it (<asset>.sha256). When this program is a different build, the new one is downloaded, checked, and swapped in -
+//    the app then opens again as it.
 //
 // A folder that is a git checkout of the repository is left to git (it is where the apps are worked on).
 // WICKED_NO_UPDATE=1 / SIMS_HUB_NO_UPDATE=1 turn updating off; NOVULON_UPDATE_BRANCH picks another branch (testing).
@@ -180,24 +181,18 @@ public static class Updater
     }
 
     // -------------------------------------------------------------- 2. the program
-    // The build the folder's app.json names, when this program is a different one: downloaded, checked, swapped in.
+    // The published build, when this program is a different one: downloaded, checked, swapped in.
     static async Task<bool> Program(HttpClient http, string root, State state, Action<string> status)
     {
         var self = Environment.ProcessPath;
         var installed = Path.Combine(root, B.ExeName);
         if (self == null || !SamePath(self, installed)) return false;   // e.g. a developer's build folder
-        string want;
-        try
-        {
-            using var j = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "app.json")));
-            want = j.RootElement.GetProperty("sha256").GetString()?.ToLowerInvariant();
-        }
-        catch { return false; }                                          // no build published yet
-        if (string.IsNullOrEmpty(want) || want == ExeSha(self, state)) return false;
+        var want = await PublishedSha(http);
+        if (want == null || want == ExeSha(self, state)) return false;  // offline, none published yet, or this one
 
         Log($"a new {B.ExeName} is published ({want[..12]})");
         var tmp = Path.Combine(Dir, "new.exe");
-        var url = $"https://github.com/{Owner}/{Repo}/releases/download/{ReleaseTag}/{B.ReleaseAsset}";
+        var url = ReleaseUrl(B.ReleaseAsset);
         try
         {
             status("Downloading the new version...");
@@ -222,6 +217,22 @@ public static class Updater
             return false;
         }
         finally { try { File.Delete(tmp); } catch { } }
+    }
+
+    static string ReleaseUrl(string asset) => $"https://github.com/{Owner}/{Repo}/releases/download/{ReleaseTag}/{asset}";
+
+    // The SHA-256 of the newest published build of this app (lower-case hex), or null (offline, none published yet).
+    public static async Task<string> PublishedSha(HttpClient http)
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            var text = (await http.GetStringAsync(ReleaseUrl(B.ReleaseAsset + ".sha256"), cts.Token)).Trim().ToLowerInvariant();
+            if (text.Length >= 64 && text[..64].All(Uri.IsHexDigit)) return text[..64];
+            Log("the published checksum is not one");
+        }
+        catch (Exception ex) { Log("no published build found: " + ex.Message); }
+        return null;
     }
 
     static string ExeSha(string path, State state)

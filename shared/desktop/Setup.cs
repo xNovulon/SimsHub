@@ -6,7 +6,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Novulon.Desktop;
@@ -60,7 +59,7 @@ public static class Setup
         var exe = Path.Combine(target, b.ExeName);
         try
         {
-            if (ShouldPlaceSelf(exe, target)) await Task.Run(() => PlaceSelf(exe));
+            if (await ShouldPlaceSelf(exe)) await Task.Run(() => PlaceSelf(exe));
         }
         catch (Exception ex)
         {
@@ -90,20 +89,15 @@ public static class Setup
         catch (Exception ex) { Ui.Fatal("The app was updated", "Open it again to use the new version.\n\n" + ex.Message); }
     }
 
-    // This program goes into the app's folder when there is none there yet, or when it is the build the folder asks for
-    // (app.json) and the one there is not. Otherwise the one there stays: it updates itself when it opens.
-    static bool ShouldPlaceSelf(string exe, string root)
+    // This program goes into the app's folder when there is none there yet, or when it is the newest published build
+    // and the one there is not. Otherwise the one there stays: it updates itself when it opens.
+    static async Task<bool> ShouldPlaceSelf(string exe)
     {
         var self = Environment.ProcessPath;
         if (self == null || Updater.SamePath(self, exe)) return false;
         if (!File.Exists(exe)) return true;
-        string want = null;
-        try
-        {
-            using var j = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "app.json")));
-            want = j.RootElement.GetProperty("sha256").GetString()?.ToLowerInvariant();
-        }
-        catch { }
+        using var http = Ui.Web(TimeSpan.FromSeconds(30));
+        var want = await Updater.PublishedSha(http);
         return want != null && Sha256(self) == want && Sha256(exe) != want;
     }
 
