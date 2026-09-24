@@ -6,7 +6,6 @@ import * as THREE from 'three';
 import * as B from './bones.js';
 import * as A from './animation.js';
 import * as F from './face.js';
-import { $t } from './i18n.js';
 
 const deg = THREE.MathUtils.degToRad;
 const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
@@ -96,7 +95,7 @@ export function faceLimits(name) {
 // ---------------------------------------------------------------- dots: regions and colours (spec 3.2)
 export const REGIONS = ['brows', 'eyes', 'cheeks', 'mouth', 'jaw'];
 const REGION_COLOR = { brows: '#ff7ab6', eyes: '#57b8ff', cheeks: '#ffb547', mouth: '#ff4f6a', jaw: '#a78bfa' };
-export const REGION_LABEL = { brows: $t('facekit.brows'), eyes: $t('facekit.eyes_and_lids'), cheeks: $t('facekit.cheeks_and_nose'), mouth: $t('facekit.mouth'), jaw: $t('facekit.jaw_and_tongue') };
+export const REGION_LABEL = { brows: 'Brows', eyes: 'Eyes and lids', cheeks: 'Cheeks and nose', mouth: 'Mouth', jaw: 'Jaw and tongue' };
 export function faceRegion(name) {
   if (B.faceRegion) { const r = B.faceRegion(name); if (r) return r; }
   if (/Brow/.test(name)) return 'brows';
@@ -121,32 +120,32 @@ export const FACE_LINES = [
 
 // ---------------------------------------------------------------- names
 const EXTRA_NAMES = {
-  InBrow: $t('facekit.inner_brow'), MidBrow: $t('facekit.middle_brow'), OutBrow: $t('facekit.outer_brow'), UpLid: $t('facekit.upper_eyelid'), LoLid: $t('facekit.lower_eyelid'), Eye: $t('facekit.eye'),
-  Cheek: $t('facekit.cheek'), Squint: $t('facekit.under_eye'), Mouth: $t('facekit.mouth_corner'), UpLip: $t('facekit.upper_lip_side'), LoLip: $t('facekit.lower_lip_side'),
-  ShoulderTwist: $t('facekit.upper_arm_twist'), ForearmTwist: $t('facekit.wrist_twist'), ThighTwist: $t('facekit.thigh_twist'), Elbow: $t('facekit.elbow_helper'), Skirt: $t('facekit.skirt_helper'),
-  Butt: $t('facekit.butt_cheek'), Prop: $t('facekit.held_object'), Stigmata: $t('facekit.palm_spot'),
+  InBrow: 'Inner brow', MidBrow: 'Middle brow', OutBrow: 'Outer brow', UpLid: 'Upper eyelid', LoLid: 'Lower eyelid', Eye: 'Eye',
+  Cheek: 'Cheek', Squint: 'Under the eye', Mouth: 'Mouth corner', UpLip: 'Upper lip (side)', LoLip: 'Lower lip (side)',
+  ShoulderTwist: 'Upper arm twist', ForearmTwist: 'Wrist twist', ThighTwist: 'Thigh twist', Elbow: 'Elbow helper', Skirt: 'Skirt helper',
+  Butt: 'Butt cheek', Prop: 'Held object', Stigmata: 'Palm spot',
 };
 const FULL_NAMES = {
-  b__UpLip__: $t('facekit.upper_lip_middle'), b__LoLip__: $t('facekit.lower_lip_middle'), b__Jaw__: $t('facekit.jaw'), b__Carry__: $t('facekit.carry_helper'),
-  b__CAS_L_Nostril__: $t('facekit.nostril_left'), b__CAS_R_Nostril__: $t('facekit.nostril_right'), b__CAS_L_Breast__: $t('facekit.breast_left'), b__CAS_R_Breast__: $t('facekit.breast_right'),
-  b__Penis_Testicles: $t('facekit.balls'), b__Up_Vagina__: $t('facekit.vagina_top'), b__Low_Vagina__: $t('facekit.vagina_bottom'), b__Anus: $t('facekit.anus'),
-  b__L_Anus__: $t('facekit.anus_left'), b__R_Anus__: $t('facekit.anus_right'), b__Up_Anus: $t('facekit.anus_top'), b__Low_Anus: $t('facekit.anus_bottom'),
-  b__L_Stigmata: $t('facekit.palm_spot_left'), b__R_Stigmata: $t('facekit.palm_spot_right'), b__L_Prop__: $t('facekit.held_object_left'), b__R_Prop__: $t('facekit.held_object_right'),
-  b__CAS_Glasses__: $t('facekit.glasses_shape'), b__CAS_L_EyeArea__: $t('facekit.eye_area_left_shape'), b__CAS_R_EyeArea__: $t('facekit.eye_area_right_shape'),
-  b__CAS_L_EyeScale__: $t('facekit.eye_size_left_shape'), b__CAS_R_EyeScale__: $t('facekit.eye_size_right_shape'), b__CAS_NoseArea__: $t('facekit.nose_shape'),
-  b__CAS_NoseTip__: $t('facekit.nose_tip_shape'), b__CAS_NoseBridge__: $t('facekit.nose_bridge_shape'), b__CAS_UpperMouthArea__: $t('facekit.upper_mouth_shape'),
-  b__CAS_LowerMouthArea__: $t('facekit.lower_mouth_shape'), b__CAS_JawComp__: $t('facekit.jaw_width_shape'), b__CAS_Chin__: $t('facekit.chin_shape'),
+  b__UpLip__: 'Upper lip (middle)', b__LoLip__: 'Lower lip (middle)', b__Jaw__: 'Jaw', b__Carry__: 'Carry helper',
+  b__CAS_L_Nostril__: 'Nostril (left)', b__CAS_R_Nostril__: 'Nostril (right)', b__CAS_L_Breast__: 'Breast (left)', b__CAS_R_Breast__: 'Breast (right)',
+  b__Penis_Testicles: 'Balls', b__Up_Vagina__: 'Vagina (top)', b__Low_Vagina__: 'Vagina (bottom)', b__Anus: 'Anus',
+  b__L_Anus__: 'Anus (left)', b__R_Anus__: 'Anus (right)', b__Up_Anus: 'Anus (top)', b__Low_Anus: 'Anus (bottom)',
+  b__L_Stigmata: 'Palm spot (left)', b__R_Stigmata: 'Palm spot (right)', b__L_Prop__: 'Held object (left)', b__R_Prop__: 'Held object (right)',
+  b__CAS_Glasses__: 'Glasses (shape)', b__CAS_L_EyeArea__: 'Eye area (left) (shape)', b__CAS_R_EyeArea__: 'Eye area (right) (shape)',
+  b__CAS_L_EyeScale__: 'Eye size (left) (shape)', b__CAS_R_EyeScale__: 'Eye size (right) (shape)', b__CAS_NoseArea__: 'Nose (shape)',
+  b__CAS_NoseTip__: 'Nose tip (shape)', b__CAS_NoseBridge__: 'Nose bridge (shape)', b__CAS_UpperMouthArea__: 'Upper mouth (shape)',
+  b__CAS_LowerMouthArea__: 'Lower mouth (shape)', b__CAS_JawComp__: 'Jaw width (shape)', b__CAS_Chin__: 'Chin (shape)',
 };
 /** Plain name of any bone ("Inner brow (left)"); `frame` is the body ('yf' names the testicle bones as vagina lips). */
 export function label(name, frame) {
   if (B.KEYABLE && B.label) return B.label(name, frame);
   if (/^b__Penis_(L|R)_Testicle$/.test(name)) {
-    const left = name.includes('_L_');
-    return frame === 'yf' ? $t('facekit.vagina_lip', { side: left ? $t('facekit.left') : $t('facekit.right') }) : $t(left ? 'facekit.left_ball' : 'facekit.right_ball');
+    const side = name.includes('_L_') ? 'left' : 'right';
+    return frame === 'yf' ? `Vagina lip (${side})` : `${side === 'left' ? 'Left' : 'Right'} ball`;
   }
   if (FULL_NAMES[name]) return FULL_NAMES[name];
   const m = /^b__(?:(L|R)_)?(.+?)__$/.exec(name);
-  if (m && EXTRA_NAMES[m[2]]) return m[1] ? $t('facekit.part_side', { part: EXTRA_NAMES[m[2]], side: m[1] === 'L' ? $t('facekit.left') : $t('facekit.right') }) : EXTRA_NAMES[m[2]];
+  if (m && EXTRA_NAMES[m[2]]) return m[1] ? `${EXTRA_NAMES[m[2]]} (${m[1] === 'L' ? 'left' : 'right'})` : EXTRA_NAMES[m[2]];
   return B.label(name);
 }
 
@@ -155,19 +154,19 @@ const SIDE_ARM = s => [`b__${s}_Clavicle__`, `b__${s}_UpperArm__`, `b__${s}_Shou
 const SIDE_FINGERS = s => ['Thumb', 'Index', 'Mid', 'Ring', 'Pinky'].flatMap(f => [0, 1, 2].map(i => `b__${s}_${f}${i}__`));
 const SIDE_LEG = s => [`b__${s}_Thigh__`, `b__${s}_ThighTwist__`, `b__${s}_Calf__`, `b__${s}_Foot__`, `b__${s}_Toe__`];
 const FALLBACK_GROUPS = [
-  { id: 'body', label: $t('facekit.body'), bones: ['b__Pelvis__', 'b__Spine0__', 'b__Spine1__', 'b__Spine2__', 'b__Neck__', 'b__Head__'] },
-  { id: 'larm', label: $t('facekit.left_arm'), bones: SIDE_ARM('L') }, { id: 'rarm', label: $t('facekit.right_arm'), bones: SIDE_ARM('R') },
-  { id: 'lfing', label: $t('facekit.left_fingers'), bones: SIDE_FINGERS('L') }, { id: 'rfing', label: $t('facekit.right_fingers'), bones: SIDE_FINGERS('R') },
-  { id: 'lleg', label: $t('facekit.left_leg'), bones: SIDE_LEG('L') }, { id: 'rleg', label: $t('facekit.right_leg'), bones: SIDE_LEG('R') },
-  { id: 'face', label: $t('facekit.face'), face: true, sub: [
-    { label: $t('facekit.brows'), bones: ['b__L_InBrow__', 'b__L_MidBrow__', 'b__L_OutBrow__', 'b__R_InBrow__', 'b__R_MidBrow__', 'b__R_OutBrow__'] },
-    { label: $t('facekit.eyes_and_lids'), bones: ['b__L_Eye__', 'b__L_UpLid__', 'b__L_LoLid__', 'b__R_Eye__', 'b__R_UpLid__', 'b__R_LoLid__'] },
-    { label: $t('facekit.cheeks_and_nose'), bones: ['b__L_Cheek__', 'b__L_Squint__', 'b__R_Cheek__', 'b__R_Squint__', ...NOSTRILS] },
-    { label: $t('facekit.mouth'), bones: ['b__UpLip__', 'b__L_UpLip__', 'b__R_UpLip__', 'b__L_Mouth__', 'b__R_Mouth__', 'b__LoLip__', 'b__L_LoLip__', 'b__R_LoLip__'] },
-    { label: $t('facekit.jaw_and_tongue'), bones: ['b__Jaw__', 'b__Tounge__1', 'b__Tounge__2', 'b__Tounge__3'] },
+  { id: 'body', label: 'Body', bones: ['b__Pelvis__', 'b__Spine0__', 'b__Spine1__', 'b__Spine2__', 'b__Neck__', 'b__Head__'] },
+  { id: 'larm', label: 'Left arm', bones: SIDE_ARM('L') }, { id: 'rarm', label: 'Right arm', bones: SIDE_ARM('R') },
+  { id: 'lfing', label: 'Left fingers', bones: SIDE_FINGERS('L') }, { id: 'rfing', label: 'Right fingers', bones: SIDE_FINGERS('R') },
+  { id: 'lleg', label: 'Left leg', bones: SIDE_LEG('L') }, { id: 'rleg', label: 'Right leg', bones: SIDE_LEG('R') },
+  { id: 'face', label: 'Face', face: true, sub: [
+    { label: 'Brows', bones: ['b__L_InBrow__', 'b__L_MidBrow__', 'b__L_OutBrow__', 'b__R_InBrow__', 'b__R_MidBrow__', 'b__R_OutBrow__'] },
+    { label: 'Eyes and lids', bones: ['b__L_Eye__', 'b__L_UpLid__', 'b__L_LoLid__', 'b__R_Eye__', 'b__R_UpLid__', 'b__R_LoLid__'] },
+    { label: 'Cheeks and nose', bones: ['b__L_Cheek__', 'b__L_Squint__', 'b__R_Cheek__', 'b__R_Squint__', ...NOSTRILS] },
+    { label: 'Mouth', bones: ['b__UpLip__', 'b__L_UpLip__', 'b__R_UpLip__', 'b__L_Mouth__', 'b__R_Mouth__', 'b__LoLip__', 'b__L_LoLip__', 'b__R_LoLip__'] },
+    { label: 'Jaw and tongue', bones: ['b__Jaw__', 'b__Tounge__1', 'b__Tounge__2', 'b__Tounge__3'] },
   ] },
-  { id: 'ww', label: $t('facekit.wickedwhims_body'), ww: true, bones: [...B.PENIS.slice(0, 4), ...WW_BODY] },
-  { id: 'expert', label: $t('facekit.expert_bones'), expert: true, bones: EXPERT },
+  { id: 'ww', label: 'WickedWhims body', ww: true, bones: [...B.PENIS.slice(0, 4), ...WW_BODY] },
+  { id: 'expert', label: 'Expert bones', expert: true, bones: EXPERT },
 ];
 // The engine's BONE_GROUPS when it has them in a shape this list understands, else the table above.
 function normGroups(G) {

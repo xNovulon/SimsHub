@@ -9,7 +9,6 @@ import { limitsFor, TURN_GROUPS } from '../bones.js';
 import { clampToLimits } from '../posemath.js';
 import { HAND_SHAPES, SHAPE_ORDER, shapeIcon, readHand, handSide, currentShape } from '../hands.js';
 import { faceBoneSection, twistSection } from './face.js';
-import { $t } from '../i18n.js';
 
 export function boneSection(app, sim, view, name) {
   if (FACE_SET.has(name)) return faceBoneSection(app, sim, view, name);
@@ -42,7 +41,7 @@ function turnRows(app, sim, view, name, sec) {
       app.pipeline.pins({ sim, v: view }, Math.round(app.store.frame));
       twist(app, { sim, v: view });
       app.poseEdited(sim.id, !commit, 'body');
-      app.hud && app.hud($t('inspector.bone.natural_limit_reached_switch_off'), { hold: 1400 });
+      app.hud && app.hud('Natural limit reached - switch off Natural limits for special poses', { hold: 1400 });
     }
   };
   const NAMES = { x: 'Bend', y: 'Twist', z: 'Tilt' };
@@ -57,7 +56,7 @@ function turnRows(app, sim, view, name, sec) {
     range.addEventListener('input', () => { num.value = range.value; setAxis(axis, +range.value, false); });
     range.addEventListener('change', () => app.afterEdit());
     num.addEventListener('change', () => { app.store.checkpoint(); range.value = num.value; fillRange(range); setAxis(axis, +num.value, true); num.blur(); });
-    sec.append(h('div', { class: 'slider-row', title: locked ? $t('inspector.bone.hinge_only_bends_one_way', { v: NAMES[axis] }) : r ? $t('inspector.bone.to_natural_limits', { v: NAMES[axis], v2: r[0], v3: r[1] }) : NAMES[axis] },
+    sec.append(h('div', { class: 'slider-row', title: locked ? `${NAMES[axis]}: a hinge only bends one way (Natural limits)` : r ? `${NAMES[axis]}: ${r[0]}° to ${r[1]}° (Natural limits)` : NAMES[axis] },
       h('label', { class: axis }, axis.toUpperCase()), range, num));
   });
 }
@@ -76,7 +75,7 @@ function moveRows(app, sim, view, name, sec, span = 60) {
     range.addEventListener('input', () => { num.value = range.value; set(+range.value, false); });
     range.addEventListener('change', () => app.afterEdit());
     num.addEventListener('change', () => { app.store.checkpoint(); range.value = num.value; fillRange(range); set(+num.value, true); num.blur(); });
-    sec.append(h('div', { class: 'slider-row', title: $t('inspector.bone.move_mm') }, h('label', { class: axis }, axis.toUpperCase()), range, num));
+    sec.append(h('div', { class: 'slider-row', title: 'Move (mm)' }, h('label', { class: axis }, axis.toUpperCase()), range, num));
   });
 }
 
@@ -86,10 +85,10 @@ function turnGroupRow(app, name) {
   if (!groups.length || typeof app.setTurnGroup !== 'function') return null;
   const cur = app.turnGroup || 'none';
   const btn = (id, text, tip) => h('button', { class: cur === id ? 'on' : '', title: tip, onclick: () => app.setTurnGroup(id) }, text);
-  return h('div', { class: 'turn-group', title: $t('inspector.bone.whole_back_spreads_your_turn') },
-    h('div', { class: 'sub-title' }, $t('inspector.bone.turn')),
-    h('div', { class: 'seg-inline' }, btn('none', $t('inspector.bone.just_this_part'), $t('inspector.bone.only_selected_part_turns')),
-      ...groups.map(([id, G]) => btn(id, G.label, id === 'back' ? $t('inspector.bone.your_turn_is_spread_over') : $t('inspector.bone.your_turn_is_spread_over_2')))));
+  return h('div', { class: 'turn-group', title: 'Whole back spreads your turn over the lower back, middle back, chest and neck.' },
+    h('div', { class: 'sub-title' }, 'Turn'),
+    h('div', { class: 'seg-inline' }, btn('none', 'Just this part', 'Only the selected part turns'),
+      ...groups.map(([id, G]) => btn(id, G.label, id === 'back' ? 'Your turn is spread over the lower back, middle back, chest and neck' : 'Your turn is spread over the neck and the head'))));
 }
 
 // This part's turn copied from the key before / after (the key here gets it; one undo step).
@@ -97,9 +96,9 @@ function matchKey(app, sim, view, name, dir) {
   const f = Math.round(app.store.frame);
   const body = sim.keys.filter(k => !k.faceOnly && k.pose);
   const nb = dir < 0 ? [...body].reverse().find(k => k.frame < f) : body.find(k => k.frame > f);
-  if (!nb) { toast(dir < 0 ? $t('inspector.bone.there_is_no_key_before') : $t('inspector.bone.there_is_no_key_after')); return; }
+  if (!nb) { toast(dir < 0 ? 'There is no key before this frame.' : 'There is no key after this frame.'); return; }
   const r = view.restByName[name];
-  app.store.checkpoint(dir < 0 ? $t('inspector.bone.match_previous_key') : $t('inspector.bone.match_next_key'));
+  app.store.checkpoint(dir < 0 ? 'Match previous key' : 'Match next key');
   app.beginEdit(sim.id);
   const q = nb.pose.rot && nb.pose.rot[name];
   view.bone(name).quaternion.copy(q ? new THREE.Quaternion().fromArray(q) : r.quat);
@@ -107,7 +106,7 @@ function matchKey(app, sim, view, name, dir) {
   twist(app, { sim, v: view });
   app.poseEdited(sim.id, false, 'body');
   app.afterEdit();
-  toast($t(dir < 0 ? 'inspector.bone.turns_as_previous' : 'inspector.bone.turns_as_next', { part: label(name, sim.frame) }));
+  toast(`${label(name, sim.frame)} now turns as in the ${dir < 0 ? 'previous' : 'next'} key.`);
 }
 
 function partTools(app, sim, view, name) {
@@ -117,28 +116,28 @@ function partTools(app, sim, view, name) {
   const sel = app.timeline && app.timeline.sel;
   const selKeys = sel ? [...sel].filter(id => id.startsWith(`k|${sim.id}|`)).length : 0;
   const btns = [
-    h('button', { class: 'btn small', disabled: !prev || null, title: $t('inspector.bone.copy_this_part_s_turn'), onclick: () => matchKey(app, sim, view, name, -1) }, icon('prev'), $t('inspector.bone.same_as_previous_key')),
-    h('button', { class: 'btn small', disabled: !next || null, title: $t('inspector.bone.copy_this_part_s_turn_2'), onclick: () => matchKey(app, sim, view, name, 1) }, icon('next'), $t('inspector.bone.same_as_next_key')),
+    h('button', { class: 'btn small', disabled: !prev || null, title: 'Copy this part\'s turn from the key before', onclick: () => matchKey(app, sim, view, name, -1) }, icon('prev'), 'Same as previous key'),
+    h('button', { class: 'btn small', disabled: !next || null, title: 'Copy this part\'s turn from the key after', onclick: () => matchKey(app, sim, view, name, 1) }, icon('next'), 'Same as next key'),
   ];
-  if (typeof app.putPartOnSelectedKeys === 'function' && selKeys) btns.push(h('button', { class: 'btn small', onclick: () => app.putPartOnSelectedKeys(sim.id, name) }, icon('copy'), $t('inspector.bone.put_this_on_selected_keys', { selKeys })));
-  if (typeof app.setTimelineView === 'function') btns.push(h('button', { class: 'btn small', onclick: () => app.setTimelineView('curves') }, icon('trail'), $t('inspector.bone.show_its_curves')));
+  if (typeof app.putPartOnSelectedKeys === 'function' && selKeys) btns.push(h('button', { class: 'btn small', onclick: () => app.putPartOnSelectedKeys(sim.id, name) }, icon('copy'), `Put this on ${selKeys} selected key${selKeys > 1 ? 's' : ''}`));
+  if (typeof app.setTimelineView === 'function') btns.push(h('button', { class: 'btn small', onclick: () => app.setTimelineView('curves') }, icon('trail'), 'Show its curves'));
   return h('div', { class: 'btn-grid part-tools' }, ...btns);
 }
 
 function limitsRow(app) {
   return h('div', { class: 'toggle-row limit-row' },
-    h('div', {}, h('b', {}, $t('inspector.bone.natural_limits')), h('span', {}, $t('inspector.bone.fingers_elbows_knees_back_and'))),
+    h('div', {}, h('b', {}, 'Natural limits'), h('span', {}, 'Fingers, elbows, knees, back and neck only bend the way real ones do')),
     toggle(limitsOn(app), on => (app.setNaturalLimits ? app.setNaturalLimits(on) : (app.naturalLimits = on))));
 }
 
 function turnSection(app, sim, view, name) {
-  const sec = section([$t('inspector.bone.turn_this_part'), h('span', { class: 'count' }, $t('inspector.bone.from_standing'))]);
+  const sec = section(['Turn this part', h('span', { class: 'count' }, 'from standing')]);
   const tg = turnGroupRow(app, name);
   if (tg) sec.append(tg);
   turnRows(app, sim, view, name, sec);
   sec.append(h('div', { class: 'btn-grid', style: { marginTop: '10px' } },
-    h('button', { class: 'btn small', onclick: () => app.resetBone(sim.id, name), title: $t('inspector.bone.back_to_standing_alt_r') }, icon('reset'), $t('inspector.bone.reset_part')),
-    h('button', { class: 'btn small', onclick: () => app.mirrorBone(sim.id, name), disabled: !/_(L|R)_/.test(name) }, icon('mirror'), $t('inspector.bone.copy_to_other_side'))));
+    h('button', { class: 'btn small', onclick: () => app.resetBone(sim.id, name), title: 'Back to standing (Alt+R)' }, icon('reset'), 'Reset part'),
+    h('button', { class: 'btn small', onclick: () => app.mirrorBone(sim.id, name), disabled: !/_(L|R)_/.test(name) }, icon('mirror'), 'Copy to other side')));
   sec.append(partTools(app, sim, view, name));
   if (limitsFor(name)) sec.append(limitsRow(app));
   return sec;
@@ -148,7 +147,7 @@ function turnSection(app, sim, view, name) {
 function handSection(app, sim, view, name, side) {
   const word = side === 'L' ? 'left' : 'right';
   const cur = currentShape(view, side);
-  const sec = section([$t('inspector.bone.hand_shape'), h('span', { class: 'count' }, app.handsBoth ? $t('inspector.bone.both_hands') : word === 'left' ? $t('inspector.bone.left_hand') : $t('inspector.bone.right_hand'))]);
+  const sec = section(['Hand shape', h('span', { class: 'count' }, app.handsBoth ? 'both hands' : `${word} hand`)]);
   const grid = h('div', { class: 'hand-shapes' });
   for (const id of SHAPE_ORDER) {
     const sh = HAND_SHAPES[id];
@@ -159,29 +158,29 @@ function handSection(app, sim, view, name, side) {
   const hv = readHand(view, side);
   const pct = v => Math.round(v * 100) + '%';
   const sl = (kind, text, min, max, value, tip) => slider({ label: text, min, max, step: 0.01, value: Math.max(min, Math.min(max, value)), fmt: pct, title: tip,
-    onStart: () => app.store.checkpoint($t('inspector.bone.hand_change')), onInput: (v, done) => app.setHandSlider && app.setHandSlider(sim.id, side, kind, v, !done) });
+    onStart: () => app.store.checkpoint(`Hand ${kind}`), onInput: (v, done) => app.setHandSlider && app.setHandSlider(sim.id, side, kind, v, !done) });
   sec.append(h('div', { class: 'hand-sliders' },
-    sl('curl', $t('inspector.bone.curl'), 0, 1, hv.curl, $t('inspector.bone.bend_all_four_fingers_toward')),
-    sl('spread', $t('inspector.bone.spread'), -0.5, 1, hv.spread, $t('inspector.bone.fan_fingers_apart_below_0')),
-    sl('thumb', $t('inspector.bone.thumb'), 0, 1, hv.thumb, $t('inspector.bone.fold_thumb_across_palm'))));
-  sec.append(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, $t('inspector.bone.same_for_both_hands')), h('span', {}, $t('inspector.bone.shape_or_slider_changes_both'))),
+    sl('curl', 'Curl', 0, 1, hv.curl, 'Bend all four fingers toward the palm'),
+    sl('spread', 'Spread', -0.5, 1, hv.spread, 'Fan the fingers apart (below 0 squeezes them together)'),
+    sl('thumb', 'Thumb', 0, 1, hv.thumb, 'Fold the thumb across the palm')));
+  sec.append(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, 'Same for both hands'), h('span', {}, 'A shape or a slider changes both hands')),
     toggle(!!app.handsBoth, on => app.setHandsBoth && app.setHandsBoth(on))));
   sec.append(limitsRow(app));
   return sec;
 }
 
 function extraSection(app, sim, view, name) {
-  const sec = section([$t('inspector.bone.turn_and_move_this_part'), h('span', { class: 'count' }, $t('inspector.bone.from_rest'))]);
+  const sec = section(['Turn and move this part', h('span', { class: 'count' }, 'from rest')]);
   if (EXPERT_SET.has(name)) {
-    sec.append(h('div', { class: 'warn-box' }, $t('inspector.bone.game_shapes_each_sim_with')));
+    sec.append(h('div', { class: 'warn-box' }, 'The game shapes each sim with this bone (Create a Sim). Keying it can change a sim\'s look in the game.'));
   }
-  sec.append(h('div', { class: 'sub-title' }, $t('inspector.bone.turn')));
+  sec.append(h('div', { class: 'sub-title' }, 'Turn'));
   turnRows(app, sim, view, name, sec);
-  sec.append(h('div', { class: 'sub-title' }, $t('inspector.bone.move_mm')));
+  sec.append(h('div', { class: 'sub-title' }, 'Move (mm)'));
   moveRows(app, sim, view, name, sec);
-  sec.append(h('div', { class: 'hint' }, $t('inspector.bone.t_switches_arrows_and_rings', { label: label(name, sim.frame) })),
+  sec.append(h('div', { class: 'hint' }, `T switches the arrows and rings in the 3D view. ${label(name, sim.frame)} is only written into keys where you pose it.`),
     h('div', { class: 'btn-grid', style: { marginTop: '6px' } },
-      h('button', { class: 'btn small', onclick: () => app.resetBone(sim.id, name) }, icon('reset'), $t('inspector.bone.reset_part')),
-      h('button', { class: 'btn small', onclick: () => app.mirrorBone(sim.id, name), disabled: !/_(L|R)_/.test(name) }, icon('mirror'), $t('inspector.bone.copy_to_other_side'))));
+      h('button', { class: 'btn small', onclick: () => app.resetBone(sim.id, name) }, icon('reset'), 'Reset part'),
+      h('button', { class: 'btn small', onclick: () => app.mirrorBone(sim.id, name), disabled: !/_(L|R)_/.test(name) }, icon('mirror'), 'Copy to other side')));
   return sec;
 }

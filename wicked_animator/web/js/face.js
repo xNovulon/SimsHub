@@ -5,47 +5,46 @@
 // Everything the sliders, blinking, talking and the jaw do is recorded as the sim's automatic layer
 // (Sim.addLayer), so it can be taken off again when the hand-posed face is keyed.
 import * as THREE from 'three';
-import { $t } from './i18n.js';
 
 // `more: true`: the extra channels (one-sided faces and more expression), shown under "More".
 export const FACE_SLIDERS = {
-  eyes: { label: $t('face.eyes_closed'), min: -0.3, max: 1 },
-  squint: { label: $t('face.squint'), min: 0, max: 1 },
-  brows: { label: $t('face.brows_down_up'), min: -1, max: 1 },
-  inner: { label: $t('face.worried_pleasure_brows'), min: 0, max: 1 },
-  smile: { label: $t('face.smile_frown_smile'), min: -1, max: 1 },
-  open: { label: $t('face.mouth_open'), min: 0, max: 1 },
-  pout: { label: $t('face.o_mouth_kiss'), min: 0, max: 1 },
-  bite: { label: $t('face.bite_lip'), min: 0, max: 1 },
-  tongue: { label: $t('face.tongue_out'), min: 0, max: 1 },
-  lookUp: { label: $t('face.look_down_up'), min: -1, max: 1 },
-  lookSide: { label: $t('face.look_right_left'), min: -1, max: 1 },
-  wink: { label: $t('face.wink_right_eye_left_eye'), min: -1, max: 1, more: true },
-  smileSide: { label: $t('face.smile_on_one_side_right'), min: -1, max: 1, more: true },
-  browSide: { label: $t('face.one_brow_up_right_left'), min: -1, max: 1, more: true },
-  browTilt: { label: $t('face.brow_tilt_angry_sad'), min: -1, max: 1, more: true },
-  sneer: { label: $t('face.sneer'), min: 0, max: 1, more: true },
-  jawSide: { label: $t('face.jaw_to_side_right_left'), min: -1, max: 1, more: true },
-  puff: { label: $t('face.puff_cheeks'), min: 0, max: 1, more: true },
+  eyes: { label: 'Eyes closed', min: -0.3, max: 1 },
+  squint: { label: 'Squint', min: 0, max: 1 },
+  brows: { label: 'Brows (down ↔ up)', min: -1, max: 1 },
+  inner: { label: 'Worried / pleasure brows', min: 0, max: 1 },
+  smile: { label: 'Smile (frown ↔ smile)', min: -1, max: 1 },
+  open: { label: 'Mouth open', min: 0, max: 1 },
+  pout: { label: 'O mouth / kiss', min: 0, max: 1 },
+  bite: { label: 'Bite lip', min: 0, max: 1 },
+  tongue: { label: 'Tongue out', min: 0, max: 1 },
+  lookUp: { label: 'Look (down ↔ up)', min: -1, max: 1 },
+  lookSide: { label: 'Look (right ↔ left)', min: -1, max: 1 },
+  wink: { label: 'Wink (right eye ↔ left eye)', min: -1, max: 1, more: true },
+  smileSide: { label: 'Smile on one side (right ↔ left)', min: -1, max: 1, more: true },
+  browSide: { label: 'One brow up (right ↔ left)', min: -1, max: 1, more: true },
+  browTilt: { label: 'Brow tilt (angry ↔ sad)', min: -1, max: 1, more: true },
+  sneer: { label: 'Sneer', min: 0, max: 1, more: true },
+  jawSide: { label: 'Jaw to the side (right ↔ left)', min: -1, max: 1, more: true },
+  puff: { label: 'Puff cheeks', min: 0, max: 1, more: true },
 };
 
 // One-click expressions. Tuned on the creators' faces (wave2/bone_stats.md): brows, cheeks and mouth corners move
 // as far as creators move them, with a tilt to the brows and a little asymmetry where a real face has it.
 export const FACE_PRESETS = {
-  neutral: { label: $t('face.neutral'), face: {} },
-  relaxed: { label: $t('face.relaxed'), face: { eyes: 0.2, smile: 0.15, inner: 0.1 } },
-  smile: { label: $t('face.smile'), face: { smile: 0.8, squint: 0.3, eyes: 0.1, brows: 0.15 } },
-  seductive: { label: $t('face.seductive'), face: { eyes: 0.45, smile: 0.3, smileSide: 0.25, browSide: 0.2, brows: 0.1, lookUp: -0.2 } },
-  pleasure: { label: $t('face.pleasure'), face: { eyes: 0.6, inner: 0.75, browTilt: 0.45, open: 0.3, squint: 0.3 } },
-  moan: { label: $t('face.moaning'), face: { eyes: 0.55, inner: 0.85, browTilt: 0.55, open: 0.55, pout: 0.25 } },
-  ecstasy: { label: $t('face.o_face'), face: { eyes: 0.85, inner: 1, browTilt: 0.7, open: 0.7, pout: 0.6, squint: 0.15 } },
-  bite: { label: $t('face.biting_lip'), face: { bite: 1, eyes: 0.35, smile: 0.25, smileSide: 0.2, inner: 0.35, browTilt: 0.3 } },
-  surprised: { label: $t('face.surprised'), face: { brows: 1, open: 0.45, eyes: -0.25 } },
-  intense: { label: $t('face.intense'), face: { brows: -0.6, browTilt: -0.4, squint: 0.8, sneer: 0.3, open: 0.25, eyes: 0.3 } },
-  tongue: { label: $t('face.tongue_out'), face: { tongue: 1, open: 0.6, eyes: 0.3, inner: 0.4, browTilt: 0.3 } },
-  ahegao: { label: $t('face.ahegao'), face: { tongue: 1, open: 0.8, lookUp: 0.85, eyes: 0.15, inner: 1, browTilt: 0.8 } },
-  kiss: { label: $t('face.kiss'), face: { pout: 1, eyes: 0.9 } },
-  sleepy: { label: $t('face.eyes_shut'), face: { eyes: 1 } },
+  neutral: { label: 'Neutral', face: {} },
+  relaxed: { label: 'Relaxed', face: { eyes: 0.2, smile: 0.15, inner: 0.1 } },
+  smile: { label: 'Smile', face: { smile: 0.8, squint: 0.3, eyes: 0.1, brows: 0.15 } },
+  seductive: { label: 'Seductive', face: { eyes: 0.45, smile: 0.3, smileSide: 0.25, browSide: 0.2, brows: 0.1, lookUp: -0.2 } },
+  pleasure: { label: 'Pleasure', face: { eyes: 0.6, inner: 0.75, browTilt: 0.45, open: 0.3, squint: 0.3 } },
+  moan: { label: 'Moaning', face: { eyes: 0.55, inner: 0.85, browTilt: 0.55, open: 0.55, pout: 0.25 } },
+  ecstasy: { label: 'O face', face: { eyes: 0.85, inner: 1, browTilt: 0.7, open: 0.7, pout: 0.6, squint: 0.15 } },
+  bite: { label: 'Biting lip', face: { bite: 1, eyes: 0.35, smile: 0.25, smileSide: 0.2, inner: 0.35, browTilt: 0.3 } },
+  surprised: { label: 'Surprised', face: { brows: 1, open: 0.45, eyes: -0.25 } },
+  intense: { label: 'Intense', face: { brows: -0.6, browTilt: -0.4, squint: 0.8, sneer: 0.3, open: 0.25, eyes: 0.3 } },
+  tongue: { label: 'Tongue out', face: { tongue: 1, open: 0.6, eyes: 0.3, inner: 0.4, browTilt: 0.3 } },
+  ahegao: { label: 'Ahegao', face: { tongue: 1, open: 0.8, lookUp: 0.85, eyes: 0.15, inner: 1, browTilt: 0.8 } },
+  kiss: { label: 'Kiss', face: { pout: 1, eyes: 0.9 } },
+  sleepy: { label: 'Eyes shut', face: { eyes: 1 } },
 };
 
 const deg = THREE.MathUtils.degToRad;

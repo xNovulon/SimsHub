@@ -11,7 +11,6 @@ import { lipSync, lipSyncVoices } from '../lipsync.js';
 import { stopListening, prettyLine } from '../lipsyncui.js';
 import { toast } from '../ui.js';
 import { setVoiceSeconds } from '../face.js';
-import { $t } from '../i18n.js';
 
 export function install(app) {
   if (!app || app.__faces2) return;
@@ -26,7 +25,7 @@ export function install(app) {
   app.gameFace = async (simId, id, intensity = app._gfAmount ?? 1) => {
     await loadFaces();
     const f = faceById(id) || faceById('ea:' + id);
-    if (!f) { toast($t('features.faces.that_game_face_is_not')); return null; }
+    if (!f) { toast('That game face is not there.'); return null; }
     return setFaceBones(app, simId, f.fb, f.short, intensity, { id: f.id, pickId: 'gface:' + f.id });
   };
   app.lipSync = (simId, source, opts = {}) => lipSync(app, simId, typeof source === 'string' ? { name: source } : source, opts);
@@ -42,9 +41,9 @@ export function install(app) {
   add('menus.sound', (items, ctx) => {
     const sim = ctx && ctx.sim, snd = ctx && ctx.snd;
     if (!sim || !snd || snd.kind !== 'voice') return;
-    items.push({ label: snd.lipsync ? $t('features.faces.lip_sync_this_sound_again') : $t('features.faces.lip_sync_this_sound_mouth'), icon: 'face',
+    items.push({ label: snd.lipsync ? 'Lip-sync this sound again' : 'Lip-sync this sound (the mouth follows it)', icon: 'face',
       onClick: () => lipSync(app, sim.id, { name: snd.name }, { frame: snd.frame, strength: app._lipStrength ?? 1, brows: app._lipBrows !== false })
-        .then(r => toast($t('features.faces.mouth_follows_face_keys', { prettyLine: prettyLine(snd.name), keys: r.keys }), 'ok'))
+        .then(r => toast(`The mouth follows ${prettyLine(snd.name)}: ${r.keys} face keys.`, 'ok'))
         .catch(err => toast(String((err && err.message) || err))) });
   });
 
@@ -54,16 +53,16 @@ export function install(app) {
     const sim = a.store.sim(), when = () => !!a.store.sim();
     const voices = sim ? (sim.sounds || []).filter(x => x.kind === 'voice').length : 0;
     return [
-      { group: $t('features.faces.faces'), id: 'game-faces', label: $t('features.faces.game_faces'), icon: 'face', sub: $t('features.faces.real_sims_expressions_from_game'), words: 'ea faces expressions moods flirty passionate pleasure kiss woohoo emotions sims', run: () => openFace('game'), when },
-      { group: $t('features.faces.faces'), id: 'face-map', label: $t('features.faces.face_map'), icon: 'face', sub: $t('features.faces.drag_face_dots_on_flat'), words: 'face dots 2d flat map brows lips lids', run: () => { try { localStorage.setItem('fsa.faceMapOpen', 'true'); } catch { /* private */ } openFace(); }, when },
-      { group: $t('features.faces.faces'), id: 'lip-sync', label: voices ? $t('features.faces.lip_sync_voice_sounds') : $t('features.faces.lip_sync_from_sound'), icon: 'mic', sub: $t('features.faces.mouth_follows_moans_and_voices'), words: 'lipsync lip sync mouth talk voice moan audio wav mp3 ogg', when,
-        run: () => { if (voices && sim) lipSyncVoices(app, sim.id, { strength: app._lipStrength ?? 1, brows: app._lipBrows !== false }).then(r => toast($t('features.faces.mouth_follows_voice_sound_s', { filterCount: r.filter(x => x.result).length }), 'ok')); openFace(); } },
+      { group: 'Faces', id: 'game-faces', label: 'Game faces', icon: 'face', sub: 'real Sims expressions from the game, with pictures', words: 'ea faces expressions moods flirty passionate pleasure kiss woohoo emotions sims', run: () => openFace('game'), when },
+      { group: 'Faces', id: 'face-map', label: 'Face map', icon: 'face', sub: 'drag the face dots on a flat, upright face', words: 'face dots 2d flat map brows lips lids', run: () => { try { localStorage.setItem('fsa.faceMapOpen', 'true'); } catch { /* private */ } openFace(); }, when },
+      { group: 'Faces', id: 'lip-sync', label: voices ? 'Lip-sync the voice sounds' : 'Lip-sync from a sound', icon: 'mic', sub: 'the mouth follows moans and voices', words: 'lipsync lip sync mouth talk voice moan audio wav mp3 ogg', when,
+        run: () => { if (voices && sim) lipSyncVoices(app, sim.id, { strength: app._lipStrength ?? 1, brows: app._lipBrows !== false }).then(r => toast(`The mouth follows ${r.filter(x => x.result).length} voice sound(s).`, 'ok')); openFace(); } },
     ];
   });
   add('helpRows', () => [
-    { group: $t('features.faces.faces'), keys: ['Ctrl', 'K'], text: $t('features.faces.type_game_faces_for_real') },
-    { group: $t('features.faces.faces'), keys: ['Ctrl', 'K'], text: $t('features.faces.type_lip_sync_to_make') },
-    { group: $t('features.faces.faces'), keys: 'Double-click a face-map dot', text: $t('features.faces.put_that_part_of_face') },
+    { group: 'Faces', keys: ['Ctrl', 'K'], text: 'Type "Game faces" for real Sims expressions with pictures' },
+    { group: 'Faces', keys: ['Ctrl', 'K'], text: 'Type "Lip-sync" to make the mouth follow the voice sounds' },
+    { group: 'Faces', keys: 'Double-click a face-map dot', text: 'Put that part of the face back' },
   ]);
 
   // the game faces load in the background once the app is up (the first time the game is read it takes a minute)

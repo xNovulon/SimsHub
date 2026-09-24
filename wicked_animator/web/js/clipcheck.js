@@ -5,13 +5,12 @@
 // so parts that only touch are never flagged.
 import * as THREE from 'three';
 import { gridHeight, gridOf } from './placing.js';
-import { $t } from './i18n.js';
 
 // [name, from, to, kind]; names without 'b__' are expanded into a left and a right part
 export const SEGMENTS = [
   ['pelvis', 'b__Pelvis__', 'b__Spine1__', 'torso'], ['belly', 'b__Spine1__', 'b__Spine2__', 'torso'],
   ['chest', 'b__Spine2__', 'b__Neck__', 'torso'], ['head', 'b__Head__', null, 'head'],
-  [$t('clipcheck.upper_arm'), 'UpperArm', 'Forearm', 'limb'], ['forearm', 'Forearm', 'Hand', 'limb'], ['hand', 'Hand', 'Mid1', 'hand'],
+  ['upper arm', 'UpperArm', 'Forearm', 'limb'], ['forearm', 'Forearm', 'Hand', 'limb'], ['hand', 'Hand', 'Mid1', 'hand'],
   ['thigh', 'Thigh', 'Calf', 'limb'], ['shin', 'Calf', 'Foot', 'limb'], ['foot', 'Foot', 'Toe', 'limb'],
 ];
 // the skin that counts for a part: the start bone and the helper bones that move with it
@@ -42,7 +41,7 @@ function oneWay(a, b) {
 }
 // the same both ways for two limbs (a limb against a limb is looked at from one side only)
 const pairLimit = (x, y) => (y.kind === 'limb' || y.kind === 'hand' ? Math.max(oneWay(x.part, y.part), oneWay(y.part, x.part)) : oneWay(x.part, y.part));
-const ARMS = new Set([$t('clipcheck.upper_arm'), 'forearm', 'hand']);
+const ARMS = new Set(['upper arm', 'forearm', 'hand']);
 const SELF_TARGETS = new Set(['pelvis', 'belly', 'chest', 'thigh']);
 
 const side = (n, s) => (n && !n.startsWith('b__') ? `b__${s}_${n}__` : n);
@@ -221,7 +220,7 @@ function setup(app, info) {
   const grid = info ? gridOf(info) : null;
   const furnLabel = (() => {
     const def = (app.furniture || []).find(f => f.id === app.store.project.furniture);
-    return def ? 'the ' + def.label.toLowerCase() : $t('clipcheck.furniture');
+    return def ? 'the ' + def.label.toLowerCase() : 'the furniture';
   })();
   return { all, caps, grid, furnLabel };
 }
@@ -347,11 +346,11 @@ export function describe(app, it) {
   const fps = app.store.project.fps || 30;
   const t = f => (f / fps).toFixed(1);
   const n = (it.ranges || []).length;
-  const when = (it.from === it.to ? `${t(it.from)} s` : `${t(it.from)}-${t(it.to)} s`) + (n > 1 ? $t('clipcheck.and_more_times', { n: n - 1 }) : '');
+  const when = (it.from === it.to ? `${t(it.from)} s` : `${t(it.from)}-${t(it.to)} s`) + (n > 1 ? ` (and ${n - 1} more time${n > 2 ? 's' : ''})` : '');
   const cm = Math.max(1, Math.round(it.depth * 100));
   const who = simName(app, it.simId);
-  const into = it.otherId === null ? it.otherPart : it.otherId === it.simId ? $t('clipcheck.their_part', { part: it.otherPart }) : $t('clipcheck.sims_part', { sim: simName(app, it.otherId), part: it.otherPart });
-  return $t('clipcheck.s_goes_cm_into', { when, who, part: it.part, cm, into });
+  const into = it.otherId === null ? it.otherPart : it.otherId === it.simId ? `their ${it.otherPart}` : `${simName(app, it.otherId)}'s ${it.otherPart}`;
+  return `${when} · ${who}'s ${it.part} goes ${cm} cm into ${into}`;
 }
 
 function furnInfoNow(app) {

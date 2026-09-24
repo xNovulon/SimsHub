@@ -6,7 +6,6 @@ import * as THREE from 'three';
 // MediaPipe FaceLandmarker blendshape order (index 0 '_neutral' is ignored; there is no tongueOut): kept in detect.js,
 // which the reader's worker thread shares.
 import { BS_NAMES, BS } from './detect.js';
-import { $t } from '../i18n.js';
 export { BS_NAMES, BS };
 // every Left name with its Right partner (for the left/right self-check)
 const PAIRS = BS_NAMES.filter(nm => /Left$/.test(nm)).map(nm => [BS[nm], BS[nm.replace(/Left$/, 'Right')]]);
@@ -53,12 +52,12 @@ export function faceTrack(take, person = 0, { calibrate = null, exaggerate = 1, 
   const n = take.t.length;
   const face = pe && pe.face;
   const out = { faces: new Array(n).fill(null), headDelta: new Array(n).fill(null), found: 0, swapped: false, ok: false, message: '' };
-  if (!face || !n) { out.message = $t('capture.facemap.no_face_in_this_take'); return out; }
+  if (!face || !n) { out.message = 'No face in this take.'; return out; }
   const seen = [];
   for (let i = 0; i < n; i++) if (face.ok[i]) seen.push(i);
   out.found = seen.length / n;
   if (out.found < 0.5 || (still && !seen.length)) {
-    out.message = $t('capture.facemap.your_face_was_too_small');
+    out.message = 'Your face was too small or turned away for most of the video; the face was left as it was.';
     return out;
   }
   // work on a copy (the self-check may swap sides)

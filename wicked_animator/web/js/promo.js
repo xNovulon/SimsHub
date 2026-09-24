@@ -12,16 +12,15 @@ import { api } from './api.js';
 import { GifMaker } from './gif.js';
 import { captureVideo, holdGizmo } from './record.js';
 import { KINDS, tagLabel } from './tags.js';
-import { $t } from './i18n.js';
 
 export const MAX_GIF = 5 * 1024 * 1024;           // Tumblr's advice: under 5 MB
 const BODY = ['b__Head__', 'b__Pelvis__', 'b__L_Foot__', 'b__R_Foot__', 'b__L_Hand__', 'b__R_Hand__', 'b__L_Calf__', 'b__R_Calf__', 'b__Spine2__'];
 const HEADS = ['b__Head__', 'b__Neck__'];
 const BAND = ['b__Spine2__', 'b__Spine1__', 'b__Pelvis__', 'b__L_Thigh__', 'b__R_Thigh__', 'b__L_Calf__', 'b__R_Calf__'];
-export const TEASERS = [['none', $t('promo.off')], ['shoulders', $t('promo.shoulders_up')], ['blur', $t('promo.blur_band')]];
+export const TEASERS = [['none', 'Off'], ['shoulders', 'Shoulders up'], ['blur', 'Blur band']];
 
 const kindName = k => (KINDS.find(x => x[0] === k) || ['', k || ''])[1];
-const PLACE_NAMES = { CHAIR_LIVING: $t('promo.armchair'), CHAIR_DINING: $t('promo.dining_chair'), TABLE_DINING_2X: $t('promo.dining_table') };
+const PLACE_NAMES = { CHAIR_LIVING: 'Armchair', CHAIR_DINING: 'Dining chair', TABLE_DINING_2X: 'Dining table' };
 const nice = s => PLACE_NAMES[s] || (x => x.charAt(0).toUpperCase() + x.slice(1))(String(s || '').toLowerCase().replace(/_/g, ' '));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const nextPaint = () => new Promise(r => requestAnimationFrame(() => r()));
@@ -33,8 +32,8 @@ export const fileSafe = s => String(s || '').normalize('NFKD').replace(/[^A-Za-z
 // glow; the cinematic look on (grain off: it would change every pixel of every frame). Afterwards everything is put
 // back: camera, frame, playing, Showcase, look, helpers, which sims show, and the render loop.
 export async function withStage(app, fn, { cinematic = true } = {}) {
-  if (app._stageBusy) throw new Error($t('promo.stage_is_busy_wait_for'));
-  if (app._recordingVideo) throw new Error($t('promo.video_is_being_recorded_wait'));
+  if (app._stageBusy) throw new Error('The stage is busy - wait for the other picture-taking to finish.');
+  if (app._recordingVideo) throw new Error('A video is being recorded - wait for it to finish.');
   app._stageBusy = true;
   const vp = app.vp, stage = vp.stage;
   if (app.preview && app.library && app.library.stopPreview) app.library.stopPreview();
@@ -183,8 +182,8 @@ export function pickAngles(app, n, frames, aspect = 4 / 3) {
   const deg = THREE.MathUtils.degToRad;
   const up = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)), deg(10), deg(50));
   const at = (turn, elev) => flat.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), deg(turn)).multiplyScalar(Math.cos(elev)).setY(Math.sin(elev));
-  const name = (turn, elev) => (elev > deg(45) ? ['above', $t('promo.from_above')] : Math.abs(turn) >= 160 ? ['back', $t('promo.from_behind')]
-    : Math.abs(turn) >= 115 ? [$t('promo.back_side'), $t('promo.back_three_quarter')] : Math.abs(turn) >= 70 ? ['side', $t('promo.side')] : ['angle', $t('promo.three_quarter')]);
+  const name = (turn, elev) => (elev > deg(45) ? ['above', 'From above'] : Math.abs(turn) >= 160 ? ['back', 'From behind']
+    : Math.abs(turn) >= 115 ? ['back-side', 'Back three-quarter'] : Math.abs(turn) >= 70 ? ['side', 'Side'] : ['angle', 'Three-quarter']);
   const cands = [{ turn: 0, elev: up, first: true }];
   for (const t of [90, -90, 45, -45, 135, -135, 180]) cands.push({ turn: t, elev: deg(20) });
   for (const t of [90, -90, 135, -135, 180]) cands.push({ turn: t, elev: deg(38) });
@@ -206,7 +205,7 @@ export function pickAngles(app, n, frames, aspect = 4 / 3) {
   }
   const used = new Set();
   return chosen.map((c, i) => {
-    let [id, label] = i === 0 && c.first ? ['front', $t('promo.your_view')] : name(c.turn, c.elev);
+    let [id, label] = i === 0 && c.first ? ['front', 'Your view'] : name(c.turn, c.elev);
     while (used.has(id)) id += '2';
     used.add(id);
     return { id, label, dir: c.dir, seen: c.seen };
@@ -372,12 +371,11 @@ export function postText(project, baked) {
   for (const t of p.tags || []) if (t !== 'CUSTOM_VOICE_SFX' && !acts.includes(tagLabel(t))) acts.push(tagLabel(t));
   const places = (p.locations || []).map(nice);
   const g = (b.actors || p.sims || []).map(s => String(s.gender || 'BOTH').toLowerCase().replace('both', 'any'));
-  const gw = g.map(x => (x === 'female' ? $t('promo.gender_female') : x === 'male' ? $t('promo.gender_male') : $t('promo.gender_any')));
-  return [$t(p.author ? 'promo.post_title_by' : 'promo.post_title', { name: p.name, author: p.author }), '',
-    $t('promo.post_acts', { acts: acts.join(', ') || $t('promo.post_acts_default') }), $t('promo.post_places', { places: places.join(', ') || $t('promo.post_places_default') }),
-    g.length ? $t('promo.post_sims_who', { n: g.length, who: gw.join(', ') }) : $t('promo.post_sims', { n: 0 }), $t('promo.needs_wickedwhims_by_turbodriver'), '',
-    $t('promo.post_credits'), $t('promo.post_animation_by', { author: p.author || $t('promo.post_me') }), $t('promo.made_with_novulon_s_wicked'), '',
-    $t('promo.18_only_thesims4_wickedwhims_sims4an'), ''].join('\n');
+  return [`"${p.name}"${p.author ? ' by ' + p.author : ''} - a new WickedWhims animation`, '',
+    'Acts: ' + (acts.join(', ') || 'Teasing'), 'Places: ' + (places.join(', ') || 'Floor'),
+    `Sims: ${g.length}${g.length ? ' (' + g.join(', ') + ')' : ''}`, 'Needs: WickedWhims by TURBODRIVER', '',
+    'Credits:', '  Animation by ' + (p.author || 'me'), "  Made with Novulon's Wicked Animator", '',
+    '18+ only. #TheSims4 #WickedWhims #Sims4Animations #TS4Mods', ''].join('\n');
 }
 
 const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
@@ -386,7 +384,7 @@ const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.
 // Makes everything (no dialogs) -> {files: [{name, blob, kind}], gifs: [{name, bytes, frames, delay, url}], thumb, video, text}
 export async function makeKit(app, { angles = 3, width = 480, teaser = 'none', video = true, videoSeconds = 10, onStep } = {}) {
   const p = app.store.project;
-  if (!p.sims.length) throw new Error($t('promo.add_sim_first_promo_kit'));
+  if (!p.sims.length) throw new Error('Add a sim first - the promo kit films your animation.');
   const height = Math.round(width * 3 / 4 / 2) * 2;
   const base = fileSafe(p.name);
   const { frames, delay } = loopFrames(p);
@@ -397,21 +395,21 @@ export async function makeKit(app, { angles = 3, width = 480, teaser = 'none', v
   await withStage(app, async st => {
     dirs = pickAngles(app, Math.max(1, Math.min(3, angles)), frames, width / height);
     for (const [i, a] of dirs.entries()) {
-      step($t('promo.filming_of', { aLabel: a.label.toLowerCase(), i: i + 1, dirCount: dirs.length }), i / (dirs.length + 1));
+      step(`Filming ${a.label.toLowerCase()} (${i + 1} of ${dirs.length})`, i / (dirs.length + 1));
       const r = await filmGif(app, st, { dir: a.dir, width, height, teaser, frames, delay,
-        onProgress: k => step($t('promo.filming_of', { aLabel: a.label.toLowerCase(), i: i + 1, dirCount: dirs.length }), (i + k) / (dirs.length + 1)) });
+        onProgress: k => step(`Filming ${a.label.toLowerCase()} (${i + 1} of ${dirs.length})`, (i + k) / (dirs.length + 1)) });
       const name = `${base} - ${a.id}.gif`;
       gifs.push({ name, angle: a.label, ...r, blob: new Blob([r.bytes], { type: 'image/gif' }) });
       await nextPaint();
     }
-    step($t('promo.thumbnail'), dirs.length / (dirs.length + 1));
+    step('The thumbnail', dirs.length / (dirs.length + 1));
     thumb = { name: `${base} - thumbnail.png`, blob: await filmThumb(app, st, { dir: dirs[0].dir, teaser, frame: Math.round(p.length / 3) }) };
     // the safe teaser's video: the same cut from the first angle (and the same band), 16:9
     if (video && teaser !== 'none') teaserCut = planCut(app, frames, dirs[0].dir, 960, 540, teaser);
   });
   let vid = null;
   if (video) {
-    step($t('promo.recording_second_video_with_sound', { videoSeconds }), 0.92);
+    step(`Recording a ${videoSeconds}-second video with sound`, 0.92);
     const opts = { seconds: videoSeconds, showcase: teaser === 'none', badge: true };
     if (teaserCut) {
       opts.view = teaserCut.view;
@@ -439,8 +437,8 @@ export async function saveKit(app, kit) {
 // ---------------------------------------------------------------- the dialog
 export function openPromoKit(app) {
   const p = app.store.project;
-  if (!p.sims.length) return toast($t('promo.add_sim_first_promo_kit'), 'err');
-  if (app._stageBusy || app._recordingVideo) return toast($t('promo.wait_moment_stage_is_busy'), 'err');
+  if (!p.sims.length) return toast('Add a sim first - the promo kit films your animation.', 'err');
+  if (app._stageBusy || app._recordingVideo) return toast('Wait a moment - the stage is busy.', 'err');
   const opt = { angles: 3, width: 480, teaser: 'none', video: true };
   const seg = (items, get, set) => {
     const box = h('div', { class: 'seg-inline pk-seg' });
@@ -452,21 +450,21 @@ export function openPromoKit(app) {
   const status = h('div', { class: 'pk-status' }, h('div', { class: 'pk-bar' }, h('i')), h('span', {}, ''));
   const body = h('div', { class: 'pk-grid' },
     h('div', { class: 'pk-what' },
-      h('div', { class: 'pk-item' }, icon('pk-gif'), h('div', {}, h('b', {}, $t('promo.looping_gifs')), h('span', {}, $t('promo.s_loop_frames_under_5', { seconds: seconds.toFixed(1), frameCount: frames.length })))),
-      h('div', { class: 'pk-item' }, icon('pk-thumb'), h('div', {}, h('b', {}, $t('promo.square_thumbnail')), h('span', {}, $t('promo.512_x_512_for_download')))),
-      h('div', { class: 'pk-item' }, icon('rec'), h('div', {}, h('b', {}, $t('promo.10_second_video_with_sound')), h('span', {}, $t('promo.filmed_from_stage_while_it')))),
-      h('div', { class: 'pk-item' }, icon('pk-text'), h('div', {}, h('b', {}, $t('promo.text_to_post')), h('span', {}, $t('promo.name_acts_places_sims_needed'))))),
+      h('div', { class: 'pk-item' }, icon('pk-gif'), h('div', {}, h('b', {}, 'Looping GIFs'), h('span', {}, `${seconds.toFixed(1)} s loop, ${frames.length} frames, under 5 MB each - they loop without a jump`))),
+      h('div', { class: 'pk-item' }, icon('pk-thumb'), h('div', {}, h('b', {}, 'A square thumbnail'), h('span', {}, '512 x 512, for the download page'))),
+      h('div', { class: 'pk-item' }, icon('rec'), h('div', {}, h('b', {}, 'A 10-second video with sound'), h('span', {}, 'Filmed from the stage while it plays'))),
+      h('div', { class: 'pk-item' }, icon('pk-text'), h('div', {}, h('b', {}, 'The text to post'), h('span', {}, 'Name, acts, places, sims, needed mods and credits')))),
     h('div', { class: 'pk-opts' },
-      h('label', { class: 'field' }, h('span', {}, $t('promo.camera_angles')), seg([[2, '2 angles'], [3, '3 angles']], () => opt.angles, v => { opt.angles = v; })),
-      h('label', { class: 'field' }, h('span', {}, $t('promo.gif_width')), seg([[400, '400 px'], [480, '480 px'], [540, '540 px']], () => opt.width, v => { opt.width = v; })),
-      h('label', { class: 'field' }, h('span', {}, $t('promo.safe_teaser_for_sites_that')), seg(TEASERS, () => opt.teaser, v => { opt.teaser = v; })),
-      h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, $t('promo.record_10_second_video')), h('span', {}, $t('promo.takes_10_seconds_stage_plays'))),
+      h('label', { class: 'field' }, h('span', {}, 'Camera angles'), seg([[2, '2 angles'], [3, '3 angles']], () => opt.angles, v => { opt.angles = v; })),
+      h('label', { class: 'field' }, h('span', {}, 'GIF width'), seg([[400, '400 px'], [480, '480 px'], [540, '540 px']], () => opt.width, v => { opt.width = v; })),
+      h('label', { class: 'field' }, h('span', {}, 'Safe teaser (for sites that ban explicit pictures)'), seg(TEASERS, () => opt.teaser, v => { opt.teaser = v; })),
+      h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, 'Record the 10-second video'), h('span', {}, 'Takes 10 seconds - the stage plays while it films')),
         (() => { const t = h('label', { class: 'switch' }, h('input', { type: 'checkbox', checked: true, onchange: e => { opt.video = e.target.checked; } }), h('span')); return t; })()),
       status));
   let busy = false;
   const dlg = modal({
-    title: $t('promo.make_promo_kit'), text: $t('promo.everything_to_post_your_animation'), body, wide: true,
-    buttons: [{ label: $t('promo.cancel'), kind: 'ghost', onClick: () => !busy }, { label: $t('promo.make_promo_kit_2'), kind: 'primary', onClick: async () => {
+    title: 'Make a promo kit', text: 'Everything to post your animation, made from the stage and saved in one folder next to your exports.', body, wide: true,
+    buttons: [{ label: 'Cancel', kind: 'ghost', onClick: () => !busy }, { label: 'Make promo kit', kind: 'primary', onClick: async () => {
       if (busy) return false;
       busy = true;
       const btn = dlg.footer.lastChild;
@@ -478,12 +476,12 @@ export function openPromoKit(app) {
         const kit = await makeKit(app, { ...opt, onStep });
         onStep('Saving', 0.97);
         let res = null;
-        try { res = await saveKit(app, kit); } catch (e) { toast($t('promo.could_not_save_promo_kit', { message: e.message }), 'err'); busy = false; btn.disabled = false; dlg.dialog.classList.remove('pk-busy'); return false; }
+        try { res = await saveKit(app, kit); } catch (e) { toast('Could not save the promo kit: ' + e.message, 'err'); busy = false; btn.disabled = false; dlg.dialog.classList.remove('pk-busy'); return false; }
         busy = false;
         showKit(app, kit, res);
       } catch (e) {
         console.error('promo kit', e);
-        toast($t('promo.could_not_make_promo_kit', { message: e.message }), 'err');
+        toast('Could not make the promo kit: ' + e.message, 'err');
         busy = false; btn.disabled = false; dlg.dialog.classList.remove('pk-busy'); status.classList.remove('on');
         return false;
       }
@@ -500,19 +498,19 @@ function showKit(app, kit, res) {
   const hero = successHero();
   const shelf = h('div', { class: 'pk-shelf' },
     ...kit.gifs.map((g, i) => h('figure', { style: { '--i': i } }, h('img', { src: URL.createObjectURL(g.blob), alt: g.angle }), h('figcaption', {}, `${g.angle} · ${mb(g.bytes.length)}`))),
-    kit.thumb ? h('figure', { class: 'sq', style: { '--i': kit.gifs.length } }, h('img', { src: URL.createObjectURL(kit.thumb.blob), alt: $t('promo.thumbnail_2') }), h('figcaption', {}, $t('promo.thumbnail_2'))) : null);
+    kit.thumb ? h('figure', { class: 'sq', style: { '--i': kit.gifs.length } }, h('img', { src: URL.createObjectURL(kit.thumb.blob), alt: 'Thumbnail' }), h('figcaption', {}, 'Thumbnail')) : null);
   modal({
-    title: $t('promo.your_promo_kit_is_ready'), wide: true,
+    title: 'Your promo kit is ready', wide: true,
     body: h('div', { class: 'pk-done' }, hero,
-      h('h3', { class: 'hero-title' }, $t(kit.video ? 'promo.kit_title_video' : 'promo.kit_title', { n: kit.gifs.length })),
+      h('h3', { class: 'hero-title' }, `${kit.gifs.length} GIF${kit.gifs.length > 1 ? 's' : ''}, a thumbnail${kit.video ? ', a video' : ''} and your post text`),
       shelf,
-      r.folder ? h('div', { class: 'success' }, icon('check'), h('div', {}, h('b', {}, $t('promo.saved_in_one_folder')), h('div', { class: 'path' }, r.folder))) : null,
-      h('div', { class: 'section-title', style: { margin: '14px 0 6px' } }, $t('promo.text_to_post_2'),
+      r.folder ? h('div', { class: 'success' }, icon('check'), h('div', {}, h('b', {}, 'Saved in one folder'), h('div', { class: 'path' }, r.folder))) : null,
+      h('div', { class: 'section-title', style: { margin: '14px 0 6px' } }, 'Text to post',
         h('button', { class: 'btn small soft', type: 'button', onclick: async e => {
           try { await navigator.clipboard.writeText(area.value); } catch { area.select(); document.execCommand && document.execCommand('copy'); }
-          e.currentTarget.textContent = $t('promo.copied'); } }, icon('copy'), $t('promo.copy'))),
+          e.currentTarget.textContent = 'Copied'; } }, icon('copy'), 'Copy')),
       area),
-    buttons: [{ label: $t('promo.open_folder'), onClick: () => { if (r.folder) api.reveal(r.folder); return false; } }, { label: $t('promo.done'), kind: 'primary' }],
+    buttons: [{ label: 'Open the folder', onClick: () => { if (r.folder) api.reveal(r.folder); return false; } }, { label: 'Done', kind: 'primary' }],
   });
   setTimeout(() => { area.blur(); const done = [...document.querySelectorAll('#modal-root .modal:last-child footer .btn')].pop(); if (done) done.focus({ preventScroll: true }); }, 60);
   celebrateAt(hero, { delay: 480 });

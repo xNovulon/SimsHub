@@ -9,7 +9,6 @@ import { h, icon, modal, toast, emitWA } from './ui.js';
 import { successHero, celebrateAt } from './fx.js';
 import { api } from './api.js';
 import { withStage, sphereOf, fitView, grab } from './promo.js';
-import { $t, fmtList } from './i18n.js';
 
 // The server's lists (GET /api/posepack); this copy is used when the server is older than this page.
 const LOCAL_RULES = {
@@ -97,20 +96,21 @@ export function lockReasons(meta, R = LOCAL_RULES) {
   const kind = String(meta.category || '').toUpperCase();
   const acts = kinds.has(kind) ? [KIND_WORD[kind] || niceTag(kind)] : [];
   for (const t of meta.tags || []) { const u = String(t).toUpperCase(); if (tags.has(u) && !acts.includes(niceTag(u))) acts.push(niceTag(u)); }
-  if (acts.length) out.push($t('posepack.why_act', { acts: acts.slice(0, 3).join(', ') + (acts.length > 3 ? ' ...' : '') }));
-  if ((meta.events || []).length) out.push($t('posepack.why_moments'));
+  if (acts.length) out.push(`a WickedWhims act (${acts.slice(0, 3).join(', ')})${acts.length > 3 ? ' ...' : ''}`);
+  if ((meta.events || []).length) out.push('WickedWhims moments (cum, undress, effects)');
   const actors = meta.actors || [];
-  if (actors.some(a => String(a.naked || 'NONE').toUpperCase() !== 'NONE')) out.push($t('posepack.why_undressed'));
-  if (actors.some(a => a.strapon)) out.push($t('posepack.why_strapon'));
-  if (actors.some(a => a.invisibleTeeth)) out.push($t('posepack.why_mouth'));
-  if (actors.some(a => (a.keyed || []).some(b => gen.has(b)))) out.push($t('posepack.why_genital_keys'));
-  if (actors.some(a => a.open)) out.push($t('posepack.why_opening'));
+  if (actors.some(a => String(a.naked || 'NONE').toUpperCase() !== 'NONE')) out.push('undressed sims');
+  if (actors.some(a => a.strapon)) out.push('a strap-on');
+  if (actors.some(a => a.invisibleTeeth)) out.push('a mouth opened by a penis');
+  if (actors.some(a => (a.keyed || []).some(b => gen.has(b)))) out.push('genital or opening keys');
+  if (actors.some(a => a.open)) out.push('an opening that is open');
   return out;
 }
 
 export function lockMessage(reasons) {
-  const said = fmtList(reasons);
-  return $t('posepack.pose_packs_are_for_non', { said });
+  const said = reasons.length === 1 ? reasons[0] : reasons.slice(0, -1).join(', ') + ' and ' + reasons[reasons.length - 1];
+  return 'Pose packs are for non-explicit poses only - Pose Player can put a pose on any sim, teens too. This one has '
+    + said + '. Explicit animations go to the game through WickedWhims (Send to game), which checks ages.';
 }
 
 // One frame of the baked tracks, genital bones left out (they stay at rest in a pose).
@@ -168,7 +168,7 @@ export function packRequest(app, baked, picks, { name, author, description = '',
     for (const { s, i } of sims) {
       const label = sims.length > 1 ? `${pk.label} - ${s.label}` : pk.label;
       poses.push({ label, sim: i, frame: pk.frame,
-        description: sims.length > 1 ? $t('posepack.s_part_put_all_sims', { sLabel: s.label, simCount: sims.length }) : '',
+        description: sims.length > 1 ? `${s.label}'s part - put all ${sims.length} sims on the same spot` : '',
         tracks: sliceTracks(baked.actors[i] && baked.actors[i].tracks, pk.frame, R),
         icon: pictures ? pictures.icons.get(`${pk.frame}|${s.id}`) || null : null });
     }
@@ -191,38 +191,38 @@ function tileIcon(url) {
 // ---------------------------------------------------------------- the dialog
 export async function openPosePack(app) {
   const p = app.store.project;
-  if (!p.sims.length) return toast($t('posepack.add_sim_first_each_key'), 'err');
-  if (app._stageBusy || app._recordingVideo) return toast($t('posepack.wait_moment_stage_is_busy'), 'err');
+  if (!p.sims.length) return toast('Add a sim first - each key of your sims becomes a pose.', 'err');
+  if (app._stageBusy || app._recordingVideo) return toast('Wait a moment - the stage is busy.', 'err');
   const R = await loadRules();
   const frames = keyFrames(p).slice(0, Math.floor(R.max_poses / Math.max(1, p.sims.length)));
-  if (!frames.length) return toast($t('posepack.key_pose_first_k_each'), 'err');
+  if (!frames.length) return toast('Key a pose first (K) - each key becomes a pose.', 'err');
   let baked;
-  try { baked = app.bake(); } catch (e) { return toast($t('posepack.could_not_read_poses', { message: e.message }), 'err'); }
-  const picks = frames.map((f, i) => ({ frame: f, label: $t('posepack.pose', { i: i + 1 }), on: true }));
+  try { baked = app.bake(); } catch (e) { return toast('Could not read the poses: ' + e.message, 'err'); }
+  const picks = frames.map((f, i) => ({ frame: f, label: `Pose ${i + 1}`, on: true }));
   const reasons = lockReasons(lockMeta(app, baked, frames, R), R);
   const sims = p.sims.filter(s => s.visible !== false);
 
-  const name = h('input', { class: 'text', value: p.name && !/^untitled/i.test(p.name) ? p.name : '', placeholder: $t('posepack.e_g_sofa_cuddles') });
-  const author = h('input', { class: 'text', value: p.author || '', placeholder: $t('posepack.your_creator_name') });
-  const desc = h('input', { class: 'text', value: '', placeholder: $t('posepack.e_g_3_couple_poses') });
+  const name = h('input', { class: 'text', value: p.name && !/^untitled/i.test(p.name) ? p.name : '', placeholder: 'e.g. Sofa cuddles' });
+  const author = h('input', { class: 'text', value: p.author || '', placeholder: 'Your creator name' });
+  const desc = h('input', { class: 'text', value: '', placeholder: 'e.g. 3 couple poses on the sofa' });
   let install = true;
   if (reasons.length) for (const el of [name, author, desc]) el.disabled = true;
   const count = h('div', { class: 'pp-count' });
   const grid = h('div', { class: 'pp-grid' });
   const lockLine = reasons.length
     ? h('div', { class: 'warn-box error pp-lock', role: 'alert' }, icon('pp-lock'), h('span', {}, lockMessage(reasons)))
-    : h('div', { class: 'pp-ok' }, icon('check'), h('span', {}, $t('posepack.non_explicit_poses_ready_for')));
+    : h('div', { class: 'pp-ok' }, icon('check'), h('span', {}, 'Non-explicit poses - ready for Pose Player. (Pose Player can put a pose on any sim, teens too, so only non-explicit poses go in.)'));
   const drawCount = () => {
     const n = picks.filter(x => x.on).length;
-    count.textContent = $t('posepack.poses_n', { n }) + (sims.length > 1 ? $t('posepack.x_sims_in_pose_player', { simCount: sims.length, n: n * sims.length }) : '');
+    count.textContent = `${n} pose${n === 1 ? '' : 's'}${sims.length > 1 ? ` x ${sims.length} sims = ${n * sims.length} in Pose Player` : ''}`;
     const btn = dlg && dlg.footer.lastChild;
     if (btn) btn.disabled = !!reasons.length || !n;
   };
   picks.forEach((pk, i) => {
     const img = h('div', { class: 'pp-pic' }, reasons.length ? h('span', { class: 'pp-locked-pic' }, icon('pp-lock')) : h('span', { class: 'pp-skel' }));
     const cb = h('input', { type: 'checkbox', checked: true, disabled: !!reasons.length });
-    const label = h('input', { class: 'text pp-name', value: pk.label, maxlength: 60, disabled: !!reasons.length, onchange: () => { pk.label = label.value.trim() || $t('posepack.pose', { i: i + 1 }); } });
-    const tile = h('label', { class: 'pp-tile on', style: { '--i': i }, 'data-frame': pk.frame }, img, h('div', { class: 'pp-meta' }, cb, label), h('small', {}, $t('posepack.frame_n', { frame: pk.frame })));
+    const label = h('input', { class: 'text pp-name', value: pk.label, maxlength: 60, disabled: !!reasons.length, onchange: () => { pk.label = label.value.trim() || `Pose ${i + 1}`; } });
+    const tile = h('label', { class: 'pp-tile on', style: { '--i': i }, 'data-frame': pk.frame }, img, h('div', { class: 'pp-meta' }, cb, label), h('small', {}, `frame ${pk.frame}`));
     cb.onchange = () => { pk.on = cb.checked; tile.classList.toggle('on', pk.on); drawCount(); };
     pk.el = img;
     grid.append(tile);
@@ -230,24 +230,24 @@ export async function openPosePack(app) {
   const body = h('div', { class: 'pp-wrap' + (reasons.length ? ' pp-locked' : '') },
     lockLine,
     h('div', { class: 'pp-cols' },
-      h('div', {}, h('div', { class: 'section-title', style: { margin: '4px 0 8px' } }, $t('posepack.poses'), count), grid),
+      h('div', {}, h('div', { class: 'section-title', style: { margin: '4px 0 8px' } }, 'Poses', count), grid),
       h('div', { class: 'pp-side' },
-        h('label', { class: 'field' }, h('span', {}, $t('posepack.pack_name_shown_in_pose')), name),
-        h('label', { class: 'field' }, h('span', {}, $t('posepack.creator')), author),
-        h('label', { class: 'field' }, h('span', {}, $t('posepack.description')), desc),
-        h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, $t('posepack.also_put_it_in_my')), h('span', {}, $t('posepack.mods_fitstudio_posepacks'))),
+        h('label', { class: 'field' }, h('span', {}, 'Pack name (shown in Pose Player)'), name),
+        h('label', { class: 'field' }, h('span', {}, 'Creator'), author),
+        h('label', { class: 'field' }, h('span', {}, 'Description'), desc),
+        h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, 'Also put it in my game'), h('span', {}, 'Mods\\FitStudio\\PosePacks')),
           h('label', { class: 'switch' }, h('input', { type: 'checkbox', checked: true, onchange: e => { install = e.target.checked; } }), h('span'))),
-        h('div', { class: 'pp-note' }, icon('pp-couple'), h('div', {}, h('b', {}, sims.length > 1 ? $t('posepack.couples_line_up_by_themselves') : $t('posepack.one_pose_per_key')),
-          h('span', {}, sims.length > 1 ? $t('posepack.every_sim_own_pose', { n: sims.length }) : $t('posepack.each_key_you_picked_becomes')))),
-        h('div', { class: 'hint' }, $t('posepack.needs_pose_player_by_andrew')))));
+        h('div', { class: 'pp-note' }, icon('pp-couple'), h('div', {}, h('b', {}, sims.length > 1 ? 'Couples line up by themselves' : 'One pose per key'),
+          h('span', {}, sims.length > 1 ? `Every sim gets its own pose, and ${sims.length === 2 ? 'both' : 'all ' + sims.length} share one spot: put them on the same spot (Teleport Any Sim) and give each its pose - no 0.7 trick.` : 'Each key you picked becomes one pose, with its own little picture.'))),
+        h('div', { class: 'hint' }, 'Needs Pose Player by Andrew in the game. You get a folder with the .package and a README.'))));
   const dlg = modal({
-    title: $t('posepack.export_as_pose_pack'), text: $t('posepack.for_andrew_s_pose_player'), body, wide: true,
-    buttons: [{ label: $t('posepack.cancel'), kind: 'ghost' }, { label: $t('posepack.export_pose_pack'), kind: 'primary', onClick: async () => {
+    title: 'Export as a pose pack', text: "For Andrew's Pose Player - each key becomes a pose, laid out like a Sims 4 Studio pose pack.", body, wide: true,
+    buttons: [{ label: 'Cancel', kind: 'ghost' }, { label: 'Export pose pack', kind: 'primary', onClick: async () => {
       if (reasons.length) { toast(lockMessage(reasons), 'err'); return false; }
       const chosen = picks.filter(x => x.on);
-      if (!chosen.length) { toast($t('posepack.pick_at_least_one_pose'), 'err'); return false; }
-      if (!name.value.trim()) { toast($t('posepack.give_pose_pack_name'), 'err'); name.focus(); return false; }
-      const btn = dlg.footer.lastChild; btn.textContent = $t('posepack.packing');
+      if (!chosen.length) { toast('Pick at least one pose.', 'err'); return false; }
+      if (!name.value.trim()) { toast('Give the pose pack a name.', 'err'); name.focus(); return false; }
+      const btn = dlg.footer.lastChild; btn.textContent = 'Packing...';
       try {
         await pictures;
         const req = packRequest(app, baked, chosen, { name: name.value.trim(), author: author.value.trim(), description: desc.value.trim(), install, pictures: pics, R });
@@ -255,7 +255,7 @@ export async function openPosePack(app) {
         const res = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(res.error || r.statusText);
         showDone(app, res, req);
-      } catch (e) { toast($t('posepack.could_not_make_pose_pack', { message: e.message }), 'err'); btn.textContent = $t('posepack.export_pose_pack'); return false; }
+      } catch (e) { toast('Could not make the pose pack: ' + e.message, 'err'); btn.textContent = 'Export pose pack'; return false; }
     } }],
   });
   dlg.dialog.classList.add('pp-dialog');
@@ -288,15 +288,15 @@ function showDone(app, res, req) {
   const n = res.poses || req.poses.length;
   const sims = new Set(req.poses.map(x => x.sim)).size, keys = Math.round(n / Math.max(1, sims));
   modal({
-    title: $t('posepack.your_pose_pack_is_ready'),
-    body: h('div', {}, hero, h('h3', { class: 'hero-title' }, $t('posepack.pack_title', { name: res.title || req.name, what: sims > 1 ? $t('posepack.poses_x_sims', { keys, sims }) : $t('posepack.poses_n', { n }) })),
-      h('div', { class: 'success' }, icon('check'), h('div', {}, h('b', {}, $t('posepack.poses_kb', { n, bytes: ((res.bytes || 0) / 1024).toFixed(0) })), h('div', { class: 'path' }, res.package || res.folder || ''))),
-      res.installed ? h('div', { class: 'pp-installed' }, h('span', {}, $t('posepack.also_in_your_game')), h('div', { class: 'path' }, res.installed)) : null,
+    title: 'Your pose pack is ready',
+    body: h('div', {}, hero, h('h3', { class: 'hero-title' }, `"${res.title || req.name}" - ${sims > 1 ? `${keys} pose${keys === 1 ? '' : 's'} x ${sims} sims` : `${n} pose${n === 1 ? '' : 's'}`} for Pose Player`),
+      h('div', { class: 'success' }, icon('check'), h('div', {}, h('b', {}, `${n} pose${n === 1 ? '' : 's'} · ${((res.bytes || 0) / 1024).toFixed(0)} KB`), h('div', { class: 'path' }, res.package || res.folder || ''))),
+      res.installed ? h('div', { class: 'pp-installed' }, h('span', {}, 'Also in your game:'), h('div', { class: 'path' }, res.installed)) : null,
       h('ol', { class: 'pp-steps' },
-        h('li', {}, $t('posepack.start_game_with_pose_player')),
-        h('li', {}, req.poses.some(x => x.sim > 0) ? $t('posepack.put_sims_on_same_spot') : $t('posepack.click_your_sim_and_pick')),
-        h('li', {}, $t('posepack.share_it_give_people_package')))),
-    buttons: [{ label: $t('posepack.open_folder'), onClick: () => { if (res.folder) api.reveal(res.folder); return false; } }, { label: $t('posepack.done'), kind: 'primary' }],
+        h('li', {}, 'Start the game with Pose Player by Andrew installed.'),
+        h('li', {}, req.poses.some(x => x.sim > 0) ? 'Put the sims on the same spot (Teleport Any Sim), then click each sim and pick its part of the pose.' : 'Click your sim and pick a pose from the pack.'),
+        h('li', {}, 'Share it: give people the .package from the folder.'))),
+    buttons: [{ label: 'Open the folder', onClick: () => { if (res.folder) api.reveal(res.folder); return false; } }, { label: 'Done', kind: 'primary' }],
   });
   celebrateAt(hero, { delay: 480 });
   emitWA(app, 'exported', { result: res, kind: 'posepack' });

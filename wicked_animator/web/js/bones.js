@@ -3,7 +3,6 @@
 // extras, expert bones and the 30 face bones) or never keyed (57: the two root bones, the 4 IK export poles and the
 // 51 "_slot" bones).
 
-import { $t } from './i18n.js';
 const SIDES = ['Clavicle', 'UpperArm', 'Forearm', 'Hand',
   'Thumb0', 'Thumb1', 'Thumb2', 'Index0', 'Index1', 'Index2', 'Mid0', 'Mid1', 'Mid2',
   'Ring0', 'Ring1', 'Ring2', 'Pinky0', 'Pinky1', 'Pinky2',
@@ -89,7 +88,7 @@ export const LIMBS = {
   'L foot': ['b__L_Thigh__', 'b__L_Calf__', 'b__L_Foot__'],
   'R foot': ['b__R_Thigh__', 'b__R_Calf__', 'b__R_Foot__'],
 };
-export const LIMB_LABEL = { 'L hand': $t('bones.left_hand'), 'R hand': $t('bones.right_hand'), 'L foot': $t('bones.left_foot'), 'R foot': $t('bones.right_foot') };
+export const LIMB_LABEL = { 'L hand': 'Left hand', 'R hand': 'Right hand', 'L foot': 'Left foot', 'R foot': 'Right foot' };
 
 // ---------------------------------------------------------------- safe ranges for face parts (spec_face_bones 3.1)
 // Creators' per-clip p5..p95, widened about 1.5x. [default gizmo, move x, y, z (mm), turn x, y, z (degrees)] for the
@@ -144,11 +143,11 @@ export function faceLimits(name) {
 // ---------------------------------------------------------------- face dots (spec_face_bones 3.2)
 // Region order is the order the dots bloom in.
 export const FACE_HANDLES = {
-  brows: { label: $t('bones.brows'), color: '#ff7ab6', bones: ['b__L_InBrow__', 'b__L_MidBrow__', 'b__L_OutBrow__', 'b__R_InBrow__', 'b__R_MidBrow__', 'b__R_OutBrow__'] },
-  eyes: { label: $t('bones.eyes_and_lids'), color: '#57b8ff', bones: ['b__L_Eye__', 'b__L_UpLid__', 'b__L_LoLid__', 'b__R_Eye__', 'b__R_UpLid__', 'b__R_LoLid__'] },
-  cheeks: { label: $t('bones.cheeks_and_nose'), color: '#ffb547', bones: ['b__L_Cheek__', 'b__L_Squint__', 'b__CAS_L_Nostril__', 'b__R_Cheek__', 'b__R_Squint__', 'b__CAS_R_Nostril__'] },
-  mouth: { label: $t('bones.mouth'), color: '#ff4f6a', bones: ['b__UpLip__', 'b__L_UpLip__', 'b__R_UpLip__', 'b__L_Mouth__', 'b__R_Mouth__', 'b__LoLip__', 'b__L_LoLip__', 'b__R_LoLip__'] },
-  jaw: { label: $t('bones.jaw_and_tongue'), color: '#a78bfa', bones: ['b__Jaw__', ...TONGUE] },
+  brows: { label: 'Brows', color: '#ff7ab6', bones: ['b__L_InBrow__', 'b__L_MidBrow__', 'b__L_OutBrow__', 'b__R_InBrow__', 'b__R_MidBrow__', 'b__R_OutBrow__'] },
+  eyes: { label: 'Eyes and lids', color: '#57b8ff', bones: ['b__L_Eye__', 'b__L_UpLid__', 'b__L_LoLid__', 'b__R_Eye__', 'b__R_UpLid__', 'b__R_LoLid__'] },
+  cheeks: { label: 'Cheeks and nose', color: '#ffb547', bones: ['b__L_Cheek__', 'b__L_Squint__', 'b__CAS_L_Nostril__', 'b__R_Cheek__', 'b__R_Squint__', 'b__CAS_R_Nostril__'] },
+  mouth: { label: 'Mouth', color: '#ff4f6a', bones: ['b__UpLip__', 'b__L_UpLip__', 'b__R_UpLip__', 'b__L_Mouth__', 'b__R_Mouth__', 'b__LoLip__', 'b__L_LoLip__', 'b__R_LoLip__'] },
+  jaw: { label: 'Jaw and tongue', color: '#a78bfa', bones: ['b__Jaw__', ...TONGUE] },
 };
 export const FACE_REGIONS = Object.keys(FACE_HANDLES);
 // Guide lines (drawn at 35% in the region colour): each brow Out-Mid-In, and the lip loop. Each eye also gets a ring.
@@ -165,32 +164,32 @@ export const isCenterFace = n => FACE_SET.has(n) && !/_(L|R)_/.test(n);
 
 // ---------------------------------------------------------------- names
 const NICE = {
-  Pelvis: $t('bones.hips'), Spine0: $t('bones.lower_back'), Spine1: $t('bones.middle_back'), Spine2: $t('bones.chest'), Neck: $t('bones.neck'), Head: $t('bones.head'), Jaw: $t('bones.jaw'),
-  Clavicle: $t('bones.shoulder'), UpperArm: $t('bones.upper_arm'), Forearm: $t('bones.forearm'), Hand: $t('bones.hand'),
-  Thumb0: $t('bones.thumb_base'), Thumb1: $t('bones.thumb_middle'), Thumb2: $t('bones.thumb_tip'),
-  Index0: $t('bones.index_base'), Index1: $t('bones.index_middle'), Index2: $t('bones.index_tip'),
-  Mid0: $t('bones.middle_finger_base'), Mid1: $t('bones.middle_finger_middle'), Mid2: $t('bones.middle_finger_tip'),
-  Ring0: $t('bones.ring_finger_base'), Ring1: $t('bones.ring_finger_middle'), Ring2: $t('bones.ring_finger_tip'),
-  Pinky0: $t('bones.pinky_base'), Pinky1: $t('bones.pinky_middle'), Pinky2: $t('bones.pinky_tip'),
-  Thigh: $t('bones.thigh'), Calf: $t('bones.shin'), Foot: $t('bones.foot'), Toe: $t('bones.toes'),
+  Pelvis: 'Hips', Spine0: 'Lower back', Spine1: 'Middle back', Spine2: 'Chest', Neck: 'Neck', Head: 'Head', Jaw: 'Jaw',
+  Clavicle: 'Shoulder', UpperArm: 'Upper arm', Forearm: 'Forearm', Hand: 'Hand',
+  Thumb0: 'Thumb base', Thumb1: 'Thumb middle', Thumb2: 'Thumb tip',
+  Index0: 'Index base', Index1: 'Index middle', Index2: 'Index tip',
+  Mid0: 'Middle finger base', Mid1: 'Middle finger middle', Mid2: 'Middle finger tip',
+  Ring0: 'Ring finger base', Ring1: 'Ring finger middle', Ring2: 'Ring finger tip',
+  Pinky0: 'Pinky base', Pinky1: 'Pinky middle', Pinky2: 'Pinky tip',
+  Thigh: 'Thigh', Calf: 'Shin', Foot: 'Foot', Toe: 'Toes',
   // face
-  InBrow: $t('bones.inner_brow'), MidBrow: $t('bones.middle_brow'), OutBrow: $t('bones.outer_brow'), UpLid: $t('bones.upper_eyelid'), LoLid: $t('bones.lower_eyelid'), Eye: $t('bones.eye'),
-  Cheek: $t('bones.cheek'), Squint: $t('bones.under_eye'), Mouth: $t('bones.mouth_corner'), UpLip: $t('bones.upper_lip'), LoLip: $t('bones.lower_lip'), Nostril: $t('bones.nostril'),
+  InBrow: 'Inner brow', MidBrow: 'Middle brow', OutBrow: 'Outer brow', UpLid: 'Upper eyelid', LoLid: 'Lower eyelid', Eye: 'Eye',
+  Cheek: 'Cheek', Squint: 'Under the eye', Mouth: 'Mouth corner', UpLip: 'Upper lip', LoLip: 'Lower lip', Nostril: 'Nostril',
   // helpers and WickedWhims
-  ShoulderTwist: $t('bones.upper_arm_twist'), ForearmTwist: $t('bones.wrist_twist'), ThighTwist: $t('bones.thigh_twist'), Elbow: $t('bones.elbow_helper'), Skirt: $t('bones.skirt_helper'),
-  Breast: $t('bones.breast'), Butt: $t('bones.butt_cheek'), Prop: $t('bones.held_object'), Stigmata: $t('bones.palm_spot'), Anus: $t('bones.anus'),
+  ShoulderTwist: 'Upper arm twist', ForearmTwist: 'Wrist twist', ThighTwist: 'Thigh twist', Elbow: 'Elbow helper', Skirt: 'Skirt helper',
+  Breast: 'Breast', Butt: 'Butt cheek', Prop: 'Held object', Stigmata: 'Palm spot', Anus: 'Anus',
 };
 const SPECIAL = {
-  b__Penis_Base: $t('bones.penis_base'), b__Penis_Base01: $t('bones.penis_lower'), b__Penis_Mid: $t('bones.penis_middle'), b__Penis_Mid01: $t('bones.penis_upper'),
-  b__Penis_Tip: $t('bones.penis_tip'), b__Tounge__1: $t('bones.tongue_back'), b__Tounge__2: $t('bones.tongue_middle'), b__Tounge__3: $t('bones.tongue_tip'),
-  b__UpLip__: $t('bones.upper_lip_middle'), b__LoLip__: $t('bones.lower_lip_middle'), b__Penis_Testicles: $t('bones.balls'),
-  b__Up_Vagina__: $t('bones.vagina_top'), b__Low_Vagina__: $t('bones.vagina_bottom'), b__Anus: $t('bones.anus'), b__Up_Anus: $t('bones.anus_top'), b__Low_Anus: $t('bones.anus_bottom'),
-  b__Carry__: $t('bones.carry_helper'), b__CAS_Glasses__: $t('bones.glasses_shape'), b__CAS_NoseArea__: $t('bones.nose_shape'), b__CAS_NoseTip__: $t('bones.nose_tip_shape'),
-  b__CAS_NoseBridge__: $t('bones.nose_bridge_shape'), b__CAS_UpperMouthArea__: $t('bones.upper_mouth_shape'), b__CAS_LowerMouthArea__: $t('bones.lower_mouth_shape'),
-  b__CAS_JawComp__: $t('bones.jaw_width_shape'), b__CAS_Chin__: $t('bones.chin_shape'),
-  b__CAS_L_EyeArea__: $t('bones.eye_area_left_shape'), b__CAS_R_EyeArea__: $t('bones.eye_area_right_shape'),
-  b__CAS_L_EyeScale__: $t('bones.eye_size_left_shape'), b__CAS_R_EyeScale__: $t('bones.eye_size_right_shape'),
-  b__ROOT__: $t('bones.root'), b__ROOT_bind__: $t('bones.root_placement'),
+  b__Penis_Base: 'Penis (base)', b__Penis_Base01: 'Penis (lower)', b__Penis_Mid: 'Penis (middle)', b__Penis_Mid01: 'Penis (upper)',
+  b__Penis_Tip: 'Penis (tip)', b__Tounge__1: 'Tongue (back)', b__Tounge__2: 'Tongue (middle)', b__Tounge__3: 'Tongue (tip)',
+  b__UpLip__: 'Upper lip (middle)', b__LoLip__: 'Lower lip (middle)', b__Penis_Testicles: 'Balls',
+  b__Up_Vagina__: 'Vagina (top)', b__Low_Vagina__: 'Vagina (bottom)', b__Anus: 'Anus', b__Up_Anus: 'Anus (top)', b__Low_Anus: 'Anus (bottom)',
+  b__Carry__: 'Carry helper', b__CAS_Glasses__: 'Glasses (shape)', b__CAS_NoseArea__: 'Nose (shape)', b__CAS_NoseTip__: 'Nose tip (shape)',
+  b__CAS_NoseBridge__: 'Nose bridge (shape)', b__CAS_UpperMouthArea__: 'Upper mouth (shape)', b__CAS_LowerMouthArea__: 'Lower mouth (shape)',
+  b__CAS_JawComp__: 'Jaw width (shape)', b__CAS_Chin__: 'Chin (shape)',
+  b__CAS_L_EyeArea__: 'Eye area, left (shape)', b__CAS_R_EyeArea__: 'Eye area, right (shape)',
+  b__CAS_L_EyeScale__: 'Eye size, left (shape)', b__CAS_R_EyeScale__: 'Eye size, right (shape)',
+  b__ROOT__: 'Root', b__ROOT_bind__: 'Root (placement)',
 };
 
 // Plain name of any bone ("Inner brow (left)"). `frame` is the body: on a woman ('yf') the WickedWhims testicle
@@ -199,13 +198,13 @@ export function label(name, frame) {
   if (SPECIAL[name]) return SPECIAL[name];
   let m = /^b__Penis_(L|R)_Testicle$/.exec(name);
   if (m) {
-    const side = m[1] === 'L' ? $t('bones.left') : $t('bones.right');
-    return frame === 'yf' ? $t('bones.vagina_lip', { side }) : $t(m[1] === 'L' ? 'bones.left_ball' : 'bones.right_ball');
+    const side = m[1] === 'L' ? 'left' : 'right';
+    return frame === 'yf' ? `Vagina lip (${side})` : `${m[1] === 'L' ? 'Left' : 'Right'} ball`;
   }
   m = /^b__(?:CAS_)?(?:(L|R)_)?(.+?)(?:__)?$/.exec(name);
   if (!m) return name;
   const base = NICE[m[2]] || m[2];
-  return m[1] ? $t('bones.part_side', { part: base, side: m[1] === 'L' ? $t('bones.left') : $t('bones.right') }) : base;
+  return m[1] ? `${base} (${m[1] === 'L' ? 'left' : 'right'})` : base;
 }
 
 export function mirrorName(name) {
@@ -220,22 +219,22 @@ const SIDE_FINGERS = s => ['Thumb', 'Index', 'Mid', 'Ring', 'Pinky'].flatMap(f =
 const SIDE_LEG = s => [`b__${s}_Thigh__`, `b__${s}_ThighTwist__`, `b__${s}_Calf__`, `b__${s}_Foot__`, `b__${s}_Toe__`];
 // Grouped like Blender's outliner. Every KEYABLE bone is in exactly one group.
 export const BONE_GROUPS = [
-  { id: 'body', label: $t('bones.body'), bones: [...CENTER] },
-  { id: 'larm', label: $t('bones.left_arm'), bones: SIDE_ARM('L') },
-  { id: 'rarm', label: $t('bones.right_arm'), bones: SIDE_ARM('R') },
-  { id: 'lfing', label: $t('bones.left_fingers'), bones: SIDE_FINGERS('L') },
-  { id: 'rfing', label: $t('bones.right_fingers'), bones: SIDE_FINGERS('R') },
-  { id: 'lleg', label: $t('bones.left_leg'), bones: SIDE_LEG('L') },
-  { id: 'rleg', label: $t('bones.right_leg'), bones: SIDE_LEG('R') },
-  { id: 'face', label: $t('bones.face'), face: true, sub: [
-    { label: $t('bones.brows'), bones: FACE_HANDLES.brows.bones },
-    { label: $t('bones.eyes_and_lids'), bones: FACE_HANDLES.eyes.bones },
-    { label: $t('bones.cheeks_and_nose'), bones: FACE_HANDLES.cheeks.bones },
-    { label: $t('bones.mouth'), bones: FACE_HANDLES.mouth.bones },
-    { label: $t('bones.jaw_and_tongue'), bones: FACE_HANDLES.jaw.bones },
+  { id: 'body', label: 'Body', bones: [...CENTER] },
+  { id: 'larm', label: 'Left arm', bones: SIDE_ARM('L') },
+  { id: 'rarm', label: 'Right arm', bones: SIDE_ARM('R') },
+  { id: 'lfing', label: 'Left fingers', bones: SIDE_FINGERS('L') },
+  { id: 'rfing', label: 'Right fingers', bones: SIDE_FINGERS('R') },
+  { id: 'lleg', label: 'Left leg', bones: SIDE_LEG('L') },
+  { id: 'rleg', label: 'Right leg', bones: SIDE_LEG('R') },
+  { id: 'face', label: 'Face', face: true, sub: [
+    { label: 'Brows', bones: FACE_HANDLES.brows.bones },
+    { label: 'Eyes and lids', bones: FACE_HANDLES.eyes.bones },
+    { label: 'Cheeks and nose', bones: FACE_HANDLES.cheeks.bones },
+    { label: 'Mouth', bones: FACE_HANDLES.mouth.bones },
+    { label: 'Jaw and tongue', bones: FACE_HANDLES.jaw.bones },
   ] },
-  { id: 'ww', label: $t('bones.wickedwhims_body'), ww: true, bones: [...PENIS.slice(0, 4), ...WW_BODY] },
-  { id: 'expert', label: $t('bones.expert_bones'), expert: true, bones: [...EXPERT] },
+  { id: 'ww', label: 'WickedWhims body', ww: true, bones: [...PENIS.slice(0, 4), ...WW_BODY] },
+  { id: 'expert', label: 'Expert bones', expert: true, bones: [...EXPERT] },
 ];
 
 // Search words for the list: what people type -> parts of raw bone names ('|' = or). The rig's own spelling
@@ -324,13 +323,13 @@ export const BODY_PARTS = {
   'R hand': ['b__R_Hand__', ...P_FINGERS('R')],
   face: [],
 };
-export const PART_LABEL = { all: $t('bones.whole_body'), upper: $t('bones.upper_body'), lower: $t('bones.lower_body'), hands: $t('bones.both_hands'),
-  'L hand': $t('bones.left_hand'), 'R hand': $t('bones.right_hand'), face: 'Face' };
+export const PART_LABEL = { all: 'Whole body', upper: 'Upper body', lower: 'Lower body', hands: 'Both hands',
+  'L hand': 'Left hand', 'R hand': 'Right hand', face: 'Face' };
 
 // Turn together: one turn spread over a chain (parents first), each bone its share (the shares add up to 1).
 export const TURN_GROUPS = {
-  back: { label: $t('bones.whole_back'), bones: ['b__Spine0__', 'b__Spine1__', 'b__Spine2__', 'b__Neck__'], w: [0.25, 0.3, 0.3, 0.15] },
-  neckHead: { label: $t('bones.neck_head'), bones: ['b__Neck__', 'b__Head__'], w: [0.45, 0.55] },
+  back: { label: 'Whole back', bones: ['b__Spine0__', 'b__Spine1__', 'b__Spine2__', 'b__Neck__'], w: [0.25, 0.3, 0.3, 0.15] },
+  neckHead: { label: 'Neck & head', bones: ['b__Neck__', 'b__Head__'], w: [0.45, 0.55] },
 };
 
 // ---------------------------------------------------------------- pins and holds (one union, plan 2.1)
@@ -379,7 +378,7 @@ export const GRAB = {
   face: ['b__mouth_slot'],
 };
 // The order the "Hold her..." menu lists them in.
-export const GRAB_MENU = ['hip', 'waist', $t('bones.lower_back_2'), 'back', $t('bones.shoulder_blade'), 'shoulder', 'chest', 'breast', 'belly', 'thigh', 'knee', 'calf', 'neck', 'face'];
+export const GRAB_MENU = ['hip', 'waist', 'lower back', 'back', 'shoulder blade', 'shoulder', 'chest', 'breast', 'belly', 'thigh', 'knee', 'calf', 'neck', 'face'];
 // The chip word for a point on a sim's skin: the nearest grab point within 15 cm, else the part's own name
 // ('thigh (left)'). `v` is a Sim view; `pointWorld` any object with distanceTo (a THREE.Vector3).
 export function grabLabel(v, pointWorld, anchor = null) {

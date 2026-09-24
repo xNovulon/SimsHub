@@ -4,7 +4,6 @@ import { MOTIONS, MOTION_PARAMS, AXES, awayCurve, LOOK_TARGETS, TREMBLE_PARTS, t
 import { worldToSpace } from './posemath.js';
 import { LIMB_LABEL } from './bones.js';
 import { simTabs } from './steps.js';
-import { $t } from './i18n.js';
 
 const MOTION_ICON = { thrust: 'motion', ride: 'motion', grind: 'motion', bounce: 'motion', twerk: 'motion', sway: 'motion', headbob: 'face', stroke: 'hand', breathe: 'body', look: 'eye', tremble: 'bolt' };
 
@@ -29,7 +28,7 @@ function wave(type) {
 export function renderMotion(app, root) {
   const p = app.store.project;
   const sim = app.store.sim();
-  if (!sim) { root.append(h('div', { class: 'empty-state' }, h('b', {}, $t('step-motion.add_sim_first')), h('p', {}, $t('step-motion.go_to_step_1_scene')))); return; }
+  if (!sim) { root.append(h('div', { class: 'empty-state' }, h('b', {}, 'Add a sim first'), h('p', {}, 'Go to step 1 (Scene) and add a woman, a man or a futa.'))); return; }
   root.append(simTabs(app));
 
   // the motions on this sim (with their sliders), then the catalogue to add more
@@ -45,14 +44,14 @@ export function renderMotion(app, root) {
   if (layers.length) {
     const list = h('div', {});
     for (const l of layers) list.append(layerCard(app, sim, l));
-    root.append(section([$t('step-motion.motions_on', { simLabel: sim.label }), h('span', { class: 'count' }, `${layers.filter(l => l.on).length} on`)], list));
+    root.append(section(['Motions on ' + sim.label, h('span', { class: 'count' }, `${layers.filter(l => l.on).length} on`)], list));
   }
   if (!layers.length) root.append(h('div', { class: 'empty-state compact' },
-    h('b', {}, $t('step-motion.nothing_moves_yet')), h('p', {}, $t('step-motion.pick_motion_below_it_loops'))));
-  root.append(section(layers.length ? $t('step-motion.add_another_motion') : $t('step-motion.add_motion_to', { simLabel: sim.label }), add));
+    h('b', {}, 'Nothing moves yet'), h('p', {}, 'Pick a motion below - it loops by itself from your pose.')));
+  root.append(section(layers.length ? 'Add another motion' : `Add a motion to ${sim.label}`, add));
   root.append(followThrough(app, sim));
-  root.append(tip($t('step-motion.want_full_control_pose_press')));
-  root.append(h('div', { class: 'hint' }, $t('step-motion.loop_is_s_times_per', { pCount: (p.length / 30).toFixed(1) })));
+  root.append(tip(`Want full control? Pose, press K, move along the timeline, pose again - the app fills in the frames between. You can mix both: keys for the pose changes, a motion on top.`));
+  root.append(h('div', { class: 'hint' }, `The loop is ${(p.length / 30).toFixed(1)} s. "Times per loop" is always a whole number, so the motion joins up perfectly when WickedWhims repeats it.`));
 }
 
 // Arms and head reach each pose a few frames after the body (sim.lag, played by the pipeline).
@@ -63,12 +62,12 @@ function followThrough(app, sim) {
     if (!cur.arms && !cur.head) delete sim.lag; else sim.lag = cur;
     app.layersChanged(done);
   };
-  const fmt = v => (Math.round(v) ? $t('step-motion.n_frames', { n: Math.round(v) }) : $t('step-motion.off'));
-  return section($t('step-motion.follow_through'),
-    h('div', { class: 'hint', style: { marginTop: 0 } }, $t('step-motion.arms_and_head_reach_each')),
-    slider({ label: $t('step-motion.arms_follow_late'), min: 0, max: 8, step: 1, value: lag().arms || 0, fmt,
+  const fmt = v => (Math.round(v) ? `${Math.round(v)} frame${Math.round(v) === 1 ? '' : 's'}` : 'off');
+  return section('Follow-through',
+    h('div', { class: 'hint', style: { marginTop: 0 } }, 'Arms and head reach each pose a moment after the body - less stiff.'),
+    slider({ label: 'Arms follow late', min: 0, max: 8, step: 1, value: lag().arms || 0, fmt,
       onStart: () => app.store.checkpoint(), onInput: (v, done) => set('arms', v, done) }),
-    slider({ label: $t('step-motion.head_follows_late'), min: 0, max: 8, step: 1, value: lag().head || 0, fmt,
+    slider({ label: 'Head follows late', min: 0, max: 8, step: 1, value: lag().head || 0, fmt,
       onStart: () => app.store.checkpoint(), onInput: (v, done) => set('head', v, done) }));
 }
 
@@ -124,7 +123,7 @@ function layerCard(app, sim, l) {
     if (timed) body.append(slider({ label: MOTION_PARAMS.phase.label, min: 0, max: 1, step: 0.01, value: l.phase || 0, title: MOTION_PARAMS.phase.hint, fmt: v => Math.round(v * 100) + '%',
       onStart: () => app.store.checkpoint(), onInput: (v, done) => change(() => { l.phase = v; }, done) }));
     if (l.type !== 'tremble') body.append(slider({ label: MOTION_PARAMS.weight.label, min: 0, max: l.type === 'look' ? 1 : 1.5, step: 0.05, value: l.weight ?? 1, fmt: v => Math.round(v * 100) + '%',
-      title: l.type === 'look' ? $t('step-motion.how_far_head_turns_toward') : null,
+      title: l.type === 'look' ? 'How far the head turns toward it (100%: all the way, up to "Turn up to")' : null,
       onStart: () => app.store.checkpoint(), onInput: (v, done) => change(() => { l.weight = v; }, done) }));
     if (l.type === 'look') {
       const target = h('select', {}, Object.entries(LOOK_TARGETS).map(([k, t]) => h('option', { value: k, selected: (Q.target || 'face') === k }, t)));
@@ -139,36 +138,36 @@ function layerCard(app, sim, l) {
         target.blur();
       };
       const others = app.store.project.sims.filter(s => s.id !== sim.id);
-      const who = h('select', {}, [h('option', { value: 'auto', selected: !Q.who || Q.who === 'auto' }, $t('step-motion.automatic_nearest')),
+      const who = h('select', {}, [h('option', { value: 'auto', selected: !Q.who || Q.who === 'auto' }, 'Automatic (the nearest)'),
         ...others.map(s => h('option', { value: s.id, selected: Q.who === s.id }, s.label))]);
       who.onchange = () => { app.store.checkpoint(); change(() => { l.params.who = who.value; }, true); who.blur(); };
-      body.append(h('label', { class: 'field' }, h('span', {}, $t('step-motion.look_at')), target));
-      if (Q.target !== 'camera') body.append(h('label', { class: 'field' }, h('span', {}, $t('step-motion.who')), who));
-      body.append(h('label', { class: 'check' }, toggle(Q.eyes !== false, on => { app.store.checkpoint(); change(() => { l.params.eyes = on; }, true); }), $t('step-motion.eyes_follow')));
+      body.append(h('label', { class: 'field' }, h('span', {}, 'Look at'), target));
+      if (Q.target !== 'camera') body.append(h('label', { class: 'field' }, h('span', {}, 'Who'), who));
+      body.append(h('label', { class: 'check' }, toggle(Q.eyes !== false, on => { app.store.checkpoint(); change(() => { l.params.eyes = on; }, true); }), 'Eyes follow'));
     }
     if (l.type === 'tremble') {
       const parts = h('select', {}, Object.entries(TREMBLE_PARTS).map(([k, t]) => h('option', { value: k, selected: (Q.parts || 'legs') === k }, t)));
       parts.onchange = () => { app.store.checkpoint(); change(() => { l.params.parts = parts.value; }, true); parts.blur(); };
-      body.append(h('label', { class: 'field' }, h('span', {}, $t('step-motion.parts')), parts));
+      body.append(h('label', { class: 'field' }, h('span', {}, 'Parts'), parts));
     }
     if ('axis' in m.params) {
       const opts = l.type === 'stroke' ? ['penis', 'forearm', 'up', 'forward'] : ['forward', 'up', 'bodyUp', 'side'];
       const sel = h('select', {}, opts.map(a => h('option', { value: a, selected: Q.axis === a }, AXES[a])));
       sel.onchange = () => { app.store.checkpoint(); change(() => { l.params.axis = sel.value; }, true); sel.blur(); };
-      body.append(h('label', { class: 'field' }, h('span', {}, $t('step-motion.direction')), sel));
+      body.append(h('label', { class: 'field' }, h('span', {}, 'Direction'), sel));
     }
     if ('limb' in m.params) {
       const sel = h('select', {}, ['R hand', 'L hand', 'R foot', 'L foot'].map(a => h('option', { value: a, selected: Q.limb === a }, LIMB_LABEL[a])));
       sel.onchange = () => { app.store.checkpoint(); change(() => { l.params.limb = sel.value; }, true); sel.blur(); };
-      body.append(h('label', { class: 'field' }, h('span', {}, $t('step-motion.which_hand')), sel));
+      body.append(h('label', { class: 'field' }, h('span', {}, 'Which hand'), sel));
     }
     if ('reverse' in m.params) {
-      body.append(h('label', { class: 'check' }, toggle(!!Q.reverse, on => { app.store.checkpoint(); change(() => { l.params.reverse = on; }, true); }), $t('step-motion.reverse_direction')));
+      body.append(h('label', { class: 'check' }, toggle(!!Q.reverse, on => { app.store.checkpoint(); change(() => { l.params.reverse = on; }, true); }), 'Reverse the direction'));
     }
     const partner = app.store.project.sims.find(s => s.id !== sim.id && (s.layers || []).length);
     if (timed) body.append(h('div', { class: 'btn-grid', style: { marginTop: '8px' } },
-      h('button', { class: 'btn small', disabled: !partner, title: partner ? $t('step-motion.match_s_speed_and_meet', { partnerLabel: partner.label }) : $t('step-motion.other_sim_has_no_motion'), onclick: () => app.syncLayer(sim.id, l.id) }, icon('chain'), $t('step-motion.meet_partner')),
-      h('button', { class: 'btn small', title: $t('step-motion.make_ordinary_keys_from_this'), onclick: () => app.bakeLayer(sim.id, l.id) }, icon('key'), $t('step-motion.turn_into_keys'))));
+      h('button', { class: 'btn small', disabled: !partner, title: partner ? `Match ${partner.label}'s speed and meet each stroke` : 'The other sim has no motion', onclick: () => app.syncLayer(sim.id, l.id) }, icon('chain'), 'Meet the partner'),
+      h('button', { class: 'btn small', title: 'Make ordinary keys from this motion, to change it stroke by stroke', onclick: () => app.bakeLayer(sim.id, l.id) }, icon('key'), 'Turn into keys')));
     requestAnimationFrame(drawWave);
   }
   return h('div', { class: 'layer' + (l.on ? '' : ' off') + (open ? ' open' : '') },
@@ -176,7 +175,7 @@ function layerCard(app, sim, l) {
       h('div', { class: 'ic' }, icon(MOTION_ICON[l.type] || 'motion')),
       h('b', {}, m.label, ' ', head),
       h('span', { onclick: e => e.stopPropagation() }, toggle(l.on, on => { app.store.checkpoint(); l.on = on; app.layersChanged(true); app.refreshPanels(); })),
-      h('button', { class: 'icon-btn sm', title: $t('step-motion.remove'), onclick: e => { e.stopPropagation(); app.removeLayer(sim.id, l.id); } }, icon('trash')),
-      h('button', { class: 'icon-btn sm', title: open ? $t('step-motion.hide_sliders') : $t('step-motion.show_sliders') }, icon(open ? 'up' : 'down'))),
+      h('button', { class: 'icon-btn sm', title: 'Remove', onclick: e => { e.stopPropagation(); app.removeLayer(sim.id, l.id); } }, icon('trash')),
+      h('button', { class: 'icon-btn sm', title: open ? 'Hide the sliders' : 'Show the sliders' }, icon(open ? 'up' : 'down'))),
     body);
 }

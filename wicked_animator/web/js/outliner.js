@@ -5,7 +5,6 @@ import { localStorageGet, localStorageSet } from './state.js';
 import { PARTS } from './physics.js';
 import { simBody } from './pipeline.js';
 import { BONE_GROUPS, FACE_SET, TWIST_SET, EXPERT_SET, label, boneMatches, isFace, setPickMode } from './facekit.js';
-import { $t } from './i18n.js';
 
 const PHYS = new Set(Object.values(PARTS).flatMap(p => [...p.bones, p.swing].filter(Boolean)));
 const NEAR = 0.0035;                     // 0.2 degrees (quaternion angle) / 0.2 mm - "away from rest"
@@ -41,7 +40,7 @@ function statusOf(app, sim, view, n, frame) {
   return 'rest';
 }
 
-const STATUS_TIP = { keyed: $t('outliner.posed_in_key_at_this'), animated: $t('outliner.animated_posed_in_another_key'), auto: $t('outliner.moves_by_itself'), rest: $t('outliner.at_rest') };
+const STATUS_TIP = { keyed: 'Posed in the key at this frame', animated: 'Animated (posed in another key)', auto: 'Moves by itself', rest: 'At rest' };
 
 export function boneList(app, sim, view) {
   const open = !!localStorageGet('boneListOpen', false);
@@ -50,13 +49,13 @@ export function boneList(app, sim, view) {
   const sel = app.store.selected.sim === sim.id ? app.store.selected.bone : null;
   const box = h('div', { class: 'bone-list' });
   const details = h('details', { class: 'section bone-list-wrap', open: open ? true : null },
-    h('summary', { class: 'section-title' }, icon('search'), $t('outliner.all_bones'), h('span', { class: 'count' }, $t('outliner.every_bone_like_blender'))), box);
+    h('summary', { class: 'section-title' }, icon('search'), 'All bones', h('span', { class: 'count' }, 'every bone, like Blender')), box);
   details.addEventListener('toggle', () => {
     localStorageSet('boneListOpen', details.open);
     if (details.open && !box.childElementCount) build();
   });
   let rows = [], active = -1;
-  const search = h('input', { class: 'text', type: 'search', placeholder: $t('outliner.find_bone_brow_lip_b'), spellcheck: 'false', value: app._boneQuery || '' });
+  const search = h('input', { class: 'text', type: 'search', placeholder: 'Find a bone (brow, lip, b__L_Hand__...)', spellcheck: 'false', value: app._boneQuery || '' });
   const list = h('div', { class: 'bone-groups' });
   const chip = (key, text, title) => h('button', { class: 'chip' + (filter[key] ? ' on' : ''), title, onclick: e => {
     filter[key] = !filter[key];
@@ -102,7 +101,7 @@ export function boneList(app, sim, view) {
       });
       list.append(d);
     }
-    if (!list.childElementCount) list.append(h('div', { class: 'hint' }, $t('outliner.no_bone_matches')));
+    if (!list.childElementCount) list.append(h('div', { class: 'hint' }, 'No bone matches.'));
     rows = [...list.querySelectorAll('.bone-row')];
   }
 
@@ -128,9 +127,9 @@ export function boneList(app, sim, view) {
   function build() {
     box.append(h('div', { class: 'bone-search' }, icon('search'), search),
       h('div', { class: 'bone-chips' },
-        chip('keyed', $t('outliner.keyed'), $t('outliner.only_bones_posed_in_key')),
-        chip('face', $t('outliner.face'), $t('outliner.only_face')),
-        chip('expert', $t('outliner.expert'), $t('outliner.also_expert_bones_shape_and'))),
+        chip('keyed', 'Keyed', 'Only bones posed in a key'),
+        chip('face', 'Face', 'Only the face'),
+        chip('expert', 'Expert', 'Also the expert bones (shape and helper bones)')),
       list);
     fill();
   }

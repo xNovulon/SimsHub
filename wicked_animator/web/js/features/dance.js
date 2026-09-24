@@ -16,20 +16,19 @@ import { newLayer } from '../motion.js';
 import { hideHome } from '../home.js';
 import { fetchJson, plainError } from '../gamehelp.js';
 import * as B from '../beat.js';
-import { $t } from '../i18n.js';
 
 const ICONS = {
   'dance-pole': '<path d="M12 2.5v19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 21.5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="16.8" cy="6.2" r="1.7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12.4 9.2c2.2.2 3.8 1 4.4 2.6l-1.4 3.4 2 4.2M15.8 12.2l-3.4 1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
   'dance-tap': '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
 };
 export const TYPES = [
-  ['POLE_DANCE', $t('features.dance.pole_dance'), $t('features.dance.on_wickedwhims_dance_pole')],
-  ['SPOT_DANCE', $t('features.dance.dance_spot'), $t('features.dance.on_wickedwhims_stage_mark')],
-  ['LAP_DANCE', $t('features.dance.lap_dance'), $t('features.dance.for_sim_sitting_on_seat')],
+  ['POLE_DANCE', 'Pole dance', "On WickedWhims' dance pole"],
+  ['SPOT_DANCE', 'Dance spot', "On WickedWhims' stage mark"],
+  ['LAP_DANCE', 'Lap dance', 'For a sim sitting on a seat'],
 ];
 const TYPE_LABEL = Object.fromEntries(TYPES.map(([k, l]) => [k, l]));
-const MOVES = [['sway', $t('features.dance.sway')], ['twerk', $t('features.dance.twerk')], ['grind', $t('features.dance.grind')], ['none', $t('features.dance.keep_still_pose_it_yourself')]];
-const SEATS = [['chair_living', $t('features.dance.armchair')], ['chair_dining', $t('features.dance.dining_chair')], ['loveseat', $t('features.dance.loveseat')], ['sofa', $t('features.dance.sofa')]];
+const MOVES = [['sway', 'Sway'], ['twerk', 'Twerk'], ['grind', 'Grind'], ['none', 'Keep still (pose it yourself)']];
+const SEATS = [['chair_living', 'Armchair'], ['chair_dining', 'Dining chair'], ['loveseat', 'Loveseat'], ['sofa', 'Sofa']];
 const song = { buffer: null, name: '', bpm: 0, offset: 0, confidence: 0, src: null, startedAt: 0, on: true };
 
 // ---------------------------------------------------------------- the new-dance window
@@ -42,72 +41,72 @@ export function openNewDance(app) {
     for (const [k, label, sub] of TYPES) typeRow.append(h('button', { class: 'tile' + (st.type === k ? ' on' : ''), type: 'button', 'data-type': k,
       onclick: () => { st.type = k; drawTypes(); seatBox.classList.toggle('hidden', k !== 'LAP_DANCE'); } }, h('b', {}, label), h('small', {}, sub)));
   };
-  const who = h('select', { 'aria-label': $t('features.dance.who_dances') }, h('option', { value: 'FEMALE' }, $t('features.dance.woman')), h('option', { value: 'MALE' }, $t('features.dance.man')));
+  const who = h('select', { 'aria-label': 'Who dances' }, h('option', { value: 'FEMALE' }, 'A woman'), h('option', { value: 'MALE' }, 'A man'));
   who.onchange = () => { st.gender = who.value; };
-  const both = h('label', { class: 'check', title: $t('features.dance.wickedwhims_own_list_names_most') },
-    h('input', { type: 'checkbox', onchange: e => { st.both = e.target.checked; } }), $t('features.dance.women_and_men_can_dance'));
-  const seat = h('select', { 'aria-label': $t('features.dance.seat') }, SEATS.map(([v, t]) => h('option', { value: v }, t)));
+  const both = h('label', { class: 'check', title: "WickedWhims' own list names most dances for both" },
+    h('input', { type: 'checkbox', onchange: e => { st.both = e.target.checked; } }), 'Women and men can dance it');
+  const seat = h('select', { 'aria-label': 'The seat' }, SEATS.map(([v, t]) => h('option', { value: v }, t)));
   seat.onchange = () => { st.seat = seat.value; };
-  const seatBox = h('label', { class: 'field hidden' }, h('span', {}, $t('features.dance.watcher_sits_on')), seat);
-  const move = h('select', { 'aria-label': $t('features.dance.starting_moves') }, MOVES.map(([v, t]) => h('option', { value: v }, t)));
+  const seatBox = h('label', { class: 'field hidden' }, h('span', {}, 'The watcher sits on'), seat);
+  const move = h('select', { 'aria-label': 'Starting moves' }, MOVES.map(([v, t]) => h('option', { value: v }, t)));
   move.onchange = () => { st.move = move.value; };
   // tempo
-  const bpmIn = h('input', { type: 'number', min: 40, max: 240, step: 0.1, value: st.bpm, class: 'text dn-bpm', 'aria-label': $t('features.dance.beats_per_minute') });
-  const beatsSel = h('select', { 'aria-label': $t('features.dance.beats_per_loop') }, [[8, $t('features.dance.8_beats_2_bars')], [16, $t('features.dance.16_beats_4_bars')], [32, $t('features.dance.32_beats_8_bars')]].map(([v, t]) => h('option', { value: v, selected: v === st.beats }, t)));
+  const bpmIn = h('input', { type: 'number', min: 40, max: 240, step: 0.1, value: st.bpm, class: 'text dn-bpm', 'aria-label': 'Beats per minute' });
+  const beatsSel = h('select', { 'aria-label': 'Beats per loop' }, [[8, '8 beats (2 bars)'], [16, '16 beats (4 bars)'], [32, '32 beats (8 bars)']].map(([v, t]) => h('option', { value: v, selected: v === st.beats }, t)));
   const loopInfo = h('div', { class: 'hint dn-loop', role: 'status', 'aria-live': 'polite' });
-  const songInfo = h('div', { class: 'hint dn-song' }, song.buffer ? `Song: ${song.name} (${song.bpm} BPM)` : $t('features.dance.no_song_type_tempo_tap'));
+  const songInfo = h('div', { class: 'hint dn-song' }, song.buffer ? `Song: ${song.name} (${song.bpm} BPM)` : 'No song - type the tempo, tap it, or drop a song here.');
   const fileIn = h('input', { type: 'file', accept: 'audio/*', class: 'hidden' });
-  const tapBtn = h('button', { class: 'btn small', type: 'button', title: $t('features.dance.tap_along_with_music_3') }, icon('dance-tap'), $t('features.dance.tap_beat'));
-  const drop = h('div', { class: 'dn-drop' }, h('button', { class: 'btn small', type: 'button', onclick: () => fileIn.click() }, icon('sound'), $t('features.dance.pick_song')), tapBtn, songInfo);
+  const tapBtn = h('button', { class: 'btn small', type: 'button', title: 'Tap along with the music (3 taps or more)' }, icon('dance-tap'), 'Tap the beat');
+  const drop = h('div', { class: 'dn-drop' }, h('button', { class: 'btn small', type: 'button', onclick: () => fileIn.click() }, icon('sound'), 'Pick a song'), tapBtn, songInfo);
   const showLoop = () => {
     const ph = B.phrase(+bpmIn.value || 120, { fps: 30, beats: st.beats });
-    loopInfo.textContent = $t('features.dance.one_loop_beats_frames_s', { beats: ph.beats, frames: ph.frames, frames2: (ph.frames / 30).toFixed(2), bpm: ph.bpm, loops: st.loops, loops2: (st.loops * ph.frames / 30).toFixed(0) });
+    loopInfo.textContent = `One loop: ${ph.beats} beats = ${ph.frames} frames (${(ph.frames / 30).toFixed(2)} s) at ${ph.bpm} BPM - it plays ${st.loops}x in a row (${(st.loops * ph.frames / 30).toFixed(0)} s).`;
   };
   bpmIn.addEventListener('input', () => { st.bpm = +bpmIn.value || 120; showLoop(); });
   beatsSel.addEventListener('change', () => { st.beats = +beatsSel.value; showLoop(); });
   tapBtn.addEventListener('click', () => {
     const b = tap.tap(performance.now());
     tapBtn.classList.add('on'); setTimeout(() => tapBtn.classList.remove('on'), 90);
-    if (b) { st.bpm = b; bpmIn.value = b; showLoop(); songInfo.textContent = $t('features.dance.tapped_bpm', { bpm: b }); }
-    else songInfo.textContent = $t('features.dance.keep_tapping_along');
+    if (b) { st.bpm = b; bpmIn.value = b; showLoop(); songInfo.textContent = `Tapped: ${b} BPM - keep tapping to make it exact.`; }
+    else songInfo.textContent = 'Keep tapping along...';
   });
   const useSong = async file => {
     if (!file) return;
-    songInfo.textContent = $t('features.dance.listening_to', { fileName: file.name });
+    songInfo.textContent = `Listening to ${file.name}...`;
     try {
       const r = await B.findBeat(file);
-      if (!r.bpm) { songInfo.textContent = $t('features.dance.no_steady_beat_found_in', { fileName: file.name }); return; }
+      if (!r.bpm) { songInfo.textContent = `No steady beat found in ${file.name} - tap it or type the tempo.`; return; }
       Object.assign(song, { buffer: r.buffer, name: file.name, bpm: r.bpm, offset: r.offset, confidence: r.confidence });
       st.bpm = r.bpm; bpmIn.value = r.bpm; showLoop();
-      songInfo.textContent = $t(r.confidence < 0.3 ? 'features.dance.song_bpm_unsure' : 'features.dance.song_bpm', { name: file.name, bpm: r.bpm });
+      songInfo.textContent = `${file.name}: ${r.bpm} BPM${r.confidence < 0.3 ? ' (not sure - tap along to check)' : ''}. It plays along in the app only - it never goes into the mod.`;
     } catch (e) {
-      songInfo.textContent = $t('features.dance.that_file_could_not_be', { message: e.message || e });
+      songInfo.textContent = `That file could not be played here (${e.message || e}). Try an mp3, ogg or wav.`;
     }
   };
   fileIn.addEventListener('change', () => useSong(fileIn.files && fileIn.files[0]));
   drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
   drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); useSong(e.dataTransfer.files && e.dataTransfer.files[0]); });
-  const loops = slider({ label: $t('features.dance.plays_in_row'), min: 1, max: 12, step: 1, value: st.loops, fmt: v => v + 'x', onInput: v => { st.loops = v; showLoop(); } });
-  const setIn = h('input', { type: 'text', maxlength: 60, class: 'text', placeholder: $t('features.dance.e_g_neon_nights_optional'), 'aria-label': $t('features.dance.routine_name') });
+  const loops = slider({ label: 'Plays in a row', min: 1, max: 12, step: 1, value: st.loops, fmt: v => v + 'x', onInput: v => { st.loops = v; showLoop(); } });
+  const setIn = h('input', { type: 'text', maxlength: 60, class: 'text', placeholder: 'e.g. Neon nights (optional)', 'aria-label': 'Routine name' });
   setIn.addEventListener('input', () => { st.set = setIn.value; });
   drawTypes();
   showLoop();
   const dlg = modal({
-    title: $t('features.dance.make_strip_club_dance'), wide: true,
-    text: $t('features.dance.for_wickedwhims_strip_clubs_pick'),
+    title: 'Make a strip-club dance', wide: true,
+    text: 'For WickedWhims strip clubs. Pick the dance and the tempo - the loop is made a whole number of beats, so it stays on the music every time it repeats.',
     body: h('div', { class: 'dn' },
       typeRow,
       h('div', { class: 'grid-2 dn-grid' },
-        h('label', { class: 'field' }, h('span', {}, $t('features.dance.who_dances')), who), h('label', { class: 'field' }, h('span', {}, $t('features.dance.starting_moves')), move)),
+        h('label', { class: 'field' }, h('span', {}, 'Who dances'), who), h('label', { class: 'field' }, h('span', {}, 'Starting moves'), move)),
       both, seatBox,
-      section($t('features.dance.tempo'), drop, fileIn,
-        h('div', { class: 'grid-2 dn-grid' }, h('label', { class: 'field' }, h('span', {}, $t('features.dance.beats_per_minute')), bpmIn), h('label', { class: 'field' }, h('span', {}, $t('features.dance.loop')), beatsSel)),
+      section('Tempo', drop, fileIn,
+        h('div', { class: 'grid-2 dn-grid' }, h('label', { class: 'field' }, h('span', {}, 'Beats per minute'), bpmIn), h('label', { class: 'field' }, h('span', {}, 'Loop'), beatsSel)),
         loops, loopInfo),
-      h('label', { class: 'field' }, h('span', {}, $t('features.dance.part_of_routine_dances_with')), setIn)),
+      h('label', { class: 'field' }, h('span', {}, 'Part of a routine (dances with the same routine name play in order)'), setIn)),
     buttons: [
-      { label: $t('features.dance.cancel'), kind: 'ghost' },
-      { label: $t('features.dance.make_dance'), kind: 'primary', onClick: () => { makeDance(app, st); } },
+      { label: 'Cancel', kind: 'ghost' },
+      { label: 'Make the dance', kind: 'primary', onClick: () => { makeDance(app, st); } },
     ],
   });
   dlg.dialog.classList.add('dn-modal');
@@ -166,7 +165,7 @@ export function makeDance(app, st) {
   app.frameSims({ fromFront: true });
   app.timeline.fit();
   app._projectLoaded();
-  toast($t('features.dance.made', { name: p.name, beats: ph.beats, bpm: ph.bpm }) + (lap ? $t('features.dance.seat_watcher_with_place_tool') : ''), 'ok');
+  toast(`${p.name}: ${ph.beats} beats at ${ph.bpm} BPM. Pose it on the beats (the Beats row), then Share -> Send dance to game.${lap ? ' Seat the watcher with the Place tool.' : ''}`, 'ok');
   return p;
 }
 
@@ -258,20 +257,20 @@ async function sendDance(app, mode) {
   const baked = { ...app.bake(), dance: { ...p.dance } };
   let r;
   try { r = await fetchJson('/api/dance_export', { body: { baked, mode } }); }
-  catch (e) { toast((e.status === 404 && /unknown api/i.test(e.message)) ? plainError(e) : $t('features.dance.dance_could_not_be_made', { message: e.message }), 'err'); return null; }
+  catch (e) { toast((e.status === 404 && /unknown api/i.test(e.message)) ? plainError(e) : 'The dance could not be made: ' + e.message, 'err'); return null; }
   if (mode === 'check') {
-    modal({ title: $t('features.dance.dance_for_wickedwhims'), wide: true,
-      text: $t('features.dance.clips_s_loop_x_s', { package: r.package, clipCount: r.clips.length, seconds: r.seconds.toFixed(2), loops: r.loops, total_seconds: r.total_seconds, bytes: Math.round(r.bytes / 1024) }),
+    modal({ title: 'The dance for WickedWhims', wide: true,
+      text: `${r.package} - ${r.clips.length} clip${r.clips.length === 1 ? '' : 's'}, ${r.seconds.toFixed(2)} s a loop, ${r.loops}x (${r.total_seconds} s), ${Math.round(r.bytes / 1024)} KB. Nothing was written.`,
       body: h('pre', { class: 'dn-xml' }, r.xml || ''), buttons: [{ label: 'OK', kind: 'primary' }] });
     return r;
   }
-  if (r.fake) { toast($t('features.dance.checked_test_mode_nothing_was'), 'ok'); return r; }
-  const where = mode === 'mod' ? $t('features.dance.saved_in_share_that_folder', { folder: r.folder }) : $t('features.dance.in_your_mods_folder_restart', { package: r.package });
-  modal({ title: mode === 'mod' ? $t('features.dance.exported_as_mod') : $t('features.dance.sent_to_your_game'), text: where,
-    body: h('ul', { class: 'rf-report' }, h('li', {}, $t('features.dance.type_for', { type: TYPE_LABEL[r.type] || r.type, who: r.genders.every(g => g === 'FEMALE') ? $t('features.dance.for_women') : r.genders.every(g => g !== 'FEMALE') ? $t('features.dance.for_men') : $t('features.dance.for_women_and_men') })),
-      h('li', {}, $t('features.dance.s_loop_x_in_row', { seconds: r.seconds.toFixed(2), loops: r.loops, total_seconds: r.total_seconds })),
-      r.set ? h('li', {}, $t('features.dance.part_of_routine', { set: r.set })) : null,
-      (r.replaced || []).length ? h('li', {}, $t('features.dance.older_copy_under_another_name', { replaced: r.replaced.join(', ') })) : null),
+  if (r.fake) { toast('Checked (test mode) - nothing was written.', 'ok'); return r; }
+  const where = mode === 'mod' ? `Saved in ${r.folder} - share that folder (the .package and its README).` : `In your Mods folder: ${r.package}. Restart The Sims 4 (or its strip club), then your dancers can pick it.`;
+  modal({ title: mode === 'mod' ? 'Exported as a mod' : 'Sent to your game', text: where,
+    body: h('ul', { class: 'rf-report' }, h('li', {}, `${TYPE_LABEL[r.type] || r.type} for ${r.genders.map(g => (g === 'FEMALE' ? 'women' : 'men')).join(' and ')}`),
+      h('li', {}, `${r.seconds.toFixed(2)} s a loop, ${r.loops}x in a row (${r.total_seconds} s)`),
+      r.set ? h('li', {}, `Part of the routine "${r.set}"`) : null,
+      (r.replaced || []).length ? h('li', {}, `The older copy under another name was put aside: ${r.replaced.join(', ')}`) : null),
     buttons: [{ label: 'OK', kind: 'primary' }] });
   return r;
 }
@@ -281,32 +280,32 @@ function danceSection(app, root) {
   const p = app.store.project, d = p.dance;
   if (!d) return;
   const change = fn => { app.store.checkpoint('Dance'); fn(); app.store.setDirty(true); app.renderStep(); };
-  const type = h('select', { 'aria-label': $t('features.dance.kind_of_dance') }, TYPES.map(([k, l]) => h('option', { value: k, selected: d.type === k }, l)));
+  const type = h('select', { 'aria-label': 'Kind of dance' }, TYPES.map(([k, l]) => h('option', { value: k, selected: d.type === k }, l)));
   type.onchange = () => change(() => {
     d.type = type.value;
-    if (d.type === 'LAP_DANCE' && p.sims.length < 2) toast($t('features.dance.lap_dance_needs_second_sim'));
+    if (d.type === 'LAP_DANCE' && p.sims.length < 2) toast('A lap dance needs a second sim sitting on a seat - add one in the Scene step.');
     d.watcher = d.type === 'LAP_DANCE' ? (d.dancer === 0 ? 1 : 0) : null;
   });
-  const genders = h('select', { 'aria-label': $t('features.dance.who_can_dance_it') },
-    [['FEMALE', $t('features.dance.women')], ['MALE', $t('features.dance.men')], [$t('features.dance.female_male'), $t('features.dance.women_and_men')]].map(([v, t]) => h('option', { value: v, selected: (d.genders || []).join(',') === v }, t)));
+  const genders = h('select', { 'aria-label': 'Who can dance it' },
+    [['FEMALE', 'Women'], ['MALE', 'Men'], ['FEMALE,MALE', 'Women and men']].map(([v, t]) => h('option', { value: v, selected: (d.genders || []).join(',') === v }, t)));
   genders.onchange = () => change(() => { d.genders = genders.value.split(','); });
-  const loops = slider({ label: $t('features.dance.plays_in_row'), min: 1, max: 12, step: 1, value: d.loops || p.loops || 4, fmt: v => v + 'x',
+  const loops = slider({ label: 'Plays in a row', min: 1, max: 12, step: 1, value: d.loops || p.loops || 4, fmt: v => v + 'x',
     onInput: (v, done) => { d.loops = v; p.loops = v; if (done) app.store.setDirty(true); } });
-  const setIn = h('input', { type: 'text', maxlength: 60, value: d.set || '', class: 'text', placeholder: $t('features.dance.routine_name_optional'), 'aria-label': $t('features.dance.routine_name') });
+  const setIn = h('input', { type: 'text', maxlength: 60, value: d.set || '', class: 'text', placeholder: 'Routine name (optional)', 'aria-label': 'Routine name' });
   setIn.onchange = () => change(() => { d.set = setIn.value.trim(); });
-  const order = h('input', { type: 'number', min: 1, max: 20, value: d.order || 1, 'aria-label': $t('features.dance.place_in_routine'), class: 'text dn-order' });
+  const order = h('input', { type: 'number', min: 1, max: 20, value: d.order || 1, 'aria-label': 'Place in the routine', class: 'text dn-order' });
   order.onchange = () => change(() => { d.order = Math.max(1, Math.min(20, +order.value || 1)); });
   const lapProblem = d.type === 'LAP_DANCE' && p.sims.length < 2;
-  root.append(section([$t('features.dance.strip_club_dance'), h('span', { class: 'count' }, TYPE_LABEL[d.type] || '')],
-    h('div', { class: 'grid-2 dn-grid' }, h('label', { class: 'field' }, h('span', {}, $t('features.dance.kind')), type), h('label', { class: 'field' }, h('span', {}, $t('features.dance.who_can_dance_it')), genders)),
+  root.append(section(['Strip club dance', h('span', { class: 'count' }, TYPE_LABEL[d.type] || '')],
+    h('div', { class: 'grid-2 dn-grid' }, h('label', { class: 'field' }, h('span', {}, 'Kind'), type), h('label', { class: 'field' }, h('span', {}, 'Who can dance it'), genders)),
     loops,
-    h('div', { class: 'grid-2 dn-grid' }, h('label', { class: 'field' }, h('span', {}, $t('features.dance.routine')), setIn), h('label', { class: 'field' }, h('span', {}, $t('features.dance.its_place_in_it')), order)),
-    lapProblem ? h('div', { class: 'hint warn' }, $t('features.dance.lap_dance_needs_second_sim')) : null,
+    h('div', { class: 'grid-2 dn-grid' }, h('label', { class: 'field' }, h('span', {}, 'Routine'), setIn), h('label', { class: 'field' }, h('span', {}, 'Its place in it'), order)),
+    lapProblem ? h('div', { class: 'hint warn' }, 'A lap dance needs a second sim sitting on a seat - add one in the Scene step.') : null,
     h('div', { class: 'btn-grid' },
-      h('button', { class: 'btn small primary', type: 'button', 'data-dance': 'send', disabled: lapProblem, onclick: () => sendDance(app, 'send') }, icon('send'), $t('features.dance.send_dance_to_game')),
-      h('button', { class: 'btn small', type: 'button', 'data-dance': 'mod', disabled: lapProblem, onclick: () => sendDance(app, 'mod') }, icon('package'), $t('features.dance.export_as_mod')),
-      h('button', { class: 'btn small ghost', type: 'button', 'data-dance': 'check', disabled: lapProblem, onclick: () => sendDance(app, 'check') }, icon('eye'), $t('features.dance.show_xml'))),
-    h('div', { class: 'hint' }, $t('features.dance.wickedwhims_plays_it_in_strip'))));
+      h('button', { class: 'btn small primary', type: 'button', 'data-dance': 'send', disabled: lapProblem, onclick: () => sendDance(app, 'send') }, icon('send'), 'Send dance to game'),
+      h('button', { class: 'btn small', type: 'button', 'data-dance': 'mod', disabled: lapProblem, onclick: () => sendDance(app, 'mod') }, icon('package'), 'Export as a mod'),
+      h('button', { class: 'btn small ghost', type: 'button', 'data-dance': 'check', disabled: lapProblem, onclick: () => sendDance(app, 'check') }, icon('eye'), 'Show the XML')),
+    h('div', { class: 'hint' }, 'WickedWhims plays it in strip clubs. "Send to game" at the bottom makes a normal animation instead.')));
 }
 
 // the Motion step: the tempo, the beats and the song
@@ -315,17 +314,17 @@ function tempoSection(app, root) {
   if (!d) return;
   const ph = B.phrase(d.bpm || 120, { fps: p.fps || 30, beats: d.beats || 16 });
   const fits = ph.frames === p.length;
-  const toggleSong = h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: song.on, onchange: e => { song.on = e.target.checked; if (song.on) songPlay(app); else songStop(); } }), $t('features.dance.play_song_with_it'));
-  root.append(section([$t('features.dance.dance_tempo'), h('span', { class: 'count' }, $t('features.dance.n_bpm', { bpm: d.bpm }))],
-    h('div', { class: 'hint' }, fits ? $t('features.dance.beats_loop_fits', { beats: d.beats || 16, secs: (ph.frames / (p.fps || 30)).toFixed(2) }) : $t('features.dance.beats_loop_off', { beats: d.beats || 16, pCount: p.length, frames: ph.frames })),
-    fits ? null : h('button', { class: 'btn small soft', type: 'button', onclick: () => { app.store.checkpoint($t('features.dance.fit_loop_to_beat')); p.length = ph.frames; app.store.setDirty(true); app.refreshAll(); app.timeline.fit(); } }, icon('loop'), $t('features.dance.make_loop_frames', { frames: ph.frames })),
-    song.buffer ? toggleSong : h('div', { class: 'hint' }, $t('features.dance.tip_make_strip_club_dance'))));
+  const toggleSong = h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: song.on, onchange: e => { song.on = e.target.checked; if (song.on) songPlay(app); else songStop(); } }), 'Play the song with it');
+  root.append(section(['Dance tempo', h('span', { class: 'count' }, `${d.bpm} BPM`)],
+    h('div', { class: 'hint' }, `${d.beats || 16} beats a loop${fits ? ` - ${(ph.frames / (p.fps || 30)).toFixed(2)} s, exactly on the beat.` : ` - the loop is ${p.length} frames, the beats need ${ph.frames}.`}`),
+    fits ? null : h('button', { class: 'btn small soft', type: 'button', onclick: () => { app.store.checkpoint('Fit the loop to the beat'); p.length = ph.frames; app.store.setDirty(true); app.refreshAll(); app.timeline.fit(); } }, icon('loop'), `Make the loop ${ph.frames} frames`),
+    song.buffer ? toggleSong : h('div', { class: 'hint' }, 'Tip: "Make a strip-club dance" can listen to a song and play it along here (it never goes into the mod).')));
 }
 
 // the Beats row on the timeline: a tick on every beat, a bigger one on every bar
 function beatsRow(app) {
   return {
-    id: 'dance-beats', height: 16, order: 5, label: $t('features.dance.beats'),
+    id: 'dance-beats', height: 16, order: 5, label: 'Beats',
     draw(g, ctx) {
       const d = app.store.project.dance;
       if (!d) return;
@@ -359,20 +358,20 @@ export function install(app) {
     if (!d) songStop();
   };
 
-  add('homeCards', a => [{ id: 'dance', icon: 'dance-pole', title: $t('features.dance.strip_club_dance'),
-    text: $t('features.dance.pole_dance_dance_spot_or'), onClick: () => openNewDance(a) }]);
+  add('homeCards', a => [{ id: 'dance', icon: 'dance-pole', title: 'Strip club dance',
+    text: 'A pole dance, a dance spot or a lap dance - on the beat of your song.', onClick: () => openNewDance(a) }]);
   add('commands', a => [
-    { group: $t('features.dance.actions'), id: 'dance-new', label: $t('features.dance.make_strip_club_dance'), icon: 'dance-pole', sub: $t('features.dance.pole_dance_spot_or_lap'),
+    { group: 'Actions', id: 'dance-new', label: 'Make a strip-club dance', icon: 'dance-pole', sub: 'pole, dance spot or lap dance, on the beat',
       words: 'dance pole stripper strip club lap dance spot stage music song beat tempo bpm', run: () => openNewDance(a) },
-    { group: $t('features.dance.share'), id: 'dance-send', label: $t('features.dance.send_dance_to_game'), icon: 'send', sub: $t('features.dance.wickedwhims_strip_clubs'), words: 'dance export strip club pole package',
+    { group: 'Share', id: 'dance-send', label: 'Send dance to game', icon: 'send', sub: 'WickedWhims strip clubs', words: 'dance export strip club pole package',
       run: () => sendDance(a, 'send'), when: () => !!a.store.project.dance },
   ]);
-  add('helpRows', () => [{ group: $t('features.dance.making_animations'), keys: ['Ctrl', 'K'], text: $t('features.dance.type_dance_to_make_pole') }]);
+  add('helpRows', () => [{ group: 'Making animations', keys: ['Ctrl', 'K'], text: 'Type "dance" to make a pole dance, a dance-spot dance or a lap dance on the beat' }]);
   add('sections.share', (a, root) => danceSection(a, root));
   add('sections.motion', (a, root) => tempoSection(a, root));
   add('projectLoaded', () => refresh());
   add('viewsSynced', () => refresh());        // Magic and Say it load a new animation without "projectLoaded"
-  add('exportChecks', p => (p.dance ? [{ level: 'warn', text: $t('features.dance.this_is_strip_club_dance') }] : []));
+  add('exportChecks', p => (p.dance ? [{ level: 'warn', text: 'This is a strip-club dance: "Send dance to game" in the Share step makes it one. Send to game makes a normal animation.' }] : []));
   add('playing', on => { if (on) songPlay(app); else songStop(); });
   add('tick', (dt, frame, { playing, wrapped } = {}) => { if (playing && wrapped && song.src) songPlay(app); });
   refresh();

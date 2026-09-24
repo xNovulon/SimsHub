@@ -3,12 +3,11 @@
 // "kissing the tip" animation where the mouth should stay closed.
 import * as THREE from 'three';
 import { distToSegment } from './motion.js';
-import { $t } from './i18n.js';
 
 export const HOLES = {
-  vagina: { label: $t('openings.vagina'), hint: $t('openings.on_female_body_with_wickedwhims') },
-  anus: { label: $t('openings.anus') },
-  mouth: { label: $t('openings.mouth'), hint: $t('openings.jaw_opens_around_what_goes') },
+  vagina: { label: 'Vagina', hint: 'On the female body with WickedWhims\' animated vagina' },
+  anus: { label: 'Anus' },
+  mouth: { label: 'Mouth', hint: 'The jaw opens around what goes in' },
 };
 
 // What can go in, with its thickness (radius, metres).

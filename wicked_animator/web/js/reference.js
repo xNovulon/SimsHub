@@ -6,7 +6,6 @@
 import * as THREE from 'three';
 import { api } from './api.js';
 import { h, icon, toast, slider, toggle, fillRange } from './ui.js';
-import { $t } from './i18n.js';
 
 const clone = x => JSON.parse(JSON.stringify(x));
 const KINDS = { 'image/png': 'image', 'image/jpeg': 'image', 'image/webp': 'image', 'image/gif': 'image', 'video/mp4': 'video', 'video/webm': 'video' };
@@ -111,7 +110,7 @@ export class References {
       // unlocked: handles to move and size it (the only parts that take the mouse)
       it.el.querySelectorAll('.grip, .mover').forEach(x => x.remove());
       if (!ov.lock) {
-        const grip = h('div', { class: 'grip', title: $t('reference.drag_to_make_it_bigger') }), mover = h('div', { class: 'mover', title: $t('reference.drag_to_move_it') });
+        const grip = h('div', { class: 'grip', title: 'Drag to make it bigger or smaller' }), mover = h('div', { class: 'mover', title: 'Drag to move it' });
         grip.addEventListener('pointerdown', e => this._dragOverlay(e, it, 'scale'));
         mover.addEventListener('pointerdown', e => this._dragOverlay(e, it, 'move'));
         it.el.append(mover, grip);
@@ -156,7 +155,7 @@ export class References {
     const x0 = e.clientX, y0 = e.clientY;
     let started = false;
     const move = ev => {
-      if (!started) { this.app.store.checkpoint($t('reference.move_reference')); started = true; }
+      if (!started) { this.app.store.checkpoint('Move reference'); started = true; }
       const cur = this.list.find(x => x.id === r.id);
       if (!cur) return;
       cur.overlay = cur.overlay || clone(ov0);
@@ -237,12 +236,12 @@ export class References {
   remove(id) {
     const r = this.list.find(x => x.id === id);
     if (!r) return;
-    this.app.store.checkpoint($t('reference.remove_reference'));
+    this.app.store.checkpoint('Remove reference');
     this.project.refs = this.list.filter(x => x.id !== id);
     if (this.selectedId === id) this.selectedId = null;
     this.load();
     this.app.refreshPanels();
-    toast($t('reference.removed_ctrl_z_brings_it', { rName: r.name }));
+    toast(`"${r.name}" removed. Ctrl+Z brings it back.`);
   }
 
   boardMoved(id) {
@@ -268,13 +267,13 @@ export class References {
   async addFiles(files) {
     const p = this.project;
     const ok = [...files].filter(f => KINDS[f.type]);
-    if (!ok.length) return toast($t('reference.use_picture_png_jpg_webp'));
+    if (!ok.length) return toast('Use a picture (PNG, JPG, WEBP, GIF) or a video (MP4, WEBM).');
     let added = 0;
     for (const f of ok) {
-      if (f.size > MAX_BYTES) { toast($t('reference.is_too_big_for_reference', { fName: f.name }), 'err'); continue; }
+      if (f.size > MAX_BYTES) { toast(`"${f.name}" is too big for a reference (over 400 MB).`, 'err'); continue; }
       let res;
       try { res = await api.uploadRef(p.uid, f); }
-      catch (err) { toast($t('reference.could_not_add', { fName: f.name, message: err.message || err }), 'err'); continue; }
+      catch (err) { toast(`Could not add "${f.name}": ${err.message || err}`, 'err'); continue; }
       const kind = KINDS[f.type];
       const meta = await readMeta(f, kind).catch(() => ({}));
       if (this.project !== p) return;                      // another animation was opened meanwhile
@@ -284,7 +283,7 @@ export class References {
         overlay: { x: 0.5, y: 0.5, scale: 1, lock: true } };
       if (kind === 'video') r.duration = meta.duration || 0;
       r.board = this._defaultBoard(r, 'front');
-      this.app.store.checkpoint($t('reference.add_reference'));
+      this.app.store.checkpoint('Add reference');
       p.refs = [...(p.refs || []), r];
       this.selectedId = r.id;
       added++;
@@ -292,7 +291,7 @@ export class References {
     if (!added) return;
     this.load();
     this.app.refreshPanels();
-    toast(added > 1 ? $t('reference.references_added_they_show_on', { added }) : $t('reference.reference_added_it_shows_see'), 'ok');
+    toast(added > 1 ? `${added} references added - they show on the right to change them.` : 'Reference added: it shows see-through over the view. Change it on the right (screen or scene, see-through, video timing).', 'ok');
   }
 
   // ---------------------------------------------------------------- the inspector card (spec 8.4)
@@ -301,52 +300,52 @@ export class References {
     if (!list.length) return;
     const r = this.selected;
     const sec = h('div', { class: 'section ref-card' });
-    sec.append(h('div', { class: 'section-title' }, $t('reference.reference'), h('span', { class: 'count' }, String(list.length))));
+    sec.append(h('div', { class: 'section-title' }, 'Reference', h('span', { class: 'count' }, String(list.length))));
     // one chip per reference
     sec.append(h('div', { class: 'pose-chips' }, list.map(x => h('button', { class: 'chipbtn' + (x.id === this.selectedId ? ' on' : ''), title: x.name,
       onclick: () => this.select(x.id === this.selectedId ? null : x.id) }, icon(x.kind === 'video' ? 'film' : 'image'), ' ', x.name.length > 16 ? x.name.slice(0, 15) + '…' : x.name))));
-    if (!r) { sec.append(h('div', { class: 'hint' }, $t('reference.click_one_to_change_it'))); root.append(sec); return; }
+    if (!r) { sec.append(h('div', { class: 'hint' }, 'Click one to change it. Drop more pictures or videos on the view.')); root.append(sec); return; }
     const card = h('div', { class: 'card' });
-    const set = (patch, label = $t('reference.change_reference')) => { this.app.store.checkpoint(label); this.update(r.id, patch); this.app.refreshPanels(); };
-    card.append(h('div', { class: 'field' }, h('span', {}, $t('reference.show_it')), h('div', { class: 'seg-inline' },
-      h('button', { class: r.mode !== 'board' ? 'on' : '', onclick: () => set({ mode: 'overlay' }) }, $t('reference.on_screen')),
-      h('button', { class: r.mode === 'board' ? 'on' : '', onclick: () => set({ mode: 'board', board: r.board || this._defaultBoard(r, 'front') }) }, $t('reference.in_scene')))));
-    card.append(slider({ label: $t('reference.see_through'), min: 0.05, max: 1, step: 0.01, value: r.opacity ?? 0.5, fmt: v => Math.round(v * 100) + '%',
-      onStart: () => this.app.store.checkpoint($t('reference.reference_see_through')), onInput: v => { r.opacity = v; this._sig = ''; this.load(); this.app.store.setDirty(true); } }));
+    const set = (patch, label = 'Change reference') => { this.app.store.checkpoint(label); this.update(r.id, patch); this.app.refreshPanels(); };
+    card.append(h('div', { class: 'field' }, h('span', {}, 'Show it'), h('div', { class: 'seg-inline' },
+      h('button', { class: r.mode !== 'board' ? 'on' : '', onclick: () => set({ mode: 'overlay' }) }, 'On the screen'),
+      h('button', { class: r.mode === 'board' ? 'on' : '', onclick: () => set({ mode: 'board', board: r.board || this._defaultBoard(r, 'front') }) }, 'In the scene'))));
+    card.append(slider({ label: 'See-through', min: 0.05, max: 1, step: 0.01, value: r.opacity ?? 0.5, fmt: v => Math.round(v * 100) + '%',
+      onStart: () => this.app.store.checkpoint('Reference see-through'), onInput: v => { r.opacity = v; this._sig = ''; this.load(); this.app.store.setDirty(true); } }));
     if (r.mode !== 'board') {
       const ov = r.overlay || { x: 0.5, y: 0.5, scale: 1, lock: true };
-      card.append(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, $t('reference.stay_put')), h('span', {}, $t('reference.off_drag_it_round_view'))),
+      card.append(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, 'Stay put'), h('span', {}, 'Off: drag it round the view and size it with its corner')),
         toggle(ov.lock !== false, on => set({ overlay: { ...ov, lock: on } }))));
     } else {
       const b = r.board || this._defaultBoard(r, 'front');
-      card.append(h('div', { class: 'field' }, h('span', {}, $t('reference.stand_it')), h('div', { class: 'seg-inline' },
-        ...[['front', $t('reference.in_front')], ['side', $t('reference.at_side')], ['floor', $t('reference.on_floor')]].map(([pl, t]) => h('button', { class: b.plane === pl ? 'on' : '', onclick: () => set({ board: this._defaultBoard(r, pl) }) }, t)))));
+      card.append(h('div', { class: 'field' }, h('span', {}, 'Stand it'), h('div', { class: 'seg-inline' },
+        ...[['front', 'In front'], ['side', 'At the side'], ['floor', 'On the floor']].map(([pl, t]) => h('button', { class: b.plane === pl ? 'on' : '', onclick: () => set({ board: this._defaultBoard(r, pl) }) }, t)))));
       const nudge = (label, get, put, min, max, step, fmt) => slider({ label, min, max, step, value: get(), fmt,
-        onStart: () => this.app.store.checkpoint($t('reference.move_reference')), onInput: v => { const nb = clone(r.board || b); put(nb, v); r.board = nb; this._sig = ''; this.load(); this.app.store.setDirty(true); } });
-      card.append(nudge($t('reference.size'), () => b.width || 1.6, (nb, v) => { nb.width = v; }, 0.3, 4, 0.05, v => v.toFixed(2) + ' m'),
-        nudge($t('reference.left_right'), () => b.pos[0], (nb, v) => { nb.pos = [v, nb.pos[1], nb.pos[2]]; }, -3, 3, 0.01, v => v.toFixed(2) + ' m'),
-        nudge(b.plane === 'floor' ? $t('reference.forward_back') : $t('reference.height'), () => (b.plane === 'floor' ? b.pos[2] : b.pos[1]), (nb, v) => { if (nb.plane === 'floor') nb.pos = [nb.pos[0], nb.pos[1], v]; else nb.pos = [nb.pos[0], v, nb.pos[2]]; }, -3, 3, 0.01, v => v.toFixed(2) + ' m'),
-        b.plane === 'floor' ? null : nudge($t('reference.forward_back'), () => b.pos[2], (nb, v) => { nb.pos = [nb.pos[0], nb.pos[1], v]; }, -4, 4, 0.01, v => v.toFixed(2) + ' m'),
-        nudge($t('reference.turn'), () => Math.round((b.yaw || 0) * 180 / Math.PI), (nb, v) => { nb.yaw = v * Math.PI / 180; }, -180, 180, 1, v => v + '°'));
+        onStart: () => this.app.store.checkpoint('Move reference'), onInput: v => { const nb = clone(r.board || b); put(nb, v); r.board = nb; this._sig = ''; this.load(); this.app.store.setDirty(true); } });
+      card.append(nudge('Size', () => b.width || 1.6, (nb, v) => { nb.width = v; }, 0.3, 4, 0.05, v => v.toFixed(2) + ' m'),
+        nudge('Left / right', () => b.pos[0], (nb, v) => { nb.pos = [v, nb.pos[1], nb.pos[2]]; }, -3, 3, 0.01, v => v.toFixed(2) + ' m'),
+        nudge(b.plane === 'floor' ? 'Forward / back' : 'Height', () => (b.plane === 'floor' ? b.pos[2] : b.pos[1]), (nb, v) => { if (nb.plane === 'floor') nb.pos = [nb.pos[0], nb.pos[1], v]; else nb.pos = [nb.pos[0], v, nb.pos[2]]; }, -3, 3, 0.01, v => v.toFixed(2) + ' m'),
+        b.plane === 'floor' ? null : nudge('Forward / back', () => b.pos[2], (nb, v) => { nb.pos = [nb.pos[0], nb.pos[1], v]; }, -4, 4, 0.01, v => v.toFixed(2) + ' m'),
+        nudge('Turn', () => Math.round((b.yaw || 0) * 180 / Math.PI), (nb, v) => { nb.yaw = v * Math.PI / 180; }, -180, 180, 1, v => v + '°'));
       const it = this.items.get(r.id), gz = this.app.interact && this.app.interact.attachGizmo;
       if (gz && it && it.mesh) card.append(h('button', { class: 'btn small soft block', onclick: () => {
-        this.app.interact.attachGizmo(it.mesh, { modes: ['translate', 'rotate'], onStart: () => this.app.store.checkpoint($t('reference.move_reference')), onChange: () => this.boardMoved(r.id), onEnd: () => { this.boardMoved(r.id); this.app.refreshPanels(); } });
-        toast($t('reference.drag_arrows_to_move_board'));
-      } }, icon('move'), $t('reference.move_it_with_arrows')));
+        this.app.interact.attachGizmo(it.mesh, { modes: ['translate', 'rotate'], onStart: () => this.app.store.checkpoint('Move reference'), onChange: () => this.boardMoved(r.id), onEnd: () => { this.boardMoved(r.id); this.app.refreshPanels(); } });
+        toast('Drag the arrows to move the board (T: turn it).');
+      } }, icon('move'), 'Move it with the arrows'));
     }
     if (r.kind === 'video') {
       const fps = this.project.fps || 30;
       const start = h('input', { class: 'num', type: 'number', min: 0, step: 0.1, value: (r.offset || 0).toFixed(1) });
-      start.addEventListener('change', () => { set({ offset: Math.max(0, +start.value || 0) }, $t('reference.video_start')); start.blur(); });
-      card.append(h('label', { class: 'field row' }, h('span', {}, $t('reference.video_starts_at_s')), start));
-      card.append(slider({ label: $t('reference.video_speed'), min: 0.25, max: 2, step: 0.05, value: r.speed || 1, fmt: v => v.toFixed(2).replace(/0$/, '') + '×',
-        onStart: () => this.app.store.checkpoint($t('reference.video_speed')), onInput: v => { r.speed = v; this._sig = ''; this.load(); this.app.store.setDirty(true); } }));
-      card.append(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, $t('reference.hear_video'))), toggle(!!r.sound, on => set({ sound: on }))));
-      card.append(h('div', { class: 'hint' }, $t('reference.step_video_one_frame_at', { fps })));
+      start.addEventListener('change', () => { set({ offset: Math.max(0, +start.value || 0) }, 'Video start'); start.blur(); });
+      card.append(h('label', { class: 'field row' }, h('span', {}, 'Video starts at (s)'), start));
+      card.append(slider({ label: 'Video speed', min: 0.25, max: 2, step: 0.05, value: r.speed || 1, fmt: v => v.toFixed(2).replace(/0$/, '') + '×',
+        onStart: () => this.app.store.checkpoint('Video speed'), onInput: v => { r.speed = v; this._sig = ''; this.load(); this.app.store.setDirty(true); } }));
+      card.append(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, 'Hear the video')), toggle(!!r.sound, on => set({ sound: on }))));
+      card.append(h('div', { class: 'hint' }, `← → step the video one frame at a time (${fps} frames a second), so you can trace it.`));
     }
     card.append(h('div', { class: 'btn-grid' },
-      h('button', { class: 'btn small', onclick: () => set({ visible: r.visible === false }) }, icon(r.visible === false ? 'eye' : 'eye-off'), r.visible === false ? $t('reference.show') : $t('reference.hide')),
-      h('button', { class: 'btn small', onclick: () => this.remove(r.id) }, icon('trash'), $t('reference.remove'))));
+      h('button', { class: 'btn small', onclick: () => set({ visible: r.visible === false }) }, icon(r.visible === false ? 'eye' : 'eye-off'), r.visible === false ? 'Show' : 'Hide'),
+      h('button', { class: 'btn small', onclick: () => this.remove(r.id) }, icon('trash'), 'Remove')));
     card.querySelectorAll('input[type=range]').forEach(fillRange);
     sec.append(card);
     root.append(sec);
@@ -362,12 +361,12 @@ function readMeta(file, kind) {
       const v = document.createElement('video');
       v.preload = 'metadata'; v.muted = true;
       v.onloadedmetadata = () => done({ w: v.videoWidth, h: v.videoHeight, duration: v.duration });
-      v.onerror = () => { URL.revokeObjectURL(url); rej(new Error($t('reference.not_video'))); };
+      v.onerror = () => { URL.revokeObjectURL(url); rej(new Error('not a video')); };
       v.src = url;
     } else {
       const im = new Image();
       im.onload = () => done({ w: im.naturalWidth, h: im.naturalHeight });
-      im.onerror = () => { URL.revokeObjectURL(url); rej(new Error($t('reference.not_picture'))); };
+      im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('not a picture')); };
       im.src = url;
     }
   });

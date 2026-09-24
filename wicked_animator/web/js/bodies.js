@@ -7,13 +7,12 @@
 import * as THREE from 'three';
 import { api } from './api.js';
 import { toast } from './ui.js';
-import { $t } from './i18n.js';
 
 export const SIZE_PRESETS = {
-  small: { label: $t('bodies.small'), vals: { length: -1, girth: -0.6, balls: -0.5 } },
-  average: { label: $t('bodies.average'), vals: {} },
-  large: { label: $t('bodies.large'), vals: { length: 0.7, girth: 0.5 } },
-  xl: { label: $t('bodies.very_large'), vals: { length: 1, girth: 1, balls: 0.5 } },
+  small: { label: 'Small', vals: { length: -1, girth: -0.6, balls: -0.5 } },
+  average: { label: 'Average', vals: {} },
+  large: { label: 'Large', vals: { length: 0.7, girth: 0.5 } },
+  xl: { label: 'Very large', vals: { length: 1, girth: 1, balls: 0.5 } },
 };
 const FRAME_OF = { male: 'ym', female: 'yf', MALE: 'ym', FEMALE: 'yf', m: 'ym', f: 'yf' };
 
@@ -68,7 +67,7 @@ async function loadOption(app, s, opt) {
       app._trialMeta.set(key, { tone: r.tone || '', hair: r.hair || null, name: r.name || opt.name });
     }
     const m = app._trialMeta.get(key) || {};
-    return { bodyKey: key, toneKey: m.tone || '', label: $t('bodies.sims_body', { name: opt.name || m.name || $t('bodies.tray_sim') }), hair: m.hair || null };
+    return { bodyKey: key, toneKey: m.tone || '', label: `${opt.name || m.name || 'a Tray sim'}'s body`, hair: m.hair || null };
   }
   if (opt.kind === 'size') {
     const pr = SIZE_PRESETS[opt.preset] || SIZE_PRESETS.average;
@@ -80,7 +79,7 @@ async function loadOption(app, s, opt) {
       app._trialMeta.set(key, { tone: s.tray ? (r.tone || '') : undefined });
     }
     const m = app._trialMeta.get(key) || {};
-    return { bodyKey: key, toneKey: s.tray ? m.tone : undefined, label: $t('bodies.penis', { prLabel: pr.label.toLowerCase() }) };
+    return { bodyKey: key, toneKey: s.tray ? m.tone : undefined, label: `a ${pr.label.toLowerCase()} penis` };
   }
   return null;
 }
@@ -94,7 +93,7 @@ export async function tryBody(app, simId, opt) {
   const token = (app._trialToken = (app._trialToken || 0) + 1);
   let o;
   try { o = await loadOption(app, s, opt); } catch (err) {
-    toast($t('bodies.could_not_load_that_body', { message: err.message }), 'err');
+    toast(`Could not load that body: ${err.message}`, 'err');
     return false;
   }
   if (!o || token !== app._trialToken || !app.store.sim(simId)) return false;
@@ -108,7 +107,7 @@ export function endTrial(app, simId = null, { quiet = false } = {}) {
   if (simId) app.trial.delete(simId); else app.trial.clear();
   app._trialToken = (app._trialToken || 0) + 1;
   refreshBodies(app);
-  if (!quiet) toast($t('bodies.back_to_your_own_bodies'));
+  if (!quiet) toast('Back to your own bodies.');
   return true;
 }
 
@@ -125,7 +124,7 @@ function refreshBodies(app) {
 
 // The options "Change body every loop" goes through for a sim: own, the Tray sims with the same body, the sizes.
 export async function trialOptions(app, s) {
-  const out = [{ kind: 'own', label: $t('bodies.own_body') }];
+  const out = [{ kind: 'own', label: 'Own body' }];
   if (s.frame !== 'yf_futa') {
     try {
       const list = (await traySims()).filter(t => t.frame === s.frame).slice(0, 8);
@@ -144,7 +143,7 @@ export async function nextBody(app, simId) {
   const s = app.store.sim(simId);
   if (!s) return;
   const list = await trialOptions(app, s);
-  if (list.length < 2) { toast($t('bodies.no_other_bodies_to_try')); return; }
+  if (list.length < 2) { toast('No other bodies to try - add adult sims to your Tray in the game.'); return; }
   const t = trialOf(app, simId);
   const i = t ? list.findIndex(o => sameOpt(o, t.opt)) : 0;
   const next = list[(i + 1) % list.length];
@@ -186,13 +185,13 @@ export function showBanner(app) {
   const [id, t] = entries[0] || [app._cycle && app._cycle.simId, null];
   const sim = app.store.sim(id);
   const txt = document.createElement('span');
-  txt.innerHTML = t ? $t('bodies.trying_b_b_on_b') : $t('bodies.changing_bodies_every_loop_on');
+  txt.innerHTML = t ? `Trying <b></b> on <b></b>` : `Changing bodies every loop on <b></b>`;
   const bs = txt.querySelectorAll('b');
   if (t) { bs[0].textContent = t.label; bs[1].textContent = sim ? sim.label : ''; } else bs[0].textContent = sim ? sim.label : '';
   const btn = (label, fn, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = 'vp-trial-btn ' + cls; b.textContent = label; b.onclick = fn; return b; };
   el.append(txt,
-    btn($t('bodies.next'), () => nextBody(app, id)),
-    btn($t('bodies.stop'), () => { setCycle(app, null, false); endTrial(app); }, 'stop'));
+    btn('Next', () => nextBody(app, id)),
+    btn('Stop', () => { setCycle(app, null, false); endTrial(app); }, 'stop'));
   el.classList.remove('hidden');
 }
 

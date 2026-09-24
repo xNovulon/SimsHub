@@ -10,7 +10,6 @@ import { spotsOf, sitOn, lieOn, surfaceY } from '../placing.js';
 import * as B from '../bodies.js';
 import { label as boneLabel, isFace } from '../facekit.js';
 import { renderInspector } from '../inspector.js';
-import { $t, inSentence } from '../i18n.js';
 
 const ICONS = {
   // an eye with a dashed outline
@@ -39,20 +38,20 @@ export function install(app) {
   // ---------------------------------------------------------------- see-through and bones
   const xray = app.xray = new Xray(app);
   const btnSee = addToolbarButton({ cell: 'view', id: 'btn-xray', icon: 'xray', toggle: true,
-    title: $t('features.scene.see_through_see_hands_and'), onClick: (e, b) => setSee(b.classList.contains('on')) });
+    title: 'See-through: see hands and contact behind bodies (Alt+Z)', onClick: (e, b) => setSee(b.classList.contains('on')) });
   const btnBones = addToolbarButton({ cell: 'view', id: 'btn-bones', icon: 'bones', toggle: true,
-    title: $t('features.scene.show_bones_like_blender_alt'), onClick: (e, b) => setBones(b.classList.contains('on')) });
+    title: 'Show bones, like Blender (Alt+B)', onClick: (e, b) => setBones(b.classList.contains('on')) });
   const btnClip = addToolbarButton({ cell: 'view', id: 'btn-clip', icon: 'clip',
-    title: $t('features.scene.check_clipping_find_hands_and'), onClick: () => app.checkClipping() });
+    title: 'Check clipping: find hands and legs that go through a body', onClick: () => app.checkClipping() });
   function setSee(on) {
     xray.setSeeThrough(on);
     if (btnSee) btnSee.classList.toggle('on', on);
-    toast(on ? $t('features.scene.see_through_on_other_sims') : $t('features.scene.see_through_off'));
+    toast(on ? 'See-through on - the other sims are see-through.' : 'See-through off.');
   }
   function setBones(on) {
     xray.setBones(on);
     if (btnBones) btnBones.classList.toggle('on', on);
-    toast(on ? $t('features.scene.bones_on_click_bone_to') : $t('features.scene.bones_off'));
+    toast(on ? 'Bones on - click a bone to pick that part.' : 'Bones off.');
   }
   app.setSeeThrough = on => setSee(on === undefined ? !xray.seeOn : !!on);
   app.setShowBones = on => setBones(on === undefined ? !xray.bonesOn : !!on);
@@ -139,7 +138,7 @@ export function install(app) {
     if (spot) {
       const s = spotSim(), sp = spot.userData.spot;
       canvas.style.cursor = 'pointer';
-      app.hud($t('features.scene.spot_hud', { spot: sp.label, action: $t(sp.verb, { sim: s ? s.label : $t('features.scene.the_sim') }) }) + (sp.kind === 'seat' || sp.kind === 'edge' ? $t('features.scene.feet_on_floor') : ''));
+      app.hud(`${sp.label} · click: ${sp.verb} ${s ? s.label : ''} here${sp.kind === 'seat' || sp.kind === 'edge' ? ' (feet on the floor)' : ''}`);
       return;
     }
     if (xray.bonesOn) {
@@ -148,7 +147,7 @@ export function install(app) {
       if (hb) {
         const s = app.store.sim(hb.simId);
         canvas.style.cursor = 'pointer';
-        app.hud($t('features.scene.click_to_pick_it', { v: s ? s.label + ' · ' : '', boneLabel: boneLabel(hb.bone, s && s.frame), bone: hb.bone }));
+        app.hud(`${s ? s.label + ' · ' : ''}${boneLabel(hb.bone, s && s.frame)} · ${hb.bone} · click to pick it`);
       }
     }
   });
@@ -195,8 +194,9 @@ export function install(app) {
     if (app.playing) app.setPlaying(false);
     if (!sitOn(app, sim, slot)) return false;
     after();
-    toast(slot.kind === 'in' ? $t('features.scene.sits_up_in_bed', { simLabel: sim.label })
-      : $t(slot.kind === 'edge' ? 'features.scene.sits_on_edge' : spot ? 'features.scene.sits_on_spot' : 'features.scene.sits_on_seat', { sim: sim.label, spot: spot ? inSentence(spot.label) : '' }), 'ok');
+    const where = spot ? spot.label.toLowerCase() : 'the seat';
+    toast(slot.kind === 'in' ? `${sim.label} sits up in bed.`
+      : `${sim.label} sits on ${/^edge/.test(where) ? 'the edge' : where} - the feet are pinned on the floor spots, so the knees bend by themselves.`, 'ok');
     return true;
   };
   app.lieHere = (simId, slot, spot = null) => {
@@ -209,7 +209,7 @@ export function install(app) {
       if (!ok) return false;
       after();
       const def = (app.furniture || []).find(f => f.id === id);
-      toast(def ? $t('features.scene.lies_on', { sim: sim.label, place: inSentence(def.label) }) : $t('features.scene.lies_on_furniture', { sim: sim.label }), 'ok');
+      toast(`${sim.label} lies on the ${def ? def.label.toLowerCase() : 'furniture'}.`, 'ok');
       return true;
     });
   };
@@ -225,10 +225,10 @@ export function install(app) {
     if (!sim || !app.interact || app.interact.tool !== 'move' || !slots.info) return;
     const list = spotsOf(slots.info);
     if (!list.length) return;
-    const btns = h('div', { class: 'spot-grid' }, list.map(sp => h('button', { class: 'btn small spot-btn ' + sp.kind, title: $t('features.scene.spot_title', { spot: sp.label, action: $t(sp.verb, { sim: sim.label }) }), onclick: () => doSpot(sp) },
+    const btns = h('div', { class: 'spot-grid' }, list.map(sp => h('button', { class: 'btn small spot-btn ' + sp.kind, title: `${sp.label}: ${sp.verb} ${sim.label} here`, onclick: () => doSpot(sp) },
       h('span', { class: 'spot-dot' }), sp.label)));
-    const sec = section([$t('features.scene.spots_on_this_furniture'), h('span', { class: 'count' }, String(list.length))],
-      h('div', { class: 'hint', style: { marginTop: 0 } }, $t('features.scene.click_spot_here_or_on', { simLabel: sim.label })), btns);
+    const sec = section(['Spots on this furniture', h('span', { class: 'count' }, String(list.length))],
+      h('div', { class: 'hint', style: { marginTop: 0 } }, `Click a spot (here or on the furniture) - ${sim.label} sits or lies exactly there, and the whole animation moves with it.`), btns);
     sec.classList.add('spots-card');
     root.append(sec);
   });
@@ -267,15 +267,15 @@ export function install(app) {
       const canHold = it.limb && typeof app.holdNearest === 'function' && it.otherId && it.otherId !== it.simId;
       rows.append(h('div', { class: 'clip-row' }, h('span', { class: 'clip-dot' }), h('span', { class: 'clip-text' }, it.text),
         h('div', { class: 'clip-actions' },
-          h('button', { class: 'btn small', onclick: () => showIssue(it) }, $t('features.scene.show')),
-          canHold ? h('button', { class: 'btn small primary', title: $t('features.scene.hand_or_foot_holds_on'), onclick: () => fixHold(it) }, $t('features.scene.fix_hold_here')) : null)));
+          h('button', { class: 'btn small', onclick: () => showIssue(it) }, 'Show'),
+          canHold ? h('button', { class: 'btn small primary', title: 'The hand or foot holds on to the body there instead of going through it', onclick: () => fixHold(it) }, 'Fix: hold here') : null)));
     }
-    if (n > 12) rows.append(h('div', { class: 'hint' }, $t('features.scene.and_more_red_ticks_on', { n: n - 12 })));
+    if (n > 12) rows.append(h('div', { class: 'hint' }, `…and ${n - 12} more (red ticks on the timeline).`));
     card.el = h('div', { class: 'clip-card', id: 'clip-card', role: 'dialog' },
-      h('div', { class: 'clip-head' }, icon('clip'), h('b', {}, n ? $t('features.scene.clipping_check_places', { n }) : $t('features.scene.no_clipping_found')),
-        h('button', { class: 'icon-btn sm', title: $t('features.scene.close'), onclick: () => { closeCard(); } }, icon('x'))),
-      n ? rows : h('div', { class: 'hint' }, $t('features.scene.hands_arms_and_legs_stay')),
-      n ? h('div', { class: 'hint clip-foot' }, $t('features.scene.red_ticks_on_timeline_show')) : null);
+      h('div', { class: 'clip-head' }, icon('clip'), h('b', {}, n ? `Clipping check: ${n} place${n === 1 ? '' : 's'}` : 'No clipping found'),
+        h('button', { class: 'icon-btn sm', title: 'Close', onclick: () => { closeCard(); } }, icon('x'))),
+      n ? rows : h('div', { class: 'hint' }, 'Hands, arms and legs stay out of the bodies and the furniture over the whole loop.'),
+      n ? h('div', { class: 'hint clip-foot' }, 'Red ticks on the timeline show where. Parts that only touch are fine.') : null);
     wrap.append(card.el);
   }
   function showIssue(it) {
@@ -305,9 +305,9 @@ export function install(app) {
     else { issues = scanClipping(app, { step: 2 }); lastSig = sig; lastIssues = issues; card.issues = issues; }
     if (!issues.length) return [];
     const bodies = issues.filter(i => i.otherId !== null).length, furn = issues.length - bodies;
-    const what = bodies && furn ? $t('features.scene.body_or_furniture') : bodies ? 'a body' : $t('features.scene.furniture');
-    return [{ level: 'warn', text: $t('features.scene.hands_or_legs_go_through', { what, issueCount: issues.length }),
-      fix: { label: $t('features.scene.show_me'), run: () => { setMarks(issues); showCard(issues); } } }];
+    const what = bodies && furn ? 'a body or the furniture' : bodies ? 'a body' : 'the furniture';
+    return [{ level: 'warn', text: `Hands or legs go through ${what} in ${issues.length} place${issues.length === 1 ? '' : 's'}.`,
+      fix: { label: 'Show me', run: () => { setMarks(issues); showCard(issues); } } }];
   });
 
   // ---------------------------------------------------------------- other bodies
@@ -320,7 +320,7 @@ export function install(app) {
   // nothing is ever baked or saved with a trial body
   const stopTrials = () => { if (app._cycle) app._cycle = null; if (app.trial.size) B.endTrial(app, null, { quiet: true }); };
   add('beforeBake', () => { if (app.trial.size) stopTrials(); });
-  add('beforeSave', () => { if (app.trial.size) { stopTrials(); toast($t('features.scene.trying_other_bodies_stopped_your')); } });
+  add('beforeSave', () => { if (app.trial.size) { stopTrials(); toast('Trying other bodies stopped - your own bodies are back.'); } });
 
   // ---------------------------------------------------------------- hair
   // the hair arrives a moment after the body; the Body step's hair row then says what the sim wears
@@ -390,17 +390,17 @@ export function install(app) {
   add('commands', a => {
     const sim = a.store.sim();
     return [
-      { group: $t('features.scene.view'), id: 'see-through', label: xray.seeOn ? $t('features.scene.see_through_off_2') : $t('features.scene.see_through'), icon: 'xray', keys: ['Alt', 'Z'], sub: $t('features.scene.see_hands_and_contact_behind'), words: 'x-ray xray transparent ghost see through alt z', run: () => setSee(!xray.seeOn) },
-      { group: $t('features.scene.view'), id: 'show-bones', label: xray.bonesOn ? $t('features.scene.hide_bones') : $t('features.scene.show_bones'), icon: 'bones', keys: ['Alt', 'B'], sub: $t('features.scene.like_blender'), words: 'skeleton armature rig octahedral bones', run: () => setBones(!xray.bonesOn) },
-      { group: $t('features.scene.check'), id: 'check-clipping', label: $t('features.scene.check_clipping'), icon: 'clip', sub: $t('features.scene.hands_and_legs_that_go'), words: 'clip intersect penetrate through body collision', run: () => a.checkClipping() },
-      { group: $t('features.scene.bodies'), id: 'try-bodies', label: $t('features.scene.try_it_on_other_bodies'), icon: 'user', sub: $t('features.scene.tray_sims_and_penis_sizes'), words: 'body swap tray size penis preview other bodies', when: () => !!sim, run: () => { a.showStep('body'); setTimeout(() => document.querySelector('.try-bodies')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80); } },
-      { group: $t('features.scene.bodies'), id: 'hair', label: $t('features.scene.hair'), icon: 'hair', sub: $t('features.scene.pick_hairstyle_for_preview'), words: 'hair hairstyle wig cas', when: () => !!sim, run: () => { a.showStep('body'); setTimeout(() => document.querySelector('.hair-row')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80); } },
+      { group: 'View', id: 'see-through', label: xray.seeOn ? 'See-through off' : 'See-through', icon: 'xray', keys: ['Alt', 'Z'], sub: 'see hands and contact behind bodies', words: 'x-ray xray transparent ghost see through alt z', run: () => setSee(!xray.seeOn) },
+      { group: 'View', id: 'show-bones', label: xray.bonesOn ? 'Hide bones' : 'Show bones', icon: 'bones', keys: ['Alt', 'B'], sub: 'like Blender', words: 'skeleton armature rig octahedral bones', run: () => setBones(!xray.bonesOn) },
+      { group: 'Check', id: 'check-clipping', label: 'Check clipping', icon: 'clip', sub: 'hands and legs that go through a body', words: 'clip intersect penetrate through body collision', run: () => a.checkClipping() },
+      { group: 'Bodies', id: 'try-bodies', label: 'Try it on other bodies', icon: 'user', sub: 'Tray sims and penis sizes - your animation does not change', words: 'body swap tray size penis preview other bodies', when: () => !!sim, run: () => { a.showStep('body'); setTimeout(() => document.querySelector('.try-bodies')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80); } },
+      { group: 'Bodies', id: 'hair', label: 'Hair', icon: 'hair', sub: 'pick a hairstyle for the preview', words: 'hair hairstyle wig cas', when: () => !!sim, run: () => { a.showStep('body'); setTimeout(() => document.querySelector('.hair-row')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80); } },
     ];
   });
   add('helpRows', () => [
-    { group: $t('features.scene.seeing_better'), keys: ['Alt', 'Z'], text: $t('features.scene.see_through_other_sims_turn') },
-    { group: $t('features.scene.seeing_better'), keys: ['Alt', 'B'], text: $t('features.scene.show_bones_like_blender_click') },
-    { group: $t('features.scene.seeing_better'), keys: 'Place (M)', text: $t('features.scene.seats_and_lying_spots_show') },
+    { group: 'Seeing better', keys: ['Alt', 'Z'], text: 'See-through: the other sims turn see-through' },
+    { group: 'Seeing better', keys: ['Alt', 'B'], text: 'Show bones like Blender - click a bone to pick it' },
+    { group: 'Seeing better', keys: 'Place (M)', text: 'Seats and lying spots show on the furniture - click one to sit or lie there' },
   ]);
 
   // Every place's surface and spots are read once in the background (one at a time, when the app is idle): a ready

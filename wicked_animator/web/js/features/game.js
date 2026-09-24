@@ -7,7 +7,6 @@ import { simVoice, voiceFor, voiceCode, isVoiceLine, soundFitsSim, VOICE_SETS, t
 import * as M from '../moments.js';
 import { EffectLayer, effectKind } from '../effects.js';
 import * as Cum from '../cumskin.js';
-import { $t } from '../i18n.js';
 
 // ---------------------------------------------------------------- icons (24x24, stroked like the app's own)
 const ICONS = {
@@ -65,7 +64,7 @@ export function install(app) {
     }
     app.audio.ensure();
     app.audio.play(SAMPLE_LINE, { force: true, voice: code, detune: (s.voicePitch || 0) * 300 })
-      .then(ok => ok || toast($t('features.game.this_voice_could_not_be')));
+      .then(ok => ok || toast('This voice could not be played here.'));
     if (typeof app.refreshPanels === 'function') app.refreshPanels();
   });
   // how a sound plays: voice lines in the sim's own voice, at its own pitch
@@ -133,10 +132,10 @@ export function install(app) {
   // ---------------------------------------------------------------- effects in the viewport
   app.effects = new EffectLayer(app, { moments: (a, o) => playingEffects(app, o) });
   app.effects.setVisible(app.showEffects);
-  const fxBtn = addToolbarButton({ cell: 'view', id: 'btn-fx', icon: 'fx', toggle: true, title: $t('features.game.show_effects_stand_in_drool'),
+  const fxBtn = addToolbarButton({ cell: 'view', id: 'btn-fx', icon: 'fx', toggle: true, title: 'Show effects: stand-in drool, splashes and drips where your Effect moments are',
     onClick: (e, b) => setEffects(b.classList.contains('on')) });
   if (fxBtn) fxBtn.classList.toggle('on', app.showEffects);
-  const cumBtn = addToolbarButton({ cell: 'view', id: 'btn-cum', icon: 'drop', toggle: true, title: $t('features.game.show_cum_wickedwhims_cum_on'),
+  const cumBtn = addToolbarButton({ cell: 'view', id: 'btn-cum', icon: 'drop', toggle: true, title: "Show cum: WickedWhims' cum on the skin after a Cum moment",
     onClick: (e, b) => setCum(b.classList.contains('on')) });
   if (cumBtn) cumBtn.classList.toggle('on', app.showCum);
   function setEffects(on) {
@@ -243,24 +242,24 @@ export function install(app) {
     if (info.key === 'Escape') { app.selectedEvent = null; app.timeline.draw(); }
     return false;
   });
-  add('menus.lane', (items, ctx) => { if (ctx && ctx.sim) items.push({ label: $t('features.game.add_moment_here'), icon: 'flag', onClick: () => app.editMoment(null, ctx.frame, { sim: ctx.sim.id, type: 'CUM' }) }); });
-  add('menus.ruler', (items, ctx) => { items.push({ label: $t('features.game.add_moment_here'), icon: 'flag', onClick: () => app.editMoment(null, ctx.frame) }); });
+  add('menus.lane', (items, ctx) => { if (ctx && ctx.sim) items.push({ label: 'Add a moment here…', icon: 'flag', onClick: () => app.editMoment(null, ctx.frame, { sim: ctx.sim.id, type: 'CUM' }) }); });
+  add('menus.ruler', (items, ctx) => { items.push({ label: 'Add a moment here…', icon: 'flag', onClick: () => app.editMoment(null, ctx.frame) }); });
   add('commands', a => {
     const f = () => Math.round(a.store.frame);
     const has = () => a.store.project.sims.length > 0;
     return [
-      { group: $t('features.game.moments'), id: 'moment-add', label: $t('features.game.add_moment_here_2'), icon: 'flag', sub: $t('features.game.cum_undress_condom_off_effect'), words: 'event cum undress condom effect note moments track', run: () => a.editMoment(null, f()), when: has },
-      ...M.FINISH_PARTS.map(([part, label]) => ({ group: $t('features.game.moments'), id: 'finish-' + part, label: `Finish: ${part === 'inside' ? 'inside' : $t('features.game.cum_on', { label: label.toLowerCase() })}`, icon: 'drop', sub: $t('features.game.cum_drool_and_finish_voices'), words: 'climax cum finish orgasm ' + label, run: () => a.finishPreset(part, f()), when: has })),
-      { group: $t('features.game.moments'), id: 'effect-add', label: $t('features.game.effect_at_body_part'), icon: 'fx', sub: $t('features.game.drool_splash_drips_tears_steam'), words: 'fluids vfx drool splash sweat squirt pee tears', run: () => a.editMoment(null, f(), { type: 'EFFECT' }), when: has },
-      { group: $t('features.game.moments'), id: 'make-climax', label: $t('features.game.make_it_climax'), icon: 'loop', sub: $t('features.game.plays_once_so_cum_shows'), words: 'climax once loops finish', run: () => M.makeClimax(a), when: () => a.store.project.category !== 'CLIMAX' },
-      { group: $t('features.game.view'), id: 'toggle-fx', label: a.showEffects ? $t('features.game.hide_effects') : $t('features.game.show_effects'), icon: 'fx', words: 'particles drool splash stand-in', run: () => setEffects(!a.showEffects) },
-      { group: $t('features.game.view'), id: 'toggle-cum', label: a.showCum ? $t('features.game.hide_cum') : $t('features.game.show_cum'), icon: 'drop', words: 'cum layers skin texture', run: () => setCum(!a.showCum) },
+      { group: 'Moments', id: 'moment-add', label: 'Add a moment here', icon: 'flag', sub: 'cum, undress, condom off, an effect or a note', words: 'event cum undress condom effect note moments track', run: () => a.editMoment(null, f()), when: has },
+      ...M.FINISH_PARTS.map(([part, label]) => ({ group: 'Moments', id: 'finish-' + part, label: `Finish: ${part === 'inside' ? 'inside' : 'cum on the ' + label.toLowerCase()}`, icon: 'drop', sub: 'cum, drool and the finish voices at the playhead', words: 'climax cum finish orgasm ' + label, run: () => a.finishPreset(part, f()), when: has })),
+      { group: 'Moments', id: 'effect-add', label: 'Effect at a body part…', icon: 'fx', sub: 'drool, splash, drips, tears, steam', words: 'fluids vfx drool splash sweat squirt pee tears', run: () => a.editMoment(null, f(), { type: 'EFFECT' }), when: has },
+      { group: 'Moments', id: 'make-climax', label: 'Make it a climax', icon: 'loop', sub: 'plays once, so cum shows once', words: 'climax once loops finish', run: () => M.makeClimax(a), when: () => a.store.project.category !== 'CLIMAX' },
+      { group: 'View', id: 'toggle-fx', label: a.showEffects ? 'Hide effects' : 'Show effects', icon: 'fx', words: 'particles drool splash stand-in', run: () => setEffects(!a.showEffects) },
+      { group: 'View', id: 'toggle-cum', label: a.showCum ? 'Hide cum' : 'Show cum', icon: 'drop', words: 'cum layers skin texture', run: () => setCum(!a.showCum) },
     ];
   });
   add('helpRows', () => [
-    { group: $t('features.game.moments'), keys: 'Right-click the Moments row', text: $t('features.game.cum_undress_condom_coming_off') },
-    { group: $t('features.game.moments'), keys: 'Double-click the Moments row', text: $t('features.game.add_moment_there_or_change') },
-    { group: $t('features.game.moments'), keys: ['Delete'], text: $t('features.game.delete_moment_you_clicked_on') },
+    { group: 'Moments', keys: 'Right-click the Moments row', text: 'Cum, undress, a condom coming off, an effect or a note - at that time' },
+    { group: 'Moments', keys: 'Double-click the Moments row', text: 'Add a moment there (or change the one you double-clicked)' },
+    { group: 'Moments', keys: ['Delete'], text: 'Delete the moment you clicked on the timeline' },
   ]);
 
   // ---------------------------------------------------------------- creator moments come along with "Import as keys"
@@ -297,7 +296,7 @@ export function install(app) {
       let dropped = 0;
       try { const r = await fetch('/api/animation_events?id=' + encodeURIComponent(anim.id)); if (r.ok) dropped = (await r.json()).dropped || 0; } catch { /* no count */ }
       M.checkEffects((p.events || []).filter(e => e.type === 'EFFECT').map(e => e.effect)).then(() => app.timeline && app.timeline.draw());
-      toast($t('features.game.moments_came_along', { n }) + (dropped ? $t('features.game.that_game_can_t_play', { dropped }) : ''), 'ok');
+      toast(`${n} moment${n === 1 ? '' : 's'} came along (cum, undressing, effects) - on the Moments row.${dropped ? ` ${dropped} that the game can't play ${dropped === 1 ? 'was' : 'were'} left out.` : ''}`, 'ok');
       app.timeline && app.timeline.draw();
     }, 3300);
   });
@@ -414,10 +413,10 @@ function exportChecks(app, p) {
   const sim = id => p.sims.find(s => s.id === id);
   const penis = s => M.hasPenis(app, s);
   const cums = evs.filter(e => e.type === 'CUM');
-  if (cums.length && !p.sims.some(penis)) out.push({ level: 'warn', text: $t('features.game.wickedwhims_only_shows_cum_when'), frame: cums[0].frame, simId: cums[0].sim });
+  if (cums.length && !p.sims.some(penis)) out.push({ level: 'warn', text: 'WickedWhims only shows cum when someone in the act has a penis.', frame: cums[0].frame, simId: cums[0].sim });
   if (cums.length && p.category !== 'CLIMAX' && (p.loops || 10) > 1) {
-    out.push({ level: 'warn', text: $t('features.game.cum_adds_up_every_loop', { loops: p.loops || 10 }), frame: cums[0].frame,
-      fix: { label: $t('features.game.make_it_climax'), run: () => M.makeClimax(app) } });
+    out.push({ level: 'warn', text: `Cum adds up every loop in the game (this plays ${p.loops || 10}×). For a one-time finish, make it a Climax.`, frame: cums[0].frame,
+      fix: { label: 'Make it a climax', run: () => M.makeClimax(app) } });
   }
   const rig = new Set(((app.assets && app.assets.rig && app.assets.rig.bones) || []).map(b => b.name));
   const seen = new Set();
@@ -426,20 +425,20 @@ function exportChecks(app, p) {
     const s = sim(e.sim);
     if (!s) continue;
     if (e.type === 'UNDRESS' && M.nakedFromStart(app, s)) {
-      once('undress' + s.id, { level: 'warn', text: $t('features.game.is_naked_from_start_so', { sLabel: s.label }), frame: e.frame, simId: s.id,
-        fix: { label: $t('features.game.start_dressed'), run: () => { app.store.checkpoint(); s.naked = 'NONE'; app.afterEdit(); } } });
+      once('undress' + s.id, { level: 'warn', text: `${s.label} is naked from the start, so "undress" does nothing.`, frame: e.frame, simId: s.id,
+        fix: { label: 'Start dressed', run: () => { app.store.checkpoint(); s.naked = 'NONE'; app.afterEdit(); } } });
     }
-    if (e.type === 'REMOVE_CONDOM' && !penis(s)) once('condom' + s.id, { level: 'warn', text: $t('features.game.has_no_penis_so_there', { sLabel: s.label }), frame: e.frame, simId: s.id });
+    if (e.type === 'REMOVE_CONDOM' && !penis(s)) once('condom' + s.id, { level: 'warn', text: `${s.label} has no penis, so there is no condom to take off.`, frame: e.frame, simId: s.id });
     if (e.type === 'EFFECT') {
-      if (/^b__Penis_/.test(e.joint || '') && !penis(s)) once('pj' + e.id, { level: 'warn', text: $t('features.game.effect_plays_at_s_penis', { sLabel: s.label }), frame: e.frame, simId: s.id });
+      if (/^b__Penis_/.test(e.joint || '') && !penis(s)) once('pj' + e.id, { level: 'warn', text: `An effect plays at ${s.label}'s penis, but ${s.label} has none.`, frame: e.frame, simId: s.id });
       const v = M.validity.get(String(e.effect || '').toLowerCase());
-      if (!e.effect) out.push({ level: 'error', text: $t('features.game.effect_moment_has_no_effect'), frame: e.frame, simId: s.id, fix: { label: $t('features.game.pick_one'), run: () => app.editMoment(e.id) } });
+      if (!e.effect) out.push({ level: 'error', text: 'An effect moment has no effect picked.', frame: e.frame, simId: s.id, fix: { label: 'Pick one', run: () => app.editMoment(e.id) } });
       else if (v && !v.valid) {
         const eq = v.equivalent && v.equivalent !== e.effect ? v.equivalent : null;
-        out.push({ level: 'error', text: eq ? $t('features.game.not_adult_effect', { effect: e.effect }) : $t('features.game.not_adult_effect_skipped', { effect: e.effect }), frame: e.frame, simId: s.id,
-          fix: eq ? { label: $t('features.game.use', { eq }), run: () => app.updateMoment(e.id, { effect: eq }) } : { label: $t('features.game.change_it'), run: () => app.editMoment(e.id) } });
+        out.push({ level: 'error', text: `‘${e.effect}’ is not an adult game effect${eq ? '' : ', so WickedWhims would skip it'}.`, frame: e.frame, simId: s.id,
+          fix: eq ? { label: `Use ${eq}`, run: () => app.updateMoment(e.id, { effect: eq }) } : { label: 'Change it', run: () => app.editMoment(e.id) } });
       } else if (!v) M.checkEffects([e.effect]);
-      if (e.joint && rig.size && !rig.has(e.joint)) out.push({ level: 'error', text: $t('features.game.is_not_body_part_of', { joint: e.joint }), frame: e.frame, simId: s.id, fix: { label: $t('features.game.change_it'), run: () => app.editMoment(e.id) } });
+      if (e.joint && rig.size && !rig.has(e.joint)) out.push({ level: 'error', text: `‘${e.joint}’ is not a body part of the game's skeleton.`, frame: e.frame, simId: s.id, fix: { label: 'Change it', run: () => app.editMoment(e.id) } });
     }
   }
   return out;
@@ -461,7 +460,7 @@ function momentsRow(app) {
       const font = 'Plus Jakarta Sans, Segoe UI, sans-serif';
       if (!evs.length) {
         g.fillStyle = 'rgba(255,255,255,0.26)'; g.font = `500 11px ${font}`; g.textBaseline = 'middle';
-        g.fillText($t('features.game.right_click_here_to_add'), x0 + 10, y + hh / 2 + 0.5);
+        g.fillText('Right-click here to add cum, undressing, a condom coming off or an effect', x0 + 10, y + hh / 2 + 0.5);
         return;
       }
       g.save();
@@ -524,7 +523,7 @@ function momentsRow(app) {
       for (const ev of evs) if (ev.type === 'EFFECT' && x >= ctx.xAt(ev.frame) && x <= ctx.xAt(endOf(ev))) return ev;
       return null;
     },
-    tooltip(ev) { return $t('features.game.drag_to_move_double_click', { momentLabel: M.momentLabel(ev, app) }); },
+    tooltip(ev) { return `${M.momentLabel(ev, app)} · drag to move, double-click to change, right-click for more`; },
     onDown(ev, e, ctx) {
       app.selectedEvent = ev.id;
       const grab = ctx.frameAt(canvasX(e));

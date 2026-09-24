@@ -11,7 +11,6 @@ import { RigPose, landmarks, PL } from './rigpose.js';
 import { emptyPerson } from './clean.js';
 import { BS } from './facemap.js';
 import { recordAt, frameIndexAt } from './detect.js';
-import { $t } from '../i18n.js';
 
 export const isMock = () => {
   try { return !!window.__captureMock || new URLSearchParams(location.search).has('captureMock'); } catch { return false; }
@@ -27,7 +26,7 @@ export async function loadMockMotion({ animId = null, query = 'Stripper' } = {})
     if (id === null || id === undefined) {
       let items = (await api.library({ q: query, actors: 1 })).items || [];
       if (!items.length) items = (await api.library({ actors: 1 })).items || [];
-      if (!items.length) throw new Error($t('capture.mock.no_solo_animation'));
+      if (!items.length) throw new Error('no solo animation');
       id = items[0].id;
     }
     const a = await api.animation(id);
@@ -47,7 +46,7 @@ export async function loadMockMotion({ animId = null, query = 'Stripper' } = {})
 export function builtInDance(period = 2.1, seconds = 8) {
   const q = (x, y, z, a) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(x, y, z).normalize(), a);
   return {
-    name: $t('capture.mock.built_in_dance'), duration: seconds, synthetic: true, rig: null,
+    name: 'Built-in dance', duration: seconds, synthetic: true, rig: null,
     poseAt(t, rig) {
       const w = (2 * Math.PI * t) / period, s = Math.sin(w), c = Math.cos(w);
       const rest = rig ? Object.fromEntries(rig.bones.map(b => [b.name, b.rot])) : {};
@@ -119,7 +118,7 @@ export function sceneMotion(app, { frames = null } = {}) {
   }
   const n = shots.length;
   return {
-    name: n === 1 ? $t('capture.mock.your_scene_still') : $t('capture.mock.your_scene'), duration: n > 1 ? (n - 1) / fps : 0, people: sims.length, simIds: sims.map(s => s.id),
+    name: n === 1 ? 'Your scene (still)' : 'Your scene', duration: n > 1 ? (n - 1) / fps : 0, people: sims.length, simIds: sims.map(s => s.id),
     posesAt: t => shots[Math.max(0, Math.min(n - 1, Math.round(t * fps)))],
   };
 }

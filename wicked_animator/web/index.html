@@ -26,13 +26,6 @@
 // a Reload button - instead of "Loading..." forever.
 (function () {
   var failed = false;
-  // these few lines in the app's language: js/i18n.js keeps a copy of them in the browser after every start
-  var say = function (key, en, arg) {
-    var m = null;
-    try { m = JSON.parse(localStorage.getItem('wa.i18n.boot') || 'null'); } catch (e) { /* storage blocked */ }
-    var t = (m && m[key]) || en;
-    return arg === undefined ? t : t.replace('{msg}', arg);
-  };
   function started() { var l = document.getElementById('loading'); return !l || l.classList.contains('done'); }
   function fail(detail) {
     if (failed || started()) return;
@@ -42,7 +35,7 @@
       if (!box || !text) return;
       var spin = box.querySelector('.spinner');
       if (spin) spin.style.display = 'none';
-      text.textContent = say('boot.failed', 'Could not start - reload the page (Ctrl+R).');
+      text.textContent = 'Could not start - reload the page (Ctrl+R).';
       if (detail) {
         var d = document.createElement('small');
         d.className = 'loading-detail';
@@ -51,7 +44,7 @@
       }
       var b = document.createElement('button');
       b.className = 'btn primary';
-      b.textContent = say('boot.reload', 'Reload');
+      b.textContent = 'Reload';
       b.onclick = function () { location.reload(); };
       box.appendChild(b);
     };
@@ -64,18 +57,18 @@
     if (t && t.tagName === 'SCRIPT') {
       var src = t.src || '';
       // the 3D engine comes from the internet (it is loaded by the app's own files, so it shows as one of them)
-      fail(navigator.onLine === false ? say('boot.offline', 'You seem to be offline - the 3D engine loads from the internet. Connect, then reload.')
-        : /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(src) || !src ? say('boot.part_missing', 'A part of the app did not load.')
-        : say('boot.engine_missing', 'The 3D engine did not load from the internet - check your connection.'));
+      fail(navigator.onLine === false ? 'You seem to be offline - the 3D engine loads from the internet. Connect, then reload.'
+        : /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(src) || !src ? 'A part of the app did not load.'
+        : 'The 3D engine did not load from the internet - check your connection.');
     } else if (t && t.tagName === 'LINK' && t.rel === 'stylesheet' && t.href.indexOf(location.origin) === 0 && !t.hasAttribute('data-optional')) {
-      fail(say('boot.css_missing', 'The app\'s look (app.css) did not load.'));
+      fail('The app\'s look (app.css) did not load.');
     } else if (t === window || !t || !t.tagName) {
-      fail(e.message ? say('boot.error', 'Error: {msg}', e.message) : '');       // a broken file stops the app before it starts
+      fail(e.message ? 'Error: ' + e.message : '');       // a broken file stops the app before it starts
     }
   }, true);
   window.addEventListener('unhandledrejection', function (e) {
     var r = e.reason;
-    fail(r && r.message ? say('boot.error', 'Error: {msg}', r.message) : '');
+    fail(r && r.message ? 'Error: ' + r.message : '');
   });
   // the in-app "Reduce motion" switch, applied before anything paints
   try { if (JSON.parse(localStorage.getItem('fsa.reduceMotion') || 'false')) document.documentElement.classList.add('reduce-motion'); } catch (e) { /* storage blocked */ }
@@ -105,7 +98,7 @@
     </svg>
     <div class="sp-word"><b>Novulon's</b><span>Wicked Animator</span></div>
     <div class="sp-bar"><i></i></div>
-    <div class="sp-status" data-i18n="boot.waking">Waking up the sims...</div>
+    <div class="sp-status">Waking up the sims...</div>
   </div>
 </div>
 <script>
@@ -114,55 +107,53 @@
 (function () {
   var q = location.search, sp = document.getElementById('splash');
   if (sp && (navigator.webdriver || /[?&]slot=test\b/.test(q)) && !/[?&]splash=show\b/.test(q)) sp.remove();
-  // its line in the app's language from the first frame (js/i18n.js keeps a copy after every start)
-  try { var m = JSON.parse(localStorage.getItem('wa.i18n.boot') || 'null'), st = sp && sp.querySelector('.sp-status'); if (m && st && m['boot.waking']) st.textContent = m['boot.waking']; } catch (e) { /* storage blocked */ }
 })();
 </script>
 <div id="app">
   <header id="topbar">
-    <div class="brand" id="brand" title="Home" data-i18n-title="html.brand_title">
+    <div class="brand" id="brand" title="Home">
       <img src="img/logo.svg" alt="" class="logo">
       <div class="brand-text"><b>Novulon's</b><span>Wicked Animator</span></div>
     </div>
-    <button class="project-chip" id="project-chip" title="Name, creator, kind and tags" data-i18n-title="html.project_chip_title">
-      <span class="pc-kind" id="pc-kind" data-i18n="html.kind_vaginal">Vaginal</span>
-      <span class="pc-name" id="pc-name" data-i18n="html.untitled">Untitled animation</span>
-      <span class="pc-by" id="pc-by" data-i18n="html.by_you">by you</span>
-      <span id="dirty-dot" class="dirty" title="Unsaved changes" data-i18n-title="html.unsaved_changes"></span>
+    <button class="project-chip" id="project-chip" title="Name, creator, kind and tags">
+      <span class="pc-kind" id="pc-kind">Vaginal</span>
+      <span class="pc-name" id="pc-name">Untitled animation</span>
+      <span class="pc-by" id="pc-by">by you</span>
+      <span id="dirty-dot" class="dirty" title="Unsaved changes"></span>
     </button>
     <div class="top-actions">
-      <button class="search-pill" id="btn-palette" title="Search or do anything (Ctrl+K)" data-i18n-title="html.search_title"><svg><use href="#i-search"/></svg><span class="long" data-i18n="html.search">Search</span><kbd>Ctrl K</kbd></button>
-      <button class="icon-btn" id="btn-undo" title="Undo (Ctrl+Z)" data-i18n-title="html.undo_title"><svg><use href="#i-undo"/></svg></button>
-      <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z or Ctrl+Y)" data-i18n-title="html.redo_title"><svg><use href="#i-redo"/></svg></button>
+      <button class="search-pill" id="btn-palette" title="Search or do anything (Ctrl+K)"><svg><use href="#i-search"/></svg><span class="long">Search</span><kbd>Ctrl K</kbd></button>
+      <button class="icon-btn" id="btn-undo" title="Undo (Ctrl+Z)"><svg><use href="#i-undo"/></svg></button>
+      <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"><svg><use href="#i-redo"/></svg></button>
       <div class="sep"></div>
-      <button class="btn magic" id="btn-magic" title="One click: a complete animation - posed, moving, with physics, faces and sound" data-i18n-title="html.magic_title" data-i18n="html.magic"><svg><use href="#i-wand"/></svg>Magic</button>
-      <button class="btn ghost" id="btn-save" title="Save (Ctrl+S)" data-i18n-title="html.save_title" data-i18n="html.save"><svg><use href="#i-save"/></svg>Save</button>
-      <button class="btn" id="btn-share" title="Pack animations and progressions into one mod file to share" data-i18n-title="html.export_mod_title" data-i18n="html.export_mod"><svg><use href="#i-package"/></svg>Export mod</button>
-      <button class="btn primary" id="btn-export" title="Put it in your game's Mods folder to try it" data-i18n-title="html.send_title" data-i18n="html.send_to_game"><svg><use href="#i-send"/></svg>Send to game</button>
+      <button class="btn magic" id="btn-magic" title="One click: a complete animation - posed, moving, with physics, faces and sound"><svg><use href="#i-wand"/></svg>Magic</button>
+      <button class="btn ghost" id="btn-save" title="Save (Ctrl+S)"><svg><use href="#i-save"/></svg>Save</button>
+      <button class="btn" id="btn-share" title="Pack animations and progressions into one mod file to share"><svg><use href="#i-package"/></svg>Export mod</button>
+      <button class="btn primary" id="btn-export" title="Put it in your game's Mods folder to try it"><svg><use href="#i-send"/></svg>Send to game</button>
     </div>
   </header>
 
   <nav id="rail">
-    <button data-step="home" title="Home: your animations, progressions, new animation" data-i18n-title="html.home_title"><svg><use href="#i-home"/></svg><span data-i18n="html.rail_home">Home</span></button>
+    <button data-step="home" title="Home: your animations, progressions, new animation"><svg><use href="#i-home"/></svg><span>Home</span></button>
     <div class="rail-sep"></div>
-    <button data-step="scene" class="active"><i>1</i><svg><use href="#i-scene"/></svg><span data-i18n="html.rail_scene">Scene</span></button>
-    <button data-step="pose"><i>2</i><svg><use href="#i-pose"/></svg><span data-i18n="html.rail_pose">Pose</span></button>
-    <button data-step="motion"><i>3</i><svg><use href="#i-motion"/></svg><span data-i18n="html.rail_motion">Motion</span></button>
-    <button data-step="body"><i>4</i><svg><use href="#i-body"/></svg><span data-i18n="html.rail_body">Body</span></button>
-    <button data-step="face"><i>5</i><svg><use href="#i-face"/></svg><span data-i18n="html.rail_face">Face</span></button>
-    <button data-step="sounds"><i>6</i><svg><use href="#i-sound"/></svg><span data-i18n="html.rail_sounds">Sounds</span></button>
-    <button data-step="details"><i>7</i><svg><use href="#i-tag"/></svg><span data-i18n="html.rail_details">Details</span></button>
-    <button data-step="share"><i>8</i><svg><use href="#i-package"/></svg><span data-i18n="html.rail_share">Share</span></button>
+    <button data-step="scene" class="active"><i>1</i><svg><use href="#i-scene"/></svg><span>Scene</span></button>
+    <button data-step="pose"><i>2</i><svg><use href="#i-pose"/></svg><span>Pose</span></button>
+    <button data-step="motion"><i>3</i><svg><use href="#i-motion"/></svg><span>Motion</span></button>
+    <button data-step="body"><i>4</i><svg><use href="#i-body"/></svg><span>Body</span></button>
+    <button data-step="face"><i>5</i><svg><use href="#i-face"/></svg><span>Face</span></button>
+    <button data-step="sounds"><i>6</i><svg><use href="#i-sound"/></svg><span>Sounds</span></button>
+    <button data-step="details"><i>7</i><svg><use href="#i-tag"/></svg><span>Details</span></button>
+    <button data-step="share"><i>8</i><svg><use href="#i-package"/></svg><span>Share</span></button>
     <div class="rail-sep"></div>
-    <button data-step="library"><svg><use href="#i-library"/></svg><span data-i18n="html.rail_library">Library</span></button>
+    <button data-step="library"><svg><use href="#i-library"/></svg><span>Library</span></button>
     <div class="rail-grow"></div>
-    <button id="btn-help" title="Controls and shortcuts (?)" data-i18n-title="html.help_title"><svg><use href="#i-help"/></svg><span data-i18n="html.rail_help">Help</span></button>
+    <button id="btn-help" title="Controls and shortcuts (?)"><svg><use href="#i-help"/></svg><span>Help</span></button>
   </nav>
 
   <aside id="left">
     <div class="panel-head">
-      <h2 id="panel-title" data-i18n="html.panel_title">Scene</h2>
-      <p id="panel-sub" data-i18n="html.panel_sub">Who is in it and where it happens</p>
+      <h2 id="panel-title">Scene</h2>
+      <p id="panel-sub">Who is in it and where it happens</p>
     </div>
     <div class="panel-body" id="panel-body"></div>
     <div class="panel-foot" id="panel-foot"></div>
@@ -171,45 +162,45 @@
   <main id="viewport-wrap">
     <canvas id="viewport" tabindex="0"></canvas>
     <div id="ref-layer"></div>
-    <div id="drop-zone" class="hidden"><svg><use href="#i-image"/></svg><b data-i18n="html.drop_title">Drop a picture or video</b><span data-i18n="html.drop_sub">It becomes a see-through reference to trace</span></div>
+    <div id="drop-zone" class="hidden"><svg><use href="#i-image"/></svg><b>Drop a picture or video</b><span>It becomes a see-through reference to trace</span></div>
     <!-- one row over the stage: the tools in the middle (or on the left when it is narrow), the view on the right;
          they can never cover each other -->
     <div class="vp-top">
       <div class="vp-toolbar tools-cell top-center">
         <div class="seg tools" id="tool-seg">
-          <button data-tool="rotate" class="active" title="Click a body part, then turn it with the rings (R)" data-i18n-title="html.tool_rotate_title"><svg><use href="#i-rotate"/></svg><span data-i18n="html.tool_rotate">Pose</span></button>
-          <button data-tool="ik" title="Drag hands, feet and hips - the arms and legs follow (G)" data-i18n-title="html.tool_ik_title"><svg><use href="#i-hand"/></svg><span data-i18n="html.tool_ik">Drag</span></button>
-          <button data-tool="move" title="Move or turn a whole sim (M)" data-i18n-title="html.tool_move_title"><svg><use href="#i-move"/></svg><span data-i18n="html.tool_move">Place</span></button>
+          <button data-tool="rotate" class="active" title="Click a body part, then turn it with the rings (R)"><svg><use href="#i-rotate"/></svg><span>Pose</span></button>
+          <button data-tool="ik" title="Drag hands, feet and hips - the arms and legs follow (G)"><svg><use href="#i-hand"/></svg><span>Drag</span></button>
+          <button data-tool="move" title="Move or turn a whole sim (M)"><svg><use href="#i-move"/></svg><span>Place</span></button>
         </div>
       </div>
       <div class="vp-toolbar view-cell top-right">
         <div class="seg small" id="view-seg">
-          <button data-view="persp" class="active" title="Free view" data-i18n-title="html.view_persp_title" data-i18n="html.view_persp">3D</button>
-          <button data-view="front" title="Front view" data-i18n-title="html.view_front_title" data-i18n="html.view_front">Front</button>
-          <button data-view="side" title="Side view" data-i18n-title="html.view_side_title" data-i18n="html.view_side">Side</button>
-          <button data-view="top" title="View from above" data-i18n-title="html.view_top_title" data-i18n="html.view_top">Top</button>
+          <button data-view="persp" class="active" title="Free view">3D</button>
+          <button data-view="front" title="Front view">Front</button>
+          <button data-view="side" title="Side view">Side</button>
+          <button data-view="top" title="View from above">Top</button>
         </div>
-        <button class="icon-btn glass toggle" id="btn-onion" title="Ghosts: see the keys before and after this one" data-i18n-title="html.onion_title"><svg><use href="#i-ghost"/></svg></button>
-        <button class="icon-btn glass toggle" id="btn-trail" title="Motion trail: the path of the selected part over the loop" data-i18n-title="html.trail_title"><svg><use href="#i-trail"/></svg></button>
-        <button class="icon-btn glass toggle" id="btn-showcase" title="Showcase: the camera slowly circles the sims" data-i18n-title="html.showcase_title"><svg><use href="#i-turn"/></svg></button>
-        <button class="icon-btn glass" id="btn-ref" title="Reference picture or video: trace real motion (or drop a file on the view)" data-i18n-title="html.ref_title"><svg><use href="#i-image"/></svg></button>
-        <button class="icon-btn glass" id="btn-record" title="Record a video (with sound) of two loops - to show it off or post it" data-i18n-title="html.record_title"><svg><use href="#i-rec"/></svg></button>
+        <button class="icon-btn glass toggle" id="btn-onion" title="Ghosts: see the keys before and after this one"><svg><use href="#i-ghost"/></svg></button>
+        <button class="icon-btn glass toggle" id="btn-trail" title="Motion trail: the path of the selected part over the loop"><svg><use href="#i-trail"/></svg></button>
+        <button class="icon-btn glass toggle" id="btn-showcase" title="Showcase: the camera slowly circles the sims"><svg><use href="#i-turn"/></svg></button>
+        <button class="icon-btn glass" id="btn-ref" title="Reference picture or video: trace real motion (or drop a file on the view)"><svg><use href="#i-image"/></svg></button>
+        <button class="icon-btn glass" id="btn-record" title="Record a video (with sound) of two loops - to show it off or post it"><svg><use href="#i-rec"/></svg></button>
       </div>
     </div>
-    <div class="vp-editing hidden" id="vp-editing" data-i18n="html.vp_editing"><svg><use href="#i-pause"/></svg>Posing - motion and physics are paused on this sim until you click empty space</div>
+    <div class="vp-editing hidden" id="vp-editing"><svg><use href="#i-pause"/></svg>Posing - motion and physics are paused on this sim until you click empty space</div>
     <div class="vp-hud" id="vp-hud"></div>
-    <div class="vp-cam" id="vp-cam" data-i18n-html="html.vp_cam"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly<span class="long"> · <kbd>Q</kbd><kbd>E</kbd> down/up · <kbd>Shift</kbd> slow</span> · <b>Right-drag</b> look<span class="long"> · <b>Wheel</b> in/out</span></div>
+    <div class="vp-cam" id="vp-cam"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly<span class="long"> · <kbd>Q</kbd><kbd>E</kbd> down/up · <kbd>Shift</kbd> slow</span> · <b>Right-drag</b> look<span class="long"> · <b>Wheel</b> in/out</span></div>
     <div id="preview-bar" class="preview-bar hidden">
-      <span class="dot"></span><span id="preview-title" data-i18n="html.preview">Preview</span>
-      <button class="icon-btn" id="btn-preview-play" title="Play / pause the preview" data-i18n-title="html.preview_play_title"><svg><use href="#i-pause"/></svg></button>
+      <span class="dot"></span><span id="preview-title">Preview</span>
+      <button class="icon-btn" id="btn-preview-play" title="Play / pause the preview"><svg><use href="#i-pause"/></svg></button>
       <input type="range" id="preview-scrub" min="0" max="100" value="0">
       <span class="frame-chip" id="preview-frame">0</span>
-      <button class="btn small" id="btn-preview-pose" title="Copy the pose shown now into your sims at this frame" data-i18n-title="html.preview_pose_title" data-i18n="html.preview_pose">Use this pose</button>
-      <button class="btn small" id="btn-preview-import" title="Turn this animation into keys you can edit" data-i18n-title="html.preview_import_title" data-i18n="html.preview_import">Import as keys</button>
-      <button class="icon-btn" id="btn-preview-close" title="Close preview" data-i18n-title="html.preview_close_title"><svg><use href="#i-x"/></svg></button>
+      <button class="btn small" id="btn-preview-pose" title="Copy the pose shown now into your sims at this frame">Use this pose</button>
+      <button class="btn small" id="btn-preview-import" title="Turn this animation into keys you can edit">Import as keys</button>
+      <button class="icon-btn" id="btn-preview-close" title="Close preview"><svg><use href="#i-x"/></svg></button>
     </div>
     <div class="vp-letterbox" aria-hidden="true"></div>
-    <div id="loading" class="loading"><div class="spinner"></div><span id="loading-text" data-i18n="boot.loading">Loading the game's sims...</span></div>
+    <div id="loading" class="loading"><div class="spinner"></div><span id="loading-text">Loading the game's sims...</span></div>
   </main>
 
   <aside id="right">
@@ -217,30 +208,30 @@
   </aside>
 
   <footer id="timeline">
-    <div id="tl-resize" title="Drag to make the timeline taller or shorter (double-click: automatic)" data-i18n-title="html.tl_resize_title"></div>
+    <div id="tl-resize" title="Drag to make the timeline taller or shorter (double-click: automatic)"></div>
     <div class="tl-controls">
-      <div class="seg small tl-view" id="tl-view-seg"><button data-tlview="keys" class="active" title="Keys of every sim (Tab)" data-i18n-title="html.tlview_keys_title" data-i18n="html.tlview_keys"><svg><use href="#i-key"/></svg>Keys</button><button data-tlview="curves" title="How the selected part turns over time (Tab)" data-i18n-title="html.tlview_curves_title" data-i18n="html.tlview_curves"><svg><use href="#i-curve"/></svg>Curves</button></div>
+      <div class="seg small tl-view" id="tl-view-seg"><button data-tlview="keys" class="active" title="Keys of every sim (Tab)"><svg><use href="#i-key"/></svg>Keys</button><button data-tlview="curves" title="How the selected part turns over time (Tab)"><svg><use href="#i-curve"/></svg>Curves</button></div>
       <div class="tl-buttons">
-        <button class="icon-btn" id="btn-first" title="First frame (Home)" data-i18n-title="html.first_title"><svg><use href="#i-first"/></svg></button>
-        <button class="icon-btn" id="btn-prev-key" title="Previous key (,)" data-i18n-title="html.prev_key_title"><svg><use href="#i-prev"/></svg></button>
-        <button class="icon-btn play" id="btn-play" title="Play / pause (Space)" data-i18n-title="html.play_title"><svg><use href="#i-play"/></svg></button>
-        <button class="icon-btn" id="btn-next-key" title="Next key (.)" data-i18n-title="html.next_key_title"><svg><use href="#i-next"/></svg></button>
-        <button class="icon-btn toggle on" id="btn-loop" title="Loop - WickedWhims animations loop" data-i18n-title="html.loop_title"><svg><use href="#i-loop"/></svg></button>
+        <button class="icon-btn" id="btn-first" title="First frame (Home)"><svg><use href="#i-first"/></svg></button>
+        <button class="icon-btn" id="btn-prev-key" title="Previous key (,)"><svg><use href="#i-prev"/></svg></button>
+        <button class="icon-btn play" id="btn-play" title="Play / pause (Space)"><svg><use href="#i-play"/></svg></button>
+        <button class="icon-btn" id="btn-next-key" title="Next key (.)"><svg><use href="#i-next"/></svg></button>
+        <button class="icon-btn toggle on" id="btn-loop" title="Loop - WickedWhims animations loop"><svg><use href="#i-loop"/></svg></button>
       </div>
       <div class="tl-time">
         <span class="tl-frame" id="tl-frame">0</span>
         <span class="muted">/</span>
-        <label class="tl-len" title="Length of one loop" data-i18n-title="html.tl_len_title"><input id="tl-seconds-in" type="number" min="0.4" max="100" step="0.1" value="3"><span>s</span></label>
-        <span class="muted small" id="tl-frames-note" data-i18n="html.frames_90">90 frames</span>
-        <select id="tl-speed" title="Playback speed" data-i18n-title="html.tl_speed_title"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
-        <button class="icon-btn toggle on" id="btn-sound" title="Hear the sounds while it plays" data-i18n-title="html.sound_title"><svg><use href="#i-sound"/></svg></button>
+        <label class="tl-len" title="Length of one loop"><input id="tl-seconds-in" type="number" min="0.4" max="100" step="0.1" value="3"><span>s</span></label>
+        <span class="muted small" id="tl-frames-note">90 frames</span>
+        <select id="tl-speed" title="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+        <button class="icon-btn toggle on" id="btn-sound" title="Hear the sounds while it plays"><svg><use href="#i-sound"/></svg></button>
       </div>
       <div class="tl-keys">
-        <button class="btn small key-btn" id="btn-key" title="Keep the selected sim's pose at this frame (K)" data-i18n-title="html.key_title" data-i18n="html.key_pose"><svg><use href="#i-key"/></svg>Key pose</button>
-        <button class="btn small ghost" id="btn-key-all" title="Key every sim here (Shift+K)" data-i18n-title="html.key_all_title" data-i18n="html.key_all">Key all</button>
-        <button class="icon-btn" id="btn-del-key" title="Delete the key here (Delete)" data-i18n-title="html.del_key_title"><svg><use href="#i-trash"/></svg></button>
-        <div class="ease-pick" id="ease-pick" title="How the motion flows from this key into the next" data-i18n-title="html.ease_title"></div>
-        <button class="icon-btn toggle on rec" id="btn-autokey" title="Auto key: every change you make is kept at this frame" data-i18n-title="html.autokey_title"><svg><use href="#i-rec"/></svg></button>
+        <button class="btn small key-btn" id="btn-key" title="Keep the selected sim's pose at this frame (K)"><svg><use href="#i-key"/></svg>Key pose</button>
+        <button class="btn small ghost" id="btn-key-all" title="Key every sim here (Shift+K)">Key all</button>
+        <button class="icon-btn" id="btn-del-key" title="Delete the key here (Delete)"><svg><use href="#i-trash"/></svg></button>
+        <div class="ease-pick" id="ease-pick" title="How the motion flows from this key into the next"></div>
+        <button class="icon-btn toggle on rec" id="btn-autokey" title="Auto key: every change you make is kept at this frame"><svg><use href="#i-rec"/></svg></button>
       </div>
     </div>
     <canvas id="tl-canvas"></canvas>

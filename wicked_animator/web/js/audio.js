@@ -6,7 +6,6 @@
 // male - all adult voices), and a line is fetched in that voice (/api/sound?voice=). Child and special voices are
 // never used.
 import { localStorageGet, localStorageSet } from './state.js';
-import { $t } from './i18n.js';
 
 // ---------------------------------------------------------------- the sims' voices
 export const ADULT_CODES = { female: ['fa', 'fc', 'fd'], male: ['ma', 'mb', 'mc'] };
@@ -40,7 +39,7 @@ export function voiceFor(name, sim) { return isVoiceLine(name) && !voiceCode(nam
 // "Voice 2" (female) / "Voice 3" (male)
 export function voiceLabel(code) {
   const f = ADULT_CODES.female.indexOf(code), m = ADULT_CODES.male.indexOf(code);
-  return f >= 0 ? $t('audio.voice_n', { n: f + 1 }) : m >= 0 ? $t('audio.voice_n', { n: m + 1 }) : code || '';
+  return f >= 0 ? `Voice ${f + 1}` : m >= 0 ? `Voice ${m + 1}` : code || '';
 }
 
 // ---------------------------------------------------------------- kinds of voice lines
@@ -59,13 +58,13 @@ const ok = x => !NOT_SEXY.test(String(x.name).toLowerCase());
 // code that still treats it as a regular expression)
 const set = fn => { const t = x => { const l = line(x); return !!l.name && fn(l, String(l.name).toLowerCase()); }; t.test = t; return t; };
 export const VOICE_SETS = [
-  ['moan_soft', $t('audio.soft_moans'), set((x, n) => ok(x) && ((has(x, 'moan') && !/discomfort|uncomfortable/.test(n)) || has(x, 'kiss') || /makeout_breathe/.test(n)))],
-  ['moan', $t('audio.moans'), set((x, n) => ok(x) && (has(x, 'moan') || (has(x, 'woohoo') && /loop/.test(n))))],
-  ['woohoo', $t('audio.woohoo_game_s_own'), set((x, n) => ok(x) && has(x, 'woohoo') && /loop/.test(n))],
-  ['climax', $t('audio.climax'), set(x => ok(x) && has(x, 'climax'))],
-  ['breath', $t('audio.breathing_sighs'), set(x => ok(x) && has(x, 'breath'))],
-  ['kiss', $t('audio.kisses'), set(x => ok(x) && has(x, 'kiss'))],
-  ['any', $t('audio.any_voice'), set(() => true)],
+  ['moan_soft', 'Soft moans', set((x, n) => ok(x) && ((has(x, 'moan') && !/discomfort|uncomfortable/.test(n)) || has(x, 'kiss') || /makeout_breathe/.test(n)))],
+  ['moan', 'Moans', set((x, n) => ok(x) && (has(x, 'moan') || (has(x, 'woohoo') && /loop/.test(n))))],
+  ['woohoo', "WooHoo (the game's own)", set((x, n) => ok(x) && has(x, 'woohoo') && /loop/.test(n))],
+  ['climax', 'Climax', set(x => ok(x) && has(x, 'climax'))],
+  ['breath', 'Breathing & sighs', set(x => ok(x) && has(x, 'breath'))],
+  ['kiss', 'Kisses', set(x => ok(x) && has(x, 'kiss'))],
+  ['any', 'Any voice', set(() => true)],
 ];
 // How well a line fits an adult animation (0 best): moans, WooHoo, climax, breathing and kisses first, then flirting,
 // then the rest; lines that never sound sexy and EA's rare 'lowprob' takes last.
@@ -119,7 +118,7 @@ export class SoundPlayer {
     if (!this.ensure()) return Promise.resolve(null);
     const url = '/api/sound?name=' + encodeURIComponent(name) + (voice ? '&voice=' + encodeURIComponent(voice) : '');
     const p = fetch(url)
-      .then(r => { if (!r.ok) throw new Error($t('audio.not_found')); return r.arrayBuffer(); })
+      .then(r => { if (!r.ok) throw new Error('not found'); return r.arrayBuffer(); })
       .then(buf => this.ctx.decodeAudioData(buf))
       .then(b => { this.buffers.set(key, b); return b; })
       .catch(() => {

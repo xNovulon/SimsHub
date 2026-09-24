@@ -11,7 +11,6 @@
 // game_running). Nothing here changes a file without a click, and every change goes through doctor_fix.
 import * as ui from './ui.js';
 import { browsePanel } from './doctorbrowse.js';
-import { $t } from './i18n.js';
 
 const { h, icon, modal, toast } = ui;
 const reduced = () => (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -38,7 +37,7 @@ export const doctorApi = {
   running: () => j('/api/game_running'),
   reveal: path => post('/api/reveal', { path }),
 };
-const OLD_ENGINE = $t('doctor.this_needs_newest_engine_close');
+const OLD_ENGINE = 'This needs the newest engine - close Wicked Animator and open it again.';
 
 // ---------------------------------------------------------------- icons (added once to the app's sprite sheet)
 const ICONS = {
@@ -74,10 +73,10 @@ export function ensureStyles() {
 
 // ---------------------------------------------------------------- the doctor dialog
 const LEVELS = [
-  ['red', $t('doctor.level_red'), 'doc-stop'],
-  ['yellow', $t('doctor.level_yellow'), 'doc-alert'],
-  ['info', $t('doctor.good_to_know'), 'doc-info'],
-  ['green', $t('doctor.all_good'), 'doc-ok'],
+  ['red', 'Needs a fix', 'doc-stop'],
+  ['yellow', 'Worth a look', 'doc-alert'],
+  ['info', 'Good to know', 'doc-info'],
+  ['green', 'All good', 'doc-ok'],
 ];
 const LEVEL_ICON = Object.fromEntries(LEVELS.map(([k, , ic]) => [k, ic]));
 const MIN_SWEEP = 1100;              // the radar sweeps at least this long, so a cached (instant) scan still reads as one
@@ -100,10 +99,10 @@ export function openDoctor(app, { tab = 'check' } = {}) {
     h('div', { class: 'doc-sweep' }),
     h('div', { class: 'doc-blips' }),
     h('div', { class: 'doc-core' }, h('div', { class: 'doc-core-in' }, icon('doctor'))));
-  const phase = h('div', { class: 'doc-phase', role: 'status', 'aria-live': 'polite' }, $t('doctor.getting_ready'));
+  const phase = h('div', { class: 'doc-phase', role: 'status', 'aria-live': 'polite' }, 'Getting ready...');
   const bar = h('div', { class: 'doc-bar' }, h('i'));
   const tally = h('div', { class: 'doc-tally' });
-  const meta = h('div', { class: 'doc-meta' }, $t('doctor.read_only_nothing_in_your'));
+  const meta = h('div', { class: 'doc-meta' }, 'Read-only: nothing in your Mods changes unless you press a button.');
   const head = h('div', { class: 'doc-top' }, radar, h('div', { class: 'doc-head' }, phase, bar, tally, meta));
   const list = h('div', { class: 'doc-list' });
   for (const [lv, label] of LEVELS) {
@@ -119,7 +118,7 @@ export function openDoctor(app, { tab = 'check' } = {}) {
   let browse = null, current = 'check';
   const tabs = h('div', { class: 'seg-inline doc-tabs', role: 'tablist' });
   const tabBtn = (id, text) => h('button', { type: 'button', role: 'tab', 'data-tab': id, onclick: () => showTab(id) }, text);
-  tabs.append(tabBtn('check', $t('doctor.check_my_game')), tabBtn('browse', $t('doctor.browse_my_animations')));
+  tabs.append(tabBtn('check', 'Check my game'), tabBtn('browse', 'Browse my animations'));
   const showTab = id => {
     current = id === 'browse' ? 'browse' : 'check';
     for (const b of tabs.children) { b.classList.toggle('on', b.dataset.tab === current); b.setAttribute('aria-selected', String(b.dataset.tab === current)); }
@@ -140,12 +139,12 @@ export function openDoctor(app, { tab = 'check' } = {}) {
   Object.assign(ctx, { radar, phase, bar, tally, meta, note, list });
 
   const dlg = modal({
-    title: $t('doctor.check_my_game'),
-    text: $t('doctor.why_don_t_my_animations'),
+    title: 'Check my game',
+    text: "Why don't my animations show up? A safe look at your Mods folder and WickedWhims' settings.",
     body, wide: true,
     buttons: [
-      { label: $t('doctor.rescan'), kind: 'ghost', onClick: () => { if (current === 'browse' && browse) browse.refresh(); else start(ctx, true); return false; } },
-      { label: $t('doctor.done'), kind: 'primary' },
+      { label: 'Rescan', kind: 'ghost', onClick: () => { if (current === 'browse' && browse) browse.refresh(); else start(ctx, true); return false; } },
+      { label: 'Done', kind: 'primary' },
     ],
     onClose: () => { ctx.closed = true; clearTimeout(ctx.timer); openDlg = null; if (browse) browse.stop(); },
   });
@@ -183,8 +182,8 @@ function fail(ctx, e) {
   ctx.radar.classList.remove('scanning');
   ctx.dlg.dialog.classList.remove('doc-scanning');
   ctx.note.classList.remove('hidden');
-  ctx.note.textContent = e && e.status === 404 ? OLD_ENGINE : $t('doctor.check_could_not_run', { e: (e && e.message) || e });
-  ctx.phase.textContent = $t('doctor.check_stopped');
+  ctx.note.textContent = e && e.status === 404 ? OLD_ENGINE : 'The check could not run: ' + ((e && e.message) || e);
+  ctx.phase.textContent = 'The check stopped';
 }
 
 async function poll(ctx, st) {
@@ -193,7 +192,7 @@ async function poll(ctx, st) {
   apply(ctx, st.cards || [], true);
   const total = st.total || 0, done = st.done || 0;
   if (st.running || performance.now() - ctx.t0 < (reduced() ? 0 : MIN_SWEEP)) {
-    ctx.phase.textContent = st.running ? (st.text || $t('doctor.checking')) : $t('doctor.putting_it_all_together');
+    ctx.phase.textContent = st.running ? (st.text || 'Checking...') : 'Putting it all together...';
     const p = st.running ? (total ? 0.08 + 0.9 * (done / total) : 0.06) : 1;
     ctx.bar.firstChild.style.transform = `scaleX(${Math.max(0.03, Math.min(1, p)).toFixed(3)})`;
     ctx.timer = setTimeout(async () => {
@@ -203,7 +202,7 @@ async function poll(ctx, st) {
     }, st.running ? 160 : 90);
     return;
   }
-  if (st.phase === 'error') return fail(ctx, new Error(st.error || $t('doctor.unknown_problem')));
+  if (st.phase === 'error') return fail(ctx, new Error(st.error || 'unknown problem'));
   finish(ctx, st);
 }
 
@@ -218,7 +217,7 @@ function finish(ctx, st) {
   const s = st.summary || {};
   headline(ctx);
   const files = (s.mods_files || 0), parked = s.parked_packages || 0;
-  ctx.meta.textContent = $t(parked ? 'doctor.scan_meta_parked' : 'doctor.scan_meta', { files, parked, size: s.bytes ? ` · ${gb(s.bytes)}` : '', secs: +(st.seconds || 0).toFixed(1) });
+  ctx.meta.textContent = `${plural(files, 'file')} in Mods${parked ? ` + ${plural(parked, 'set-aside package')}` : ''}${s.bytes ? ` · ${gb(s.bytes)}` : ''} checked in ${(st.seconds || 0).toFixed(1)} s. Nothing was changed.`;
 }
 
 // The big line and the radar's centre: what is left to fix (solved cards no longer count).
@@ -229,10 +228,10 @@ function headline(ctx) {
   ctx.radar.classList.add(red ? 'lv-red' : yellow ? 'lv-yellow' : 'lv-green');
   const core = ctx.radar.querySelector('.doc-core-in');
   core.innerHTML = '';
-  if (red || yellow) core.append(h('b', {}, String(red || yellow)), h('small', {}, red ? $t('doctor.to_fix') : $t('doctor.to_check')));
+  if (red || yellow) core.append(h('b', {}, String(red || yellow)), h('small', {}, red ? 'to fix' : 'to check'));
   else core.append(icon('check'));
-  ctx.phase.textContent = red ? $t('doctor.things_need_fix', { n: red }) : yellow ? $t('doctor.things_worth_look', { n: yellow })
-    : ctx.fixed ? $t('doctor.all_fixed_restart_sims_4') : $t('doctor.everything_looks_good');
+  ctx.phase.textContent = red ? `${plural(red, 'thing')} ${red === 1 ? 'needs' : 'need'} a fix` : yellow ? `${plural(yellow, 'thing')} worth a look`
+    : ctx.fixed ? 'All fixed - restart The Sims 4 to see it' : 'Everything looks good';
 }
 
 // Put the cards on screen: new ones drop in (with a blip on the radar), changed ones update in place, gone ones go.
@@ -279,8 +278,8 @@ function tallyUp(ctx) {
   }
   ctx.tally.innerHTML = '';
   const chip = (lv, n, word) => h('span', { class: `doc-chip lv-${lv}` + (n ? '' : ' zero') }, h('i'), h('b', {}, String(n)), word);
-  ctx.tally.append(chip('red', counts.red, $t('doctor.need_fix')), chip('yellow', counts.yellow, $t('doctor.worth_look')), chip('green', counts.green + counts.info, 'fine'));
-  if (ctx.fixed) ctx.tally.append(h('span', { class: 'doc-chip fixed' }, icon('check'), $t('doctor.n_fixed', { n: ctx.fixed })));
+  ctx.tally.append(chip('red', counts.red, 'need a fix'), chip('yellow', counts.yellow, 'worth a look'), chip('green', counts.green + counts.info, 'fine'));
+  if (ctx.fixed) ctx.tally.append(h('span', { class: 'doc-chip fixed' }, icon('check'), `${ctx.fixed} fixed`));
 }
 
 function blip(ctx, c) {
@@ -329,15 +328,15 @@ async function runAction(ctx, a, card, row, btn) {
     const names = card.querySelector('.doc-names');
     if (!names) return;
     const open = names.classList.toggle('hidden') === false;
-    btn.lastChild.textContent = open ? $t('doctor.hide_list') : a.label;
+    btn.lastChild.textContent = open ? 'Hide the list' : a.label;
     return;
   }
   if (a.kind === 'reveal') {
     const path = (ctx.simsDir ? ctx.simsDir + '\\Mods\\' : '') + String(a.file || '').replace(/\//g, '\\');
-    try { await doctorApi.reveal(path); } catch (e) { toast($t('doctor.couldn_t_open_that_folder', { message: e.message }), 'err'); }
+    try { await doctorApi.reveal(path); } catch (e) { toast("Couldn't open that folder: " + e.message, 'err'); }
     return;
   }
-  const busyText = a.kind === 'park' ? 'Parking...' : $t('doctor.turning_on');
+  const busyText = a.kind === 'park' ? 'Parking...' : 'Turning on...';
   const old = btn.lastChild.textContent;
   btn.disabled = true; btn.lastChild.textContent = busyText;
   card.classList.add('busy');
@@ -346,15 +345,15 @@ async function runAction(ctx, a, card, row, btn) {
   try {
     r = await doctorApi.fix(a.kind === 'park' ? { action: 'park', file: a.file } : { action: 'enable', file: a.file, list: a.list, entry: a.entry });
   } catch (e) {
-    r = { ok: false, error: e.status === 404 ? OLD_ENGINE : $t('doctor.that_did_not_work', { message: e.message }) };
+    r = { ok: false, error: e.status === 404 ? OLD_ENGINE : 'That did not work: ' + e.message };
   }
   card.classList.remove('busy');
   if (!r || !r.ok) {
     btn.disabled = false; btn.lastChild.textContent = old;
-    card.querySelector('.doc-main').append(h('div', { class: 'doc-warn' }, icon('doc-alert'), (r && r.error) || $t('doctor.that_did_not_work_2')));
+    card.querySelector('.doc-main').append(h('div', { class: 'doc-warn' }, icon('doc-alert'), (r && r.error) || 'That did not work.'));
     return;
   }
-  const done = h('span', { class: 'doc-done' }, icon('check'), a.kind === 'park' ? $t('doctor.parked') : $t('doctor.turned_back_on'));
+  const done = h('span', { class: 'doc-done' }, icon('check'), a.kind === 'park' ? 'Parked' : 'Turned back on');
   btn.replaceWith(done);
   (row || card).classList.add('fixed');
   // solved once enough files are parked (a clash of two bodies needs one), or when every safe button was used
@@ -364,11 +363,11 @@ async function runAction(ctx, a, card, row, btn) {
   ctx.fixed++;
   tallyUp(ctx);
   if (ctx.done) headline(ctx);
-  toast(r.text || $t('doctor.done_2'), 'ok');
+  toast(r.text || 'Done.', 'ok');
 }
 
 // ---------------------------------------------------------------- "Did it play in the game?"
-const LIMB_WORDS = { handL: $t('doctor.left_hand'), handR: $t('doctor.right_hand'), footL: $t('doctor.left_foot'), footR: $t('doctor.right_foot'), hips: 'hips', head: 'head' };
+const LIMB_WORDS = { handL: 'left hand', handR: 'right hand', footL: 'left foot', footR: 'right foot', hips: 'hips', head: 'head' };
 
 // What to look at in the game, each with the frame to go back to.
 export function lookItems(p) {
@@ -390,15 +389,15 @@ export function lookItems(p) {
       if (!pin || f < pin.frame) pin = { frame: f, sim: s, limb };
     }
   }
-  items.push({ id: 'tongue', icon: 'doc-tongue', label: $t('doctor.tongue'),
-    sub: tongue ? $t('doctor.sticks_it_out_here', { simLabel: tongue.sim.label }) : $t('doctor.it_stays_inside_mouth'), frame: tongue ? tongue.frame : 0, simId: tongue && tongue.sim.id });
-  items.push({ id: 'face', icon: 'face', label: $t('doctor.face'),
-    sub: face ? $t('doctor.s_strongest_expression', { simLabel: face.sim.label }) : $t('doctor.eyes_and_mouth_look_natural'), frame: face ? face.frame : 0, simId: face && face.sim.id });
-  items.push({ id: 'holds', icon: 'doc-hand', label: $t('doctor.hands_that_hold_on'),
-    sub: pin ? $t('doctor.s_stays_in_place', { simLabel: pin.sim.label, v: LIMB_WORDS[pin.limb] || pin.limb }) : $t('doctor.hands_on_partner_not_through'), frame: pin ? pin.frame : 0, simId: pin && pin.sim.id });
+  items.push({ id: 'tongue', icon: 'doc-tongue', label: 'The tongue',
+    sub: tongue ? `${tongue.sim.label} sticks it out here` : 'It stays inside the mouth', frame: tongue ? tongue.frame : 0, simId: tongue && tongue.sim.id });
+  items.push({ id: 'face', icon: 'face', label: 'The face',
+    sub: face ? `${face.sim.label}'s strongest expression` : 'Eyes and mouth look natural', frame: face ? face.frame : 0, simId: face && face.sim.id });
+  items.push({ id: 'holds', icon: 'doc-hand', label: 'Hands that hold on',
+    sub: pin ? `${pin.sim.label}'s ${LIMB_WORDS[pin.limb] || pin.limb} stays in place` : 'Hands on the partner, not through them', frame: pin ? pin.frame : 0, simId: pin && pin.sim.id });
   const bed = /bed/i.test(String(p && p.furniture || '')) || ((p && p.locations) || []).some(l => /BED/.test(l));
-  items.push({ id: 'feet', icon: 'doc-feet', label: bed ? $t('doctor.feet_on_bed') : $t('doctor.feet_on_floor'),
-    sub: $t('doctor.not_sinking_in_or_floating'), frame: 0, simId: null });
+  items.push({ id: 'feet', icon: 'doc-feet', label: bed ? 'Feet on the bed' : 'Feet on the floor',
+    sub: 'Not sinking in or floating above it', frame: 0, simId: null });
   return items;
 }
 
@@ -410,7 +409,7 @@ function jumpTo(app, it, fromEl) {
   } catch (e) { console.error(e); }
   const back = fromEl && fromEl.closest('.backdrop');
   if (back) back.querySelector('.modal-x')?.click();
-  toast($t('doctor.frame_fix_it_here_then', { frame: it.frame }));
+  toast(`Frame ${it.frame} - fix it here, then Send to game again.`);
 }
 
 const fmtClock = x => x.clock || (x.time ? new Date(x.time * 1000).toTimeString().slice(0, 5) : '');
@@ -422,24 +421,24 @@ export function didItPlayPanel(app, { project = null, since = null, look = true 
   ensureIcons(); ensureStyles();
   const p = project || (app && app.store && app.store.project) || {};
   const result = h('div', { class: 'dip-result', role: 'status', 'aria-live': 'polite' });
-  const btn = h('button', { class: 'btn small soft dip-check', type: 'button' }, icon('search'), $t('doctor.check_now'));
+  const btn = h('button', { class: 'btn small soft dip-check', type: 'button' }, icon('search'), 'Check now');
   const el = h('div', { class: 'dip' },
     h('div', { class: 'dip-row' },
       h('div', { class: 'dip-ico' }, icon('doc-game')),
-      h('div', { class: 'dip-text' }, h('b', {}, $t('doctor.did_it_play_in_game')),
-        h('span', {}, $t('doctor.play_it_in_game_then'))),
+      h('div', { class: 'dip-text' }, h('b', {}, 'Did it play in the game?'),
+        h('span', {}, "Play it in the game, then come back - we read WickedWhims' log and tell you if it played.")),
       btn),
     result);
   if (look) {
     const rows = lookItems(p).map(it => h('li', { class: 'dip-look-row' },
       h('span', { class: 'dip-look-ic' }, icon(it.icon)),
-      h('span', { class: 'dip-look-t' }, h('b', {}, it.label), h('small', {}, $t('doctor.frame', { sub: it.sub, frame: it.frame }))),
-      h('button', { class: 'btn small ghost dip-jump', type: 'button', onclick: e => jumpTo(app, it, e.currentTarget) }, $t('doctor.looked_wrong_take_me_to'))));
-    el.append(h('div', { class: 'dip-look' }, h('div', { class: 'dip-look-h' }, $t('doctor.what_to_look_at_in')), h('ul', {}, rows)));
+      h('span', { class: 'dip-look-t' }, h('b', {}, it.label), h('small', {}, `${it.sub} · frame ${it.frame}`)),
+      h('button', { class: 'btn small ghost dip-jump', type: 'button', onclick: e => jumpTo(app, it, e.currentTarget) }, 'Looked wrong → take me to that frame')));
+    el.append(h('div', { class: 'dip-look' }, h('div', { class: 'dip-look-h' }, 'What to look at in the game'), h('ul', {}, rows)));
   }
   btn.addEventListener('click', () => check());
   async function check() {
-    btn.disabled = true; btn.lastChild.textContent = $t('doctor.reading_log');
+    btn.disabled = true; btn.lastChild.textContent = 'Reading the log...';
     el.classList.add('checking');
     let r;
     try {
@@ -448,7 +447,7 @@ export function didItPlayPanel(app, { project = null, since = null, look = true 
       r = { error: e.status === 404 ? OLD_ENGINE : e.message };
     }
     el.classList.remove('checking');
-    btn.disabled = false; btn.lastChild.textContent = $t('doctor.check_again');
+    btn.disabled = false; btn.lastChild.textContent = 'Check again';
     showResult(result, r, p);
   }
   el.check = check;
@@ -463,8 +462,8 @@ function showResult(box, r, p) {
   if (played.length) {
     const last = played[played.length - 1];
     box.append(h('div', { class: 'dip-msg ok' }, h('span', { class: 'dip-tick' }, icon('check')),
-      h('div', {}, h('b', {}, $t('doctor.played_in_game', { fmtClock: fmtClock(last) })),
-        last.sims && last.sims.length ? h('small', {}, last.sims.join(' + ') + (played.length > 1 ? $t('doctor.times', { playedCount: played.length }) : '')) : null)));
+      h('div', {}, h('b', {}, `Played in the game ✓ (${fmtClock(last)})`),
+        last.sims && last.sims.length ? h('small', {}, last.sims.join(' + ') + (played.length > 1 ? ` · ${played.length} times` : '')) : null)));
   }
   for (const x of problems.slice(0, 6)) {
     box.append(h('div', { class: 'dip-msg ' + (x.kind === 'moment' ? 'warn' : 'bad') }, icon(x.kind === 'moment' ? 'doc-alert' : 'doc-stop'),
@@ -472,16 +471,16 @@ function showResult(box, r, p) {
   }
   if (played.length || problems.length) return;
   let text;
-  if (!r.exists) text = $t('doctor.wickedwhims_log_isn_t_there');
-  else if (r.running) text = $t('doctor.sims_4_is_running_play', { gameNamesName: gameNames(p).name });
-  else text = $t('doctor.not_played_yet_start_sims', { gameNamesName: gameNames(p).name });
+  if (!r.exists) text = "WickedWhims' log isn't there yet. Start The Sims 4 once with WickedWhims, then press Check now.";
+  else if (r.running) text = `The Sims 4 is running. Play "${gameNames(p).name}", then press Check now again.`;
+  else text = `Not played yet. Start The Sims 4 (restart it if it was open), play "${gameNames(p).name}", then press Check now.`;
   box.append(h('div', { class: 'dip-msg wait' }, icon('doc-info'), text));
 }
 
 export function openDidItPlay(app, { project = null, since = null } = {}) {
   const p = project || app.store.project;
   const panel = didItPlayPanel(app, { project: p, since: since ?? sentAt(p) });
-  const dlg = modal({ title: $t('doctor.did_it_play_in_game'), text: `"${p.name || $t('doctor.your_animation')}"${p.author ? ' by ' + p.author : ''}`, body: panel, buttons: [{ label: $t('doctor.done'), kind: 'primary' }] });
+  const dlg = modal({ title: 'Did it play in the game?', text: `"${p.name || 'Your animation'}"${p.author ? ' by ' + p.author : ''}`, body: panel, buttons: [{ label: 'Done', kind: 'primary' }] });
   dlg.dialog.classList.add('dip-modal');
   panel.check();
   return dlg;
@@ -526,7 +525,7 @@ export async function checkPending(app) {
   store.set({ ...x, told: true });
   const p = { name: x.name, author: x.author, uid: x.uid };
   const show = () => { const cur = app.store && app.store.project; openDidItPlay(app, { project: cur && cur.uid === x.uid ? cur : p, since: x.since }); };
-  const text = played.length ? $t('doctor.played_in_game_2', { xName: x.name, fmtClock: fmtClock(played[played.length - 1]) }) : `"${x.name}": ${problems[0].text}`;
-  if (typeof ui.choiceBar === 'function') ui.choiceBar(text, [{ label: played.length ? $t('doctor.what_to_look_at') : $t('doctor.show_me'), primary: true, onClick: show }], { timeout: 16000 });
+  const text = played.length ? `"${x.name}" played in the game ✓ (${fmtClock(played[played.length - 1])})` : `"${x.name}": ${problems[0].text}`;
+  if (typeof ui.choiceBar === 'function') ui.choiceBar(text, [{ label: played.length ? 'What to look at' : 'Show me', primary: true, onClick: show }], { timeout: 16000 });
   else toast(text, played.length ? 'ok' : 'err');
 }

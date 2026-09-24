@@ -3,7 +3,6 @@
 // BVH instead" message) dropped anywhere on the window. The dialog (web/js/mocapfile.js) loads only when used.
 // Everything registers through app.hooks and the DOM, so main.js, index.html and features/capture.js stay untouched.
 import { h, icon, section, addIcon } from '../ui.js';
-import { $t } from '../i18n.js';
 
 // the icons this uses (added to the app's sprite sheet once)
 function ensureIcons() {
@@ -18,9 +17,9 @@ const open = (app, file = null) => load().then(m => m.openMotionFile(app, { file
 const isMotionFile = f => /\.(bvh|fbx)$/i.test((f && f.name) || '');
 
 function button(app, cls) {
-  return h('button', { class: cls, 'data-mocapfile': 'open', title: $t('features.mocapfile.bvh_file_from_mocap_library'), onclick: () => open(app) },
+  return h('button', { class: cls, 'data-mocapfile': 'open', title: 'A BVH file from a mocap library or a free AI tool (Rokoko Vision, DeepMotion, Plask)', onclick: () => open(app) },
     h('span', { class: 'mf-entry-icon' }, icon('mf-bvh')),
-    h('span', { class: 'mf-entry-text' }, h('b', {}, $t('features.mocapfile.from_motion_file')), h('small', {}, $t('features.mocapfile.bvh_from_mocap_or_ai'))));
+    h('span', { class: 'mf-entry-text' }, h('b', {}, 'From a motion file'), h('small', {}, 'BVH from mocap or AI tools (Rokoko, DeepMotion, Plask)')));
 }
 
 export function install(app) {
@@ -36,7 +35,7 @@ export function install(app) {
       const btn = button(a, 'mf-entry-btn');
       const cap = root.querySelector('.cap-entry');
       if (cap) cap.after(btn);
-      else root.append(section($t('features.mocapfile.copy_real_moves'), btn));
+      else root.append(section('Copy real moves', btn));
     });
   }
 
@@ -45,19 +44,19 @@ export function install(app) {
     const lib = app.library && app.library.root;
     if (lib && !lib.querySelector('[data-mocapfile]')) {
       lib.append(h('div', { class: 'mf-lib' },
-        h('div', { class: 'mf-lib-text' }, h('b', {}, $t('features.mocapfile.have_motion_file')),
-          h('span', {}, $t('features.mocapfile.import_bvh_from_mocap_library'))),
-        h('button', { class: 'btn soft small', 'data-mocapfile': 'library', onclick: () => open(app) }, icon('mf-bvh'), $t('features.mocapfile.import_motion_file'))));
+        h('div', { class: 'mf-lib-text' }, h('b', {}, 'Have a motion file?'),
+          h('span', {}, 'Import a BVH from a mocap library or a free AI tool and turn it into keys you can change.')),
+        h('button', { class: 'btn soft small', 'data-mocapfile': 'library', onclick: () => open(app) }, icon('mf-bvh'), 'Import a motion file')));
     }
   } catch (e) { console.error('motion file: library card', e); }
 
   add('commands', a => [
-    { group: $t('features.mocapfile.actions'), id: 'mocap-file', label: $t('features.mocapfile.import_motion_file_bvh'), icon: 'mf-bvh', sub: $t('features.mocapfile.mocap_or_ai_tools_rokoko'),
+    { group: 'Actions', id: 'mocap-file', label: 'Import a motion file (BVH)', icon: 'mf-bvh', sub: 'mocap or AI tools: Rokoko Vision, DeepMotion, Plask, CMU',
       words: 'bvh mocap motion capture file import rokoko deepmotion plask mixamo cmu fbx animation keys', run: () => open(a) },
   ]);
   add('helpRows', () => [
-    { group: $t('features.mocapfile.copy_real_moves'), keys: ['Ctrl', 'K'], text: $t('features.mocapfile.type_motion_file_to_import') },
-    { group: $t('features.mocapfile.copy_real_moves'), keys: 'Drop a .bvh file', text: $t('features.mocapfile.on_stage_to_put_its') },
+    { group: 'Copy real moves', keys: ['Ctrl', 'K'], text: 'Type "motion file" to import a BVH from a mocap library or an AI tool' },
+    { group: 'Copy real moves', keys: 'Drop a .bvh file', text: 'on the stage to put its moves on the selected sim' },
   ]);
 
   // a .bvh / .fbx dropped anywhere: the dialog (before the stage's own drop, which only takes pictures and videos)

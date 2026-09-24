@@ -8,7 +8,6 @@ import * as THREE from 'three';
 import { spacePos, spaceQuat, solveTwoBone } from './posemath.js';
 import { POSABLE, HIPS, LIMBS } from './bones.js';
 import { pelvisAxes } from './motion.js';
-import { $t } from './i18n.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const LYING = 1.1;        // bodies longer than this (m, along their main line) lie or kneel along the furniture
@@ -415,19 +414,18 @@ export function spotsOf(info) {
     out.push(s);
   }
   const side = x => (Math.abs(x) < 0.05 ? 'middle' : x < 0 ? 'left' : 'right');
-  const sideWord = x => $t('placing.side_' + side(x));
   const seats = out.filter(s => s.kind === 'seat').sort((a, b) => a.pos[0] - b.pos[0]);
   const lies = out.filter(s => s.kind === 'lie');
   const label = s => {
-    if (s.kind === 'seat') return seats.length > 1 ? $t('placing.seat_n', { n: seats.indexOf(s) + 1 }) : $t('placing.seat');
-    if (s.kind === 'edge') return $t('placing.edge_at', { side: sideWord(s.pos[0]), end: s.pos[2] < 0 ? $t('placing.head_end') : $t('placing.foot_end') });
-    if (s.kind === 'in') return $t('placing.spot_side', { spot: s.dir && s.dir[2] > 0 ? $t('placing.sit_up_in_bed') : $t('placing.foot_of_bed'), side: sideWord(s.pos[0]) });
-    if (s.kind === 'lie') return lies.length > 1 ? $t('placing.lie_at', { side: side(s.pos[0]) === 'middle' ? $t('placing.side_middle') : $t('placing.side_' + side(s.pos[0]) + '_side') }) : $t('placing.lie_on_it');
-    return $t('placing.spot');
+    if (s.kind === 'seat') return seats.length > 1 ? `Seat ${seats.indexOf(s) + 1}` : 'Seat';
+    if (s.kind === 'edge') return `Edge (${side(s.pos[0])}, ${s.pos[2] < 0 ? 'head end' : 'foot end'})`;
+    if (s.kind === 'in') return (s.dir && s.dir[2] > 0 ? 'Sit up in bed' : 'Foot of the bed') + ` (${side(s.pos[0])})`;
+    if (s.kind === 'lie') return lies.length > 1 ? `Lie (${side(s.pos[0]) === 'middle' ? 'middle' : side(s.pos[0]) + ' side'})` : 'Lie on it';
+    return 'Spot';
   };
   const order = { seat: 0, edge: 1, in: 2, lie: 3 };
   return out.map(s => ({ slot: s, kind: s.kind, action: s.kind === 'lie' ? 'lie' : 'sit', label: label(s),
-    verb: 'placing.verb_' + (s.kind === 'lie' ? 'lie' : s.kind === 'edge' ? 'edge' : s.kind === 'in' ? 'in' : 'sit') }))
+    verb: s.kind === 'lie' ? 'lie' : s.kind === 'edge' ? 'sit on the edge' : s.kind === 'in' ? 'sit up in bed' : 'sit' }))
     .sort((a, b) => order[a.kind] - order[b.kind] || a.slot.pos[0] - b.slot.pos[0] || a.slot.pos[2] - b.slot.pos[2]);
 }
 

@@ -8,12 +8,11 @@ import { h, icon, slider } from './ui.js';
 import { FACE_SET } from './facekit.js';
 import { restOf, sortKeys } from './animation.js';
 import { faceThumbs, FaceThumbs } from './facethumbs.js';
-import { $t } from './i18n.js';
 
 // the groups the backend makes, in the order a creator of adult animations wants them
 export const GROUPS = [
-  ['all', $t('gamefaces.all')], ['mood', $t('gamefaces.moods')], ['pleasure', $t('gamefaces.pleasure_pain')], ['overlay', $t('gamefaces.expressions')], ['kiss', $t('gamefaces.kisses')],
-  ['makeout', $t('gamefaces.make_outs')], ['woohoo', $t('gamefaces.woohoo')], ['laugh', $t('gamefaces.laughs')], ['react', $t('gamefaces.reactions')],
+  ['all', 'All'], ['mood', 'Moods'], ['pleasure', 'Pleasure & pain'], ['overlay', 'Expressions'], ['kiss', 'Kisses'],
+  ['makeout', 'Make-outs'], ['woohoo', 'WooHoo'], ['laugh', 'Laughs'], ['react', 'Reactions'],
 ];
 const GROUP_ORDER = Object.fromEntries(GROUPS.map(([id], i) => [id, i]));
 
@@ -140,7 +139,7 @@ export function setFaceBones(app, simId, fb, labelText = null, intensity = 1, op
   app.afterEdit();
   if (!opts.quiet && labelText) {
     const pct = intensity < 1 ? ` at ${Math.round(intensity * 100)}%` : '';
-    import('./ui.js').then(m => m.toast($t('gamefaces.on_at_s', { labelText, pct, simLabel: sim.label, frame: (frame / (app.store.project.fps || 30)).toFixed(2) }), 'ok'));
+    import('./ui.js').then(m => m.toast(`${labelText}${pct} on ${sim.label} at ${(frame / (app.store.project.fps || 30)).toFixed(2)} s.`, 'ok'));
   }
   return key;
 }
@@ -206,24 +205,24 @@ export function gameFacesPanel(app, sim) {
   const origin = key && originOf(key.faceBones);
   if (app._gfAmount === undefined) app._gfAmount = 1;
   const amount = origin ? origin.intensity : app._gfAmount;
-  wrap.append(slider({ label: origin ? $t('gamefaces.intensity', { originLabel: origin.label }) : $t('gamefaces.intensity_2'), min: 0, max: 1, step: 0.01, value: amount,
-    title: origin ? $t('gamefaces.how_strong_game_face_on') : $t('gamefaces.how_strong_next_game_face'),
+  wrap.append(slider({ label: origin ? `Intensity - ${origin.label}` : 'Intensity', min: 0, max: 1, step: 0.01, value: amount,
+    title: origin ? 'How strong the game face on this frame is (0% = the face at rest)' : 'How strong the next game face you pick is',
     fmt: v => Math.round(v * 100) + '%',
     onStart: () => { if (origin) app.store.checkpoint(); },
     onInput: (v, done) => { app._gfAmount = v; if (origin) setIntensity(app, sim.id, v, { live: !done }); } }));
   const faces = facesNow();
   if (!faces) {
-    const note = h('div', { class: 'gf-note' }, h('span', { class: 'gf-spin' }), h('span', {}, $t('gamefaces.reading_game_s_faces')));
+    const note = h('div', { class: 'gf-note' }, h('span', { class: 'gf-spin' }), h('span', {}, 'Reading the game\'s faces...'));
     const grid = h('div', { class: 'gf-grid loading' }, Array.from({ length: 9 }, () => h('div', { class: 'gf-tile skel' }, h('span', { class: 'gf-pic' }), h('span', { class: 'gf-name' }, ' '))));
     wrap.append(note, grid);
     loadFaces().then(r => {
       if (r.ready) { if (wantGame(app)) app.renderStep(); return; }
       if (r.building) {
-        note.lastChild.textContent = r.total ? $t('gamefaces.reading_game_s_faces_first', { v: Math.round(100 * r.done / Math.max(1, r.total)) }) : $t('gamefaces.reading_game_s_faces_first_2');
+        note.lastChild.textContent = r.total ? `Reading the game's faces the first time... ${Math.round(100 * r.done / Math.max(1, r.total))}%` : 'Reading the game\'s faces the first time (a minute or two)...';
         refreshSoon(app, 2500);
       } else {
         note.classList.add('bad');
-        note.textContent = $t('gamefaces.game_s_faces_could_not');
+        note.textContent = 'The game\'s faces could not be read (is The Sims 4 installed on this PC?). The one-click faces still work.';
         grid.remove();
       }
     });
@@ -236,7 +235,7 @@ export function gameFacesPanel(app, sim) {
   const chips = h('div', { class: 'gf-groups' }, GROUPS.filter(([id]) => id === 'all' || counts[id]).map(([id, text]) => h('button', {
     class: 'chip' + (group === id ? ' on' : ''), onclick: () => { app._gfGroup = id; app.renderStep(); } },
   text, h('span', { class: 'n' }, String(id === 'all' ? faces.length : counts[id])))));
-  const search = h('input', { class: 'text gf-search', type: 'search', placeholder: $t('gamefaces.find_face_flirty_moan_kiss'), value: app._gfQuery || '', spellcheck: 'false' });
+  const search = h('input', { class: 'text gf-search', type: 'search', placeholder: 'Find a face (flirty, moan, kiss...)', value: app._gfQuery || '', spellcheck: 'false' });
   const body = FaceThumbs.bodyOf(sim);
   // the grid is kept between redraws of the panel (fast, and it stays scrolled where it was); only the marks change
   const keyOf = () => `${sim.id}|${body}|${group}|${app._gfQuery || ''}|${faces.length}`;
@@ -251,7 +250,7 @@ export function gameFacesPanel(app, sim) {
       const url = thumbs.get(body, f.id);
       const img = h('img', { alt: '', draggable: 'false', 'data-gfimg': f.id, 'data-body': body, src: url || null });
       const tile = h('button', { class: 'gf-tile',
-        title: $t('gamefaces.from_game_animation', { fLabel: f.label, group_label: f.group_label, clip: f.clip }), 'data-gf': f.id,
+        title: `${f.label} - ${f.group_label}\nfrom the game animation ${f.clip}`, 'data-gf': f.id,
         onclick: () => {
           setPreview(app, null);
           setFaceBones(app, sim.id, f.fb, f.short, app._gfAmount ?? 1, { id: f.id, pickId: 'gface:' + f.id });
@@ -261,7 +260,7 @@ export function gameFacesPanel(app, sim) {
       tile.addEventListener('pointerleave', () => { if (previewNow() && previewNow().el === tile) setPreview(app, null); });
       grid.append(tile);
     }
-    if (!list.length) grid.append(h('div', { class: 'hint' }, $t('gamefaces.no_game_face_matches')));
+    if (!list.length) grid.append(h('div', { class: 'hint' }, 'No game face matches.'));
     // pictures: the ones in this list first
     thumbs.clear();
     thumbs.request(body, list.filter(f => !thumbs.get(body, f.id)));

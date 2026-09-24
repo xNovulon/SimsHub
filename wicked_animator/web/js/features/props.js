@@ -12,12 +12,11 @@ import { h, icon, modal, toast, section, addIcon } from '../ui.js';
 import { uid } from '../state.js';
 import { fetchJson, plainError } from '../gamehelp.js';
 import { propTrack } from '../proptrack.js';
-import { $t } from '../i18n.js';
 
 const ICONS = {
   'prop': '<path d="M8 3.5h8l-1 7.2a3 3 0 0 1-3 2.6 3 3 0 0 1-3-2.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 13.3v6.2M8.5 20.5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M8.6 7.5h6.8" stroke="currentColor" stroke-width="1.4" opacity=".6"/>',
 };
-const HANDS = [['R', $t('features.props.right_hand')], ['L', $t('features.props.left_hand')]];
+const HANDS = [['R', 'right hand'], ['L', 'left hand']];
 const handBone = (v, side) => (v && v.bone(`b__${side}_Prop__`) ? `b__${side}_Prop__` : `b__${side}_Hand__`);
 const texLoader = new THREE.TextureLoader();
 const meshCache = new Map();        // guid -> Promise<{obj, standIn} | null>
@@ -139,11 +138,11 @@ class PropStage {
     if (this.detach) this.detach();
     this.detach = app.interact.attachGizmo(o, {
       modes: ['translate', 'rotate'], size: 0.6,
-      onStart: () => { app.store.checkpoint($t('features.props.move_prop')); this.dragging = p.id; },
+      onStart: () => { app.store.checkpoint('Move prop'); this.dragging = p.id; },
       onChange: () => this.keep(p, o),
       onEnd: () => { this.keep(p, o); this.dragging = null; app.store.setDirty(true); },
     });
-    toast($t('features.props.drag_to_move', { name: p.name }) + (p.hold ? $t('features.props.it_stays_in_hand_like') : ''));
+    toast(`Drag the arrows to move ${p.name} - T turns it.${p.hold ? ' It stays in the hand like that.' : ''}`);
     return true;
   }
 
@@ -164,7 +163,7 @@ class PropStage {
 // ---------------------------------------------------------------- changing props
 function addProp(app, item) {
   const p = app.store.project;
-  app.store.checkpoint($t('features.props.add_prop'));
+  app.store.checkpoint('Add prop');
   const sim = app.store.sim() || p.sims[0];
   const v = sim && app.simViews.get(sim.id);
   const prop = { id: uid('p'), guid: String(item.guid), name: item.name || 'A prop', source: item.source || 'game' };
@@ -174,12 +173,12 @@ function addProp(app, item) {
   app.store.setDirty(true);
   app._props.sync();
   app.refreshPanels && app.refreshPanels();
-  toast(prop.hold ? $t('features.props.is_in_s_right_hand', { propName: prop.name, simLabel: sim.label }) : $t('features.props.stands_in_scene', { propName: prop.name }), 'ok');
+  toast(prop.hold ? `${prop.name} is in ${sim.label}'s right hand - "Move" places it just right.` : `${prop.name} stands in the scene.`, 'ok');
   return prop;
 }
 
 function setHolder(app, prop, value) {
-  app.store.checkpoint($t('features.props.prop_holder'));
+  app.store.checkpoint('Prop holder');
   const w = app._props.worldOf(prop);
   if (value === 'still') {
     delete prop.hold;
@@ -195,7 +194,7 @@ function setHolder(app, prop, value) {
 }
 
 function removeProp(app, prop) {
-  app.store.checkpoint($t('features.props.remove_prop'));
+  app.store.checkpoint('Remove prop');
   const list = propsOf(app);
   list.splice(list.indexOf(prop), 1);
   if (app._props.detach) { app._props.detach(); app._props.detach = null; }
@@ -206,15 +205,15 @@ function removeProp(app, prop) {
 
 // ---------------------------------------------------------------- the "Add a prop" window
 export function openAddProp(app) {
-  if (!app.store.project.sims.length) { toast($t('features.props.open_or_make_animation_first')); return null; }
-  const search = h('input', { placeholder: $t('features.props.search_props_glass_phone_book'), spellcheck: 'false', 'aria-label': $t('features.props.search_props') });
-  const list = h('div', { class: 'lib-list pr-list' }, h('div', { class: 'hint' }, $t('features.props.reading_props')));
+  if (!app.store.project.sims.length) { toast('Open or make an animation first.'); return null; }
+  const search = h('input', { placeholder: 'Search props: glass, phone, book...', spellcheck: 'false', 'aria-label': 'Search props' });
+  const list = h('div', { class: 'lib-list pr-list' }, h('div', { class: 'hint' }, 'Reading the props...'));
   let items = [];
   const dlg = modal({
-    title: $t('features.props.add_prop_2'), wide: true,
-    text: $t('features.props.objects_wickedwhims_animations_on_th'),
+    title: 'Add a prop', wide: true,
+    text: 'Objects the WickedWhims animations on this PC use - from the game or from your Mods. It goes in the selected sim\'s hand; you can also stand it in the scene.',
     body: h('div', { class: 'pr' }, h('div', { class: 'search' }, icon('search'), search), list),
-    buttons: [{ label: $t('features.props.close'), kind: 'ghost' }],
+    buttons: [{ label: 'Close', kind: 'ghost' }],
   });
   dlg.dialog.classList.add('pr-modal');
   const draw = () => {
@@ -222,19 +221,19 @@ export function openAddProp(app) {
     list.innerHTML = '';
     const shown = items.filter(x => !q || (x.name || '').toLowerCase().includes(q) || (x.objName || '').toLowerCase().includes(q)).slice(0, 200);
     if (!shown.length) {
-      list.append(h('div', { class: 'empty-state compact' }, h('b', {}, items.length ? $t('features.props.no_prop_has_that_name') : $t('features.props.no_props_found')),
-        h('p', {}, items.length ? $t('features.props.try_another_word') : $t('features.props.props_show_up_here_when'))));
+      list.append(h('div', { class: 'empty-state compact' }, h('b', {}, items.length ? 'No prop has that name' : 'No props found'),
+        h('p', {}, items.length ? 'Try another word.' : 'Props show up here when WickedWhims animations in your Mods folder use them (and the game or a prop pack has them).')));
       return;
     }
     for (const x of shown) {
       list.append(h('button', { class: 'lib-item pr-item', type: 'button', 'data-guid': x.guid, onclick: () => { dlg.close(); addProp(app, x); } },
-        h('b', {}, x.name), h('div', { class: 'sub' }, h('span', { class: 'chip' }, x.source === 'mods' ? $t('features.props.from_mods') : $t('features.props.from_game')),
-          h('span', {}, $t('features.props.used_by_animations', { uses: x.uses })))));
+        h('b', {}, x.name), h('div', { class: 'sub' }, h('span', { class: 'chip' }, x.source === 'mods' ? 'from Mods' : 'from the game'),
+          h('span', {}, `used by ${x.uses} animation${x.uses === 1 ? '' : 's'}`))));
     }
   };
   search.addEventListener('input', draw);
   fetchJson('/api/props').then(r => { items = Array.isArray(r) ? r : []; draw(); })
-    .catch(e => { list.innerHTML = ''; list.append(h('div', { class: 'hint warn' }, plainError(e, $t('features.props.props')))); });
+    .catch(e => { list.innerHTML = ''; list.append(h('div', { class: 'hint warn' }, plainError(e, 'the props'))); });
   return dlg;
 }
 
@@ -243,21 +242,21 @@ function propsSection(app, root) {
   const p = app.store.project;
   if (!p.sims.length) return;
   const rows = propsOf(app).map(prop => {
-    const holder = h('select', { 'aria-label': $t('features.props.who_holds_it') },
-      h('option', { value: 'still', selected: !prop.hold }, $t('features.props.stands_still_in_scene')),
+    const holder = h('select', { 'aria-label': 'Who holds it' },
+      h('option', { value: 'still', selected: !prop.hold }, 'Stands still in the scene'),
       ...p.sims.flatMap(s => HANDS.map(([side, word]) => h('option', { value: `${s.id}|${side}`,
-        selected: !!(prop.hold && prop.hold.sim === s.id && new RegExp(`_${side}_`).test(prop.hold.bone)) }, $t('features.props.in_s', { sLabel: s.label, word })))));
+        selected: !!(prop.hold && prop.hold.sim === s.id && new RegExp(`_${side}_`).test(prop.hold.bone)) }, `In ${s.label}'s ${word}`))));
     holder.onchange = () => { setHolder(app, prop, holder.value); holder.blur(); };
     const o = app._props && app._props.objs.get(prop.id);
     return h('div', { class: 'pr-row', 'data-prop': prop.id },
-      h('div', { class: 'pr-t' }, h('b', {}, prop.name), o && o.userData.standIn ? h('small', {}, $t('features.props.stand_in_box_its_mesh')) : null, holder),
-      h('button', { class: 'icon-btn sm', type: 'button', title: $t('features.props.move_it_gizmo'), onclick: () => app._props.move(prop) }, icon('move')),
-      h('button', { class: 'icon-btn sm', type: 'button', title: $t('features.props.remove_it'), onclick: () => removeProp(app, prop) }, icon('trash')));
+      h('div', { class: 'pr-t' }, h('b', {}, prop.name), o && o.userData.standIn ? h('small', {}, 'a stand-in box: its mesh could not be read here') : null, holder),
+      h('button', { class: 'icon-btn sm', type: 'button', title: 'Move it (the gizmo)', onclick: () => app._props.move(prop) }, icon('move')),
+      h('button', { class: 'icon-btn sm', type: 'button', title: 'Remove it', onclick: () => removeProp(app, prop) }, icon('trash')));
   });
-  root.append(section([$t('features.props.props_2'), rows.length ? h('span', { class: 'count' }, String(rows.length)) : null],
+  root.append(section(['Props', rows.length ? h('span', { class: 'count' }, String(rows.length)) : null],
     ...rows,
-    h('button', { class: 'btn small block', type: 'button', 'data-props': 'add', onclick: () => openAddProp(app) }, icon('prop'), $t('features.props.add_prop_2')),
-    rows.length ? h('div', { class: 'hint' }, $t('features.props.props_go_to_game_with')) : null));
+    h('button', { class: 'btn small block', type: 'button', 'data-props': 'add', onclick: () => openAddProp(app) }, icon('prop'), 'Add a prop'),
+    rows.length ? h('div', { class: 'hint' }, 'Props go to the game with the animation - players need the ones from Mods too.') : null));
 }
 
 // ---------------------------------------------------------------- plug in
@@ -271,7 +270,7 @@ export function install(app) {
 
   add('sections.scene', (a, root) => propsSection(a, root));
   add('commands', a => [
-    { group: $t('features.props.scene'), id: 'prop-add', label: $t('features.props.add_prop_2'), icon: 'prop', sub: $t('features.props.glass_phone_held_in_hand'),
+    { group: 'Scene', id: 'prop-add', label: 'Add a prop', icon: 'prop', sub: 'a glass, a phone... held in a hand or standing in the scene',
       words: 'prop props object item hold holding glass phone book drink toy accessory', run: () => openAddProp(a), when: () => a.store.project.sims.length > 0 },
   ]);
   add('afterApply', () => app._props.update());
@@ -289,8 +288,8 @@ export function install(app) {
   add('exportChecks', p => {
     const out = [];
     for (const pr of Array.isArray(p.props) ? p.props : []) {
-      if (pr.hold && !p.sims.some(s => s.id === pr.hold.sim)) out.push({ level: 'warn', text: $t('features.props.was_held_by_sim_that', { prName: pr.name }) });
-      else if (pr.source === 'mods') out.push({ level: 'warn', text: $t('features.props.comes_from_your_mods_folder', { prName: pr.name }) });
+      if (pr.hold && !p.sims.some(s => s.id === pr.hold.sim)) out.push({ level: 'warn', text: `${pr.name} was held by a sim that is gone - it is left out.` });
+      else if (pr.source === 'mods') out.push({ level: 'warn', text: `${pr.name} comes from your Mods folder - players need that prop too.` });
     }
     return out;
   });

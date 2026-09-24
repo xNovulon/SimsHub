@@ -7,7 +7,6 @@
 // the slider channel (key.face; face-only keys where the body has no key), so everything stays editable in the
 // Face step. The mouth moving makes the export switch off the game's own lip-sync (flags.mouthMoves, event 19).
 import { keyFramesFor, evaluateFace, sortKeys } from './animation.js';
-import { $t } from './i18n.js';
 
 export const TOLERANCE = 0.05;          // face keys follow the sound within 5% of a slider (about 1 degree of jaw)
 const CHANNELS = ['open', 'smile', 'pout', 'inner', 'eyes'];
@@ -21,14 +20,14 @@ export async function decodeSound(src) {
   let data = src;
   if (typeof src === 'string') {
     const r = await fetch(src);
-    if (!r.ok) throw new Error(r.status === 404 ? $t('lipsync.that_sound_could_not_be') : $t('lipsync.sound_could_not_be_loaded'));
+    if (!r.ok) throw new Error(r.status === 404 ? 'That sound could not be found in your game.' : 'The sound could not be loaded.');
     data = await r.arrayBuffer();
   } else if (src && typeof src.arrayBuffer === 'function') data = await src.arrayBuffer();
-  if (!(data instanceof ArrayBuffer)) throw new Error($t('lipsync.not_sound'));
+  if (!(data instanceof ArrayBuffer)) throw new Error('Not a sound.');
   const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const ctx = new Ctx(1, 2, 44100);
   try { return await ctx.decodeAudioData(data.slice(0)); }
-  catch { throw new Error($t('lipsync.that_file_is_not_sound')); }
+  catch { throw new Error('That file is not a sound this app can read - use a WAV, MP3 or OGG.'); }
 }
 
 // A game voice line in a sim's own adult voice (the game adds the actor code), as a URL for /api/sound.
@@ -166,7 +165,7 @@ export function writeLipSync(app, sim, track, start, { tolerance = TOLERANCE } =
 // -> {keys, made, frames, sec, name, analysis}
 export async function lipSync(app, simId, source, opts = {}) {
   const sim = app.store.sim(simId);
-  if (!sim) throw new Error($t('lipsync.select_sim_first'));
+  if (!sim) throw new Error('Select a sim first.');
   const p = app.store.project, fps = p.fps || 30;
   const frame = Math.max(0, Math.min(p.length - 1, Math.round(opts.frame ?? app.store.frame)));
   let buffer = source.buffer || null;
@@ -175,7 +174,7 @@ export async function lipSync(app, simId, source, opts = {}) {
     buffer = await decodeSound(source.file || url);
   }
   const an = analyse(buffer, fps);
-  if (!an.env.some(x => x > 0.05)) throw new Error($t('lipsync.that_sound_is_silent_nothing'));
+  if (!an.env.some(x => x > 0.05)) throw new Error('That sound is silent - nothing for the mouth to follow.');
   const track = faceTrack(an, opts);
   if (app.playing) app.setPlaying(false);
   if (opts.checkpoint !== false) app.store.checkpoint();

@@ -7,7 +7,6 @@ import { localStorageGet, localStorageSet } from '../state.js';
 import { LIMBS, LIMB_LABEL, isHold, TURN_GROUPS } from '../bones.js';
 import * as Holds from '../holds.js';
 import { HAND_SHAPES, SHAPE_ORDER, applyHandShape, setCurl, setSpread, setThumb, handSide } from '../hands.js';
-import { $t } from '../i18n.js';
 
 const SIDE_WORD = { L: 'left', R: 'right' };
 const ICONS = {
@@ -37,7 +36,7 @@ export function install(app) {
     const sel = app.store.selected;
     if (sel.sim && sel.bone && app.interact.tool === 'rotate' && app.interact.active && app.interact.active.kind === 'bone') app.interact.selectBone(sel.sim, sel.bone);
     app.refreshPanels();
-    toast(on ? $t('features.contact.natural_limits_on_fingers_elbows') : $t('features.contact.natural_limits_off_every_part'));
+    toast(on ? 'Natural limits on: fingers, elbows, knees, back and neck only bend the way real ones do.' : 'Natural limits off: every part turns freely (for special poses).');
   });
   mixin('setTurnGroup', g => {
     app.turnGroup = TURN_GROUPS[g] ? g : 'none';
@@ -61,14 +60,14 @@ export function install(app) {
   mixin('setHandShape', (simId, side, id, { both = app.handsBoth, amount = 1 } = {}) => {
     const sim = app.store.sim(simId), v = app.simViews.get(simId), sh = HAND_SHAPES[id];
     if (!sim || !v || !sh) return false;
-    app.store.checkpoint($t('features.contact.hand_shape', { shLabel: sh.label }));
+    app.store.checkpoint(`Hand shape: ${sh.label}`);
     app.beginEdit(simId);
     const sides = both ? ['L', 'R'] : [side];
     for (const s of sides) applyHandShape(v, s, id, amount);
     app.pipeline.pins({ sim, v }, Math.round(app.store.frame));
     app.poseEdited(simId, false);
     app.afterEdit();
-    toast(both ? $t('features.contact.shape_on_both_hands', { shape: sh.label }) : side === 'L' ? $t('features.contact.shape_on_left_hand', { shape: sh.label }) : $t('features.contact.shape_on_right_hand', { shape: sh.label }), 'ok');
+    toast(`${sh.label} on ${both ? 'both hands' : `the ${SIDE_WORD[side]} hand`}.`, 'ok');
     return true;
   });
   // Curl / Spread / Thumb (live while dragging, a key when released).
@@ -97,30 +96,30 @@ export function install(app) {
       for (const limb of Object.keys(LIMBS)) {
         const pin = sim.pins && sim.pins[limb];
         if (isHold(pin)) {
-          out.push({ group: $t('features.contact.hold_on'), id: `letgo-${limb}`, label: $t('features.contact.let_go', { v: LIMB_LABEL[limb] }), icon: 'letgo', sub: Holds.holdText(a, pin), words: 'release hold free unpin', run: () => a.letGo(id, limb), when });
-          out.push({ group: $t('features.contact.hold_on'), id: `bakepin-${limb}`, label: $t('features.contact.let_go_keep_look', { v: LIMB_LABEL[limb] }), icon: 'letgo', sub: $t('features.contact.turn_hold_into_keys'), words: 'bake hold keys release', run: () => a.bakePin(id, limb), when });
+          out.push({ group: 'Hold on', id: `letgo-${limb}`, label: `${LIMB_LABEL[limb]}: let go`, icon: 'letgo', sub: Holds.holdText(a, pin), words: 'release hold free unpin', run: () => a.letGo(id, limb), when });
+          out.push({ group: 'Hold on', id: `bakepin-${limb}`, label: `${LIMB_LABEL[limb]}: let go, keep the look`, icon: 'letgo', sub: 'turn the hold into keys', words: 'bake hold keys release', run: () => a.bakePin(id, limb), when });
         } else {
-          out.push({ group: $t('features.contact.hold_on'), id: `hold-${limb}`, label: $t('features.contact.hold_nearest_partner', { v: LIMB_LABEL[limb] }), icon: 'grab', sub: $t('features.contact.nearest_skin_within_30_cm'), words: 'hold grab touch partner stick child of attach', run: () => a.holdNearest(id, limb), when });
+          out.push({ group: 'Hold on', id: `hold-${limb}`, label: `${LIMB_LABEL[limb]}: hold the nearest partner`, icon: 'grab', sub: 'the nearest skin within 30 cm', words: 'hold grab touch partner stick child of attach', run: () => a.holdNearest(id, limb), when });
         }
       }
     }
-    out.push({ group: $t('features.contact.tools'), id: 'natural-limits', label: a.naturalLimits ? $t('features.contact.natural_limits_off') : $t('features.contact.natural_limits_on'), icon: 'limit', sub: $t('features.contact.fingers_elbows_knees_back_and'), words: 'joint limits clamp constraint range rotation limit', run: () => a.setNaturalLimits(!a.naturalLimits) });
+    out.push({ group: 'Tools', id: 'natural-limits', label: a.naturalLimits ? 'Natural limits off' : 'Natural limits on', icon: 'limit', sub: 'fingers, elbows, knees, back and neck bend the way real ones do', words: 'joint limits clamp constraint range rotation limit', run: () => a.setNaturalLimits(!a.naturalLimits) });
     const sel = a.store.selected, side = handSide(sel.bone);
     if (sim) {
       for (const sh of SHAPE_ORDER) {
         const s = side || 'R';
-        out.push({ group: $t('features.contact.hands'), id: `hand-${sh}`, label: $t('features.contact.hand_shape_2', { vLabel: HAND_SHAPES[sh].label }), icon: 'hand', sub: a.handsBoth ? $t('features.contact.both_hands') : s === 'L' ? $t('features.contact.left_hand') : $t('features.contact.right_hand'), words: `fingers pose ${HAND_SHAPES[sh].tip || ''}`, run: () => a.setHandShape(id, s, sh), when });
+        out.push({ group: 'Hands', id: `hand-${sh}`, label: `Hand shape: ${HAND_SHAPES[sh].label}`, icon: 'hand', sub: a.handsBoth ? 'both hands' : `${SIDE_WORD[s]} hand`, words: `fingers pose ${HAND_SHAPES[sh].tip || ''}`, run: () => a.setHandShape(id, s, sh), when });
       }
     }
     for (const [g, G] of Object.entries(TURN_GROUPS)) {
-      out.push({ group: $t('features.contact.tools'), id: `turn-${g}`, label: a.turnGroup === g ? $t('features.contact.off', { GLabel: G.label }) : $t('features.contact.turn_together', { GLabel: G.label }), icon: 'rotate', sub: $t('features.contact.one_turn_spread_over_chain'), words: 'spine chain bend together', run: () => a.setTurnGroup(a.turnGroup === g ? 'none' : g) });
+      out.push({ group: 'Tools', id: `turn-${g}`, label: a.turnGroup === g ? `${G.label}: off` : `Turn together: ${G.label}`, icon: 'rotate', sub: 'one turn spread over the chain', words: 'spine chain bend together', run: () => a.setTurnGroup(a.turnGroup === g ? 'none' : g) });
     }
     return out;
   });
   add('helpRows', () => [
-    { group: $t('features.contact.hold_on_to_partner'), keys: 'Drag tool (G)', text: $t('features.contact.drop_hand_or_foot_on') },
-    { group: $t('features.contact.hold_on_to_partner'), keys: ['Alt', 'click'], text: $t('features.contact.on_hand_or_foot_dot') },
-    { group: $t('features.contact.hold_on_to_partner'), keys: 'Hold Alt while dragging', text: $t('features.contact.turn_part_past_its_natural') },
+    { group: 'Hold on to the partner', keys: 'Drag tool (G)', text: "Drop a hand or foot on the partner - it holds on and follows the body. Drag it away to let go." },
+    { group: 'Hold on to the partner', keys: ['Alt', 'click'], text: 'On a hand or foot dot: pin it (or let go)' },
+    { group: 'Hold on to the partner', keys: 'Hold Alt while dragging', text: 'Turn a part past its natural limit' },
   ]);
 
   // for checks and the console

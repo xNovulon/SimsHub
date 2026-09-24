@@ -14,7 +14,6 @@ import { MOTIONS } from './motion.js';
 import { voiceLength } from './face.js';
 import * as KO from './keyops.js';
 import { toast } from './ui.js';
-import { $t } from './i18n.js';
 
 const GUTTER = 168, RULER = 28, LANE = 48, MIN_LANE = 34;
 const SOUND_COL = { wet: '#60a5fa', clap: '#fbbf24', voice: '#ff7ab6', other: '#c9a7ff' };
@@ -165,7 +164,7 @@ export class Timeline {
   //        onMove(item, frame, e, ctx), onUp(item, e, ctx), onContext(item|null, frame, e), onDblClick(item|null, frame, e)}
   // ctx = {x0, x1, y, h, xAt(frame), frameAt(x), app, playing}. Returns a function that takes the row away again.
   addRow(row) {
-    if (!row || !row.id) throw new Error($t('timeline.timeline_addrow_needs_id'));
+    if (!row || !row.id) throw new Error('timeline.addRow needs an id');
     this.rows = this.rows.filter(r => r.id !== row.id);
     this.rows.push(row);
     this.rows.sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -461,14 +460,14 @@ export class Timeline {
       const xp = this.xAt(d.pivot), x0 = this.xAt(d.grab);
       if (Math.abs(x0 - xp) < 1) return;
       const s = Math.max(0.05, (x - xp) / (x0 - xp));
-      if (!d.moved) { this.store.checkpoint($t('timeline.stretch_keys')); d.snap = this._snapKeys(); d.moved = true; }
+      if (!d.moved) { this.store.checkpoint('Stretch keys'); d.snap = this._snapKeys(); d.moved = true; }
       this._restoreKeys(d.snap);
       rep = KO.scaleSel(p, d.sel0, d.pivot, s);
       d.s = s;
     } else {
       const df = Math.round((x - d.startX) / this.pxPerFrame);
       if (!d.moved && !df) return;
-      if (!d.moved) { this.store.checkpoint(this.sel.size > 1 ? $t('timeline.move_keys', { size: this.sel.size }) : $t('timeline.move_key')); d.snap = this._snapKeys(); d.moved = true; }
+      if (!d.moved) { this.store.checkpoint(this.sel.size > 1 ? `Move ${this.sel.size} keys` : 'Move key'); d.snap = this._snapKeys(); d.moved = true; }
       if (df === d.df && d.moved && d.rep) return;
       this._restoreKeys(d.snap);
       rep = KO.moveSel(p, d.sel0, df);
@@ -520,10 +519,10 @@ export class Timeline {
         const rep = d.rep || { replaced: [], joined: [] };
         this.app.afterEdit();
         this.pop([...this.sel]);
-        if (rep.replaced && rep.replaced.length) toast($t('timeline.keys_were_replaced_ctrl_z', { replacedCount: rep.replaced.length }));
+        if (rep.replaced && rep.replaced.length) toast(`${rep.replaced.length} key${rep.replaced.length > 1 ? 's were' : ' was'} replaced - Ctrl+Z brings ${rep.replaced.length > 1 ? 'them' : 'it'} back.`);
         else if (rep.joined && rep.joined.length) {
           const s = this.store.sim(rep.joined[0].simId);
-          this.app.hud($t('timeline.face_key_joined', { sim: s ? s.label : $t('timeline.sim'), frame: rep.joined[0].frame }));
+          this.app.hud(`${s ? s.label : 'The sim'}: the face key joined the key at ${rep.joined[0].frame}`);
         }
         this.app.selectionChanged?.();
       } else if (d.anchor && d.anchor.was) {
@@ -546,7 +545,7 @@ export class Timeline {
     if (!(key.faceOnly && other.faceOnly)) delete merged.faceOnly;
     sim.keys = sim.keys.filter(k => k !== key && k !== other);
     sim.keys.push(merged);
-    this.app.hud($t('timeline.face_key_joined_key_at', { simLabel: sim.label, frame: merged.frame }));
+    this.app.hud(`${sim.label}: the face key joined the key at ${merged.frame}`);
   }
 
   _hoverAt(e) {
@@ -557,19 +556,19 @@ export class Timeline {
       : x > GUTTER && y > RULER ? 'default' : x > GUTTER ? 'ew-resize' : 'pointer';
     const n = this.sel.size;
     const selKey = h.key && this.sel.has(KO.kid(h.sim.id, h.key.frame)) && n > 1;
-    let tip = selKey ? $t('timeline.keys_selected_drag_to_move', { n })
-      : h.key ? (h.key.faceOnly ? $t('timeline.face_key_at_right_click', { frame: h.key.frame })
-        : $t(h.key.type === 'breakdown' ? 'timeline.in_between_key_tip' : 'timeline.key_tip', { frame: h.key.frame, ease: (EASE_INFO[h.key.ease || 'auto'] || EASE_INFO.auto)[0] }))
-      : h.sound ? $t('timeline.sound_tip', { name: h.sound.name, kind: h.sound.kind || $t('timeline.sound') })
-      : h.mark ? $t('timeline.mark_tip', { title: h.mark.title || $t('timeline.frame_n', { frame: h.mark.frame }) })
-      : h.summary !== undefined ? $t('timeline.every_sim_s_key_at', { summary: h.summary })
-      : h.bracket ? $t('timeline.drag_to_stretch_selected_keys')
-      : h.loopBadge ? $t('timeline.loop_check_click_for_loop')
-      : h.rangeClear ? $t('timeline.play_whole_loop_again')
-      : h.rangeEnd ? $t('timeline.drag_to_change_part_that')
-      : h.ruler ? $t('timeline.click_to_jump_ctrl_drag')
-      : x < GUTTER && this.maxV > 0 ? $t('timeline.scroll_here_to_see_other')
-      : h.sim && x > GUTTER ? $t('timeline.drag_to_scrub_double_click') : '';
+    let tip = selKey ? `${n} keys selected · drag to move · Alt+drag to stretch from the playhead · right-click for more`
+      : h.key ? (h.key.faceOnly ? `Face key at ${h.key.frame} · right-click for options`
+        : `${h.key.type === 'breakdown' ? 'In-between key' : 'Key'} at ${h.key.frame} · ${(EASE_INFO[h.key.ease || 'auto'] || EASE_INFO.auto)[0]} into the next (right-click to change) · Ctrl+click to add to the selection`)
+      : h.sound ? `${h.sound.name} (${h.sound.kind || 'sound'}) · drag to move, right-click to remove`
+      : h.mark ? (h.mark.title || `Frame ${h.mark.frame}`) + ' · click to go there'
+      : h.summary !== undefined ? `Every sim's key at frame ${h.summary} · click to select them all`
+      : h.bracket ? 'Drag to stretch the selected keys'
+      : h.loopBadge ? 'Loop check · click for loop tools'
+      : h.rangeClear ? 'Play the whole loop again'
+      : h.rangeEnd ? 'Drag to change the part that plays'
+      : h.ruler ? 'Click to jump · Ctrl+drag to play only a part'
+      : x < GUTTER && this.maxV > 0 ? 'Scroll here to see the other sims'
+      : h.sim && x > GUTTER ? 'Drag to scrub · double-click to key · Ctrl+drag to select keys' : '';
     if (h.extra) {
       c = h.item ? 'pointer' : 'default';
       try { tip = h.item && h.extra.tooltip ? h.extra.tooltip(h.item) || '' : (h.extra.label || ''); } catch { tip = ''; }
@@ -676,7 +675,7 @@ export class Timeline {
       g.fillStyle = muted; g.font = `500 11px ${FONT}`;
       const layers = (s.layers || []).filter(l => l.on);
       const bodyKeys = s.keys.filter(k => !k.faceOnly).length, faceKeys = s.keys.filter(hasFace).length;
-      const info = $t('timeline.n_keys', { n: bodyKeys }) + (faceKeys ? $t('timeline.n_face', { n: faceKeys }) : '');
+      const info = `${bodyKeys} key${bodyKeys === 1 ? '' : 's'}${faceKeys ? ` · ${faceKeys} face` : ''}`;
       g.fillText(`${info}${layers.length ? ' · ' + layers.map(l => MOTIONS[l.type]?.label).join(', ') : ''}`.slice(0, 26), 46, y + sy(32));
       g.strokeStyle = line; g.beginPath(); g.moveTo(0, y + LN + 0.5); g.lineTo(w, y + LN + 0.5); g.stroke();
     });
@@ -828,7 +827,7 @@ export class Timeline {
       if (s.keys.length <= 1 && !(s.layers || []).length && !(s.sounds || []).length && LN >= 40) {
         g.fillStyle = 'rgba(255,255,255,0.28)'; g.font = `500 11px ${FONT}`;
         const x = Math.max(GUTTER + 24, (s.keys[0] ? this.xAt(s.keys[0].frame) : GUTTER) + 22);
-        if (x < w - 60) g.fillText($t('timeline.press_k_to_keep_pose'), x, top + sy(26));
+        if (x < w - 60) g.fillText('Press K to keep a pose here · or add a one-click Motion (step 3)', x, top + sy(26));
       }
     });
     // the selection's bracket: a bar over the selected keys, with two ends that stretch them
@@ -887,8 +886,8 @@ export class Timeline {
         g.save(); g.setLineDash([3, 4]); g.strokeStyle = 'rgba(255,255,255,0.35)';
         g.beginPath(); g.moveTo(x + 0.5, RULER); g.lineTo(x + 0.5, hgt); g.stroke(); g.restore();
         const dlt = drag.df || 0, n = drag.sel0.size;
-        const txt = drag.mode === 'stretch' ? $t('timeline.stretch_by', { s: (drag.s || 1).toFixed(2).replace(/\.?0+$/, '') })
-          : n > 1 ? $t('timeline.keys_frames', { n, v: dlt >= 0 ? '+' : '', dlt, dlt2: Math.abs(dlt) }) : $t('timeline.frame_delta', { f, d: (dlt >= 0 ? '+' : '') + dlt });
+        const txt = drag.mode === 'stretch' ? `Stretch ×${(drag.s || 1).toFixed(2).replace(/\.?0+$/, '')}`
+          : n > 1 ? `${n} keys · ${dlt >= 0 ? '+' : ''}${dlt} frame${Math.abs(dlt) === 1 ? '' : 's'}` : `frame ${f}  ${dlt >= 0 ? '+' : ''}${dlt}`;
         g.font = `700 10px ${MONO}`;
         const tw = g.measureText(txt).width + 12, bx = Math.min(w - tw - 2, Math.max(GUTTER + 2, x - tw / 2));
         g.fillStyle = 'rgba(20,14,25,0.92)'; g.beginPath(); g.roundRect(bx, RULER + 2, tw, 16, 6); g.fill();
@@ -898,7 +897,7 @@ export class Timeline {
     g.strokeStyle = line; g.beginPath(); g.moveTo(GUTTER + 0.5, 0); g.lineTo(GUTTER + 0.5, hgt); g.stroke();
     if (!p.sims.length) {
       g.fillStyle = muted; g.font = `500 12.5px ${FONT}`;
-      g.fillText($t('timeline.add_sim_in_step_1'), GUTTER + 16, lanesTop + 24);
+      g.fillText('Add a sim in step 1 (Scene), or open the Library and import an animation.', GUTTER + 16, lanesTop + 24);
     }
   }
 
