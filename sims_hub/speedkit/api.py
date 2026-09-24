@@ -280,7 +280,7 @@ def _game_ids(game):
 
 
 # ------------------------------------------------------------------------------------------ status
-PROFILE_LABELS = {'full': 'All CC - every mod is loaded', 'fast': 'Fast mode - only the CC your sims use',
+PROFILE_LABELS = {'full': 'Full Start - all CC is loaded', 'fast': 'Quick Start - only the CC your sims use',
                   'studio': 'Studio - the animation work set', 'custom': 'Custom - changed by hand or another tool'}
 
 
@@ -614,7 +614,7 @@ def _journals(limit=15):
     return out[:limit] if limit else out
 
 
-_MODE_WORDS = {'full': 'All CC', 'fast': 'Fast mode', 'studio': 'Studio', 'save': 'Play this save'}
+_MODE_WORDS = {'full': 'Full Start', 'fast': 'Quick Start', 'studio': 'Studio', 'save': 'Play this save'}
 
 
 def _title(j):
@@ -1035,7 +1035,7 @@ def _plain_warning(w):
 
 
 def _switch_message(profile, slot, plan):
-    names = {'full': 'All CC', 'fast': 'Fast mode', 'studio': 'Studio'}
+    names = {'full': 'Full Start', 'fast': 'Quick Start', 'studio': 'Studio'}
     what = names.get(profile) or 'Play this save (%s)' % slot
     if plan.get('nothing_to_do'):
         return 'Mods folder: already set to %s.' % what
@@ -1395,7 +1395,7 @@ def _packs_in_mods():
     return out
 
 
-PACKS_IN_MODS = "Freeing disk space works in the 'All CC' mode only. Prepare 'All CC' first, then try again."
+PACKS_IN_MODS = "Freeing disk space works in the 'Full Start' mode only. Prepare 'Full Start' first, then try again."
 
 
 def _dedup_plan(tell):

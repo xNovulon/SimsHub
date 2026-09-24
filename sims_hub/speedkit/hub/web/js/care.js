@@ -44,7 +44,7 @@ function mins(s) {
   const m = Math.round(s / 60);
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
 }
-const MODE = { fast: 'Play FAST', save: 'One save', full: 'All CC', studio: 'Studio mode', other: 'Other' };
+const MODE = { fast: 'Quick Start', save: 'One save', full: 'Full Start', studio: 'Studio mode', other: 'Other' };
 const fileOf = rel => String(rel || '').split('/').pop();
 
 // -------------------------------------------------------------------------------- Home
@@ -88,7 +88,7 @@ export function homeSavings() {
         <b>${mins(d.total_s)}</b><small>${H.plural(d.starts, 'start')}</small></div>`;
     }).join('')}</div>`;
     if (H.isNum(r.saved_s) && r.saved_s > 0) {
-      body += `<div class="care-saved">${ic('bolt')}<div><b>${esc(MODE[r.compare] || 'Play FAST')}: about ${mins(r.saved_s)} less per start than All CC</b>
+      body += `<div class="care-saved">${ic('bolt')}<div><b>${esc(MODE[r.compare] || 'Quick Start')}: about ${mins(r.saved_s)} less per start than Full Start</b>
         ${H.isNum(r.saved_total_s) && r.saved_total_s >= 120 ? `<span>${mins(r.saved_total_s)} saved in total so far.</span>` : ''}</div></div>`;
     }
     if (r.confidence !== 'ok') body += `<div class="note">${ic('info')}<span>${esc(r.message)}</span></div>`;

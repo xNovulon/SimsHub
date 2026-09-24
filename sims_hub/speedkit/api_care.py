@@ -14,7 +14,7 @@ instead of raising, progress(step, fraction, message), plain words only. They us
     save_health()                  each save's size and growth, plus the save backups
     backup_saves()                 back up the saves now
     restore_saves(backup)          put the saves of one backup back (undoable)
-    load_savings()                 load time per mode and the time Play FAST saves
+    load_savings()                 load time per mode and the time Quick Start saves
 """
 import datetime
 import json

@@ -34,7 +34,7 @@ th{background:#2a2140;color:#cbb8ff}
 
 
 # the words the Hub uses (docs\hub_contract.md: no 'package', 'profile', 'journal', 'CAS part' ...)
-MODE_WORDS = {'fast': 'Play FAST', 'full': 'All CC', 'save': 'One save', 'studio': 'Studio mode',
+MODE_WORDS = {'fast': 'Quick Start', 'full': 'Full Start', 'save': 'One save', 'studio': 'Studio mode',
               'lean': 'Studio mode', 'custom': 'Your own mix'}
 PACK_WORDS = {'fresh': 'ready', 'stale': 'gets a quick update when you press Play',
               'missing': 'made the first time you press Play'}
@@ -62,17 +62,17 @@ def build(status, saves, graphics_table):
     for label, value in (('CC and mod files', '%s files' % _num(lib.get('packages'))),
                          ('Library size', '%s GB' % _num(lib.get('gb'), '{:,.1f}')),
                          ('CC items (all CC)', _num(cas_full)),
-                         ('CC items (Play FAST)', _num(cas_fast)),
+                         ('CC items (Quick Start)', _num(cas_fast)),
                          ('How the game starts', MODE_WORDS.get(prof.get('name')) or prof.get('label')),
                          ('Graphics', gr.get('label')),
                          ('Free memory', '%s of %s GB' % (_num(mem.get('free_gb'), '{:.1f}'), _num(mem.get('total_gb'), '{:.1f}'))),
-                         ('Play FAST', '%s%s' % (PACK_WORDS.get(fp.get('state'), fp.get('state') or '-'),
+                         ('Quick Start', '%s%s' % (PACK_WORDS.get(fp.get('state'), fp.get('state') or '-'),
                                                  (' (%.1f GB)' % fp['gb']) if fp.get('gb') else '')),
                          ('Free on C:', '%s GB' % _num((st.get('disk') or {}).get('c_free_gb'), '{:.0f}'))):
         out.append("<div class='card'>%s<b>%s</b></div>" % (_e(label), _e(value)))
     out.append('</div>')
     if cas_full and cas_fast:
-        out.append("<p>Play FAST loads <b>%.1f%%</b> of your CC items - the number that decides how long the game "
+        out.append("<p>Quick Start loads <b>%.1f%%</b> of your CC items - the number that decides how long the game "
                    "takes to start.</p>" % (100.0 * cas_fast / cas_full))
     out.append('<h2>Your saves</h2>')
     if saves:

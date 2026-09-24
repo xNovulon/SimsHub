@@ -21,7 +21,7 @@ calls), the "CC browser" section of `speedkit/hub/server.py` (routes), and the "
 
 Neutral and descriptive, like the rest of the Hub (`hub_contract.md`): no mascot, no first-person voice.
 Files are "CC files"; the quarantine is "the safe copies"; moving a file there is "setting it aside"; Mods_parked
-is never named ("put away by Play FAST or one-save mode"). When only an ID is known, the UI says exactly that.
+is never named ("put away by Quick Start or one-save mode"). When only an ID is known, the UI says exactly that.
 
 ## How files are sorted
 
@@ -88,7 +88,7 @@ picture for a week under a URL whose `?v=` token changes with the file.
 `Journal('setaside', ...)` - `journal.quarantine()` for each file. Nothing is deleted; **Undo last change** on the
 Tools page puts them back (plain `journal.undo`, with the usual "moved by a mode switch since" check). It refuses
 while the game runs, never touches script mods (the journal refuses them too), refuses files that are not in Mods
-right now (a mode switch put them in Mods_parked: switch to All CC first) and files that changed since the last
+right now (a mode switch put them in Mods_parked: switch to Full Start first) and files that changed since the last
 look. The CC index forgets the files; after an undo, **Look again** brings them back.
 
 ## A save's CC

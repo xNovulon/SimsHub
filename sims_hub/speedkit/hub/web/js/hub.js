@@ -90,8 +90,8 @@ const gameMoved = g => !!g && g.found === false && !!(g.saved || g.exe || g.game
 
 function modeInfo(p = {}) {
   switch (p.name) {
-    case 'fast': return { key: 'FAST', title: 'Play FAST', sub: 'Only the CC your saves use is loaded.' };
-    case 'full': return { key: 'ALL CC', title: 'All CC', sub: 'Every CC item you have is loaded.', cls: 'full' };
+    case 'fast': return { key: 'QUICK', title: 'Quick Start', sub: 'Only the CC your saves use is loaded.' };
+    case 'full': return { key: 'FULL', title: 'Full Start', sub: 'Every CC item you have is loaded.', cls: 'full' };
     case 'save': {
       const s = saveBySlot(p.save_slot), m = /'(.+)'\s*$/.exec(p.label || '');
       return { key: 'ONE SAVE', title: s ? s.name : m ? m[1] : 'One save', sub: 'Only the CC this save uses is loaded.' };
@@ -101,7 +101,7 @@ function modeInfo(p = {}) {
     default: return { key: '…', title: p.label || 'Not known yet', sub: '' };
   }
 }
-const PROFILE_WORDS = { fast: 'Play FAST', full: 'All CC', save: 'One save', studio: 'Studio mode', custom: 'Your own mix' };
+const PROFILE_WORDS = { fast: 'Quick Start', full: 'Full Start', save: 'One save', studio: 'Studio mode', custom: 'Your own mix' };
 const profileWords = p => PROFILE_WORDS[p] || 'Your mods';
 
 // one entry per game start: the engine logs 'main_menu' and 'lot_loaded' as separate rows (newest first), so a
@@ -216,22 +216,22 @@ function renderHome() {
         <button class="btn primary big" data-act="find-game">${ic('search')}Locate The Sims 4</button></div>`;
     }
     const fastMeta = [];
-    if (isNum(lib.cas_fast) && isNum(lib.cas_full)) fastMeta.push(`<span class="pill">${num(lib.cas_fast)} of ${num(lib.cas_full)} CC items</span>`);
-    if (lastFast) fastMeta.push(`<span>Last time: ${dur(lastFast.launch_to_menu_s)}</span>`);
+    if (isNum(lib.cas_fast) && isNum(lib.cas_full)) fastMeta.push(`<span class="pill">Loads ${num(lib.cas_fast)} of ${num(lib.cas_full)} CC items</span>`);
+    if (lastFast) fastMeta.push(`<span>Last load: ${dur(lastFast.launch_to_menu_s)}</span>`);
     if (fp.state === 'stale' || fp.state === 'missing') fastMeta.push(`<span>First start takes a few extra minutes to get ready</span>`);
     const fullMeta = [];
-    if (isNum(lib.cas_full)) fullMeta.push(`<span class="pill">All ${num(lib.cas_full)} CC items</span>`);
-    if (lastFull) fullMeta.push(`<span>Last time: ${dur(lastFull.launch_to_menu_s)}</span>`);
+    if (isNum(lib.cas_full)) fullMeta.push(`<span class="pill">Loads all ${num(lib.cas_full)} CC items</span>`);
+    if (lastFull) fullMeta.push(`<span>Last load: ${dur(lastFull.launch_to_menu_s)}</span>`);
     top += `<div class="play-row">
       <button class="play fast" data-act="play" data-target="fast"${off}>
-        <div class="top"><div class="pic">${ic('bolt-fill')}</div><div class="t">Play FAST</div></div>
-        <div class="d">Loads only the CC your saves use. The game starts way faster, and your sims look the same.</div>
+        <div class="top"><div class="pic">${ic('bolt-fill')}</div><div class="t">Quick Start</div></div>
+        <div class="d">Starts the game with only the custom content (CC) your sims and lots use. It loads much faster, and your sims look exactly the same.</div>
         <div class="m">${fastMeta.join('')}</div>
         <span class="go">${ic('play')}</span>
       </button>
       <button class="play all" data-act="play" data-target="full"${off}>
-        <div class="top"><div class="pic">${ic('stack')}</div><div class="t">Play with ALL CC</div></div>
-        <div class="d">Loads every CC item you have - for building, or for Create a Sim with everything.</div>
+        <div class="top"><div class="pic">${ic('stack')}</div><div class="t">Full Start</div></div>
+        <div class="d">Starts the game with all of your custom content. Use this to build, or to browse all your CC in Create a Sim.</div>
         <div class="m">${fullMeta.join('')}</div>
         <span class="go">${ic('play')}</span>
       </button></div>`;
@@ -474,14 +474,14 @@ function loadTimes() {
   const fast = avg(rows.filter(r => FASTISH.has(r.profile))), full = avg(rows.filter(r => !FASTISH.has(r.profile)));
   const tiles = [
     `<div class="tile"><div class="lbl"><i class="sw" style="background:var(--fast)"></i>Fast start, on average</div><b>${fast === null ? '—' : dur(fast)}</b></div>`,
-    `<div class="tile"><div class="lbl"><i class="sw" style="background:var(--full)"></i>All CC, on average</div><b>${full === null ? '—' : dur(full)}</b></div>`,
+    `<div class="tile"><div class="lbl"><i class="sw" style="background:var(--full)"></i>Full Start, on average</div><b>${full === null ? '—' : dur(full)}</b></div>`,
     fast && full && full > fast
       ? `<div class="tile hero"><div class="lbl">${ic('bolt')}Fast start is</div><b>${(full / fast).toFixed(1).replace(/\.0$/, '')}x faster</b></div>`
       : `<div class="tile"><div class="lbl">${ic('clock')}Starts timed</div><b>${num(rows.length)}</b></div>`,
   ];
   return `<div class="tiles">${tiles.join('')}</div>
     <div class="chart" id="chart" role="img" aria-label="Start times, oldest on the left"></div>
-    <div class="legend"><span><i style="background:var(--fast)"></i>Fast start (Play FAST, one save or Studio)</span><span><i style="background:var(--full)"></i>All CC</span></div>
+    <div class="legend"><span><i style="background:var(--fast)"></i>Quicker starts (Quick Start, one save or Studio)</span><span><i style="background:var(--full)"></i>Full Start</span></div>
     <details class="more"><summary>See every start as a list</summary><div class="table-wrap"><table class="t">
       <thead><tr><th>When</th><th>How it started</th><th>To the main menu</th><th>Loading a lot</th></tr></thead><tbody>
       ${rows.map(r => `<tr><td>${esc(dayTime(r.time))}</td><td>${esc(profileWords(r.profile))}</td>
@@ -542,7 +542,7 @@ function drawChart() {
 const KIND = {
   profile: ['Changed how the game starts', 'swap'], inbox: ['Added new downloads', 'download'], dedup: ['Removed extra copies of CC', 'broom'],
   merge: ['Tidied your CC into fewer files', 'layers'], settings: ['Changed the graphics', 'image'], caches: ["Cleared the game's caches", 'broom'],
-  fastpack: ['Prepared Play FAST', 'bolt'], savepack: ['Prepared a save to play', 'bolt'], usedpack: ["Prepared your saves' CC", 'bolt'],
+  fastpack: ['Prepared Quick Start', 'bolt'], savepack: ['Prepared a save to play', 'bolt'], usedpack: ["Prepared your saves' CC", 'bolt'],
   install: ['Updated the SpeedKit Monitor', 'gauge'], monitor: ['Updated the SpeedKit Monitor', 'gauge'], cleanup: ['Removed extra copies of CC', 'broom'],
 };
 const kindOf = k => KIND[k] || ['A change', 'spark'];
@@ -558,7 +558,7 @@ function describeChange(j) {
   const note = String(j.note || ''), [label, icon] = kindOf(j.kind);
   let m, title = label;
   if (j.kind === 'profile' && (m = /^switch to (\w+)/i.exec(note))) {
-    title = { fast: 'Switched to Play FAST', full: 'Switched to All CC', studio: 'Switched to Studio mode', custom: 'Switched to your own mix' }[m[1].toLowerCase()]
+    title = { fast: 'Switched to Quick Start', full: 'Switched to Full Start', studio: 'Switched to Studio mode', custom: 'Switched to your own mix' }[m[1].toLowerCase()]
       || 'Switched to one save';
   } else if (j.kind === 'inbox' && (m = /^(\d+) download/.exec(note))) title = `Added ${plural(+m[1], 'new download')}`;
   else if (j.kind === 'settings' && /max quality/i.test(note)) title = 'Graphics: Max Quality, lag fixed';
@@ -674,8 +674,8 @@ async function ensureGraphics(force = false) {
 
 // ------------------------------------------------------------------------------------------ tasks and the progress window
 function playTitle(target) {
-  if (target === 'fast') return 'Starting Play FAST';
-  if (target === 'full') return 'Starting with ALL CC';
+  if (target === 'fast') return 'Starting with Quick Start';
+  if (target === 'full') return 'Starting with Full Start';
   if (target === 'studio') return 'Starting Studio mode';
   const s = saveBySlot(String(target || '').replace(/^save:/, ''));
   return s ? `Starting "${s.name}"` : 'Starting your save';
@@ -1310,7 +1310,7 @@ function ccCard(it) {
   if (it.broken) badges.push(`<span class="cc-badge bad" title="${esc(it.broken)}">Damaged</span>`);
   if (it.duplicate_of) badges.push(`<span class="cc-badge dup" title="Everything in it is also in ${esc(it.duplicate_of)}">Duplicate</span>`);
   if (it.used === false) badges.push(`<span class="cc-badge" title="Not used by any save or in-game library household">Not used</span>`);
-  if (!it.in_mods) badges.push(`<span class="cc-badge" title="Moved out of Mods by Play FAST or one-save mode; back with All CC">Put away</span>`);
+  if (!it.in_mods) badges.push(`<span class="cc-badge" title="Moved out of Mods by Quick Start or one-save mode; back with Full Start">Put away</span>`);
   const sub = [it.body && it.body !== it.category_label ? it.body : it.category_label, it.creator || it.folder].filter(Boolean).join(' · ');
   return `<div class="cc-card${sel ? ' selected' : ''}" data-id="${it.id}" data-cat="${esc(it.category)}" tabindex="0" title="${esc(it.rel || it.name)}">
     <div class="cc-pic">${src ? `<img src="${src}" alt="" loading="lazy" decoding="async" data-cat="${esc(it.category)}">` : `<div class="cc-ph">${ccIc(it.category)}</div>`}
@@ -1392,7 +1392,7 @@ async function ccDetails(id) {
     ${used}
     ${r.broken ? `<div class="note err">${ic('warn')}<span>${esc(r.broken)}</span></div>` : ''}
     ${r.duplicate_of ? `<div class="note warn">${ic('warn')}<span>Everything in this file is also in <b>${esc(r.duplicate_of)}</b>. Only one of the two is needed.</span></div>` : ''}
-    ${r.in_mods ? '' : `<div class="note">${ic('info')}<span>Moved out of the Mods folder by Play FAST or one-save mode. It is back when the game starts with All CC.</span></div>`}`;
+    ${r.in_mods ? '' : `<div class="note">${ic('info')}<span>Moved out of the Mods folder by Quick Start or one-save mode. It is back when the game starts with Full Start.</span></div>`}`;
   const foot = document.createElement('footer');
   foot.innerHTML = `<span class="hint">${r.kind === 'script' ? 'Script mods are left alone by the Hub.' : 'Setting aside can be undone on the Tools page.'}</span>
     <button class="btn" data-open>${ic('folder')}Open folder</button>

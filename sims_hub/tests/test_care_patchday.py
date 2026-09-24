@@ -202,7 +202,7 @@ class SetAside(Base):
         self.assertEqual(target['mccc/mc_cmd_center.ts4script'], 'P')
         self.assertEqual(target['mccc/some_hair.package'], 'M')
         self.assertTrue(any('set aside until it is updated' in n for n in notes))
-        # the folders are recognised as 'All CC' although two files are parked
+        # the folders are recognised as 'Full Start' although two files are parked
         self.assertEqual(PR.current(sims=self.sims, home=self.home, keep=['x/'])['profile'], 'full')
         # a real switch to 'full' (another file was parked by the other tool) keeps the held ones parked
         F.make_cc_package(os.path.join(self.parked, 'Other', 'y.package'))

@@ -137,7 +137,7 @@ class CareUI(unittest.TestCase):
         self.assertIn('4 script mods are older than the latest game update', p.inner_text('[data-care="patch-banner"]'))
         self.assertIn('2 new game errors', p.inner_text('[data-care="errors-banner"]'))
         savings = p.inner_text('[data-care="savings"]')
-        for words in ('How long the game takes to load', 'Play FAST', 'All CC', 'about 6 min less per start than All CC'):
+        for words in ('How long the game takes to load', 'Quick Start', 'Full Start', 'about 6 min less per start than Full Start'):
             self.assertIn(words, savings)
         self.assertTrue(any(path.startswith('load_savings') for _, path, _ in self.calls))
         # "Dismiss" tells the server and the notice goes

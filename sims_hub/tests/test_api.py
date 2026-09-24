@@ -177,7 +177,7 @@ class Flow(Tree):
         # the duplicate clean-up refuses while a pack is in Mods (it would take the pack's copies for keepers)
         r = api.cleanup_plan()
         self.assertFalse(r['ok'])
-        self.assertIn('All CC', r['message'])
+        self.assertIn('Full Start', r['message'])
         self.assertFalse(api.cleanup_apply()['ok'])
         # while a Play runs, list_saves parses nothing and still answers
         api._run_lock.acquire()

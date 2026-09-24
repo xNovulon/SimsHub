@@ -28,20 +28,20 @@ OUT = os.environ.get('SIMS_HUB_SCREENS') or os.path.join(os.path.dirname(os.path
 
 # (name, url, window size, what the page must show)
 PAGES = [
-    ('home', '/#home', (1440, 1000), ['Start The Sims 4', 'Play FAST', 'Play with ALL CC', 'Chrome is using 20 GB', '755,662',
+    ('home', '/#home', (1440, 1000), ['Start The Sims 4', 'Quick Start', 'Full Start', 'Chrome is using 20 GB', '755,662',
                                     'Loading a lot took 22 s']),
-    ('home_1280x720', '/#home', (1280, 720), ['Play FAST']),
+    ('home_1280x720', '/#home', (1280, 720), ['Quick Start']),
     ('saves', '/#saves', (1440, 1000), ['Wicked Nights', '12,480 CC items', 'Play this save', 'Novulon · Del Sol Valley']),
     ('saves_1100x700', '/#saves', (1100, 700), ['Legacy Challenge']),
     ('library', '/#library', (1440, 1200), ['Add new downloads', 'Sentate_Venus_Dress.package', 'Free up space', 'Library report', 'Inbox']),
     ('performance', '/#performance', (1440, 2000), ['How far away sims keep full detail', 'speedkit.lag', 'faster', 'Graphics']),
-    ('tools', '/#tools', (1440, 1250), ["Open Novulon's Wicked Animator", 'Undo last change', 'Switched to All CC', 'E:\\The Sims 4',
+    ('tools', '/#tools', (1440, 1250), ["Open Novulon's Wicked Animator", 'Undo last change', 'Switched to Full Start', 'E:\\The Sims 4',
                                          'Added 3 new downloads', 'Installed the SpeedKit Monitor', 'Removed extra copies of CC']),
     ('tools_900x800', '/#tools', (900, 800), ['Recent changes']),
     ('finder', '/?open=finder#home', (1440, 1000), ['Find The Sims 4', 'Found on this PC', 'Use this', 'Games (E:)', '402 GB free']),
     ('finder_folder', '/?open=finder&path=E%3A%5C#home', (1440, 1000), ['SteamLibrary', 'Steam', 'Select']),
     ('finder_game_folder', '/?open=finder&path=E%3A%5CThe%20Sims%204#home', (1440, 1000), ['This folder is The Sims 4', 'Game', 'Data']),
-    ('confirm_undo', '/?open=undo#tools', (1440, 1000), ['Undo the last change?', 'Switched to All CC', 'Keep it']),
+    ('confirm_undo', '/?open=undo#tools', (1440, 1000), ['Undo the last change?', 'Switched to Full Start', 'Keep it']),
     ('confirm_cleanup', '/?open=cleanup#library', (1440, 1000), ['Free up 18.2 GB?', '4,210']),
 ]
 # pages that need the example data changed first: name -> (url, size, must show, setup(state))
@@ -174,7 +174,7 @@ class HubScreens(unittest.TestCase):
         stub_api.HOLD, stub_api.HOLD_AT = threading.Event(), 3
         hub.start('play', {'target': 'fast'})
         try:
-            self.check('task_running', '/#home', (1440, 1000), ['Starting Play FAST', 'Updating the SpeedKit Monitor'])
+            self.check('task_running', '/#home', (1440, 1000), ['Starting Quick Start', 'Updating the SpeedKit Monitor'])
         finally:
             stub_api.HOLD.set()
         for _ in range(200):

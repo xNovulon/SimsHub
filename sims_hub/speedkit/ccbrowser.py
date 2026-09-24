@@ -1172,8 +1172,8 @@ def set_aside(idx, ids, sims, home, check_game=True, progress=None, journal_cls=
             continue
         path = os.path.join(mods, row['rel'].replace('/', os.sep))
         if row['root'] != 'Mods' or not os.path.isfile(path):
-            refused.append((name, "It is not in the Mods folder right now (moved out by Play FAST or one-save mode). "
-                                  "Switch to All CC first."))
+            refused.append((name, "It is not in the Mods folder right now (moved out by Quick Start or one-save mode). "
+                                  "Switch to Full Start first."))
             continue
         st = os.stat(path)
         if st.st_size != row['size'] or abs(st.st_mtime - row['mtime']) > 1e-3:

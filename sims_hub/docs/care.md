@@ -197,16 +197,16 @@ rows, and another `main_menu` row after going back to the menu, all with the sam
   (`lot_index` 1). That is the waiting, not the time spent choosing in the menu.
 * Per mode (`fast`, `save`, `full`, `studio`; mods_switch.py's `lean` counts as `studio`), the typical
   time is the median, so one very slow start (a patch, a pack update) does not skew it.
-* The saving compares All CC with Play FAST (else One save), per start and summed over the fast starts.
+* The saving compares Full Start with Quick Start (else One save), per start and summed over the fast starts.
 * `confidence` is one of:
   * `none`: no starts yet ("No start times recorded yet");
-  * `one_mode`: only one side was measured ("Start once with All CC to compare" / "Start once with Play FAST to compare");
+  * `one_mode`: only one side was measured ("Start once with Full Start to compare" / "Start once with Quick Start to compare");
   * `low`: fewer than 3 starts on a side ("Based on only a few starts so far");
   * `ok`.
 
-  If Play FAST was not quicker, the message says so.
+  If Quick Start was not quicker, the message says so.
 
-Home shows one bar per mode (for example "Play FAST 2 min · All CC 8 min"), the time saved per start and
+Home shows one bar per mode (for example "Quick Start 2 min · Full Start 8 min"), the time saved per start and
 in total, and the honest line whenever the data is thin.
 
 ## Server
@@ -232,7 +232,7 @@ answers of these routes.
 | `tests/test_care_patchday.py` (13) | version file, first look, noticing an update, acknowledging it, Steam manifest, older scripts and companions, set aside + undo (manifest kept for the other tool, no empty folders), backup before patch-day changes, put back + undo, a newer copy in Mods, every mode keeping held files parked (`compute_target`, `current`, a real `switch('full')`), refusal while the game runs, rollback when the game starts half-way, damaged manifest and bad paths |
 | `tests/test_care_errors.py` (6) | finding the report files, parsing the XML, naming mods by script path, by module path and by mention, grouping repeats across files, game-only errors, menu errors, a mod already parked, a garbage file, "seen", no reports |
 | `tests/test_care_saves.py` (9) | which files are backed up, hard links, keeping the last N, protected backups, restore + undo, a save that was gone, refusing undo after playing on, refusal while the game runs, broken backups, no saves, health levels and history |
-| `tests/test_care_loadtimes.py` (6) | one entry per start, no data, one mode, few starts, medians, total saved, Play FAST not quicker |
+| `tests/test_care_loadtimes.py` (6) | one entry per start, no data, one mode, few starts, medians, total saved, Quick Start not quicker |
 | `tests/test_care_server.py` (5) | every route with the stub, argument checks, busy behaviour, end to end with the real engine on a fake folder |
 | `tests/test_care_ui.py` (4) | Playwright: starts `python -m speedkit.hub --serve --stub --port <free>`, checks Home, Tools and Saves draw the new sections, presses each button, checks the requests it sends and that there are no console errors |
 

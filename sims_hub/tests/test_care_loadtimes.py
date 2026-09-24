@@ -38,11 +38,11 @@ class LoadTimes(unittest.TestCase):
         r = api.load_savings()
         self.assertEqual(r['confidence'], 'one_mode')
         self.assertIsNone(r['saved_s'])
-        self.assertIn('All CC: 43 min', r['message'])
-        self.assertIn('Start once with Play FAST to compare', r['message'])
+        self.assertIn('Full Start: 43 min', r['message'])
+        self.assertIn('Start once with Quick Start to compare', r['message'])
         F.write_loadtimes(self.sims, [('2026-09-20 18:00:00', 'fast', 170.0, 10.0)])
         r = api.load_savings()
-        self.assertIn('Start once with All CC to compare', r['message'])
+        self.assertIn('Start once with Full Start to compare', r['message'])
 
     def test_few_starts_are_said_to_be_few(self):
         F.write_loadtimes(self.sims, [('2026-09-20 18:00:00', 'full', 2400.0, 180.0),
@@ -50,7 +50,7 @@ class LoadTimes(unittest.TestCase):
         r = api.load_savings()
         self.assertEqual(r['confidence'], 'low')
         self.assertEqual(r['saved_s'], 2400.0)
-        self.assertIn('Play FAST: 3 min - All CC: 43 min (about 40 min less per start)', r['message'])
+        self.assertIn('Quick Start: 3 min - Full Start: 43 min (about 40 min less per start)', r['message'])
         self.assertIn('only a few starts', r['message'])
 
     def test_medians_and_total_saved(self):

@@ -1035,7 +1035,7 @@ class Story(unittest.TestCase):
         self.assertEqual(st['inbox'], {'path': os.path.join(self.home, 'Inbox'), 'waiting': 0})
         self.assertEqual(st['animator'], {'installed': True, 'path': self.w['animator']})
         self.check_all('1 status', 'studio')
-        self.screens('01_start', must={'home': ['Start The Sims 4', 'Play FAST', 'Play with ALL CC', 'Studio mode',
+        self.screens('01_start', must={'home': ['Start The Sims 4', 'Quick Start', 'Full Start', 'Studio mode',
                                                 CC_SENTENCE['studio']],
                                        'tools': ['Recent changes', "Open Novulon's Wicked Animator", REAL_GAME]})
 
@@ -1102,7 +1102,7 @@ class Story(unittest.TestCase):
         self.assertEqual(st['library']['cas_now'], self.cas_entries_in_mods())
         self.assertLess(st['library']['cas_now'], st['library']['cas_full'])
         self.screens('03_fast', ('home', 'saves', 'performance'),
-                     must={'home': [CC_SENTENCE['fast'], 'Play FAST', 'Max Quality, lag fixed'],
+                     must={'home': [CC_SENTENCE['fast'], 'Quick Start', 'Max Quality, lag fixed'],
                            'saves': list(self.save_names.values())})
 
     def cas_entries_in_mods(self):
@@ -1228,7 +1228,7 @@ class Story(unittest.TestCase):
     def test_10_cleanup(self):
         r = self.task('cleanup_plan')
         self.assertFalse(r['ok'])
-        self.assertIn('All CC', r['message'])
+        self.assertIn('Full Start', r['message'])
         self._play('full', launch=False)
         self.check_all('10a prepare full', 'full', refusals=False)
         eff_db = os.path.join(self.w['data'], 'effective.sqlite')

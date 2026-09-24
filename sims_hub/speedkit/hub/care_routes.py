@@ -4,7 +4,7 @@ server.py hands these requests over (its docstring lists them):
   GET  /api/patchday[?refresh=1]      api.patch_day(): the game's last update, older script mods, mods set aside
   GET  /api/errors[?refresh=1]        api.game_errors(): the game's error reports, grouped, with the mod named
   GET  /api/save_health[?refresh=1]   api.save_health(): each save's size and growth, and the save backups
-  GET  /api/load_savings[?refresh=1]  api.load_savings(): load time per mode and the time Play FAST saves
+  GET  /api/load_savings[?refresh=1]  api.load_savings(): load time per mode and the time Quick Start saves
       (these read files only; while a task runs they give their last answer, or 'busy')
   POST /api/patchday/seen             api.patch_seen(): the patch-day notice was seen
   POST /api/errors/seen               api.errors_seen(): hide the errors seen so far

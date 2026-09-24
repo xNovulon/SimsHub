@@ -1,4 +1,4 @@
-r"""How long the game takes to load in each mode, and the time Play FAST saves - from SpeedKit Monitor's
+r"""How long the game takes to load in each mode, and the time Quick Start saves - from SpeedKit Monitor's
 loadtimes.csv (<Sims 4>\SpeedKit\reports\loadtimes.csv, columns in docs\ingame.md).
 
     summary(csv_path)   # {'modes': {...}, 'saved_s', 'saved_total_s', 'confidence', 'message'}
@@ -9,7 +9,7 @@ One entry per game start (rows are grouped by their 'launch_time'; rows without 
     picking a save, not the time spent in the menu;
   * load time = both together (only the menu part when no lot was loaded).
 A mode's typical time is the median of its starts (one very slow start - a patch, an update of the fast pack -
-does not skew it). The saving compares All CC with the fast modes (Play FAST, else One save) and is only
+does not skew it). The saving compares Full Start with the fast modes (Quick Start, else One save) and is only
 claimed when both have starts; 'confidence' is 'none' (no starts), 'one_mode' (only one side measured), 'low'
 (fewer than 3 starts on a side) or 'ok'.
 """
@@ -124,7 +124,7 @@ def _dur(s):
     return '%d h %d min' % (m // 60, m % 60)
 
 
-WORDS = {'fast': 'Play FAST', 'save': 'One save', 'full': 'All CC', 'studio': 'Studio mode', 'other': 'Other'}
+WORDS = {'fast': 'Quick Start', 'save': 'One save', 'full': 'Full Start', 'studio': 'Studio mode', 'other': 'Other'}
 
 
 def _message(view, fast_key, saved, confidence):
@@ -135,10 +135,10 @@ def _message(view, fast_key, saved, confidence):
     line = ' - '.join(parts)
     if confidence == 'one_mode':
         if view.get('full') and view['full']['total_s']:
-            return line + '. Start once with Play FAST to compare.'
-        return line + '. Start once with All CC to compare.'
+            return line + '. Start once with Quick Start to compare.'
+        return line + '. Start once with Full Start to compare.'
     if saved is not None and saved <= 0:
-        return line + '. So far Play FAST has not been quicker on this PC.'
+        return line + '. So far Quick Start has not been quicker on this PC.'
     tail = ' (about %s less per start)' % _dur(saved) if saved else ''
     if confidence == 'low':
         return line + tail + '. Based on only a few starts so far; the figures become more reliable with more starts.'

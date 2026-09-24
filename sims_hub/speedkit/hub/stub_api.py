@@ -48,7 +48,7 @@ def _initial_state():
         'game_running': False,
         'game': {'found': True, 'exe': r'E:\The Sims 4\Game\Bin\TS4_x64.exe', 'game_dir': r'E:\The Sims 4',
                  'source': 'EA app', 'store': 'ea', 'saved': False, 'message': r'The Sims 4 is at E:\The Sims 4.'},
-        'profile': {'name': 'full', 'save_slot': None, 'label': 'All CC - every mod is loaded'},
+        'profile': {'name': 'full', 'save_slot': None, 'label': 'Full Start - all CC is loaded'},
         'graphics': {'state': 'sgr_full', 'label': "Simp4Sims 'SGR Full' - looks great but causes lag", 'can_tune': True,
                      'details': ['Sims far away are drawn in full detail, which slows the game down.',
                                  'Shadows and reflections are set higher than the game can use.']},
@@ -158,7 +158,7 @@ def list_saves(progress=None):
 
 
 # ------------------------------------------------------------------ play
-_LABELS = {'fast': ('fast', 'Fast mode - only the CC your sims use'), 'full': ('full', 'All CC - every mod is loaded'),
+_LABELS = {'fast': ('fast', 'Quick Start - only the CC your sims use'), 'full': ('full', 'Full Start - all CC is loaded'),
            'studio': ('studio', 'Studio - the animation work set')}
 
 
@@ -239,7 +239,7 @@ def undo_last(progress=None):
         if last['kind'] == 'settings':
             STATE['graphics'].update(state='sgr_full', label="Simp4Sims 'SGR Full' - looks great but causes lag", can_tune=True)
         if last['kind'] == 'profile':
-            STATE['profile'] = {'name': 'full', 'save_slot': None, 'label': 'All CC - every mod is loaded'}
+            STATE['profile'] = {'name': 'full', 'save_slot': None, 'label': 'Full Start - all CC is loaded'}
         if last['kind'] == 'setaside':
             _cc_restore(last['id'])
     on_undo(last)                    # patch day / save backups (stub_care.py)
@@ -802,8 +802,8 @@ def cc_set_aside(ids, progress=None):
             elif it['kind'] == 'script':
                 refused.append({'name': it['name'], 'why': 'Script mods are not changed by the Hub.'})
             elif not it['in_mods']:
-                refused.append({'name': it['name'], 'why': "It is not in the Mods folder right now (moved out by Play FAST or "
-                                                           "one-save mode). Switch to All CC first."})
+                refused.append({'name': it['name'], 'why': "It is not in the Mods folder right now (moved out by Quick Start or "
+                                                           "one-save mode). Switch to Full Start first."})
             else:
                 done.append(it)
     if not done:
