@@ -14,43 +14,44 @@ import { spacePos, spaceQuat } from './posemath.js';
 import { holdNamed, limbPoint } from './holds.js';
 import { shapeQuats } from './hands.js';
 import { spell, reducedMotion } from './fx.js';
+import { $t, inSentence } from './i18n.js';
 
 // layers: [type, params] per part; faces: preset id per part; voice: random voice set per part
 export const RECIPES = [
-  { id: 'cowgirl', label: 'Cowgirl', kind: 'VAGINAL', tags: ['COWGIRL', 'VAGINAL', 'PASSIONATE'], blurb: 'She rides him',
+  { id: 'cowgirl', label: $t('magic.cowgirl'), kind: 'VAGINAL', tags: ['COWGIRL', 'VAGINAL', 'PASSIONATE'], blurb: $t('magic.she_rides_him'),
     layers: { FEMALE: [['ride', {}]], MALE: [['thrust', { distance: 3 }]] }, faces: { FEMALE: 'moan', MALE: 'pleasure' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
-  { id: 'missionary', label: 'Missionary', kind: 'VAGINAL', tags: ['MISSIONARY', 'VAGINAL', 'PASSIONATE'], blurb: 'Face to face, him on top',
+  { id: 'missionary', label: $t('magic.missionary'), kind: 'VAGINAL', tags: ['MISSIONARY', 'VAGINAL', 'PASSIONATE'], blurb: $t('magic.face_to_face_him_on'),
     layers: { MALE: [['thrust', {}]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'ecstasy', MALE: 'intense' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
-  { id: 'doggy', label: 'Doggy', kind: 'VAGINAL', tags: ['DOGGY', 'VAGINAL', 'ROUGH'], blurb: 'From behind, hard',
+  { id: 'doggy', label: $t('magic.doggy'), kind: 'VAGINAL', tags: ['DOGGY', 'VAGINAL', 'ROUGH'], blurb: $t('magic.from_behind_hard'),
     layers: { MALE: [['thrust', { sharp: 0.85 }]], FEMALE: [['bounce', { distance: 1.2, tilt: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'intense' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
-  { id: 'standing', label: 'Standing', kind: 'VAGINAL', tags: ['STANDING', 'VAGINAL'], blurb: 'Up against each other',
+  { id: 'standing', label: $t('magic.standing'), kind: 'VAGINAL', tags: ['STANDING', 'VAGINAL'], blurb: $t('magic.up_against_each_other'),
     layers: { MALE: [['thrust', {}]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'pleasure', MALE: 'pleasure' }, voice: { FEMALE: 'moan_soft' } },
-  { id: 'spooning', label: 'Spooning', kind: 'VAGINAL', tags: ['SPOONING', 'VAGINAL', 'SLOW'], blurb: 'Slow, lying on their sides',
+  { id: 'spooning', label: $t('magic.spooning'), kind: 'VAGINAL', tags: ['SPOONING', 'VAGINAL', 'SLOW'], blurb: $t('magic.slow_lying_on_their_sides'),
     layers: { MALE: [['thrust', { distance: 3, sharp: 0.3 }]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'bite', MALE: 'relaxed' }, voice: { FEMALE: 'moan_soft' }, calm: true },
-  { id: 'pronebone', label: 'Prone bone', kind: 'VAGINAL', tags: ['PRONEBONE', 'VAGINAL', 'ROUGH'], blurb: 'She lies flat, him on top',
+  { id: 'pronebone', label: $t('magic.prone_bone'), kind: 'VAGINAL', tags: ['PRONEBONE', 'VAGINAL', 'ROUGH'], blurb: $t('magic.she_lies_flat_him_on'),
     layers: { MALE: [['thrust', { sharp: 0.8 }]] }, faces: { FEMALE: 'ahegao', MALE: 'intense' }, voice: { FEMALE: 'moan' } },
-  { id: 'sitting', label: 'Lap ride', kind: 'VAGINAL', tags: ['SITTING', 'VAGINAL'], blurb: 'She sits on his lap',
+  { id: 'sitting', label: $t('magic.lap_ride'), kind: 'VAGINAL', tags: ['SITTING', 'VAGINAL'], blurb: $t('magic.she_sits_on_his_lap'),
     layers: { FEMALE: [['ride', { distance: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'pleasure' }, voice: { FEMALE: 'moan_soft' } },
-  { id: 'anal', label: 'Anal', kind: 'ANAL', tags: ['ANAL', 'DOGGY'], blurb: 'From behind, anal',
+  { id: 'anal', label: $t('magic.anal'), kind: 'ANAL', tags: ['ANAL', 'DOGGY'], blurb: $t('magic.from_behind_anal'),
     layers: { MALE: [['thrust', { distance: 3.5 }]] }, faces: { FEMALE: 'intense', MALE: 'intense' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
-  { id: 'bj', label: 'Blowjob', kind: 'ORALJOB', tags: ['BLOWJOB', 'KNEELING'], blurb: 'She kneels, head bobbing',
+  { id: 'bj', label: $t('magic.blowjob'), kind: 'ORALJOB', tags: ['BLOWJOB', 'KNEELING'], blurb: $t('magic.she_kneels_head_bobbing'),
     layers: { FEMALE: [['headbob', {}]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'kiss', MALE: 'pleasure' }, voice: { MALE: 'breath' }, noOpenFace: true },
-  { id: 'handjob', label: 'Handjob', kind: 'HANDJOB', tags: ['FOREPLAY'], blurb: 'Her hand strokes him',
+  { id: 'handjob', label: $t('magic.handjob'), kind: 'HANDJOB', tags: ['FOREPLAY'], blurb: $t('magic.her_hand_strokes_him'),
     layers: { FEMALE: [['stroke', { limb: 'R hand' }]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'seductive', MALE: 'pleasure' }, voice: { MALE: 'breath' }, calm: true },
-  { id: 'cunni', label: 'Cunnilingus', kind: 'ORALJOB', tags: ['CUNNILINGUS', 'LICKING'], blurb: 'He goes down on her',
+  { id: 'cunni', label: $t('magic.cunnilingus'), kind: 'ORALJOB', tags: ['CUNNILINGUS', 'LICKING'], blurb: $t('magic.he_goes_down_on_her'),
     layers: { MALE: [['headbob', { angle: 8 }]], FEMALE: [['grind', { distance: 1.5, tilt: 8 }]] }, faces: { FEMALE: 'ecstasy', MALE: 'tongue' }, voice: { FEMALE: 'moan_soft' } },
-  { id: 'titjob', label: 'Titjob', kind: 'HANDJOB', tags: ['TITJOB'], blurb: 'Between her breasts',
+  { id: 'titjob', label: $t('magic.titjob'), kind: 'HANDJOB', tags: ['TITJOB'], blurb: $t('magic.between_her_breasts'),
     layers: { FEMALE: [['bounce', { distance: 4 }]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'seductive', MALE: 'pleasure' }, voice: { MALE: 'breath' } },
-  { id: 'kiss', label: 'Making out', kind: 'TEASING', tags: ['KISSING', 'FOREPLAY'], blurb: 'Close, kissing, hands roaming',
+  { id: 'kiss', label: $t('magic.making_out'), kind: 'TEASING', tags: ['KISSING', 'FOREPLAY'], blurb: $t('magic.close_kissing_hands_roaming'),
     layers: { FEMALE: [['sway', {}], ['breathe', {}]], MALE: [['sway', {}], ['breathe', {}]] }, faces: { FEMALE: 'kiss', MALE: 'kiss' }, voice: { FEMALE: 'moan_soft' }, calm: true },
-  { id: 'carry', label: 'Carry', kind: 'VAGINAL', tags: ['CARRY', 'STANDING', 'FLEXIBLE'], blurb: 'He holds her up',
+  { id: 'carry', label: $t('magic.carry'), kind: 'VAGINAL', tags: ['CARRY', 'STANDING', 'FLEXIBLE'], blurb: $t('magic.he_holds_her_up'),
     layers: { MALE: [['thrust', { axis: 'up', distance: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'intense' }, voice: { FEMALE: 'moan' } },
 ];
 
 export const PLACES = [
-  { id: 'floor', label: 'Floor' }, { id: 'double_bed', label: 'Double bed' }, { id: 'single_bed', label: 'Single bed' },
-  { id: 'sofa', label: 'Sofa' }, { id: 'loveseat', label: 'Loveseat' }, { id: 'chair_living', label: 'Armchair' },
-  { id: 'counter', label: 'Counter' }, { id: 'table_dining', label: 'Table' },
+  { id: 'floor', label: $t('magic.floor') }, { id: 'double_bed', label: $t('magic.double_bed') }, { id: 'single_bed', label: $t('magic.single_bed') },
+  { id: 'sofa', label: $t('magic.sofa') }, { id: 'loveseat', label: $t('magic.loveseat') }, { id: 'chair_living', label: $t('magic.armchair') },
+  { id: 'counter', label: $t('magic.counter') }, { id: 'table_dining', label: $t('magic.table') },
 ];
 
 // Intensity 0 (slow & gentle) .. 1 (hard & fast): strokes per loop, distance and hardness.
@@ -271,7 +272,7 @@ function pinRestingFeet(app, sims) {
 // ---------------------------------------------------------------- hands hold on (spec_bodies 4.7)
 // [who holds, the part of the partner, how many hands]
 const HOLDS = { cowgirl: ['MALE', 'hip', 2], doggy: ['MALE', 'hip', 2], anal: ['MALE', 'hip', 2], pronebone: ['MALE', 'hip', 2], sitting: ['MALE', 'hip', 2],
-  missionary: ['FEMALE', 'back', 2], spooning: ['MALE', 'hip', 1], carry: ['MALE', 'thigh', 2], kiss: ['FEMALE', 'shoulder blade', 2] };
+  missionary: ['FEMALE', 'back', 2], spooning: ['MALE', 'hip', 1], carry: ['MALE', 'thigh', 2], kiss: ['FEMALE', $t('magic.shoulder_blade'), 2] };
 
 // Each of the holder's hands takes the nearest free grab point of that part (so the two hands go to different
 // points). A hand is left alone when the point is further than 0.97 x the arm's length (shoulder to palm) from its
@@ -358,7 +359,7 @@ export async function makeMagic(app, { recipe, place, intensity = 0.55, seconds 
   const r = RECIPES.find(x => x.id === recipe) || RECIPES[0];
   const presets = app.posePresets || [];
   const pr = presets.find(x => x.id === r.id && !x.mine);
-  if (!pr) { toast('That position is not available (no animation of it in your library).', 'err'); return false; }
+  if (!pr) { toast($t('magic.that_position_is_not_available'), 'err'); return false; }
   const p = newProject();
   p.name = name || `${r.label} ${1 + Math.floor(Math.random() * 90)}`;
   p.author = author || localStorageGet('author', '') || '';
@@ -444,8 +445,9 @@ export async function makeMagic(app, { recipe, place, intensity = 0.55, seconds 
     if (box) app.vp.frame(box.center, box.radius, app.vp.viewDir());
     app.showcase(true);
   }
-  const at = furn.kind === 'floor' ? 'on the floor' : where === 'front' ? `at the ${furn.label.toLowerCase()}` : where === 'lap' ? `on the ${furn.label.toLowerCase()}, she sits on his lap` : `on the ${furn.label.toLowerCase()}`;
-  toast(`${r.label} ${at} - moving, with physics, faces and sound.${held ? ' Hands hold on to the partner by themselves.' : ''} Tune anything, then Send to game.`, 'ok');
+  const vars = { name: r.label, place: inSentence(furn.label) };
+  const made = furn.kind === 'floor' ? $t('magic.made_floor', vars) : where === 'front' ? $t('magic.made_at', vars) : where === 'lap' ? $t('magic.made_lap', vars) : $t('magic.made_on', vars);
+  toast(made + (held ? $t('magic.hands_hold_on_to_partner') : '') + $t('magic.tune_then_send'), 'ok');
   app.lastMagic = { recipe: r.id, place: furn.id, where, holds: held, finish: climax ? finish : 'none' };
   emitWA(app, 'magic', { recipe: r.id, place: furn.id, where, holds: held });
   return true;
@@ -456,14 +458,14 @@ export function openMagicDialog(app) {
   let intensity = localStorageGet('magicIntensity', 0.55), seconds = 3, finish = 'none';
   // "Finish": only offered when the moments (cum, drool, finish voices) are there
   // (it sits beside the two sliders, so the dialog does not grow on a laptop screen)
-  const finishBox = h('label', { class: 'field hidden', style: { margin: 0, minWidth: 0 } }, h('span', {}, 'Finish'));
+  const finishBox = h('label', { class: 'field hidden', style: { margin: 0, minWidth: 0 } }, h('span', {}, $t('magic.finish')));
   const tuneRow = h('div', { class: 'grid-2', style: { marginTop: '10px', alignItems: 'end' } });
   import('./moments.js').then(m => {
     if (typeof m.finishPreset !== 'function') return;
     const parts = Array.isArray(m.FINISH_PARTS) && m.FINISH_PARTS.length ? m.FINISH_PARTS
-      : [['inside', 'Inside'], ['face', 'Face'], ['chest', 'Chest'], ['back', 'Back'], ['butt', 'Butt'], ['feet', 'Feet']];
-    const sel = h('select', { title: 'End with cum - it becomes a one-time Climax animation' },
-      h('option', { value: 'none' }, 'No finish'), ...parts.map(([id, text]) => h('option', { value: id }, text)));
+      : [['inside', $t('magic.inside')], ['face', $t('magic.face')], ['chest', $t('magic.chest')], ['back', $t('magic.back')], ['butt', $t('magic.butt')], ['feet', $t('magic.feet')]];
+    const sel = h('select', { title: $t('magic.end_with_cum_it_becomes') },
+      h('option', { value: 'none' }, $t('magic.no_finish')), ...parts.map(([id, text]) => h('option', { value: id }, text)));
     sel.onchange = () => { finish = sel.value; };
     finishBox.append(sel);
     finishBox.classList.remove('hidden');
@@ -489,34 +491,34 @@ export function openMagicDialog(app) {
   const go = async () => {
     localStorageSet('magicRecipe', recipe); localStorageSet('magicPlace', place); localStorageSet('magicIntensity', intensity);
     // Magic makes a new animation: work that isn't saved is never replaced without asking
-    if (app.store.dirty && !(await confirmBox('Make a new animation?', `Unsaved changes to "${app.store.project.name}" will be lost. Save first (Ctrl+S) to keep them.`, 'Make it', true))) return false;
+    if (app.store.dirty && !(await confirmBox($t('magic.make_new_animation'), $t('magic.unsaved_changes_to_will_be', { projectName: app.store.project.name }), $t('magic.make_it'), true))) return false;
     // a soft glow grows from the button over the window while the scene is made
     const btn = dlg && dlg.footer && dlg.footer.lastChild;
     if (btn && btn.isConnected) { const rc = btn.getBoundingClientRect(); spell(rc.left + rc.width / 2, rc.top + rc.height / 2); }
     return makeMagic(app, { recipe, place, intensity, seconds, finish });
   };
   const dlg = modal({
-    title: 'Magic Animation', wide: true,
-    text: 'Pick a position and a place. One click makes a complete animation - posed on the real furniture, moving, with physics, faces and sound.',
+    title: $t('magic.magic_animation'), wide: true,
+    text: $t('magic.pick_position_and_place_one'),
     body: h('div', {},
       grid,
-      h('div', { class: 'section-title', style: { marginTop: '16px' } }, 'Where'), places,
+      h('div', { class: 'section-title', style: { marginTop: '16px' } }, $t('magic.where')), places,
       (tuneRow.append(
-        slider({ label: 'Slow & gentle ↔ Hard & fast', min: 0, max: 1, step: 0.05, value: intensity, fmt: v => Math.round(v * 100) + '%', onInput: v => { intensity = v; } }),
-        slider({ label: 'Loop length', min: 2, max: 8, step: 0.5, value: seconds, fmt: v => v + ' s', onInput: v => { seconds = v; } }),
+        slider({ label: $t('magic.slow_gentle_hard_fast'), min: 0, max: 1, step: 0.05, value: intensity, fmt: v => Math.round(v * 100) + '%', onInput: v => { intensity = v; } }),
+        slider({ label: $t('magic.loop_length'), min: 2, max: 8, step: 0.5, value: seconds, fmt: v => v + ' s', onInput: v => { seconds = v; } }),
         finishBox), tuneRow)),
     buttons: [
-      { label: 'Surprise me', kind: 'ghost', onClick: () => {
+      { label: $t('magic.surprise_me'), kind: 'ghost', onClick: () => {
         const avail = RECIPES.filter(r => (app.posePresets || []).some(x => x.id === r.id && !x.mine));
-        if (!avail.length) { toast('The positions are still loading - try again in a moment.'); return false; }
+        if (!avail.length) { toast($t('magic.positions_are_still_loading_try')); return false; }
         recipe = avail[Math.floor(Math.random() * avail.length)].id;
         const pls = PLACES.filter(pl => app.furniture.some(f => f.id === pl.id) && ['floor', 'double_bed', 'single_bed'].includes(pl.id));
         if (pls.length) place = pls[Math.floor(Math.random() * pls.length)].id;
         intensity = 0.3 + Math.random() * 0.6;
         return go();
       } },
-      { label: 'Cancel', kind: 'ghost' },
-      { label: 'Make it', kind: 'primary', onClick: go },
+      { label: $t('magic.cancel'), kind: 'ghost' },
+      { label: $t('magic.make_it'), kind: 'primary', onClick: go },
     ],
   });
 }

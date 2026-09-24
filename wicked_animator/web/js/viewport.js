@@ -9,6 +9,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FlyControls } from './flycam.js';
 import { installStage } from './stage.js';
+import { $t } from './i18n.js';
 
 export class Viewport {
   constructor(canvas) {
@@ -188,7 +189,7 @@ export class Viewport {
     if (this.stage) this.stage.allowBloom(this._qLevel < 1);
     this.quality = this._qLevel >= 3 ? 'fast' : 'full';
     this._resize();
-    const text = ['Full quality', 'Fast mode: no glow', 'Fast mode: lighter shadows', 'Fast mode'][this._qLevel];
+    const text = [$t('viewport.full_quality'), $t('viewport.fast_mode_no_glow'), $t('viewport.fast_mode_lighter_shadows'), $t('viewport.fast_mode')][this._qLevel];
     if (this.onQuality) { try { this.onQuality(this._qLevel, text, auto); } catch (e) { console.error(e); } }
   }
   get qualityLevel() { return this._qLevel; }

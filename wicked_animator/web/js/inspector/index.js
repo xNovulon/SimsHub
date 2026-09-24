@@ -8,6 +8,7 @@ import { boneSection } from './bone.js';
 import { keySection } from './key.js';
 import { pinSection } from './pin.js';
 import { bodyQuickSection, simSection } from './sim.js';
+import { $t } from '../i18n.js';
 
 let lastSel = '';
 
@@ -24,14 +25,14 @@ export function renderInspector(app) {
   root.innerHTML = '';
   const sim = app.store.sim();
   if (!sim) {
-    root.append(h('div', { class: 'section' }, h('div', { class: 'section-title' }, 'Getting started'),
+    root.append(h('div', { class: 'section' }, h('div', { class: 'section-title' }, $t('inspector.index.getting_started')),
       h('div', { class: 'card' },
-        h('p', { style: { marginTop: 0 } }, h('b', {}, '1 · Scene'), ' - add the sims and pick where it happens.'),
-        h('p', {}, h('b', {}, '2 · Pose'), ' - one click on a ready pose, then adjust.'),
-        h('p', {}, h('b', {}, '3 · Motion'), ' - add Thrust / Ride / Head bob, or key poses over time.'),
-        h('p', {}, h('b', {}, '4-6'), ' - body, face and sounds are mostly automatic.'),
-        h('p', { style: { marginBottom: 0 } }, h('b', {}, '7-8'), ' - name it, then Send to game.')),
-      h('div', { class: 'hint' }, 'Click a sim in the 3D view to select it. Press ', h('kbd', {}, '?'), ' for all controls.')));
+        h('p', { style: { marginTop: 0 } }, h('b', {}, $t('inspector.index.1_scene')), $t('inspector.index.add_sims_and_pick_where')),
+        h('p', {}, h('b', {}, $t('inspector.index.2_pose')), $t('inspector.index.one_click_on_ready_pose')),
+        h('p', {}, h('b', {}, $t('inspector.index.3_motion')), $t('inspector.index.add_thrust_ride_head_bob')),
+        h('p', {}, h('b', {}, '4-6'), $t('inspector.index.body_face_and_sounds_are')),
+        h('p', { style: { marginBottom: 0 } }, h('b', {}, '7-8'), $t('inspector.index.name_it_then_send_to'))),
+      h('div', { class: 'hint' }, $t('inspector.index.click_sim_in_3d_view'), h('kbd', {}, '?'), $t('inspector.index.for_all_controls'))));
     return;
   }
   const view = app.simViews.get(sim.id);
@@ -40,11 +41,11 @@ export function renderInspector(app) {
   const copy = e => {
     e.stopPropagation();
     const text = e.currentTarget.textContent;
-    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast(`Copied "${text}".`), () => toast(text));
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast($t('inspector.index.copied', { text })), () => toast(text));
   };
   root.append(h('div', { class: 'insp-head', style: { '--sim': sim.color } }, h('div', { class: 'swatch' }, bt.short),
-    h('div', {}, h('b', {}, sim.label), h('span', {}, bone ? label(bone, sim.frame) : 'Whole sim - click a body part'),
-      bone ? h('code', { class: 'raw-name', title: 'Name in Blender and the game - click to copy', onclick: copy }, bone) : null)));
+    h('div', {}, h('b', {}, sim.label), h('span', {}, bone ? label(bone, sim.frame) : $t('inspector.index.whole_sim_click_body_part')),
+      bone ? h('code', { class: 'raw-name', title: $t('inspector.index.name_in_blender_and_game'), onclick: copy }, bone) : null)));
   if (view) root.append(boneList(app, sim, view));
 
   if (bone && view && view.bone(bone)) root.append(boneSection(app, sim, view, bone));

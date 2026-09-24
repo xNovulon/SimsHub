@@ -5,6 +5,7 @@
 import { h, icon, modal, toast, emitWA } from './ui.js';
 import { api } from './api.js';
 import { successHero, celebrateAt } from './fx.js';
+import { $t } from './i18n.js';
 
 // Let go of the gizmo for a moment (filming): -> a function that puts it back on the same part, as it was.
 export function holdGizmo(app) {
@@ -32,7 +33,7 @@ export async function captureVideo(app, { loops = 2, seconds = null, showcase = 
     comp.width = composite.width; comp.height = composite.height;
     canvas = comp;
   }
-  if (!canvas.captureStream || !window.MediaRecorder) { toast('This browser cannot record video.', 'err'); return null; }
+  if (!canvas.captureStream || !window.MediaRecorder) { toast($t('record.this_browser_cannot_record_video'), 'err'); return null; }
   const p = app.store.project;
   const secs = Math.max(1, Math.min(60, seconds || (p.length / p.fps) * loops));
   if (comp) {
@@ -57,7 +58,7 @@ export async function captureVideo(app, { loops = 2, seconds = null, showcase = 
     if (dest) app.audio.master.disconnect(dest);
     video.getTracks().forEach(t => t.stop());
     stopDraw();
-    toast('Could not start recording: ' + e.message, 'err');
+    toast($t('record.could_not_start_recording', { message: e.message }), 'err');
     return null;
   }
   app._recordingVideo = true;
@@ -87,7 +88,7 @@ export async function captureVideo(app, { loops = 2, seconds = null, showcase = 
   document.body.classList.add('recording');
   // the cinematic look (glow, vignette, grain) is part of the picture while recording
   if (vp.stage) vp.stage.cinematic(true);
-  const tag = badge ? h('div', { class: 'rec-badge' }, h('span', { class: 'dot' }), 'Recording...') : null;
+  const tag = badge ? h('div', { class: 'rec-badge' }, h('span', { class: 'dot' }), $t('record.recording')) : null;
   if (tag) document.getElementById('viewport-wrap').append(tag);
   try {
     rec.start(250);
@@ -133,12 +134,12 @@ export async function recordVideo(app, opts = {}) {
       .then(x => (x.ok ? x.json() : x.json().then(b => { throw new Error(b.error || x.statusText); })));
     const hero = successHero();
     modal({
-      title: 'Your video is ready',
-      body: h('div', {}, hero, h('div', { class: 'success' }, icon('check'), h('div', {}, h('b', {}, `${seconds.toFixed(1)} s with sound · ${((r.bytes || blob.size) / 1048576).toFixed(1)} MB`), h('div', { class: 'path' }, r.path || ''))),
+      title: $t('record.your_video_is_ready'),
+      body: h('div', {}, hero, h('div', { class: 'success' }, icon('check'), h('div', {}, h('b', {}, $t('record.s_with_sound_mb', { seconds: seconds.toFixed(1), bytes: ((r.bytes || blob.size) / 1048576).toFixed(1) })), h('div', { class: 'path' }, r.path || ''))),
         h('video', { src: URL.createObjectURL(blob), controls: true, autoplay: true, loop: true, style: { width: '100%', borderRadius: '12px', marginTop: '10px', background: '#000' } })),
-      buttons: [{ label: 'Open the folder', onClick: () => { if (r.folder) api.reveal(r.folder); return false; } }, { label: 'Done', kind: 'primary' }],
+      buttons: [{ label: $t('record.open_folder'), onClick: () => { if (r.folder) api.reveal(r.folder); return false; } }, { label: $t('record.done'), kind: 'primary' }],
     });
     celebrateAt(hero, { delay: 480 });
     emitWA(app, 'recorded', { file: r.path });
-  } catch (e) { toast('Could not save the video: ' + e.message, 'err'); }
+  } catch (e) { toast($t('record.could_not_save_video', { message: e.message }), 'err'); }
 }

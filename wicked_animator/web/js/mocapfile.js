@@ -12,6 +12,7 @@ import { RigPose } from './capture/rigpose.js';
 import { Solver } from './capture/retarget.js';
 import { applyToSim } from './capture/keys.js';
 import { parseBVH, analyze, fk, solveFile, formatProblem, BVHError, MAX_SECONDS } from './capture/bvh.js';
+import { $t } from './i18n.js';
 
 const OPTS_KEY = 'wa.mocapfile.opts';
 const MAX_BYTES = 200 * 1024 * 1024;
@@ -45,14 +46,14 @@ class MotionFileDialog {
     this.root = h('div', { class: 'mf' });
     this.input = h('input', { type: 'file', accept: '.bvh,.fbx', class: 'mf-input', onchange: () => { const f = this.input.files && this.input.files[0]; this.input.value = ''; if (f) this.load(f); } });
     const m = modal({
-      title: 'Import a motion file',
-      text: 'A BVH file from a motion-capture library or a free AI video tool (Rokoko Vision, DeepMotion, Plask) becomes keys on a sim.',
+      title: $t('mocapfile.import_motion_file'),
+      text: $t('mocapfile.bvh_file_from_motion_capture'),
       body: h('div', {}, this.input, this.root),
       wide: true,
       onClose: () => { this.closed = true; cancelAnimationFrame(this._raf); if (current === this) current = null; },
       buttons: [
-        { label: 'Cancel', kind: 'ghost' },
-        { label: 'Make keys', kind: 'primary', onClick: () => this.makeKeys() },
+        { label: $t('mocapfile.cancel'), kind: 'ghost' },
+        { label: $t('mocapfile.make_keys'), kind: 'primary', onClick: () => this.makeKeys() },
       ],
     });
     this.modal = m;
@@ -71,7 +72,7 @@ class MotionFileDialog {
     this.busy = 'Reading ' + file.name + '...';
     this.render();
     try {
-      if (file.size > MAX_BYTES) throw new BVHError(`That file is ${(file.size / 1048576).toFixed(0)} MB - more than this app reads at once. Cut it into a shorter part first.`);
+      if (file.size > MAX_BYTES) throw new BVHError($t('mocapfile.that_file_is_mb_more', { size: (file.size / 1048576).toFixed(0) }));
       const head = await file.slice(0, 64).text();
       const fmt = formatProblem(file.name, head);
       if (fmt) throw new BVHError(fmt);
@@ -81,18 +82,17 @@ class MotionFileDialog {
       const info = analyze(bvh);
       this.warnings = bvh.warnings.slice();
       if (info.missing.length) {
-        throw new BVHError(`This skeleton isn't one the app recognises: it can't find the ${info.missing.slice(0, 6).join(', ')}${info.missing.length > 6 ? '...' : ''}. `
-          + 'Files from Mixamo, CMU, Rokoko, DeepMotion, Plask, Daz and 3ds Max Biped skeletons work; a skeleton with other joint names needs to be renamed first.');
+        throw new BVHError($t('mocapfile.this_skeleton_isn_t_one', { missing: info.missing.slice(0, 6).join(', '), v: info.missing.length > 6 ? '...' : '' }));
       }
       this.bvh = bvh; this.info = info;
       const dur = (bvh.frames - 1) * bvh.frameTime;
       this.from = 0;
       this.len = Math.min(dur, MAX_SECONDS);
-      if (dur > MAX_SECONDS) this.warnings.push(`The file is ${secs(dur)} s long; up to ${MAX_SECONDS} s are read at once - pick the part below.`);
+      if (dur > MAX_SECONDS) this.warnings.push($t('mocapfile.file_too_long', { secs: secs(dur), max: MAX_SECONDS }));
       this.frame = 0;
     } catch (e) {
       if (!(e instanceof BVHError)) console.error('motion file', e);
-      this.error = e instanceof BVHError ? e.message : 'That file could not be read: ' + (e && e.message ? e.message : e);
+      this.error = e instanceof BVHError ? e.message : $t('mocapfile.that_file_could_not_be', { v: e && e.message ? e.message : e });
     }
     this.busy = null;
     this.render();
@@ -116,20 +116,20 @@ class MotionFileDialog {
     this.canvas = h('canvas', { class: 'mf-canvas', width: 360, height: 300 });
     this.scrub = h('input', { type: 'range', class: 'mf-scrub', min: 0, max: 1000, value: 0 });
     this.scrub.addEventListener('input', () => { this.playing = false; this._syncPlay(); this.frame = this._range()[0] + (+this.scrub.value / 1000) * (this._range()[1] - this._range()[0]); this.draw(); });
-    this.playBtn = h('button', { class: 'icon-btn sm', title: 'Play / pause', onclick: () => { this.playing = !this.playing; this._syncPlay(); if (this.playing) this._loop(); } }, icon('play'));
+    this.playBtn = h('button', { class: 'icon-btn sm', title: $t('mocapfile.play_pause'), onclick: () => { this.playing = !this.playing; this._syncPlay(); if (this.playing) this._loop(); } }, icon('play'));
     this.clock = h('span', { class: 'mf-clock' });
     const fingers = info.fingers.L || info.fingers.R;
     const facts = [
-      `${info.style === 'Other' ? 'Skeleton' : info.style + ' skeleton'} · ${info.joints} joints`,
-      `${bvh.frames.toLocaleString()} frames at ${Math.round(bvh.fps * 100) / 100} fps (${secs(dur)} s)`,
+      $t(info.style === 'Other' ? 'mocapfile.skeleton_joints' : 'mocapfile.style_skeleton_joints', { style: info.style, joints: info.joints }),
+      $t('mocapfile.frames_at_fps_s', { frames: bvh.frames.toLocaleString(), fps: Math.round(bvh.fps * 100) / 100, dur: secs(dur) }),
       `${info.restPose} · ${info.up} · ${info.units}`,
-      fingers ? 'Has fingers' : 'No fingers (hands follow the wrists)',
+      fingers ? $t('mocapfile.has_fingers') : $t('mocapfile.no_fingers_hands_follow_wrists'),
     ];
     const left = h('div', { class: 'mf-left' },
       h('div', { class: 'mf-stage' }, this.canvas),
       h('div', { class: 'mf-bar' }, this.playBtn, this.scrub, this.clock),
       h('div', { class: 'mf-file' }, icon('mf-bvh'), h('b', { title: this.file.name }, this.file.name),
-        h('button', { class: 'btn small ghost', onclick: () => this.input.click() }, 'Another file')),
+        h('button', { class: 'btn small ghost', onclick: () => this.input.click() }, $t('mocapfile.another_file'))),
       h('ul', { class: 'mf-facts' }, facts.map(f => h('li', {}, f))));
     // the part
     const start = h('input', { class: 'text', type: 'number', min: 0, max: Math.max(0, dur - 0.1).toFixed(1), step: 0.1, value: secs(this.from) });
@@ -158,28 +158,28 @@ class MotionFileDialog {
     const simSel = sims.length ? h('select', { class: 'mf-sim' }, sims.map(s => h('option', { value: s.id, selected: s.id === this.simId }, s.label || s.id))) : null;
     if (simSel) simSel.addEventListener('change', () => { this.simId = simSel.value; });
     const at = Math.round(app.store.frame || 0);
-    const place = sel('place', [['stay', 'Stay in place (keeps sways and bounces)'], ['travel', 'Keep the travel from the file']], () => this.render());
-    const loopSel = sel('loop', [['best', 'Find the best loop in this part'], ['none', 'Use the part as it is']]);
+    const place = sel('place', [['stay', $t('mocapfile.stay_in_place_keeps_sways')], ['travel', $t('mocapfile.keep_travel_from_file')]], () => this.render());
+    const loopSel = sel('loop', [['best', $t('mocapfile.find_best_loop_in_this')], ['none', $t('mocapfile.use_part_as_it_is')]]);
     if (o.place === 'travel') { loopSel.value = 'none'; loopSel.disabled = true; }
     this.lengthNote = h('div', { class: 'hint mf-len' });
     const right = h('div', { class: 'mf-right' },
       h('div', { class: 'grid-2' },
-        h('label', { class: 'field' }, h('span', {}, 'Put it on'), simSel || h('span', { class: 'muted' }, 'A new sim')),
-        h('label', { class: 'field' }, h('span', {}, 'Key spacing'), sel('every', [['smart', 'Smart - keys only where needed'], ['3', 'Every 3 frames (very detailed)'], ['6', 'Every 6 frames'], ['10', 'Every 10 frames'], ['15', 'Every 15 frames (simple)']])),
-        h('label', { class: 'field' }, h('span', {}, 'Start at (seconds)'), start),
-        h('label', { class: 'field' }, h('span', {}, 'Length (seconds)'), len),
-        h('label', { class: 'field' }, h('span', {}, 'Where the hips go'), place),
-        h('label', { class: 'field' }, h('span', {}, 'Height'), sel('height', [['file', 'As in the file (jumps stay jumps)'], ['floor', 'Keep the feet on the floor']])),
-        h('label', { class: 'field' }, h('span', {}, 'Loop'), loopSel),
-        h('label', { class: 'field' }, h('span', {}, 'Put it'), sel('mode', [['replace', 'Replace the whole animation'], ['insert', `Only here (from ${secs(at / (p.fps || 30))} s)`]], () => this.render()))),
-      o.place === 'travel' ? h('div', { class: 'hint' }, 'A loop can\'t travel (the sim would jump back at the end), so the part is used as it is.') : null,
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.put_it_on')), simSel || h('span', { class: 'muted' }, $t('mocapfile.new_sim'))),
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.key_spacing')), sel('every', [['smart', $t('mocapfile.smart_keys_only_where_needed')], ['3', $t('mocapfile.every_3_frames_very_detailed')], ['6', $t('mocapfile.every_6_frames')], ['10', $t('mocapfile.every_10_frames')], ['15', $t('mocapfile.every_15_frames_simple')]])),
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.start_at_seconds')), start),
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.length_seconds')), len),
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.where_hips_go')), place),
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.height')), sel('height', [['file', $t('mocapfile.as_in_file_jumps_stay')], ['floor', $t('mocapfile.keep_feet_on_floor')]])),
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.loop')), loopSel),
+        h('label', { class: 'field' }, h('span', {}, $t('mocapfile.put_it')), sel('mode', [['replace', $t('mocapfile.replace_whole_animation')], ['insert', $t('mocapfile.only_here_from_s', { at: secs(at / (p.fps || 30)) })]], () => this.render()))),
+      o.place === 'travel' ? h('div', { class: 'hint' }, $t('mocapfile.loop_can_t_travel_sim')) : null,
       h('div', { class: 'mf-checks' },
-        o.mode === 'replace' ? check('fit', 'Make the animation as long as this part') : null,
-        check('smooth', 'Smooth out small shakes', 'For files from AI video tools, which can tremble a little. Clean studio mocap needs no smoothing.'),
-        fingers ? check('fingers', 'Copy the fingers') : null,
-        check('mirror', 'Swap left and right', 'If the sim moves the wrong arm or leg')),
+        o.mode === 'replace' ? check('fit', $t('mocapfile.make_animation_as_long_as')) : null,
+        check('smooth', $t('mocapfile.smooth_out_small_shakes'), $t('mocapfile.for_files_from_ai_video')),
+        fingers ? check('fingers', $t('mocapfile.copy_fingers')) : null,
+        check('mirror', $t('mocapfile.swap_left_and_right'), $t('mocapfile.if_sim_moves_wrong_arm'))),
       this.lengthNote,
-      h('p', { class: 'hint' }, 'The sim keeps its place and the way it faces; the file\'s moves are fitted to its body. One Ctrl+Z takes it all back.'));
+      h('p', { class: 'hint' }, $t('mocapfile.sim_keeps_its_place_and')));
     root.append(h('div', { class: 'mf-main' }, left, right));
     if (this.warnings.length) root.append(h('div', { class: 'mf-msg warn' }, icon('mf-warn'), h('span', {}, this.warnings.join(' '))));
     if (this.error) root.append(h('div', { class: 'mf-msg err', role: 'alert' }, icon('mf-warn'), h('span', {}, this.error)));
@@ -192,20 +192,20 @@ class MotionFileDialog {
   }
 
   _pick() {
-    const zone = h('div', { class: 'mf-drop', tabindex: '0', role: 'button', 'aria-label': 'Choose a BVH file',
+    const zone = h('div', { class: 'mf-drop', tabindex: '0', role: 'button', 'aria-label': $t('mocapfile.choose_bvh_file'),
       onclick: () => this.input.click(), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.input.click(); } } },
     h('span', { class: 'mf-drop-icon' }, icon('mf-bvh')),
-    h('b', {}, 'Drop a .bvh file here'),
-    h('span', {}, 'or click to choose one'),
-    h('button', { class: 'btn soft', type: 'button', onclick: e => { e.stopPropagation(); this.input.click(); } }, icon('folder'), 'Choose a BVH file'));
+    h('b', {}, $t('mocapfile.drop_bvh_file_here')),
+    h('span', {}, $t('mocapfile.or_click_to_choose_one')),
+    h('button', { class: 'btn soft', type: 'button', onclick: e => { e.stopPropagation(); this.input.click(); } }, icon('folder'), $t('mocapfile.choose_bvh_file')));
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('over'));
     zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) this.load(f); });
     return h('div', { class: 'mf-pick' }, zone,
       h('ul', { class: 'mf-tips' },
-        h('li', {}, h('b', {}, 'BVH files. '), 'DeepMotion, Plask and Rokoko Vision offer BVH next to FBX when you download; pick BVH. The CMU mocap library comes as BVH too.'),
-        h('li', {}, h('b', {}, 'FBX can\'t be read here. '), 'Mixamo only downloads FBX - convert it to BVH first (for example with Blender\'s BVH export).'),
-        h('li', {}, 'Adults only. The file is read on this PC and never uploaded.')));
+        h('li', {}, h('b', {}, $t('mocapfile.bvh_files')), $t('mocapfile.deepmotion_plask_and_rokoko_vision')),
+        h('li', {}, h('b', {}, $t('mocapfile.fbx_can_t_be_read')), $t('mocapfile.mixamo_only_downloads_fbx_convert')),
+        h('li', {}, $t('mocapfile.adults_only_file_is_read'))));
   }
 
   _range() {
@@ -219,7 +219,7 @@ class MotionFileDialog {
     const p = this.app.store.project, n = Math.round(this.len * 30) + 1;
     const others = p.sims.filter(s => s.id !== this.simId).length;
     this.lengthNote.textContent = this.o.mode === 'replace' && this.o.fit && others
-      ? `The animation becomes about ${secs(n / 30)} s long; the other sims' moves are stretched to match.` : '';
+      ? $t('mocapfile.animation_becomes_about_s_long', { n: secs(n / 30) }) : '';
   }
 
   _syncPlay() {
@@ -300,14 +300,14 @@ class MotionFileDialog {
     const app = this.app, o = this.o;
     const btn = this.go;
     const label = btn.textContent;
-    btn.textContent = 'Working...';
+    btn.textContent = $t('mocapfile.working');
     this.error = null;
     await new Promise(r => setTimeout(r, 30));
     try {
       let p = app.store.project;
       if (!p.sims.length && typeof app.newScene === 'function') { app.newScene(false, false, 'solo'); p = app.store.project; }
       const s = app.store.sim(this.simId) || p.sims[0];
-      if (!s) throw new Error('Add a sim to the scene first.');
+      if (!s) throw new Error($t('mocapfile.add_sim_to_scene_first'));
       const { base, facing } = readSim(app, s.id);
       const [a, b] = this._range();
       if (!this._solver || this._solver.rig !== app.assets.rig) { this._solver = new Solver(app.assets.rig); this._solver.rig = app.assets.rig; }
@@ -322,19 +322,19 @@ class MotionFileDialog {
       const every = o.every === 'smart' ? null : +o.every;
       const count = applyToSim(app, s.id, res, { mode: o.mode, at, fitLength: o.mode === 'replace' && o.fit ? true : null, detail: 0.5, every, source: 'file' });
       try { app.emit && app.emit('keyed', { simId: s.id, frame: 0, kind: 'add' }); } catch { /* optional */ }
-      const lenNote = p.length !== lenBefore ? ` The animation is ${secs(p.length / (p.fps || 30))} s long now.` : '';
-      const loopNote = r.loop ? ' It loops.' : '';
-      toast(`Made ${count} key${count === 1 ? '' : 's'} on ${s.label || 'the sim'} from ${this.file.name}.${loopNote}${lenNote} Undo with Ctrl+Z.`, 'ok');
+      const lenNote = p.length !== lenBefore ? $t('mocapfile.animation_is_s_long_now', { pCount: secs(p.length / (p.fps || 30)) }) : '';
+      const loopNote = r.loop ? $t('mocapfile.it_loops') : '';
+      toast($t('mocapfile.made_keys', { n: count, sim: s.label || $t('mocapfile.sim'), file: this.file.name }) + loopNote + lenNote + $t('mocapfile.undo_hint'), 'ok');
       // a part used as it is often doesn't loop cleanly: offer the app's own loop fix (as "Import as keys" does)
       if (!r.loop && p.loop && o.mode === 'replace') {
         const pop = KO.loopCheck(p).filter(x => x.kind === 'pop' && x.simId === s.id);
         if (pop.length) {
-          setTimeout(() => choiceBar("This part doesn't loop smoothly - the end jumps back to the start.", [
-            { label: 'Blend the end into the start', primary: true, onClick: () => {
-              app.store.checkpoint('Blend the end into the start');
+          setTimeout(() => choiceBar($t('mocapfile.this_part_doesn_t_loop'), [
+            { label: $t('mocapfile.blend_end_into_start'), primary: true, onClick: () => {
+              app.store.checkpoint($t('mocapfile.blend_end_into_start'));
               KO.fixLoop(p, app.store.sim(s.id), 'pop');
               app.keysChanged && app.keysChanged(); app.afterEdit && app.afterEdit();
-              toast('The end now flows back into the start.', 'ok');
+              toast($t('mocapfile.end_now_flows_back_into'), 'ok');
             } },
           ], { timeout: 16000 }), 400);
         }
@@ -342,7 +342,7 @@ class MotionFileDialog {
       return true;
     } catch (e) {
       console.error('motion file', e);
-      this.error = 'The moves could not be put on: ' + (e && e.message ? e.message : e);
+      this.error = $t('mocapfile.moves_could_not_be_put', { v: e && e.message ? e.message : e });
       btn.textContent = label;
       this.render();
       return false;

@@ -3,12 +3,13 @@
 // For a looping animation it simulates three loops and keeps the last, then removes the tiny leftover drift,
 // so the jiggle joins up perfectly at the loop point.
 import * as THREE from 'three';
+import { $t } from './i18n.js';
 
 export const PARTS = {
-  breasts: { label: 'Breasts', bones: ['b__CAS_L_Breast__', 'b__CAS_R_Breast__'], hz: 3.0, damping: 0.22, max: 0.035, gain: 1.15, needs: 'breasts' },
-  butt: { label: 'Butt', bones: ['b__L_Butt__', 'b__R_Butt__'], hz: 3.4, damping: 0.28, max: 0.028, gain: 1.0 },
-  penis: { label: 'Penis', bones: ['b__Penis_Tip'], swing: 'b__Penis_Base', hz: 2.6, damping: 0.3, max: 0.08, gain: 1.0, needs: 'penis' },
-  balls: { label: 'Balls', bones: ['b__Penis_Testicles'], hz: 2.8, damping: 0.25, max: 0.025, gain: 1.0, needs: 'balls' },
+  breasts: { label: $t('physics.breasts'), bones: ['b__CAS_L_Breast__', 'b__CAS_R_Breast__'], hz: 3.0, damping: 0.22, max: 0.035, gain: 1.15, needs: 'breasts' },
+  butt: { label: $t('physics.butt'), bones: ['b__L_Butt__', 'b__R_Butt__'], hz: 3.4, damping: 0.28, max: 0.028, gain: 1.0 },
+  penis: { label: $t('physics.penis'), bones: ['b__Penis_Tip'], swing: 'b__Penis_Base', hz: 2.6, damping: 0.3, max: 0.08, gain: 1.0, needs: 'penis' },
+  balls: { label: $t('physics.balls'), bones: ['b__Penis_Testicles'], hz: 2.8, damping: 0.25, max: 0.025, gain: 1.0, needs: 'balls' },
 };
 
 // The sliders go up to 300%. Up to 200% everything bakes exactly as it always did; above that the springs also swing

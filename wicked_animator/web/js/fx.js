@@ -3,6 +3,7 @@
 // then stops and clears itself; never more than 160 on screen; nothing at all with reduced motion. The canvas never
 // takes a click (pointer-events: none).
 
+import { $t } from './i18n.js';
 export const reducedMotion = () =>
   (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) || document.documentElement.classList.contains('reduce-motion');
 
@@ -143,10 +144,10 @@ export function firstCard({ thumb = null, name = '', author = '', date = new Dat
   card.className = 'first-card';
   if (thumb) { const img = document.createElement('img'); img.src = thumb; img.alt = ''; card.append(img); }
   else { const ph = document.createElement('div'); ph.className = 'ph'; card.append(ph); }
-  const no = document.createElement('span'); no.className = 'no'; no.textContent = 'Creator #1'; card.append(no);
-  const b = document.createElement('b'); b.textContent = name || 'Your animation'; card.append(b);
+  const no = document.createElement('span'); no.className = 'no'; no.textContent = $t('fx.creator_1'); card.append(no);
+  const b = document.createElement('b'); b.textContent = name || $t('fx.your_animation'); card.append(b);
   const sm = document.createElement('small');
-  sm.textContent = `${author ? 'by ' + author + ' · ' : ''}${date.toLocaleDateString()}`;
+  sm.textContent = `${author ? $t('fx.by', { author }) : ''}${date.toLocaleDateString()}`;
   card.append(sm);
   return card;
 }

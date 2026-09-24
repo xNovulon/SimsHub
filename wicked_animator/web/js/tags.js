@@ -1,22 +1,23 @@
 // WickedWhims' animation kinds and tags (read from WickedWhims' own tag list), grouped for picking.
+import { $t } from './i18n.js';
 export const KINDS = [
-  ['TEASING', 'Teasing'], ['HANDJOB', 'Handjob'], ['FOOTJOB', 'Footjob'], ['ORALJOB', 'Oral'],
-  ['VAGINAL', 'Vaginal'], ['ANAL', 'Anal'], ['CLIMAX', 'Climax'],
+  ['TEASING', $t('tags.teasing')], ['HANDJOB', $t('tags.handjob')], ['FOOTJOB', $t('tags.footjob')], ['ORALJOB', $t('tags.oral')],
+  ['VAGINAL', $t('tags.vaginal')], ['ANAL', $t('tags.anal')], ['CLIMAX', $t('tags.climax')],
 ];
 
 export const TAG_GROUPS = [
-  ['Position', ['COWGIRL', 'DOGGY', 'MISSIONARY', 'SPOONING', 'PRONEBONE', 'PILEDRIVER', 'SIXTYNINE', 'FACE_SITTING',
+  [$t('tags.position'), ['COWGIRL', 'DOGGY', 'MISSIONARY', 'SPOONING', 'PRONEBONE', 'PILEDRIVER', 'SIXTYNINE', 'FACE_SITTING',
     'STANDING', 'SITTING', 'KNEELING', 'SIDEWAYS', 'UPSIDE_DOWN', 'CARRY', 'SPITROAST', 'FLEXIBLE']],
-  ['Acts', ['BLOWJOB', 'DEEP_THROAT', 'CUNNILINGUS', 'RIMJOB', 'LICKING', 'FINGERING', 'MASTURBATION', 'TITJOB', 'THIGHJOB',
+  [$t('tags.acts'), ['BLOWJOB', 'DEEP_THROAT', 'CUNNILINGUS', 'RIMJOB', 'LICKING', 'FINGERING', 'MASTURBATION', 'TITJOB', 'THIGHJOB',
     'BUTTJOB', 'KISSING', 'GROPING', 'TITS_SUCKING', 'TOES_SUCKING', 'SPANKING', 'CHOKING', 'DOUBLE_PENETRATION', 'FISTING',
     'PEEING', 'FOREPLAY']],
-  ['Finish', ['CLIMAX', 'CUMSHOT', 'CREAMPIE', 'CUM_INSIDE', 'CUM_IN_MOUTH', 'BUKKAKE', 'SQUIRT']],
-  ['Mood', ['SLOW', 'PASSIONATE', 'ROUGH', 'SHY', 'AWKWARD']],
-  ['Power & kink', ['FEMDOM', 'MALEDOM', 'BDSM', 'FORCED', 'FREEUSE', 'CUCK', 'ONLOOKER', 'SLEEPING', 'WEIRD', 'GROSS']],
-  ['Group', ['HOMOSEXUAL', 'FUTA', 'THREESOME', 'FOURSOME', 'ORGY', 'GANGBANG', 'HAREM']],
-  ['Supernatural', ['VAMPIRE', 'ALIEN', 'GHOST', 'SERVO', 'MAGIC']],
-  ['Extras', ['TOY', 'DILDO', 'CAMERA', 'STORY', 'DRESSED', 'UNDER_COVERS', 'DANCE', 'CUSTOM_VOICE_SFX']],
-  ['Reactions', ['INAPPROPRIATE_INDOORS', 'INAPPROPRIATE_OUTDOORS', 'LOW_REACTION', 'NO_REACTION']],
+  [$t('tags.finish'), ['CLIMAX', 'CUMSHOT', 'CREAMPIE', 'CUM_INSIDE', 'CUM_IN_MOUTH', 'BUKKAKE', 'SQUIRT']],
+  [$t('tags.mood'), ['SLOW', 'PASSIONATE', 'ROUGH', 'SHY', 'AWKWARD']],
+  [$t('tags.power_kink'), ['FEMDOM', 'MALEDOM', 'BDSM', 'FORCED', 'FREEUSE', 'CUCK', 'ONLOOKER', 'SLEEPING', 'WEIRD', 'GROSS']],
+  [$t('tags.group'), ['HOMOSEXUAL', 'FUTA', 'THREESOME', 'FOURSOME', 'ORGY', 'GANGBANG', 'HAREM']],
+  [$t('tags.supernatural'), ['VAMPIRE', 'ALIEN', 'GHOST', 'SERVO', 'MAGIC']],
+  [$t('tags.extras'), ['TOY', 'DILDO', 'CAMERA', 'STORY', 'DRESSED', 'UNDER_COVERS', 'DANCE', 'CUSTOM_VOICE_SFX']],
+  [$t('tags.reactions'), ['INAPPROPRIATE_INDOORS', 'INAPPROPRIATE_OUTDOORS', 'LOW_REACTION', 'NO_REACTION']],
 ];
 
 const SPECIAL = { SIXTYNINE: '69', PRONEBONE: 'Prone bone', FREEUSE: 'Free use', FUTA: 'Futa', SERVO: 'Servo',
@@ -63,7 +64,7 @@ export const AUTO_NAKED = {
   CLIMAX: { FEMALE: 'ALL', MALE: 'ALL', BOTH: 'ALL' },
 };
 
-export const NAKED_CHOICES = [['AUTO', 'Automatic'], ['NONE', 'Keep clothes on'], ['TOP', 'Top off'], ['BOTTOM', 'Bottom off'], ['ALL', 'Fully naked']];
+export const NAKED_CHOICES = [['AUTO', $t('tags.automatic')], ['NONE', $t('tags.keep_clothes_on')], ['TOP', $t('tags.top_off')], ['BOTTOM', $t('tags.bottom_off')], ['ALL', $t('tags.fully_naked')]];
 
 export function nakedFor(kind, sim) {
   if (sim.naked && sim.naked !== 'AUTO') return sim.naked;

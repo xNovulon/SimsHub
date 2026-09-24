@@ -3,6 +3,7 @@
 // click. ARIA combobox: the text box keeps focus, aria-activedescendant points at the highlighted row. Letters typed
 // in the box never reach the app's one-key shortcuts (K, R, G, W...).
 
+import { $t } from './i18n.js';
 const RECENT_KEY = 'fsa.recentCommands';
 let current = null;
 
@@ -55,7 +56,7 @@ function highlight(label, q) {
 }
 
 // commands(): [{ id, group, label, sub?, icon?, keys?: ['Ctrl','S'], words?: 'blender words, other names', run, when? }]
-export function openPalette(commands, { placeholder = 'Search or do anything...', onSearchLibrary } = {}) {
+export function openPalette(commands, { placeholder = $t('palette.search_or_do_anything'), onSearchLibrary } = {}) {
   if (current) { current.close(); return; }
   const before = document.activeElement;
   const all = commands().filter(c => !c.when || c.when());
@@ -66,7 +67,7 @@ export function openPalette(commands, { placeholder = 'Search or do anything...'
   const list = el('ul', 'palette-list'); list.id = 'palette-list'; list.setAttribute('role', 'listbox');
   const foot = el('div', 'palette-foot',
     el('span', null, el('kbd', null, '↑'), el('kbd', null, '↓'), ' move'),
-    el('span', null, el('kbd', null, 'Enter'), ' do it'),
+    el('span', null, el('kbd', null, 'Enter'), $t('palette.do_it')),
     el('span', null, el('kbd', null, 'Esc'), ' close'));
   const box = el('div', 'palette', el('div', 'palette-in', svgIcon('search'), input, el('kbd', null, 'Ctrl K')), list, foot);
   box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Search commands');
@@ -76,12 +77,12 @@ export function openPalette(commands, { placeholder = 'Search or do anything...'
   const results = q => {
     q = q.trim();
     if (!q) {
-      const rec = recent().map(id => all.find(c => c.id === id)).filter(Boolean).map(c => ({ ...c, group: 'Recent' }));
+      const rec = recent().map(id => all.find(c => c.id === id)).filter(Boolean).map(c => ({ ...c, group: $t('palette.recent') }));
       const top = all.filter(c => c.pinned && !rec.some(r => r.id === c.id));
       return [...rec, ...top];
     }
     const hits = all.map(c => ({ c, s: scoreCommand(q, c) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 40).map(x => x.c);
-    if (onSearchLibrary && q.length >= 2) hits.push({ id: 'lib-search', group: 'Library', label: `Search the library for "${q}"`, icon: 'library', run: () => onSearchLibrary(q) });
+    if (onSearchLibrary && q.length >= 2) hits.push({ id: 'lib-search', group: $t('palette.library'), label: $t('palette.search_library_for', { q }), icon: 'library', run: () => onSearchLibrary(q) });
     return hits;
   };
 
@@ -90,7 +91,7 @@ export function openPalette(commands, { placeholder = 'Search or do anything...'
     rows = results(q);
     active = Math.min(active, Math.max(0, rows.length - 1));
     list.innerHTML = '';
-    if (!rows.length) { list.append(el('li', 'palette-empty', 'Nothing found. Try other words - e.g. "key", "mirror", "cowgirl".')); input.removeAttribute('aria-activedescendant'); return; }
+    if (!rows.length) { list.append(el('li', 'palette-empty', $t('palette.nothing_found'))); input.removeAttribute('aria-activedescendant'); return; }
     // group in the order they first appear (best hit's group first)
     const groups = [];
     for (const r of rows) if (!groups.includes(r.group)) groups.push(r.group);

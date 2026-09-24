@@ -4,6 +4,7 @@
 // The browser decodes the file first (WAV, MP3, OGG, FLAC - whatever it plays) and sends plain 16-bit WAV, so the
 // server needs no MP3 or OGG decoder of its own. A file the browser can't read is sent as it is (the server may still
 // know it).
+import { $t } from './i18n.js';
 export const isMine = name => /^WA_[A-Za-z0-9_]{0,40}_[0-9a-f]{8}$/.test(String(name || ''));
 
 export const ACCEPT = 'audio/*,.wav,.mp3,.ogg,.oga,.flac';
@@ -12,7 +13,7 @@ const RATE = 48000;
 
 export async function listMySounds() {
   const r = await fetch('/api/my_sounds');
-  if (!r.ok) throw new Error('Could not read your sounds.');
+  if (!r.ok) throw new Error($t('mysounds.could_not_read_your_sounds'));
   return r.json();
 }
 
@@ -49,12 +50,12 @@ async function decoded(file) {
 export async function uploadMySound(file, kind = 'other') {
   const buffer = await decoded(file);
   if (buffer && buffer.duration > MAX_SECONDS + 0.05) {
-    throw new Error(`The sound is ${buffer.duration.toFixed(1)} seconds long. A sound in an animation can be up to ${MAX_SECONDS} seconds - cut it shorter, then add it again.`);
+    throw new Error($t('mysounds.sound_is_seconds_long_sound', { duration: buffer.duration.toFixed(1), MAX_SECONDS }));
   }
   const body = buffer ? wavOf(buffer) : file;
   const r = await fetch(`/api/my_sound?name=${encodeURIComponent(file.name || 'sound')}&kind=${kind === 'voice' ? 'voice' : 'other'}`,
     { method: 'POST', headers: { 'Content-Type': (buffer ? 'audio/wav' : file.type) || 'application/octet-stream' }, body });
   const b = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(r.status === 415 ? 'This kind of file can\'t be used. Use a WAV, MP3, OGG or FLAC file.' : (b.error || 'The sound could not be added.'));
+  if (!r.ok) throw new Error(r.status === 415 ? $t('mysounds.this_kind_of_file_can') : (b.error || $t('mysounds.sound_could_not_be_added')));
   return b;
 }

@@ -7,6 +7,7 @@ import { ClipPlayer, sampleToPose, sortKeys } from './animation.js';
 import { openImportDialog } from './dialogs.js';
 import { sampleToFaceBones } from './facekit.js';
 import { KINDS, TAG_GROUPS, tagLabel } from './tags.js';
+import { $t } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 const LOCS = ['FLOOR', 'DOUBLE_BED', 'SINGLE_BED', 'SOFA', 'LOVESEAT', 'CHAIR_LIVING', 'CHAIR_DINING', 'COUNTER', 'TABLE_DINING_2X',
@@ -20,11 +21,11 @@ export class Library {
     this.items = [];
     // the panel is built once and kept, so the search stays when you switch steps
     const el = this.el = {
-      search: h('input', { placeholder: 'Search animations or creators', spellcheck: 'false' }),
-      actors: h('select', {}, [['0', 'Any sims'], ['1', '1 sim'], ['2', '2 sims'], ['3', '3 sims'], ['4', '4 sims']].map(([v, t]) => h('option', { value: v, selected: v === '2' }, t))),
-      loc: h('select', {}, h('option', { value: '' }, 'Anywhere'), LOCS.map(l => h('option', { value: l }, NICE_LOC(l)))),
-      cat: h('select', {}, h('option', { value: '' }, 'Any kind'), KINDS.map(([v, t]) => h('option', { value: v }, t))),
-      tag: h('select', {}, h('option', { value: '' }, 'Any tag'), TAG_GROUPS.map(([group, tags]) => h('optgroup', { label: group }, tags.map(t => h('option', { value: t }, tagLabel(t)))))),
+      search: h('input', { placeholder: $t('library.search_animations_or_creators'), spellcheck: 'false' }),
+      actors: h('select', {}, [['0', $t('library.any_sims')], ['1', '1 sim'], ['2', '2 sims'], ['3', '3 sims'], ['4', '4 sims']].map(([v, t]) => h('option', { value: v, selected: v === '2' }, t))),
+      loc: h('select', {}, h('option', { value: '' }, $t('library.anywhere')), LOCS.map(l => h('option', { value: l }, NICE_LOC(l)))),
+      cat: h('select', {}, h('option', { value: '' }, $t('library.any_kind')), KINDS.map(([v, t]) => h('option', { value: v }, t))),
+      tag: h('select', {}, h('option', { value: '' }, $t('library.any_tag')), TAG_GROUPS.map(([group, tags]) => h('optgroup', { label: group }, tags.map(t => h('option', { value: t }, tagLabel(t)))))),
       count: h('div', { class: 'hint' }),
       list: h('div', { class: 'lib-list' }),
     };
@@ -33,7 +34,7 @@ export class Library {
       h('div', { class: 'filters' }, el.actors, el.loc),
       h('div', { class: 'filters' }, el.cat, el.tag),
       el.count, el.list,
-      h('div', { class: 'hint' }, 'Click one to watch it on the stage. "Use this pose" copies the pose shown into your sims; "Import as keys" turns it into an animation you can change.'));
+      h('div', { class: 'hint' }, $t('library.click_one_to_watch_it')));
     let t = null;
     el.search.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => this.search(), 220); });
     for (const k of ['actors', 'loc', 'cat', 'tag']) el[k].addEventListener('change', () => this.search());
@@ -49,31 +50,31 @@ export class Library {
     this.page = more ? this.page + 1 : 0;
     const el = this.el;
     const q = { q: el.search.value, actors: el.actors.value, loc: el.loc.value, cat: el.cat.value, tag: el.tag.value, page: this.page };
-    el.count.textContent = 'Searching...';
+    el.count.textContent = $t('library.searching');
     let r;
-    try { r = await api.library(q); } catch (e) { el.count.textContent = 'Could not search: ' + e.message; return; }
+    try { r = await api.library(q); } catch (e) { el.count.textContent = $t('library.could_not_search', { message: e.message }); return; }
     this.items = more ? this.items.concat(r.items) : r.items;
-    el.count.textContent = `${r.total.toLocaleString()} animation${r.total === 1 ? '' : 's'} (adults only)`;
+    el.count.textContent = $t('library.animations_adults_only', { total: r.total.toLocaleString(), total2: r.total });
     const list = el.list;
     list.innerHTML = '';
     for (const it of this.items) {
       list.append(h('div', { class: 'lib-item' + (this.preview && this.preview.anim.id === it.id ? ' active' : ''), onclick: e => this.open(it, e.currentTarget), title: it.locations.join(', ') },
         h('b', {}, it.name),
-        h('div', { class: 'sub' }, h('span', {}, it.author), h('span', { class: 'chip' }, `${it.actors.length} sim${it.actors.length > 1 ? 's' : ''}`),
+        h('div', { class: 'sub' }, h('span', {}, it.author), h('span', { class: 'chip' }, $t('library.n_sims', { n: it.actors.length })),
           h('span', { class: 'chip' }, (it.category || '').toLowerCase() || 'other'), h('span', {}, NICE_LOC(it.locations[0] || ''))),
         (it.tags || []).length ? h('div', { class: 'tagline' }, it.tags.slice(0, 5).map(t => h('span', { class: 'chip' }, tagLabel(t)))) : null));
     }
-    if (this.items.length < r.total) list.append(h('button', { class: 'btn small lib-more', onclick: () => this.search(true) }, 'Show more'));
+    if (this.items.length < r.total) list.append(h('button', { class: 'btn small lib-more', onclick: () => this.search(true) }, $t('library.show_more')));
   }
 
   async open(item, el) {
     document.querySelectorAll('.lib-item.active').forEach(x => x.classList.remove('active'));
     el && el.classList.add('active');
-    $('preview-title').textContent = 'Loading ' + item.name + '...';
+    $('preview-title').textContent = $t('library.loading', { itemName: item.name });
     $('preview-bar').classList.remove('hidden');
     let anim;
     try { anim = await api.animation(item.id, 1); }
-    catch (e) { toast('Could not load that animation: ' + e.message, 'err'); if (!this.preview) $('preview-bar').classList.add('hidden'); return; }
+    catch (e) { toast($t('library.could_not_load_that_animation', { message: e.message }), 'err'); if (!this.preview) $('preview-bar').classList.add('hidden'); return; }
     this.startPreview(anim);
   }
 

@@ -12,6 +12,7 @@ import { openPalette, paletteOpen } from './palette.js';
 import { allCommands } from './commands.js';
 import { successHero, celebrateAt, rain, firstCard, reducedMotion } from './fx.js';
 import { LOOKS, addRim } from './stage.js';
+import { $t } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 const ORDER = ['scene', 'pose', 'motion', 'body', 'face', 'sounds', 'details', 'share', 'library'];
@@ -243,7 +244,7 @@ function installLooks(app) {
   const markPop = () => { if (pop) pop.querySelectorAll('button[data-look]').forEach(b => b.classList.toggle('on', b.dataset.look === current)); };
   const openPop = () => {
     if (pop) return close();
-    pop = h('div', { class: 'light-pop', role: 'menu' }, h('div', { class: 'lp-title' }, 'Lighting'),
+    pop = h('div', { class: 'light-pop', role: 'menu' }, h('div', { class: 'lp-title' }, $t('polish.lighting')),
       ...Object.entries(LOOKS).map(([k, l]) => h('button', { 'data-look': k, role: 'menuitemradio', class: k === current ? 'on' : '',
         onclick: () => { app.setLook(k); } },
       h('span', { class: 'sw', style: { background: `radial-gradient(120% 90% at 30% 20%, ${l.key[0]} 0%, transparent 55%), radial-gradient(90% 90% at 90% 90%, ${l.rim[0]} 0%, transparent 60%), linear-gradient(180deg, ${l.sky[0]}, ${l.sky[1]})` } }),
@@ -253,7 +254,7 @@ function installLooks(app) {
     setTimeout(() => addEventListener('pointerdown', outside, true), 0);
   };
   const outside = e => { if (pop && !pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) { close(); removeEventListener('pointerdown', outside, true); } };
-  const btn = addToolbarButton({ cell: 'view', id: 'btn-light', icon: 'light', title: 'Lighting: Studio, Boudoir, Neon night, Daylight or Candle', onClick: openPop, before: '#btn-onion' });
+  const btn = addToolbarButton({ cell: 'view', id: 'btn-light', icon: 'light', title: $t('polish.lighting_studio_boudoir_neon_night'), onClick: openPop, before: '#btn-onion' });
   addEventListener('keydown', e => { if (e.key === 'Escape' && pop) close(); });
 
   // cinematic mode (bloom, vignette, letterbox) while Showcase runs
@@ -321,19 +322,19 @@ function installQuality(app) {
       $('viewport-wrap').append(chip);
     }
     chip.innerHTML = '';
-    chip.append(icon('bolt'), h('span', {}, text), h('button', { class: 'btn small ghost', title: 'Best picture again (it stays that way)', onclick: () => {
+    chip.append(icon('bolt'), h('span', {}, text), h('button', { class: 'btn small ghost', title: $t('polish.best_picture_again_it_stays'), onclick: () => {
       vp.keepQuality = true;
       try { localStorage.setItem('fsa.keepQuality', 'true'); } catch { /* blocked */ }
       vp.setQualityLevel(0);
-    } }, 'Full quality'));
+    } }, $t('polish.full_quality')));
   };
 }
 
 // ---------------------------------------------------------------- the live hint row (app.hint)
 const HINTS = {
-  ring: '<b>Drag the ring</b> to turn · <kbd>Esc</kbd> lets go · <b>Right-drag</b> look',
-  timeline: '<b>Double-click</b> a lane: key · <b>Wheel</b> zoom · <kbd>Shift</kbd>+<b>wheel</b> scroll',
-  place: '<kbd>T</kbd> move / turn · <b>Drag</b> the arrows · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly',
+  ring: $t('polish.b_drag_ring_b_to'),
+  timeline: $t('polish.b_double_click_b_lane'),
+  place: $t('polish.kbd_t_kbd_move_turn'),
 };
 function installHints(app) {
   const row = $('vp-cam');
@@ -386,11 +387,11 @@ function installCelebrations(app) {
     if (d.first) {
       let thumb = p.thumb || null;
       if (!thumb) { try { thumb = app.vp.snapshot(); } catch { thumb = null; } }
-      slot.append(firstCard({ thumb, name: p.name, author: p.author }), h('h3', { class: 'hero-title' }, 'Your first animation is in the game!'));
+      slot.append(firstCard({ thumb, name: p.name, author: p.author }), h('h3', { class: 'hero-title' }, $t('polish.your_first_animation_is_in')));
       rain();
     } else {
       const hero = successHero();
-      slot.append(hero, h('h3', { class: 'hero-title' }, `"${p.name || 'Your animation'}" by ${p.author || 'you'} is ready`));
+      slot.append(hero, h('h3', { class: 'hero-title' }, (p.author ? $t('polish.ready_by', { name: p.name || $t('polish.your_animation'), author: p.author }) : $t('polish.ready_by_you', { name: p.name || $t('polish.your_animation') }))));
       celebrateAt(hero, { delay: 480 });
     }
   });
@@ -425,8 +426,8 @@ function installEmptyStage(app) {
     if (n > 0 || !app.addSim) { if (card) { card.remove(); card = null; } return; }
     if (card) return;
     const tile = (frame, label) => h('button', { class: 'add-tile', onclick: () => app.addSim(frame) }, icon('user'), label);
-    card = h('div', { class: 'vp-empty' }, h('b', {}, 'Add a sim'), h('p', {}, 'Who is in this animation?'),
-      h('div', { class: 'add-grid' }, tile('yf', 'Female'), tile('ym', 'Male'), tile('yf_futa', 'Female + penis')));
+    card = h('div', { class: 'vp-empty' }, h('b', {}, $t('polish.add_sim')), h('p', {}, $t('polish.who_is_in_this_animation')),
+      h('div', { class: 'add-grid' }, tile('yf', $t('polish.female')), tile('ym', $t('polish.male')), tile('yf_futa', $t('polish.female_penis'))));
     $('viewport-wrap').append(card);
   };
   let t = 0;
@@ -438,7 +439,7 @@ function installEmptyStage(app) {
 function installInspectorStrip() {
   const right = $('right');
   if (!right || right.querySelector('.insp-strip')) return;
-  const strip = h('button', { class: 'insp-strip', title: 'Show the sim\'s details', 'aria-label': 'Show the inspector',
+  const strip = h('button', { class: 'insp-strip', title: $t('polish.show_sim_s_details'), 'aria-label': $t('polish.show_inspector'),
     onclick: () => document.body.classList.toggle('insp-open') }, icon('dots'));
   right.prepend(strip);
   new MutationObserver(() => document.body.classList.remove('insp-open')).observe(document.body, { attributes: true, attributeFilter: ['data-step'] });
