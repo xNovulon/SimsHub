@@ -8,7 +8,7 @@ and nothing to set up.
 **Make your own WickedWhims animations, no Blender needed.** Pose your sims, build the animation on a timeline, add
 sounds, and send it straight into your game.
 
-### [⬇ Download Wicked Animator](https://github.com/Novulxn/Sims-Hub/releases/latest/download/WickedAnimator.exe)
+### [⬇ Download Wicked Animator](https://github.com/xNovulon/SimsHub/releases/latest/download/WickedAnimator.exe)
 
 ## ⚡ Sims Hub
 
@@ -16,7 +16,7 @@ sounds, and send it straight into your game.
 use, fixes the settings that cause lag without lowering your graphics, sorts your new downloads for you, and clears out
 duplicate CC. It never deletes anything, and you can undo every change it makes.
 
-### [⬇ Download Sims Hub](https://github.com/Novulxn/Sims-Hub/releases/latest/download/SimsHub.exe)
+### [⬇ Download Sims Hub](https://github.com/xNovulon/SimsHub/releases/latest/download/SimsHub.exe)
 
 ---
 
@@ -65,7 +65,7 @@ find them:
 
 Push to `main` and every installed app picks up the change the next time it's opened. When you change anything in a
 `desktop/` folder, GitHub builds new versions of the apps and puts them on the
-[download page](https://github.com/Novulxn/Sims-Hub/releases/tag/apps). Installed apps then replace themselves with the
+[download page](https://github.com/xNovulon/SimsHub/releases/tag/apps). Installed apps then replace themselves with the
 new version. You can watch this under the **Actions** tab.
 
 Users only get what the apps need to run. Folders like `tests/`, `research/` and `tools/` stay on GitHub. The exact

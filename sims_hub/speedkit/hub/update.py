@@ -1,4 +1,4 @@
-r"""Keeps the Hub up to date from GitHub: the sims_hub folder of github.com/Novulxn/Sims-Hub (main branch).
+r"""Keeps the Hub up to date from GitHub: the sims_hub folder of github.com/xNovulon/SimsHub (main branch).
 
     python -m speedkit.hub.update       update now (what the launcher does before the Hub's server starts)
 
@@ -25,7 +25,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-OWNER, REPO, BRANCH, FOLDER = 'Novulxn', 'Sims-Hub', 'main', 'sims_hub/'
+OWNER, REPO, BRANCH, FOLDER = 'xNovulon', 'SimsHub', 'main', 'sims_hub/'
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'NovulonSimsHub', 'update')

@@ -1,4 +1,4 @@
-// Keeps an app up to date from GitHub (github.com/Novulxn/Sims-Hub, main branch) - and installs it: an empty folder
+// Keeps an app up to date from GitHub (github.com/xNovulon/SimsHub, main branch) - and installs it: an empty folder
 // is simply "very out of date".
 //
 // 1. The app's files: every start asks GitHub for the newest commit - one small request, given up after a few seconds
@@ -29,7 +29,7 @@ namespace Novulon.Desktop;
 
 public static class Updater
 {
-    const string Owner = "Novulxn", Repo = "Sims-Hub", ReleaseTag = "apps";
+    const string Owner = "xNovulon", Repo = "SimsHub", ReleaseTag = "apps";
     static string Branch => Environment.GetEnvironmentVariable("NOVULON_UPDATE_BRANCH") is { Length: > 0 } b ? b : "main";
     static Brand B => Brand.Current;
     static string Dir => Path.Combine(B.DataDir, "update");

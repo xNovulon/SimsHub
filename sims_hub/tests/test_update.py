@@ -169,7 +169,7 @@ class Update(unittest.TestCase):
     def test_a_git_checkout_is_left_to_git(self):
         os.makedirs(os.path.join(self.tmp, '.git'))
         with open(os.path.join(self.tmp, '.git', 'config'), 'w') as f:
-            f.write('[remote "origin"]\n\turl = https://github.com/Novulxn/Sims-Hub\n')
+            f.write('[remote "origin"]\n\turl = https://github.com/%s/%s\n' % (update.OWNER, update.REPO))
         self.gh.push({'sims_hub/a.py': b'v1\n'})
         self.assertEqual(update.run(self.root)['changed'], 0)
         self.assertEqual(self.gh.calls, [])
