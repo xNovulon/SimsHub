@@ -1,50 +1,80 @@
-# Novulon's apps for The Sims 4
+# Novulon's Sims 4 Apps
 
-Two Windows apps. Each one is a single download: open it and it installs itself, adds its shortcuts, sets up
-everything it needs, and keeps itself up to date.
+Two apps for The Sims 4 on Windows. Download one, open it, and you're done: there's nothing else to install
+and nothing to set up.
 
-| | App | What it does | Download |
-| --- | --- | --- | --- |
-| 🎬 | **Novulon's Wicked Animator** | Make WickedWhims animations without Blender: pose your sims, key them on a timeline, add sounds, and send them straight to the game. | [**WickedAnimator.exe**](https://github.com/Novulxn/Sims-Hub/releases/latest/download/WickedAnimator.exe) |
-| ⚡ | **Novulon's Sims Hub** | Load the game faster with only the CC your saves use, fix lag while keeping max graphics, merge new downloads, and clear out duplicate CC. Nothing is ever deleted, and every change can be undone. | [**SimsHub.exe**](https://github.com/Novulxn/Sims-Hub/releases/latest/download/SimsHub.exe) |
+## 🎬 Wicked Animator
 
-## Installing
+**Make your own WickedWhims animations, no Blender needed.** Pose your sims, build the animation on a timeline, add
+sounds, and send it straight into your game.
 
-1. Download the app you want (or both).
-2. Open it. The first time, Windows may say **"Windows protected your PC"** because the apps aren't code-signed.
-   Click **More info**, then **Run anyway**.
-3. That's it. The app:
-   - installs itself in your user folder (`Tools\sims4_animator` or `Tools\sims4_speedkit`) and adds Desktop and
-     Start Menu shortcuts,
-   - installs **Python** and the Python packages it needs if they're missing (just for you; no administrator needed),
-   - installs **Microsoft Edge WebView2** if it's missing (it comes with Windows 11),
-   - opens.
+### [⬇ Download Wicked Animator](https://github.com/Novulxn/Sims-Hub/releases/latest/download/WickedAnimator.exe)
 
-The first start takes a minute or two while all of this happens. You can delete the downloaded file afterwards and
-use the shortcuts. Both apps need Windows 10 or 11 (64-bit), and an internet connection the first time.
+## ⚡ Sims Hub
 
-## Updates
+**Make your game load faster and lag less.** The Hub starts the game with only the custom content your saves actually
+use, fixes the settings that cause lag without lowering your graphics, sorts your new downloads for you, and clears out
+duplicate CC. It never deletes anything, and you can undo every change it makes.
 
-Each time you open an app, it checks GitHub for a newer version. That's one small request, and it's skipped when you're
-offline. New files are downloaded and checked before anything is replaced, and the app updates its own program the same
-way. Your own files (projects, poses, settings, caches) are never touched. If an update replaces a file you edited, a
-backup is kept.
+### [⬇ Download Sims Hub](https://github.com/Novulxn/Sims-Hub/releases/latest/download/SimsHub.exe)
 
-## For developers
+---
 
-| Folder | What's in it |
-| --- | --- |
-| `wicked_animator/` | The animator: Python engine (`backend/`), web interface (`web/`), desktop app (`desktop/`), checks (`tools/`) |
-| `sims_hub/` | The Hub: Python engine (`speedkit/`, UI in `speedkit/hub/`), in-game mod (`ingame/`, built into `dist/`), desktop app (`desktop/`), `tests/`, `research/`, `docs/` |
-| `shared/desktop/` | What both desktop apps share: installing, updating, Python and WebView2 setup, the splash card |
-| `.github/workflows/build-apps.yml` | Builds both apps on every change to their desktop code and publishes them on the [apps release](https://github.com/Novulxn/Sims-Hub/releases/tag/apps) |
+## How to install
 
-- **Releasing:** push to `main`. Installed apps pick up changed files the next time they open. When desktop code changes,
-  the workflow publishes new builds, and installed apps swap themselves for them.
-- **What's installed on users' PCs:** each app's folder, minus the files only developers need (`desktop/`, `tools/`,
-  `tests/`, `research/`, `docs/`, `branding/`). The lists are in each app's `desktop/Program.cs`.
-- **Working on the code:** a git clone is never auto-updated, so it stays yours. Build an app locally with
-  `desktop\build.ps1`, or run the engines directly (`python backend\server.py`, `python -m speedkit.hub`). To turn
-  updating off, set `WICKED_NO_UPDATE=1` or `SIMS_HUB_NO_UPDATE=1`.
-- **Logs:** `%LOCALAPPDATA%\NovulonWickedAnimator` and `%LOCALAPPDATA%\NovulonSimsHub` hold `update\update.log`,
-  `python-setup.log`, `setup.log` and `engine.log`.
+1. Click one of the download links above.
+2. Open the file you downloaded.
+3. Wait a minute or two the first time while the app sets itself up.
+
+When it's done, the app opens by itself, and you'll find it on your Desktop and in your Start Menu. You can delete the
+file you downloaded.
+
+**"Windows protected your PC"?** That's normal for small apps like these. Click **More info**, then **Run anyway**.
+
+## Good to know
+
+- **Updates are automatic.** Every time you open an app, it checks for a newer version and updates itself.
+- **Your stuff is safe.** Updates never touch your animations, poses, saves or settings.
+- **It sets up what it needs by itself.** If your PC is missing something the app needs to run (like Python), the app
+  installs it for you the first time. You don't have to do anything.
+- **You'll need** Windows 10 or 11, and an internet connection the first time you open the app.
+
+## Something went wrong?
+
+Each app keeps notes on what it did, which help track down problems. Paste this into the File Explorer address bar to
+find them:
+
+- Wicked Animator: `%LOCALAPPDATA%\NovulonWickedAnimator`
+- Sims Hub: `%LOCALAPPDATA%\NovulonSimsHub`
+
+---
+
+<details>
+<summary><b>For developers</b></summary>
+
+### What's where
+
+- `wicked_animator/`: the animator. `backend/` is its Python engine, `web/` is what you see, `desktop/` is the Windows
+  app around it.
+- `sims_hub/`: the Hub. `speedkit/` is its Python engine (the screens are in `speedkit/hub/`), `ingame/` is the small
+  in-game mod, `desktop/` is the Windows app.
+- `shared/desktop/`: the parts both Windows apps share, which handle installing, updating, setting up Python and the
+  loading screen.
+
+### How releases work
+
+Push to `main` and every installed app picks up the change the next time it's opened. When you change anything in a
+`desktop/` folder, GitHub builds new versions of the apps and puts them on the
+[download page](https://github.com/Novulxn/Sims-Hub/releases/tag/apps). Installed apps then replace themselves with the
+new version. You can watch this under the **Actions** tab.
+
+Users only get what the apps need to run. Folders like `tests/`, `research/` and `tools/` stay on GitHub. The exact
+list is near the top of each app's `desktop/Program.cs`.
+
+### Working on the code
+
+A copy made with `git clone` never updates itself, so your work in progress is safe. To try a change, build the app
+with `desktop\build.ps1`, or run the engine directly (`python backend\server.py` for the animator, `python -m
+speedkit.hub` for the Hub). To stop an installed app from updating, set `WICKED_NO_UPDATE=1` or `SIMS_HUB_NO_UPDATE=1`.
+
+</details>
