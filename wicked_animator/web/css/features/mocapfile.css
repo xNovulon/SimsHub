@@ -1,0 +1,63 @@
+/* "Import a motion file" (features/mocapfile.js, mocapfile.js): the entry button under "Copy real moves", the Library
+   card and the dialog. Uses the app's tokens (app.css) with fallbacks. */
+
+/* ---------------------------------------------------------------- entry points */
+.mf-entry-btn { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 8px; padding: 10px 12px; border-radius: 13px; cursor: pointer;
+  text-align: left; color: var(--text, #efeaf6); background: var(--panel-2, #18151f); border: 1px solid var(--line-2, #352e42); transition: .15s; }
+.mf-entry-btn:hover { border-color: var(--accent-line, rgba(255, 79, 154, .45)); background: var(--accent-soft, rgba(255, 79, 154, .13)); }
+.mf-entry-btn:active { transform: scale(.985); }
+.mf-entry-btn:focus-visible { outline: 2px solid var(--accent, #ff4f9a); outline-offset: 2px; }
+.mf-entry-icon { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; color: #fff;
+  background: var(--grad, linear-gradient(135deg, #ff4f9a, #8b5cf6)); box-shadow: 0 6px 16px rgba(255, 79, 154, .25); }
+.mf-entry-icon svg { width: 19px; height: 19px; }
+.mf-entry-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mf-entry-text b { font-size: 12.5px; }
+.mf-entry-text small { font-size: 10.5px; color: var(--muted, #a39bb2); line-height: 1.3; }
+
+.mf-lib { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin: 12px 0 4px; padding: 12px; border-radius: var(--radius, 12px);
+  background: var(--panel-2, #18151f); border: 1px dashed var(--line-2, #352e42); }
+.mf-lib-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mf-lib-text b { font-size: 12.5px; }
+.mf-lib-text span { font-size: 11.5px; color: var(--muted, #a39bb2); line-height: 1.4; }
+.mf-lib .btn { justify-content: center; }
+.mf-lib .btn svg, .mf-file svg, .mf-msg svg, .mf-drop .btn svg { width: 16px; height: 16px; flex: none; }
+
+/* ---------------------------------------------------------------- the dialog */
+.mf-input { display: none; }
+.mf-pick { display: flex; flex-direction: column; gap: 14px; padding: 6px 0 4px; }
+.mf-drop { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 16px; border-radius: 16px; cursor: pointer; text-align: center;
+  border: 1.5px dashed var(--line-2, #352e42); background: var(--panel-2, #18151f); transition: .15s; }
+.mf-drop:hover, .mf-drop.over, .mf-drop:focus-visible { border-color: var(--accent-line, rgba(255, 79, 154, .45)); background: var(--accent-soft, rgba(255, 79, 154, .13)); outline: none; }
+.mf-drop b { font-size: 15px; }
+.mf-drop > span:not(.mf-drop-icon) { font-size: 12px; color: var(--muted, #a39bb2); }
+.mf-drop .btn { margin-top: 6px; }
+.mf-drop-icon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: #fff; background: var(--grad, linear-gradient(135deg, #ff4f9a, #8b5cf6)); }
+.mf-drop-icon svg { width: 25px; height: 25px; }
+.mf-tips { margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted, #a39bb2); line-height: 1.5; }
+.mf-tips b { color: var(--text, #efeaf6); }
+
+.mf-main { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.mf-left { display: flex; flex-direction: column; gap: 8px; }
+.mf-stage { border-radius: 14px; overflow: hidden; background: radial-gradient(120% 90% at 50% 20%, #221c2e, #121019); border: 1px solid var(--line, #262130); }
+.mf-canvas { display: block; width: 100%; height: auto; aspect-ratio: 6 / 5; }
+.mf-bar { display: flex; align-items: center; gap: 8px; }
+.mf-scrub { flex: 1; min-width: 0; accent-color: var(--accent, #ff4f9a); }
+.mf-clock { flex: none; min-width: 44px; text-align: right; font-size: 11.5px; color: var(--muted, #a39bb2); font-variant-numeric: tabular-nums; }
+.mf-file { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mf-file b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.mf-facts { margin: 0; padding: 0 0 0 18px; font-size: 12px; color: var(--muted, #a39bb2); line-height: 1.6; }
+.mf-right .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.mf-right .field { margin: 6px 0; }
+.mf-right select, .mf-right input.text { width: 100%; min-width: 0; }
+.mf-checks { display: flex; flex-direction: column; margin-top: 6px; }
+.mf-msg { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 4px; padding: 10px 12px; border-radius: 11px; font-size: 12.5px; line-height: 1.5;
+  background: var(--panel-2, #18151f); border: 1px solid var(--line, #262130); color: var(--muted, #a39bb2); }
+.mf-msg.warn { color: #ffe2b0; border-color: rgba(255, 190, 90, .35); background: rgba(255, 190, 90, .07); }
+.mf-msg.err { color: #ffd0d6; border-color: rgba(255, 90, 110, .45); background: rgba(255, 90, 110, .08); }
+.mf-msg svg { margin-top: 2px; }
+.mf-len:empty { display: none; }
+
+@media (max-width: 760px) {
+  .mf-main { grid-template-columns: minmax(0, 1fr); }
+  .mf-right .grid-2 { grid-template-columns: minmax(0, 1fr); }
+}

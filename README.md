@@ -42,7 +42,7 @@ A full animation studio built for WickedWhims, designed for players rather than 
 - **Faces and hands.** Expressions, eye direction, lip-sync, and ready-made hand shapes.
 - **Timeline.** Keyframes, easing curves, ghost frames, motion trails and tools for seamless loops.
 - **Automatic motion.** Physics, sims holding each other, and furniture from the game at the correct scale.
-- **Copy real movement** from a video or your webcam.
+- **Copy real movement** from a video, your webcam, or a motion-capture file (BVH).
 - **Sound.** Game voices, creator sounds, or your own audio files.
 - **One-click export** to the game, or package several animations as a mod to share.
 

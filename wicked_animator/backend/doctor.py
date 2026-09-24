@@ -631,6 +631,107 @@ def _ww_version():
         return None
 
 
+# ------------------------------------------------------------------ WickedWhims' version
+WW_VERY_OLD_BEHIND = 5            # this many version numbers (or more) behind WW_WRITTEN_FOR counts as very old
+_WW_V = re.compile(r'\bv?(\d{2,4})([a-z]?)\b', re.I)
+_WW_V_NOTE = re.compile(r'(?<![0-9A-Za-z])v(\d{2,4})([a-z]?)(?![0-9A-Za-z])', re.I)     # in a file: only 'v185k' (not a year)
+
+
+def parse_ww_version(text):
+    """'v185k' -> (185, 'k'); 'v186' -> (186, ''); None when it isn't a WickedWhims version."""
+    m = _WW_V.search(str(text or '').strip())
+    return (int(m.group(1)), m.group(2).lower()) if m else None
+
+
+def ww_written_for():
+    try:
+        import wwpackage
+        return wwpackage.WW_WRITTEN_FOR
+    except Exception:
+        return 'v185k'
+
+
+def ww_version_info(mod_files=None, session=None):
+    """What this PC says about the installed WickedWhims, read-only. -> {version, parsed, source, seen, script, script_time,
+    stale, written_for}. WickedWhims writes its version when the game starts: in WickedWhimsInfoLog.log ("Running
+    WickedWhims v185k") and in saves\\WickedWhimsMod\\last_version_control.ww. The newer of the two is used. stale: the
+    script file in Mods changed after that (an update since the last game start - the version shown may be the old one)."""
+    if mod_files is None:
+        mod_files = _walk(mods_dir())
+    found = []
+    sv = (session or {}).get('ww_version')
+    if sv and parse_ww_version(sv):
+        try:
+            t = os.path.getmtime(gamelog.log_path())
+        except OSError:
+            t = (session or {}).get('started') or 0
+        found.append((t, sv, 'log'))
+    path = os.path.join(ww_saves_dir(), 'last_version_control.ww')
+    try:
+        with open(path, encoding='utf-8', errors='replace') as f:
+            hits = ['v%s%s' % (m.group(1), m.group(2).lower()) for m in _WW_V_NOTE.finditer(f.read(4000))]
+        if hits:
+            found.append((os.path.getmtime(path), hits[-1], 'saves'))
+    except OSError:
+        pass
+    scripts = [(r, m) for r, sz, m in mod_files if r.lower().rsplit('/', 1)[-1] == WW_SCRIPT]
+    script, script_time = (scripts[0] if len(scripts) == 1 else (None, None))
+    info = {'version': None, 'parsed': None, 'source': None, 'seen': None, 'script': script, 'script_time': script_time,
+            'stale': False, 'written_for': ww_written_for()}
+    if found:
+        t, v, src = max(found)
+        pv = parse_ww_version(v)
+        info.update(version='v%d%s' % pv, parsed=pv, source=src, seen=t)
+        info['stale'] = bool(script_time and t and script_time > t + 60)
+    return info
+
+
+def version_cards(mod_files, session=None):
+    """One card about WickedWhims' version when it matters: unknown, very old, older or newer than the version this
+    app's exporter was written for (wwpackage.WW_WRITTEN_FOR). Nothing when WickedWhims isn't in Mods (the install
+    cards say that) or when it is that version."""
+    info = ww_version_info(mod_files, session)
+    if not info['script']:
+        return []
+    want = info['written_for']
+    wp = parse_ww_version(want)
+    rel = info['script']
+    item = {'label': rel.rsplit('/', 1)[-1], 'detail': 'Mods/' + rel, 'file': rel, 'action': {'kind': 'reveal', 'label': 'Show me', 'file': rel}}
+    base = {'id': 'install:wwversion', 'group': 'install', 'sort': 2, 'items': [item],
+            'facts': {'ww': info['version'], 'written_for': want, 'source': info['source'], 'stale': info['stale']}}
+    when = time.strftime('%d %b %Y', time.localtime(info['script_time'])) if info['script_time'] else ''
+    stale = (" WickedWhims' script file changed on %s, after the game last said its version, so start the game once "
+             "and check again." % when) if info['stale'] else ''
+    v = info['parsed']
+    if not v:
+        return [dict(base, level='info', title="Can't tell which WickedWhims version you have",
+                     text="WickedWhims writes its version when the game starts, and there's no note of it on this PC yet. "
+                          "Start The Sims 4 once with WickedWhims, then check again. This app's exporter was written for "
+                          "WickedWhims %s." % want)]
+    ver = info['version']
+    if v == wp:
+        if not info['stale']:
+            return []
+        return [dict(base, level='info', title='WickedWhims was updated since you last played',
+                     text="The game last said WickedWhims %s, the version this app's exporter was written for, but "
+                          "WickedWhims' script file changed on %s. Start The Sims 4 once, then check again to see the "
+                          "new version." % (ver, when))]
+    if v < wp:
+        behind = wp[0] - v[0]
+        if behind >= WW_VERY_OLD_BEHIND:
+            return [dict(base, level='yellow', title='WickedWhims %s is very old' % ver,
+                         text="This app's exporter was written for WickedWhims %s, %d version numbers newer than yours. With "
+                              "an old WickedWhims, animations made here may not show up or may play differently. Update "
+                              "WickedWhims from wickedwhimsmod.com (both of its files).%s" % (want, behind, stale))]
+        return [dict(base, level='info', title='WickedWhims %s is a little older than this app expects' % ver,
+                     text="This app's exporter was written for WickedWhims %s. Animations made here haven't been checked "
+                          "with %s; if one doesn't show up, updating WickedWhims is the first thing to try.%s" % (want, ver, stale))]
+    return [dict(base, level='info', title='WickedWhims %s is newer than this app knows' % ver,
+                 text="This app's exporter was written and checked for WickedWhims %s; %s hasn't been checked with it. If "
+                      "an animation you send doesn't show up, 'Did it play in the game?' shows what WickedWhims itself says "
+                      "about it.%s" % (want, ver, stale))]
+
+
 def _max_depth():
     """How many folders deep the game reads packages (Mods\\Resource.cfg; 5 when it can't be read)."""
     try:
@@ -695,6 +796,11 @@ def scan(progress=None, emit=None):
         traceback.print_exc()
     for c in _install_cards(mod_files, parked_files, session):
         add(c)
+    try:
+        for c in version_cards(mod_files, session):
+            add(c)
+    except Exception:
+        traceback.print_exc()
     for c in _depth_cards(mod_files):
         add(c)
     for c in settings_cards():

@@ -7,6 +7,9 @@ import re, struct
 from xml.sax.saxutils import escape
 
 SNIPPET = 0x7DF2169C
+# The WickedWhims version this exporter's XML (and the cum layer names, moments and identifier notes in wwlists.py and
+# stripclub.py) was written and checked against. The Game Doctor compares the installed WickedWhims with it.
+WW_WRITTEN_FOR = 'v185k'
 CATEGORIES = ('TEASING', 'HANDJOB', 'FOOTJOB', 'ORALJOB', 'VAGINAL', 'ANAL', 'CLIMAX')
 GENDERS = ('FEMALE', 'MALE', 'BOTH')
 

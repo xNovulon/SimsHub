@@ -278,13 +278,22 @@ export function reduceKeys(poses, faces, loop, detail = 0.5) {
   return best;
 }
 
+// A key every `every` frames (and on the last frame), like the Library's "Import as keys" - for motion files.
+export function everyKeys(poses, faces, every) {
+  const N = poses.length, frames = [];
+  for (let f = 0; f < N; f += Math.max(1, Math.round(every))) frames.push(f);
+  if (frames[frames.length - 1] !== N - 1) frames.push(N - 1);
+  return frames.map(f => ({ frame: f, ease: 'auto', pose: poses[f], ...(faces && faces[f] ? { face: { ...faces[f] } } : {}) }));
+}
+
 // ---------------------------------------------------------------- putting it on a sim (7.4)
-// applyToSim(app, simId, {poses, faces}, {mode, at, fitLength, detail, faceOnly, source, checkpoint}) -> number of keys.
+// applyToSim(app, simId, {poses, faces}, {mode, at, fitLength, detail, faceOnly, source, checkpoint, every}) -> number of keys.
+// every: a key every that many frames instead of only where the motion needs one (null = the reducer).
 // checkpoint: false when the caller already made the one undo step (two sims at once, the live mirror's Keep).
 // mode 'replace' replaces the whole animation; 'insert' replaces only [at, at + length) and blends 6 frames at the
 // edges. fitLength: true = the project takes the loop's length (other sims are stretched along); a number = the
 // take is stretched to that many frames; null = the take is stretched to the project's length.
-export function applyToSim(app, simId, take, { mode = 'replace', at = 0, fitLength = null, detail = 0.5, faceOnly = false, headTurns = null, source = 'video', quiet = false, checkpoint = true } = {}) {
+export function applyToSim(app, simId, take, { mode = 'replace', at = 0, fitLength = null, detail = 0.5, faceOnly = false, headTurns = null, source = 'video', quiet = false, checkpoint = true, every = null } = {}) {
   const store = app.store, p = store.project, s = store.sim(simId);
   if (!s) throw new Error('Pick a sim first.');
   let { poses, faces } = take;
@@ -354,7 +363,7 @@ export function applyToSim(app, simId, take, { mode = 'replace', at = 0, fitLeng
     const frames = keyFramesFor(merged.map(() => ({ rot: {}, pos: {} })), faceVals, loop && mode === 'replace', { angle: 1, pos: 1, face: tolerances(detail).face });
     newKeys = frames.map(i => ({ frame: start + i, ease: 'linear', face: { ...(faceVals[i] || {}) } }));
   } else {
-    newKeys = reduceKeys(merged, faceVals, loop && mode === 'replace', detail).map(k => ({ ...k, frame: start + k.frame }));
+    newKeys = (every > 1 ? everyKeys(merged, faceVals, every) : reduceKeys(merged, faceVals, loop && mode === 'replace', detail)).map(k => ({ ...k, frame: start + k.frame }));
   }
 
   let keys;

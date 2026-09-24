@@ -307,8 +307,11 @@ export function cameraPlace(take, person, i, fovDeg = 60) {
 // solveTake(take, person, rig, opts) -> { poses: [{rot, pos}], quality: Float32Array, contacts, low, psi }
 // opts: { facing: yaw of the sim now (radians), base: the sim's keyed pose now {rot, pos} (its hips place),
 //         basePoses: (f) => the sim's own pose at frame f (long gaps ease to it), floorY: null = where the sim is now,
-//         ground: 'floor' | 'free', stay: true, mirror: false, hands: true, fingers: true, headFromFace: true,
-//         fov: 60, limits: true, stick: true }
+//         ground: 'floor' | 'free' | 'lowest', stay: true, mirror: false, hands: true, fingers: true, headFromFace: true,
+//         fov: 60, limits: true, stick: true, places: null }
+// places: (take, person, i) -> the hips' place in frame i (MediaPipe axes, like cameraPlace), for takes that know it
+// (a motion file, capture/bvh.js); smoothPlace: false keeps that place unfiltered; ground 'lowest': the lowest the
+// body gets over the whole take is on the floor (jumps and lying down keep their height).
 export function solveTake(take, person, rig, opts = {}) {
   const o = { facing: 0, base: null, basePoses: null, floorY: null, ground: 'floor', stay: true, mirror: false, hands: true, fingers: true,
     headFromFace: true, fov: 60, limits: true, stick: true, smooth: 0.5, smoothRot: true, ...opts };
@@ -355,7 +358,7 @@ export function solveTake(take, person, rig, opts = {}) {
     const rot = {};
     for (const b of SOLVED) { const x = rp.bone(b); if (x) rot[b] = x.quaternion.toArray(); }
     poses[i] = { rot, pos: {} };
-    places[i] = cameraPlace(take, person, i, o.fov);
+    places[i] = typeof o.places === 'function' ? o.places(take, person, i) : cameraPlace(take, person, i, o.fov);
   }
   // quaternion sign continuity per bone, then a light zero-lag smoothing of the turns themselves
   for (const b of SOLVED) unflip(poses.map(p => p.rot[b]));
@@ -408,7 +411,7 @@ export function solveTake(take, person, rig, opts = {}) {
     T[i] = t && first ? toSim(t.x - first.x, t.y - first.y, t.z - first.z).multiplyScalar(scale).applyQuaternion(rotY) : null;
   }
   for (let i = 0; i < N; i++) if (!T[i]) T[i] = i > 0 ? T[i - 1].clone() : new THREE.Vector3();
-  if (N > 2) {
+  if (N > 2 && o.smoothPlace !== false) {
     const ts = take.t;
     const ch = (sel, params) => { const xs = Float64Array.from(T, sel); return zeroLag(xs, ts, params); };
     const X = ch(v => v.x, FILTERS.body), Y = ch(v => v.y, FILTERS.body), Z = ch(v => v.z, FILTERS.depth);
@@ -445,8 +448,9 @@ export function solveTake(take, person, rig, opts = {}) {
     lows[i] = lowestSkin(rp);
   }
   const off = new Float64Array(N);
-  for (let i = 0; i < N; i++) off[i] = o.ground === 'free' ? floorY - lows[0] : floorY - lows[i];
-  const offS = N > 3 && o.ground !== 'free' ? zeroLag(off, take.t, { minCutoff: 1.5, beta: 0.5, dCutoff: 1 }) : off;
+  const lowest = o.ground === 'lowest' ? lows.reduce((a, b) => Math.min(a, b), Infinity) : 0;
+  for (let i = 0; i < N; i++) off[i] = o.ground === 'free' ? floorY - lows[0] : o.ground === 'lowest' ? floorY - lowest : floorY - lows[i];
+  const offS = N > 3 && o.ground !== 'free' && o.ground !== 'lowest' ? zeroLag(off, take.t, { minCutoff: 1.5, beta: 0.5, dCutoff: 1 }) : off;
   for (let i = 0; i < N; i++) {
     const hp = hipsAt(i);
     const dy = offS[i];
