@@ -95,7 +95,7 @@ class Endpoints(Base):
     def test_ping(self):
         code, _, r = self.get('/api/ping')
         self.assertEqual(code, 200)
-        self.assertEqual(r, {'ok': True, 'app': "Novulon's Sims Hub", 'engine': 'stub'})
+        self.assertEqual(r, {'ok': True, 'app': "Novulon's Sims Hub", 'engine': 'stub', 'pid': os.getpid(), 'busy': False})
 
     def test_status_has_contract_keys_and_hub_block(self):
         code, h, r = self.get('/api/status')
@@ -482,7 +482,7 @@ class Startup(unittest.TestCase):
                     c.close()
                 except OSError:
                     time.sleep(0.2)
-            self.assertEqual(answer, {'ok': True, 'app': "Novulon's Sims Hub", 'engine': 'stub'})
+            self.assertEqual(answer, {'ok': True, 'app': "Novulon's Sims Hub", 'engine': 'stub', 'pid': p.pid, 'busy': False})
             # a second copy notices the first and stops at once
             p2 = subprocess.run([sys.executable, '-m', 'speedkit.hub'], cwd=ROOT, env=env, capture_output=True, timeout=30)
             self.assertEqual(p2.returncode, 0)

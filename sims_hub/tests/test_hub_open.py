@@ -95,7 +95,8 @@ class OpenHub(unittest.TestCase):
         self.port = free_port()
         self.servers, self.opened, self.messages = [], [], []
         self.patches = [mock.patch.object(launcher, 'open_window', side_effect=lambda url, profile=None: self.opened.append(url)),
-                        mock.patch.object(launcher, 'message', side_effect=lambda text, error=True: self.messages.append(text))]
+                        mock.patch.object(launcher, 'message', side_effect=lambda text, error=True: self.messages.append(text)),
+                        mock.patch.object(launcher, 'update_first')]           # never GitHub (test_update.py covers it)
         for p in self.patches:
             p.start()
 

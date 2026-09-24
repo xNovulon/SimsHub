@@ -7,7 +7,8 @@ The engine is speedkit/api.py; while that module is missing or does not import, 
 speedkit/hub/stub_api.py is used instead (SIMS_HUB_API=stub forces the stand-in, =engine forbids it).
 
 API
-  GET  /api/ping                     cheap "is it up" check for the launcher
+  GET  /api/ping                     cheap "is it up" check for the launcher (plus its pid and whether a task runs,
+                                     so the launcher can restart an idle Hub after an update)
   GET  /api/status[?refresh=1]       api.status(), cached a few seconds, plus a 'hub' block
   GET  /api/saves[?refresh=1]        api.list_saves(), cached for 60 s
   GET  /api/graphics[?refresh=1]     api.graphics_tune(apply=False): the before/after table (read-only)
@@ -428,7 +429,8 @@ class Handler(BaseHTTPRequestHandler):
         refresh = q.get('refresh') in ('1', 'true', 'yes')
         hub = self.hub
         if route == 'ping':
-            return self._ok({'ok': True, 'app': APP, 'engine': hub.mode})
+            return self._ok({'ok': True, 'app': APP, 'engine': hub.mode, 'pid': os.getpid(),
+                             'busy': hub.current is not None})
         if route == 'status':
             return self._ok(hub.status(refresh))
         if route == 'saves':
