@@ -467,7 +467,8 @@ def open_path(path):
 
 # ------------------------------------------------------------------ patch day, game errors, save backups, load times
 from speedkit.hub.stub_care import (patch_day, patch_seen, game_errors, errors_seen, save_health,  # noqa: E402,F401
-                                   load_savings, set_aside, put_back, backup_saves, restore_saves, on_undo)
+                                   load_savings, set_aside, put_back, backup_saves, restore_saves, on_undo,
+                                   batch_fixes, batch_fix_scan, batch_fix_open)
 # ------------------------------------------------------------------ the CC browser (docs/ccbrowser.md)
 # Example CC with little generated pictures (a tiny PNG writer: no Pillow needed for the preview). CC holds the
 # browser's state; reset() puts it back. Test knob: CC['ready'] = False shows the "not sorted yet" page.

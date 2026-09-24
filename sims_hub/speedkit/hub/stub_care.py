@@ -91,6 +91,24 @@ def _initial():
                        'script': True}],
         'errors': errors, 'seen_until': None,
         'saves': saves, 'backups': backups,
+        'batch': {'scanned': _ago(days=1, hours=2), 'files_checked': 8412, 'found': _batch_examples()},
+    }
+
+
+def _batch_examples():
+    """Example results of the Sims 4 Studio batch-fix check: {fix id: [{'rel', 'root', 'parts', 'total', 'versions'}]}."""
+    f = lambda rel, parts=1, total=1, versions=(), root='Mods': {'rel': rel, 'root': root, 'parts': parts,  # noqa: E731
+                                                                'total': total, 'versions': list(versions)}
+    return {
+        'sliders_werewolf': [f('Sliders/Obscurus_NoseShape_Sliders.package', 4, 4, [14]),
+                             f('Sliders/Chin Width Slider 2021.package', 1, 1, [14]),
+                             f('Sliders/Enhanced_Butt_Slider.package', 2, 3, [13])],
+        'eyes_infants': [f('Eyes/Pralinesims_Dazzling_Light_Eyes.package', 24, 24),
+                         f('Eyes/Default Eyes Replacement.package', 12, 12)],
+        'shoes_werewolves': [f('Clothes/Shoes/Madlen_Sneakers.package', 8, 8), f('Clothes/Shoes/Winter Boots.package', 5, 5)],
+        'nude_default': [f('Clothes/Tops/Basic_Tank_Top.package', 1, 1)],
+        'pets_patch': [f('Old CC/2016/Hair_Bob_2016.package', 6, 6, [27]),
+                       f('Old CC/2017/Sweater_Knit.package', 3, 3, [30], root='Mods_parked')],
     }
 
 
@@ -120,6 +138,12 @@ def patch_day():
     with S._lock:
         out = {'ok': True, 'game': copy.deepcopy(c['game']), 'older': copy.deepcopy(c['older']), 'newer': c['newer'],
                'set_aside': copy.deepcopy(c['set_aside']), 'message': _msg_patch(c)}
+    r = batch_fixes()
+    out['batch_fixes'] = None if not r['scanned'] else {
+        'files': len({x['rel'] for fx in r['fixes'] for x in fx['files'] if not x['set_aside']}),
+        'fixes': [{'id': fx['id'], 'name': fx['name'], 'files': fx['count'] - fx['set_aside']} for fx in r['fixes']
+                  if fx['count'] - fx['set_aside']],
+        'scanned': r['scanned']}
     return out
 
 
@@ -324,3 +348,66 @@ def on_undo(journal):
                 c['set_aside'].append({'rel': m, 'mod': m.split('/')[0], 'since': _ago(minutes=5), 'why': 'patch',
                                        'game_version': c['game']['version'], 'date': None, 'state': 'aside',
                                        'script': m.endswith('.ts4script')})
+
+
+# ------------------------------------------------------------------ Sims 4 Studio batch fixes (docs/batchfix.md)
+def batch_fixes():
+    """The same shape as api_care.batch_fixes, from the example results (test knob: _st()['batch']['scanned'] = None
+    shows "not checked yet")."""
+    from speedkit import batchfix as BF
+    c = _st()
+    with S._lock:
+        b = copy.deepcopy(c['batch'])
+        held = {h['rel'] for h in c['set_aside']}
+    if not b['scanned']:
+        return {'ok': True, 'scanned': None, 'files_checked': 0, 'files': 0, 'fixes': [], 'parked': 0,
+                'message': 'Your CC has not been checked yet. The first check reads every CC file and can take a few '
+                           'minutes for a big collection.'}
+    fixes, names, parked = [], set(), 0
+    for fx in BF.FIXES:
+        files = b['found'].get(fx['id']) or []
+        if not files:
+            continue
+        view = []
+        for x in files:
+            aside = x['rel'] in held
+            parts = x['rel'].split('/')
+            root = 'Mods_parked' if aside else x['root']
+            view.append({'rel': x['rel'], 'name': parts[-1], 'folder': '/'.join(parts[:-1]), 'root': root,
+                         'in_mods': root == 'Mods', 'set_aside': aside, 'parts': x['parts'], 'why': BF.why(fx['id'], x)})
+            names.add(x['rel'])
+        n_parked = sum(1 for v in view if not v['in_mods'] and not v['set_aside'])
+        parked += n_parked
+        fixes.append({'id': fx['id'], 'name': fx['name'], 'menu': list(fx['menu']), 'section': fx['section'],
+                      'update': fx['update'], 'problem': fx['problem'], 'what': fx['what'], 'count': len(view),
+                      'in_mods': sum(1 for v in view if v['in_mods']), 'set_aside': sum(1 for v in view if v['set_aside']),
+                      'parked': n_parked, 'files': view, 'more': 0, 'sources': list(fx['sources'])})
+    n = len(names)
+    msg = ('%d CC file%s may need a Sims 4 Studio batch fix (%d fix%s).' % (n, '' if n == 1 else 's', len(fixes),
+           '' if len(fixes) == 1 else 'es')) if fixes else \
+        'No CC matches a problem that a Sims 4 Studio batch fix is known for.'
+    return {'ok': True, 'scanned': b['scanned'], 'files_checked': b['files_checked'], 'files': n, 'fixes': fixes,
+            'parked': parked, 'message': msg}
+
+
+def batch_fix_scan(progress=None):
+    c = _st()
+    with S._lock:
+        n = c['batch']['files_checked']
+    S._run(progress, [('library', 'Looking for new or changed CC files'),
+                      ('batchfix', 'Checking CC files: %s of %s' % (format(n // 2, ','), format(n, ','))),
+                      ('done', 'Checked %s CC files' % format(n, ','))])
+    with S._lock:
+        c['batch']['scanned'] = datetime.now().replace(microsecond=0).isoformat()
+        if not c['batch']['found']:
+            c['batch']['found'] = _batch_examples()
+    r = batch_fixes()
+    return {'ok': True, 'files': n, 'found': r['files'], 'read': 37, 'seconds': 3.1,
+            'message': 'Checked %s CC files. %d may need a Sims 4 Studio batch fix.' % (format(n, ','), r['files'])}
+
+
+def batch_fix_open(rel):
+    r = batch_fixes()
+    if not any(x['rel'] == rel for fx in r['fixes'] for x in fx['files']):
+        return {'ok': False, 'message': 'That file is not in the list any more. Check again.'}
+    return {'ok': True, 'message': 'Preview: the folder of %s would open now.' % rel.split('/')[-1]}

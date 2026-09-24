@@ -2093,4 +2093,5 @@ def choose_game_folder():
 # ------------------------------------------------------------------------------------------ patch day, game errors,
 # save backups, load-time savings: speedkit/api_care.py (docs\care.md) - imported last, it uses the helpers above
 from .api_care import (patch_day, patch_seen, set_aside, put_back, game_errors, errors_seen,  # noqa: E402,F401
-                       save_health, backup_saves, restore_saves, load_savings)
+                       save_health, backup_saves, restore_saves, load_savings,
+                       batch_fixes, batch_fix_scan, batch_fix_open)

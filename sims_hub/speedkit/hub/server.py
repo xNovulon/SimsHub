@@ -21,9 +21,9 @@ API
   GET  /api/task/current             the running task, else the newest one (or {"task": null})
   POST /api/open {"what"}            animator | mods | reports | inbox | saves | quarantine | report_html
   Patch day, game errors, save backups, load-time savings (speedkit/hub/care_routes.py, docs/care.md):
-  GET  /api/patchday | /api/errors | /api/save_health | /api/load_savings  [?refresh=1]
-  POST /api/patchday/seen | /api/errors/seen
-  tasks: set_aside {"rels", "why"} | put_back {"rels"} | backup_saves | restore_saves {"backup"}
+  GET  /api/patchday | /api/errors | /api/save_health | /api/load_savings | /api/batchfix  [?refresh=1]
+  POST /api/patchday/seen | /api/errors/seen | /api/batchfix/open {"rel"}
+  tasks: set_aside {"rels", "why"} | put_back {"rels"} | backup_saves | restore_saves {"backup"} | batch_fix_scan
   GET  /api/cc..., /api/saves/<slot>/cc, POST /api/cc/open   the CC browser (see its section below)
 
 A finished task is 'done' when its result says ok, and 'failed' when it says not ok or raised.
@@ -289,7 +289,7 @@ class Hub:
             result = {'ok': False, 'message': 'Something unexpected went wrong in the Hub.'}
         if task.action == 'report' and result.get('ok') and result.get('path'):
             self.last_report = result['path']
-        changes = task.action not in ('cleanup_plan', 'report', 'cc_scan') and (
+        changes = task.action not in ('cleanup_plan', 'report', 'cc_scan', 'batch_fix_scan') and (
             task.args.get('apply', True) if task.action in ('inbox', 'graphics_tune', 'graphics_restore') else True)
         with self.lock:
             task.result = result

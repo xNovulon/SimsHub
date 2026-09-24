@@ -2,8 +2,10 @@
 // hub.js imports this module, hands it its helpers (init), puts these sections into its pages and adds these buttons
 // to its click table. The server routes are in speedkit/hub/care_routes.py (docs/care.md).
 
+import * as bf from './batchfix.js';           // CC that may need a Sims 4 Studio fix (Tools page)
+
 let H = null;                                  // hub.js helpers: $, esc, ic, call, render, runTask, confirmBox, ...
-export function init(helpers) { H = helpers; }
+export function init(helpers) { H = helpers; bf.init(helpers); }
 
 // what these pages show: the last answer of each read, and what is being read now
 const C = { patch: null, errors: null, health: null, savings: null, loading: new Set(), pick: null, pickKey: '' };
@@ -12,7 +14,7 @@ const NEEDS = { home: ['patch', 'errors', 'savings'], saves: ['health'], tools: 
 
 export async function load(page, force = false) {
   const want = NEEDS[page] || [];
-  await Promise.all(want.map(k => read(k, force)));
+  await Promise.all(want.map(k => read(k, force)).concat(page === 'tools' ? [bf.load(force)] : []));
 }
 
 async function read(key, force) {
@@ -29,6 +31,7 @@ async function read(key, force) {
 // a finished task may have changed any of these
 export function afterTask() {
   C.patch = C.errors = C.health = C.savings = null;
+  bf.reset();
   load(H.page(), true);
 }
 
@@ -55,7 +58,7 @@ export function homeBanner() {
     out.push(`<div class="care-banner" data-care="patch-banner"><div class="ic warn">${ic('warn')}</div><div class="grow">
       <b>The Sims 4 was updated${p.game.version ? ` (${esc(p.game.version)})` : ''}</b>
       <span>${n ? `${H.plural(n, 'script mod')} ${n === 1 ? 'is' : 'are'} older than the latest game update. Game updates often break script mods.`
-        : 'All script mods are newer than the latest game update.'}</span></div>
+        : 'All script mods are newer than the latest game update.'}</span>${bf.patchLine(p.batch_fixes)}</div>
       ${n ? `<a class="btn small primary" href="#tools" data-care-scroll="care-patch">${ic('search')}Review script mods</a>` : ''}
       <button class="btn small ghost" data-act="care-patch-seen">Dismiss</button></div>`);
   }
@@ -161,7 +164,7 @@ function patchCard() {
     const status = `<div class="care-status${g.updated ? ' hot' : ''}">${ic(g.updated ? 'warn' : 'check')}<div>
         <b>${g.updated ? `Updated${g.version ? ` to ${esc(g.version)}` : ''}${g.update_time ? ` · ${esc(H.ago(g.update_time))}` : ''}`
           : g.version ? `The Sims 4 ${esc(g.version)}` : 'The Sims 4'}</b>
-        <span>${esc(p.message)}</span></div></div>`;
+        <span>${esc(p.message)}</span>${g.updated ? bf.patchLine(p.batch_fixes) : ''}</div></div>`;
     const rows = older.map(o => `<label class="care-row pick"><input type="checkbox" data-care-pick="${esc(o.rel)}"${C.pick.has(o.rel) ? ' checked' : ''}>
         <div class="ci">${ic('terminal')}</div><div class="grow"><b title="${esc(o.rel)}">${esc(o.mod)}</b>
         <span>${esc(fileOf(o.rel))} · from ${esc(H.dayTime(o.date).split(',')[0])}, ${H.plural(o.days_before, 'day')} before the update${(o.goes_with || []).length ? ` · ${H.plural(o.goes_with.length, 'file')} that go${o.goes_with.length === 1 ? 'es' : ''} with it` : ''}</span></div></label>`).join('');
@@ -176,7 +179,7 @@ function patchCard() {
     if (aside.length) {
       body += `<h3 class="sec" style="margin:22px 0 8px">Set aside for now <span class="n">${aside.length}</span></h3><div class="care-list">${aside.map(h => `<div class="care-row">
         <div class="ci">${ic('pause')}</div><div class="grow"><b title="${esc(h.rel)}">${esc(h.mod)}</b>
-        <span>${esc(fileOf(h.rel))} · set aside ${esc(H.ago(h.since))}${h.why === 'error' ? ' because of an error' : ' after an update'}${h.state === 'updated' ? ' · a newer copy is in your Mods folder now' : ''}</span></div>
+        <span>${esc(fileOf(h.rel))} · set aside ${esc(H.ago(h.since))}${h.why === 'error' ? ' because of an error' : h.why === 'fix' ? ' until it gets a Sims 4 Studio fix' : ' after an update'}${h.state === 'updated' ? ' · a newer copy is in your Mods folder now' : ''}</span></div>
         ${h.state === 'aside' ? `<button class="btn small" data-act="care-back" data-rel="${esc(h.rel)}"${noChange() ? ' disabled' : ''}>${ic('undo')}Put back</button>` : '<span class="chip ok">Updated</span>'}</div>`).join('')}</div>`;
     }
   }
@@ -220,17 +223,18 @@ function errorsCard() {
 }
 
 export function toolsSections() {
-  return `<div class="care-tools">${patchCard()}${errorsCard()}</div>`;
+  return `<div class="care-tools">${patchCard()}${bf.card()}${errorsCard()}</div>`;
 }
 
 // -------------------------------------------------------------------------------- the progress window
 export const TITLES = {
-  set_aside: a => a.why === 'error' ? 'Setting the mod aside' : 'Setting mods aside', put_back: () => 'Putting mods back',
-  backup_saves: () => 'Backing up saves', restore_saves: () => 'Restoring saves',
+  set_aside: a => a.why === 'error' ? 'Setting the mod aside' : a.why === 'fix' ? 'Setting CC files aside' : 'Setting mods aside',
+  put_back: () => 'Putting mods back', backup_saves: () => 'Backing up saves', restore_saves: () => 'Restoring saves',
+  ...bf.TITLES,
 };
 export const DONE = {
   set_aside: () => 'Set aside', put_back: () => 'Mods put back', backup_saves: () => 'Saves backed up',
-  restore_saves: () => 'Saves restored',
+  restore_saves: () => 'Saves restored', ...bf.DONE,
 };
 export const KIND = { aside: ['Set mods aside', 'pause'], saves: ['Put back saves from a backup', 'shield'] };
 
@@ -294,6 +298,7 @@ export const ACTS = {
   'care-backup': () => H.runTask('backup_saves'),
   'care-restore': btn => restore(btn),
   'care-refresh': () => load(H.page(), true),
+  ...bf.ACTS,
   'care-pick-all': () => {
     const older = (C.patch && C.patch.older) || [];
     const all = older.every(o => C.pick.has(o.rel));

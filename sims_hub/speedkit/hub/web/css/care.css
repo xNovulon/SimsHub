@@ -67,6 +67,23 @@
 .care-size.warn svg { color: var(--warn); }
 .care-size .chip { font-size: 11px; padding: 1px 8px; }
 
+/* ---------------------------------------------------------------- Tools: CC that may need a Sims 4 Studio fix (js/batchfix.js) */
+.bf-fixes { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.bf-fix { padding: 12px 14px; border-radius: 13px; background: var(--panel-2); border: 1px solid var(--line); }
+.bf-fix .top { display: flex; align-items: flex-start; gap: 12px; }
+.bf-fix .top .ci { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--panel-3); color: var(--muted); flex: none; }
+.bf-fix .top .grow { flex: 1; min-width: 0; }
+.bf-fix .top b { display: block; font-weight: 800; }
+.bf-fix .top span { display: block; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.bf-steps { margin: 10px 0 0 44px; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.bf-steps b { color: var(--text); font-weight: 700; }
+.bf-fix details.more, .bf-fix .note { margin-left: 44px; }
+.bf-fix .care-row span { white-space: normal; }
+.bf-line { display: flex !important; gap: 6px; align-items: flex-start; margin-top: 4px; }
+.bf-line svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.bf-line > span { display: inline !important; white-space: normal !important; }
+.bf-line a { color: inherit; text-decoration: underline; }
+
 @media (max-width: 860px) {
   .care-bar { grid-template-columns: 90px minmax(0, 1fr) 64px; }
   .care-bar small { display: none; }

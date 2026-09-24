@@ -565,7 +565,7 @@ function describeChange(j) {
   else if (j.kind === 'settings' && /restore|put back/i.test(note)) title = 'Graphics: old file put back';
   else if (j.kind === 'install' && /^uninstall/i.test(note)) title = 'Removed the SpeedKit Monitor';
   else if (j.kind === 'install') title = 'Installed the SpeedKit Monitor';
-  else if (j.kind === 'aside') title = /^put back/i.test(note) ? 'Put mods back' : "Set mods aside until they're updated";
+  else if (j.kind === 'aside') title = /^put back/i.test(note) ? 'Put mods back' : /\(fix\)/.test(note) ? 'Set CC aside until it gets a Sims 4 Studio fix' : "Set mods aside until they're updated";
   return { title, label, icon };
 }
 

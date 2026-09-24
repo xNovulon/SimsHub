@@ -15,10 +15,14 @@ instead of raising, progress(step, fraction, message), plain words only. They us
     backup_saves()                 back up the saves now
     restore_saves(backup)          put the saves of one backup back (undoable)
     load_savings()                 load time per mode and the time Quick Start saves
+    batch_fixes()                  CC that may need a Sims 4 Studio batch fix (from the last check; docs\batchfix.md)
+    batch_fix_scan()               check the CC files for them (a task: new or changed files only)
+    batch_fix_open(rel)            open the folder of one file the check listed
 """
 import datetime
 import json
 import os
+import time
 
 from . import api as A
 from . import patchday as PD
@@ -26,6 +30,7 @@ from . import errorlogs as EL
 from . import savebackup as SB
 from . import loadstats as LS
 from . import profiles as PR
+from . import batchfix as BF
 from .journal import JournalError
 
 KEEP_BACKUPS = 5
@@ -97,7 +102,7 @@ def patch_day():
     game = dict(info, update_time=when)
     game.pop('fingerprint', None)
     return {'ok': True, 'game': game, 'older': lists['older'], 'newer': lists['newer'], 'set_aside': held,
-            'message': msg}
+            'message': msg, 'batch_fixes': _batch_summary()}
 
 
 @A._safe
@@ -283,6 +288,151 @@ def load_savings():
     return LS.summary(os.path.join(A._reports(), 'loadtimes.csv'))
 
 
+# ------------------------------------------------------------------------------------------ Sims 4 Studio batch fixes
+FIX_FILES_SHOWN = 200               # files listed per fix (the count is always the full one)
+
+
+def _bf_path():
+    return os.path.join(os.path.dirname(os.path.abspath(A._cfg['db_path'])), 'batchfix.sqlite')
+
+
+def _bf_state():
+    """(state, findings) of the last check, or (None, {}) when there was none. Reads only the results file."""
+    if not os.path.isfile(_bf_path()):
+        return None, {}
+    st = BF.Store(_bf_path())
+    try:
+        return st.state(), st.findings()
+    finally:
+        st.close()
+
+
+def _bf_files(findings):
+    """findings with each file where it is now (Mods, or parked / set aside), files that are gone left out."""
+    held = {h['rel'].lower() for h in PD.held_status(A._sims(), _home()) if h['state'] == 'aside'}
+    roots = A._roots()
+    where = {}
+    out = {}
+    for fid, files in findings.items():
+        keep = []
+        for f in files:
+            k = f['rel'].lower()
+            if k not in where:
+                where[k] = next((r for r in ('Mods', 'Mods_parked')
+                                 if os.path.isfile(os.path.join(roots[r], f['rel'].replace('/', os.sep)))), None)
+            if where[k] is None:
+                continue
+            keep.append(dict(f, root=where[k], set_aside=k in held))
+        if keep:
+            out[fid] = keep
+    return out
+
+
+def _batch_summary():
+    """For the patch-day notice: {'files', 'fixes': [{'id', 'name', 'files'}], 'scanned'} or None (never checked)."""
+    try:
+        state, found = _bf_state()
+    except Exception as e:
+        A._log_error('batch summary', e)
+        return None
+    if not state or not state.get('scanned'):
+        return None
+    found = _bf_files(found)
+    files = {f['rel'].lower() for fs in found.values() for f in fs if not f['set_aside']}
+    fixes = [{'id': fx['id'], 'name': fx['name'], 'files': sum(1 for f in found.get(fx['id'], []) if not f['set_aside'])}
+             for fx in BF.FIXES]
+    return {'files': len(files), 'fixes': [f for f in fixes if f['files']], 'scanned': state['scanned']}
+
+
+@A._safe
+def batch_fixes():
+    """{'ok', 'scanned': iso|None, 'files_checked', 'files' (CC files that may need a fix), 'fixes': [{'id', 'name',
+    'menu': [str], 'section', 'update', 'problem', 'what', 'count', 'in_mods', 'set_aside', 'files': [{'rel', 'name',
+    'folder', 'root', 'in_mods', 'set_aside', 'why', 'parts'}], 'more', 'sources'}], 'parked', 'message'}.
+    From the last check only (batch_fix_scan); never opens a CC file and never changes one."""
+    state, found = _bf_state()
+    if not state or not state.get('scanned'):
+        return {'ok': True, 'scanned': None, 'files_checked': 0, 'files': 0, 'fixes': [], 'parked': 0,
+                'message': 'Your CC has not been checked yet. The first check reads every CC file and can take a few '
+                           'minutes for a big collection.'}
+    found = _bf_files(found)
+    fixes, all_files, parked = [], set(), 0
+    for fx in BF.FIXES:
+        files = found.get(fx['id'])
+        if not files:
+            continue
+        view = []
+        for f in files:
+            parts = f['rel'].split('/')
+            view.append({'rel': f['rel'], 'name': parts[-1], 'folder': '/'.join(parts[:-1]), 'root': f['root'],
+                         'in_mods': f['root'] == 'Mods', 'set_aside': f['set_aside'], 'parts': f.get('parts', 1),
+                         'why': BF.why(fx['id'], f)})
+            all_files.add(f['rel'].lower())
+        n_parked = sum(1 for f in view if not f['in_mods'] and not f['set_aside'])
+        parked += n_parked
+        fixes.append({'id': fx['id'], 'name': fx['name'], 'menu': list(fx['menu']), 'section': fx['section'],
+                      'update': fx['update'], 'problem': fx['problem'], 'what': fx['what'], 'count': len(view),
+                      'in_mods': sum(1 for f in view if f['in_mods']), 'set_aside': sum(1 for f in view if f['set_aside']),
+                      'parked': n_parked, 'files': view[:FIX_FILES_SHOWN], 'more': max(0, len(view) - FIX_FILES_SHOWN),
+                      'sources': list(fx['sources'])})
+    n = len(all_files)
+    if not fixes:
+        msg = 'No CC matches a problem that a Sims 4 Studio batch fix is known for.'
+    else:
+        msg = '%d CC file%s may need a Sims 4 Studio batch fix (%d fix%s).' % (
+            n, '' if n == 1 else 's', len(fixes), '' if len(fixes) == 1 else 'es')
+    return {'ok': True, 'scanned': state['scanned'], 'files_checked': state['files'], 'files': n, 'fixes': fixes,
+            'parked': parked, 'message': msg}
+
+
+@A._safe
+def batch_fix_scan(progress=None):
+    """Check every CC file for problems that a Sims 4 Studio batch fix is known for (read-only; new or changed files
+    only after the first time). Returns {'ok', 'message', 'files', 'found', 'read', 'seconds'}."""
+    from . import fastmode as F
+    tell = A._Progress(progress)
+    t0 = time.time()
+    with A._run_lock:
+        tell('library', 0.0, 'Looking for new or changed CC files')
+        lib = A._library()
+        st = BF.Store(_bf_path())
+        try:
+            lib.scan()
+
+            def sub(step, fraction=None, message=''):
+                tell(step, None if fraction is None else round(0.1 + 0.9 * fraction, 3), message)
+            res = st.scan(lib, progress=sub, skip=F.is_speedkit_file)
+        finally:
+            st.close()
+            lib.close()
+    r = batch_fixes()
+    n = r.get('files', 0)
+    tell('done', 1.0, 'Checked %s CC files' % format(res['files'], ','))
+    msg = 'Checked %s CC files. ' % format(res['files'], ',') + (
+        '%d may need a Sims 4 Studio batch fix.' % n if n else 'None of them matches a known Sims 4 Studio fix.')
+    return {'ok': True, 'message': msg, 'files': res['files'], 'found': n, 'read': res['read'],
+            'seconds': round(time.time() - t0, 1)}
+
+
+@A._safe
+def batch_fix_open(rel):
+    """Open the folder of one file that the last check listed (in Mods or, when parked, its set-aside place)."""
+    if not isinstance(rel, str) or not rel.strip():
+        return {'ok': False, 'message': 'Pick a file first.'}
+    key = rel.replace('\\', '/').strip('/').lower()
+    _, found = _bf_state()
+    hit = next((f for fs in _bf_files(found).values() for f in fs if f['rel'].lower() == key), None)
+    if hit is None:
+        return {'ok': False, 'message': 'That file is not in the list any more. Check again.'}
+    path = os.path.join(A._roots()[hit['root']], hit['rel'].replace('/', os.sep))
+    if A._cfg['opener'] is None and os.name == 'nt':
+        import subprocess
+        subprocess.Popen(['explorer', '/select,', path], creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    else:
+        A._open(os.path.dirname(path))
+    return {'ok': True, 'message': 'Opened the folder of %s.' % os.path.basename(path), 'path': os.path.dirname(path)}
+
+
 # ------------------------------------------------------------------------------------------ for api.py's undo
 KINDS = ('aside', 'saves')
 
@@ -290,7 +440,9 @@ KINDS = ('aside', 'saves')
 def title(j):
     note = (j.get('note') or '').lower()
     if j['kind'] == 'aside':
-        return 'Put mods back' if note.startswith('put back') else 'Set mods aside until they are updated'
+        if note.startswith('put back'):
+            return 'Put mods back'
+        return 'Set CC aside until it gets a Sims 4 Studio fix' if '(fix)' in note else 'Set mods aside until they are updated'
     return 'Put back saves from a backup'
 
 

@@ -150,6 +150,23 @@ restore_saves(backup, progress=None) -> {'ok', 'message', 'journal', 'restored',
     # a kind 'saves' journal records it; undo_last puts the saves back as they were before the restore
 load_savings() -> {'ok', 'modes': {mode: {'starts', 'menu_s', 'lot_s', 'total_s', 'last'}}, 'compare',
                    'saved_s', 'saved_total_s', 'confidence': 'none'|'one_mode'|'low'|'ok', 'starts', 'message'}
+    # (added) patch_day() also gives 'batch_fixes': {'files', 'fixes': [{'id', 'name', 'files'}], 'scanned'} | None
+    #   (None: the CC was never checked), and set_aside() takes why='fix' (until it gets a Sims 4 Studio fix)
+
+# (added) CC that may need a Sims 4 Studio batch fix (speedkit/batchfix.py; docs/batchfix.md). CC files are never
+# changed: the Hub names the fix and can set files aside (set_aside(rels, why='fix'), undoable).
+batch_fixes() -> {'ok', 'scanned': iso|None, 'files_checked', 'files' (CC files that may need a fix), 'parked',
+                  'fixes': [{'id': 'sliders_werewolf'|'eyes_infants'|'shoes_werewolves'|'nude_default'|'pets_patch',
+                             'name' (the Sims 4 Studio batch fix), 'menu': ['Tools', 'Content Management',
+                             'Batch Fixes', 'CAS', name], 'section', 'update', 'problem', 'what', 'count',
+                             'in_mods', 'set_aside', 'parked', 'more',
+                             'files': [{'rel', 'name', 'folder', 'root', 'in_mods', 'set_aside', 'parts',
+                                        'why' (one plain sentence)}],       # <= 200 per fix; 'more' = the rest
+                             'sources': [url]}], 'message'}
+    # from the last check only (reads data\batchfix.sqlite and checks the listed files still exist)
+batch_fix_scan(progress=None) -> {'ok', 'message', 'files', 'found', 'read', 'seconds'}
+    # a task: reads the CAS parts and sliders of new or changed CC files (read-only); SpeedKit's own packs skipped
+batch_fix_open(rel) -> {'ok', 'message', 'path'}     # the folder of a file the last check listed (others refused)
 ```
 
 Launching: a Steam install ('store' == 'steam', the exe is under steamapps\common) is started through
@@ -211,6 +228,9 @@ save_cc(slot, progress=None) -> {'ok', 'slot', 'name', 'household', 'counts': {'
   - (added) `GET /api/patchday|errors|save_health|load_savings[?refresh=1]`, `POST /api/patchday/seen|errors/seen`,
     and the tasks `set_aside {"rels", "why"}`, `put_back {"rels"}`, `backup_saves`, `restore_saves {"backup"}`
     (`speedkit/hub/care_routes.py`, docs/care.md)
+  - (added) Sims 4 Studio batch fixes: `GET /api/batchfix[?refresh=1]` (batch_fixes; 'busy' while a task runs and
+    it was never read), `POST /api/batchfix/open {"rel"}` (batch_fix_open), the task `batch_fix_scan {}`, and
+    `set_aside` with `"why": "fix"` (docs/batchfix.md)
   - (added) CC browser: `GET /api/cc?...` (cc_list), `GET /api/cc/item/<id>`, `GET /api/cc/thumb/<id>?v=` and
     `GET /api/cc/pic/<cas|object>/<hex id>` (image bytes, 404 without a picture), `GET /api/saves/<slot>/cc`
     (save_cc, cached 60 s, waits for tasks other than the CC sort), `POST /api/cc/open {"id"}`; tasks

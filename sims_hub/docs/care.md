@@ -9,6 +9,7 @@ through a journal and can be undone, and nothing changes while the game runs.
 | Which mod caused this error? | Home (notice about new errors), Tools → *Which mod caused this error?* | `speedkit/errorlogs.py` | `game_errors`, `errors_seen`, `set_aside` |
 | Save backups and save health | Saves → *Save backups*, plus a size line on each save | `speedkit/savebackup.py` | `save_health`, `backup_saves`, `restore_saves` |
 | Load-time savings | Home → *Loading times* | `speedkit/loadstats.py` | `load_savings` |
+| CC that may need a Sims 4 Studio fix | Tools → *CC that may need a Sims 4 Studio fix*, a line in the patch-day notice | `speedkit/batchfix.py` | `batch_fixes`, `batch_fix_scan`, `batch_fix_open` (docs/batchfix.md) |
 
 The API functions live in `speedkit/api_care.py`. `api.py` imports them at its end, so they sit next to the
 other buttons (`api.patch_day()` and so on), use the same configuration (`api.configure(sims=...)`) and
