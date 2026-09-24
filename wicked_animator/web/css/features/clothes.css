@@ -1,0 +1,6 @@
+/* Clothes in the preview: the Body step's Clothes row (none / the Tray sim's outfits / basic outfits). */
+.clothes-row .clothes-chips { margin-top: 6px; align-items: center; }
+.clothes-row .clothes-label { font-size: 11.5px; color: var(--muted, #a39bb2); margin-right: 2px; min-width: 64px; }
+.clothes-row .clothes-empty { font-size: 11.5px; color: var(--muted, #a39bb2); opacity: .8; }
+.clothes-row .chipbtn.tray.on { background: rgba(96, 165, 250, .14); border-color: rgba(96, 165, 250, .55); color: #dbeafe; }
+.clothes-note { font-size: 11.5px; color: var(--muted, #a39bb2); margin: 8px 0 2px; line-height: 1.45; }

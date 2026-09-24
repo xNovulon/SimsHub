@@ -90,7 +90,7 @@ function hairSection(app, sim, v) {
         onclick: () => app.setHair(sim.id, { name: p.name }) }))));
     }
     const shown = v && v.hairName;
-    const note = trayOwn ? (v && v.parts && v.parts.length ? `${sim.tray.name}'s own hair.` : `${sim.tray.name}'s hair is not installed (or still loading) - pick one above.`)
+    const note = trayOwn ? (v && v.parts && v.parts.some(m => m.userData.role === 'hair') ? `${sim.tray.name}'s own hair.` : `${sim.tray.name}'s hair is not installed (or still loading) - pick one above.`)
       : none ? 'No hair in the view. Hair is for the preview only - the game dresses the sim itself.' : shown ? 'Preview only - the game dresses the sim itself.' : '';
     if (note) body.append(h('div', { class: 'hair-note' }, note));
   }).catch(() => { body.innerHTML = ''; body.append(h('div', { class: 'hint', style: { marginTop: 0 } }, 'Hairstyles could not be read from the game.')); });

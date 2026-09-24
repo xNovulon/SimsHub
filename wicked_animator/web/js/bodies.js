@@ -243,7 +243,8 @@ function fetchHair(app, spec) {
 // Put the right hair on a view (hooks.viewCreated, and after a change). Stale answers are dropped.
 export async function loadHair(app, v, s) {
   const spec = hairSpecOf(app, s), key = hairKey(spec);
-  if (v.hairKey === key && (key || !v.parts || !v.parts.length)) return v.parts ? v.parts.length : 0;
+  const hairParts = () => (v.parts || []).filter(m => m.userData.role === 'hair').length;       // (clothes are parts too)
+  if (v.hairKey === key && (key || !hairParts())) return hairParts();
   v.hairKey = key;
   if (!spec) { v.removeParts('hair'); return 0; }
   const t0 = performance.now();
