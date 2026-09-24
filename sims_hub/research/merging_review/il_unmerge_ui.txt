@@ -1,0 +1,767 @@
+TYPE S4Studio.UI.Tools.UnmergePackageWindow
+  field Boolean _contentLoaded [Private]
+  method Void .ctor()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.UI.Core.S4SWindow::.ctor
+    IL_0006 ldarg.0 
+    IL_0007 call S4Studio.UI.Tools.UnmergePackageWindow::InitializeComponent
+    IL_000C ldarg.0 
+    IL_000D ldarg.0 
+    IL_000E newobj S4Studio.ViewModels.PackageUnmergeViewModel::.ctor
+    IL_0013 call System.Windows.FrameworkElement::set_DataContext
+    IL_0018 ret 
+  method Void OnClosed(EventArgs)
+    IL_0000 ldarg.0 
+    IL_0001 ldarg.1 
+    IL_0002 call S4Studio.UI.Core.S4SWindowBase::OnClosed
+    IL_0007 ldarg.0 
+    IL_0008 ldnull 
+    IL_0009 call System.Windows.FrameworkElement::set_DataContext
+    IL_000E ret 
+  method Void InitializeComponent()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.UI.Tools.UnmergePackageWindow::_contentLoaded
+    IL_0006 brfalse.s IL_0009
+    IL_0008 ret 
+    IL_0009 ldarg.0 
+    IL_000A ldc.i4.1 
+    IL_000B stfld S4Studio.UI.Tools.UnmergePackageWindow::_contentLoaded
+    IL_0010 ldstr "/S4Studio;component/ui/tools/unmergepackagewindow.xaml"
+    IL_0015 ldc.i4.2 
+    IL_0016 newobj System.Uri::.ctor
+    IL_001B stloc.0 
+    IL_001C ldarg.0 
+    IL_001D ldloc.0 
+    IL_001E call System.Windows.Application::LoadComponent
+    IL_0023 ret 
+  method Delegate _CreateDelegate(Type,String)
+    IL_0000 ldarg.1 
+    IL_0001 ldarg.0 
+    IL_0002 ldarg.2 
+    IL_0003 call System.Delegate::CreateDelegate
+    IL_0008 ret 
+  method Void System.Windows.Markup.IComponentConnector.Connect(Int32,Object)
+    IL_0000 ldarg.0 
+    IL_0001 ldc.i4.1 
+    IL_0002 stfld S4Studio.UI.Tools.UnmergePackageWindow::_contentLoaded
+    IL_0007 ret 
+TYPE S4Studio.ViewModels.PackageUnmergeViewModel
+  field IWindow window [Private, InitOnly]
+  field PackageMergeUtility <MergeUtility>k__BackingField [Private]
+  field String <MergedPackagePath>k__BackingField [Private]
+  field String <OutputPath>k__BackingField [Private]
+  field ICommand <UnmergeCommand>k__BackingField [Private]
+  field ICommand <SelectMergedPackageCommand>k__BackingField [Private]
+  field ICommand <SelectOutputPathCommand>k__BackingField [Private]
+  method Void .ctor(IWindow)
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.ViewModels.ViewModelBase::.ctor
+    IL_0006 ldarg.0 
+    IL_0007 ldarg.1 
+    IL_0008 stfld S4Studio.ViewModels.PackageUnmergeViewModel::window
+    IL_000D ldarg.0 
+    IL_000E call S4Studio.Settings::get_Default
+    IL_0013 callvirt S4Studio.Settings::get_PackageUnmergeOutputFolder
+    IL_0018 call S4Studio.ViewModels.PackageUnmergeViewModel::set_OutputPath
+    IL_001D ldarg.0 
+    IL_001E ldarg.0 
+    IL_001F ldftn S4Studio.ViewModels.PackageUnmergeViewModel::<.ctor>b__1_0
+    IL_0025 newobj Func`1<Task>::.ctor
+    IL_002A newobj S4Studio.ViewModels.GenericAsyncUserCommand::.ctor
+    IL_002F call S4Studio.ViewModels.PackageUnmergeViewModel::set_SelectMergedPackageCommand
+    IL_0034 ldarg.0 
+    IL_0035 ldarg.0 
+    IL_0036 ldftn S4Studio.ViewModels.PackageUnmergeViewModel::<.ctor>b__1_1
+    IL_003C newobj Func`1<Task>::.ctor
+    IL_0041 newobj S4Studio.ViewModels.GenericAsyncUserCommand::.ctor
+    IL_0046 call S4Studio.ViewModels.PackageUnmergeViewModel::set_SelectOutputPathCommand
+    IL_004B ldarg.0 
+    IL_004C ldarg.0 
+    IL_004D ldftn S4Studio.ViewModels.PackageUnmergeViewModel::<.ctor>b__1_2
+    IL_0053 newobj Func`1<Boolean>::.ctor
+    IL_0058 ldarg.0 
+    IL_0059 ldftn S4Studio.ViewModels.PackageUnmergeViewModel::<.ctor>b__1_3
+    IL_005F newobj System.Action::.ctor
+    IL_0064 newobj S4Studio.ViewModels.GenericUserCommand::.ctor
+    IL_0069 call S4Studio.ViewModels.PackageUnmergeViewModel::set_UnmergeCommand
+    IL_006E ret 
+  method PackageMergeUtility get_MergeUtility()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<MergeUtility>k__BackingField
+    IL_0006 ret 
+  method Void set_MergeUtility(PackageMergeUtility)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<MergeUtility>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.ViewModels.PackageUnmergeViewModel::<MergeUtility>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldc.i4.1 
+    IL_0019 callvirt S4Studio.ViewModels.ViewModelBase::set_IsChanged
+    IL_001E ldarg.0 
+    IL_001F ldstr "MergeUtility"
+    IL_0024 callvirt S4Studio.ViewModels.ViewModelBase::OnPropertyChanged
+    IL_0029 nop 
+    IL_002A ret 
+  method String get_MergedPackagePath()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<MergedPackagePath>k__BackingField
+    IL_0006 ret 
+  method Void set_MergedPackagePath(String)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<MergedPackagePath>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 ldc.i4.4 
+    IL_0008 call System.String::Equals
+    IL_000D brfalse.s IL_0010
+    IL_000F ret 
+    IL_0010 nop 
+    IL_0011 ldarg.0 
+    IL_0012 ldarg.1 
+    IL_0013 stfld S4Studio.ViewModels.PackageUnmergeViewModel::<MergedPackagePath>k__BackingField
+    IL_0018 ldarg.0 
+    IL_0019 ldc.i4.1 
+    IL_001A callvirt S4Studio.ViewModels.ViewModelBase::set_IsChanged
+    IL_001F ldarg.0 
+    IL_0020 ldstr "MergedPackagePath"
+    IL_0025 callvirt S4Studio.ViewModels.ViewModelBase::OnPropertyChanged
+    IL_002A nop 
+    IL_002B ret 
+  method String get_OutputPath()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<OutputPath>k__BackingField
+    IL_0006 ret 
+  method Void set_OutputPath(String)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<OutputPath>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 ldc.i4.4 
+    IL_0008 call System.String::Equals
+    IL_000D brfalse.s IL_0010
+    IL_000F ret 
+    IL_0010 nop 
+    IL_0011 ldarg.0 
+    IL_0012 ldarg.1 
+    IL_0013 stfld S4Studio.ViewModels.PackageUnmergeViewModel::<OutputPath>k__BackingField
+    IL_0018 ldarg.0 
+    IL_0019 ldc.i4.1 
+    IL_001A callvirt S4Studio.ViewModels.ViewModelBase::set_IsChanged
+    IL_001F ldarg.0 
+    IL_0020 ldstr "OutputPath"
+    IL_0025 callvirt S4Studio.ViewModels.ViewModelBase::OnPropertyChanged
+    IL_002A nop 
+    IL_002B ret 
+  method ICommand get_UnmergeCommand()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<UnmergeCommand>k__BackingField
+    IL_0006 ret 
+  method Void set_UnmergeCommand(ICommand)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<UnmergeCommand>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.ViewModels.PackageUnmergeViewModel::<UnmergeCommand>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldc.i4.1 
+    IL_0019 callvirt S4Studio.ViewModels.ViewModelBase::set_IsChanged
+    IL_001E ldarg.0 
+    IL_001F ldstr "UnmergeCommand"
+    IL_0024 callvirt S4Studio.ViewModels.ViewModelBase::OnPropertyChanged
+    IL_0029 nop 
+    IL_002A ret 
+  method ICommand get_SelectMergedPackageCommand()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<SelectMergedPackageCommand>k__BackingField
+    IL_0006 ret 
+  method Void set_SelectMergedPackageCommand(ICommand)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<SelectMergedPackageCommand>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.ViewModels.PackageUnmergeViewModel::<SelectMergedPackageCommand>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldc.i4.1 
+    IL_0019 callvirt S4Studio.ViewModels.ViewModelBase::set_IsChanged
+    IL_001E ldarg.0 
+    IL_001F ldstr "SelectMergedPackageCommand"
+    IL_0024 callvirt S4Studio.ViewModels.ViewModelBase::OnPropertyChanged
+    IL_0029 nop 
+    IL_002A ret 
+  method ICommand get_SelectOutputPathCommand()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<SelectOutputPathCommand>k__BackingField
+    IL_0006 ret 
+  method Void set_SelectOutputPathCommand(ICommand)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::<SelectOutputPathCommand>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.ViewModels.PackageUnmergeViewModel::<SelectOutputPathCommand>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldc.i4.1 
+    IL_0019 callvirt S4Studio.ViewModels.ViewModelBase::set_IsChanged
+    IL_001E ldarg.0 
+    IL_001F ldstr "SelectOutputPathCommand"
+    IL_0024 callvirt S4Studio.ViewModels.ViewModelBase::OnPropertyChanged
+    IL_0029 nop 
+    IL_002A ret 
+  method Task <.ctor>b__1_0()
+    IL_0000 ldloca.s 0
+    IL_0002 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Create
+    IL_0007 stfld .<<-ctor>b__1_0>d::<>t__builder
+    IL_000C ldloca.s 0
+    IL_000E ldarg.0 
+    IL_000F stfld .<<-ctor>b__1_0>d::<>4__this
+    IL_0014 ldloca.s 0
+    IL_0016 ldc.i4.m1 
+    IL_0017 stfld .<<-ctor>b__1_0>d::<>1__state
+    IL_001C ldloca.s 0
+    IL_001E ldflda .<<-ctor>b__1_0>d::<>t__builder
+    IL_0023 ldloca.s 0
+    IL_0025 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<>
+    IL_002A ldloca.s 0
+    IL_002C ldflda .<<-ctor>b__1_0>d::<>t__builder
+    IL_0031 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::get_Task
+    IL_0036 ret 
+  method Task <.ctor>b__1_1()
+    IL_0000 ldloca.s 0
+    IL_0002 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Create
+    IL_0007 stfld .<<-ctor>b__1_1>d::<>t__builder
+    IL_000C ldloca.s 0
+    IL_000E ldarg.0 
+    IL_000F stfld .<<-ctor>b__1_1>d::<>4__this
+    IL_0014 ldloca.s 0
+    IL_0016 ldc.i4.m1 
+    IL_0017 stfld .<<-ctor>b__1_1>d::<>1__state
+    IL_001C ldloca.s 0
+    IL_001E ldflda .<<-ctor>b__1_1>d::<>t__builder
+    IL_0023 ldloca.s 0
+    IL_0025 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::Start<>
+    IL_002A ldloca.s 0
+    IL_002C ldflda .<<-ctor>b__1_1>d::<>t__builder
+    IL_0031 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::get_Task
+    IL_0036 ret 
+  method Boolean <.ctor>b__1_2()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.ViewModels.PackageUnmergeViewModel::get_MergedPackagePath
+    IL_0006 call System.String::IsNullOrWhiteSpace
+    IL_000B brtrue.s IL_001C
+    IL_000D ldarg.0 
+    IL_000E call S4Studio.ViewModels.PackageUnmergeViewModel::get_OutputPath
+    IL_0013 call System.String::IsNullOrWhiteSpace
+    IL_0018 ldc.i4.0 
+    IL_0019 ceq 
+    IL_001B ret 
+    IL_001C ldc.i4.0 
+    IL_001D ret 
+  method Void <.ctor>b__1_3()
+    IL_0000 ldloca.s 0
+    IL_0002 call System.Runtime.CompilerServices.AsyncVoidMethodBuilder::Create
+    IL_0007 stfld .<<-ctor>b__1_3>d::<>t__builder
+    IL_000C ldloca.s 0
+    IL_000E ldarg.0 
+    IL_000F stfld .<<-ctor>b__1_3>d::<>4__this
+    IL_0014 ldloca.s 0
+    IL_0016 ldc.i4.m1 
+    IL_0017 stfld .<<-ctor>b__1_3>d::<>1__state
+    IL_001C ldloca.s 0
+    IL_001E ldflda .<<-ctor>b__1_3>d::<>t__builder
+    IL_0023 ldloca.s 0
+    IL_0025 call System.Runtime.CompilerServices.AsyncVoidMethodBuilder::Start<>
+    IL_002A ret 
+TYPE S4Studio.ViewModels.PackageUnmergeViewModel/<<-ctor>b__1_0>d
+  field Int32 <>1__state [Public]
+  field AsyncTaskMethodBuilder <>t__builder [Public]
+  field PackageUnmergeViewModel <>4__this [Public]
+  field TaskAwaiter`1<IFilePickerResult> <>u__1 [Private]
+  field TaskAwaiter`1<Boolean> <>u__2 [Private]
+  method Void MoveNext()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<<-ctor>b__1_0>d::<>1__state
+    IL_0006 stloc.0 
+    IL_0007 ldarg.0 
+    IL_0008 ldfld .<<-ctor>b__1_0>d::<>4__this
+    IL_000D stloc.1 
+    IL_000E ldloc.0 
+    IL_000F brfalse.s IL_006E
+    IL_0011 ldloc.0 
+    IL_0012 ldc.i4.1 
+    IL_0013 beq IL_0107
+    IL_0018 call S4Studio.FilePickerOptions::Package
+    IL_001D stloc.2 
+    IL_001E ldloc.2 
+    IL_001F call S4Studio.Settings::get_Default
+    IL_0024 callvirt S4Studio.Settings::get_PackageUnmergeStartFolder
+    IL_0029 callvirt S4Studio.FilePickerOptions::set_DefaultFilepath
+    IL_002E ldloc.1 
+    IL_002F ldfld S4Studio.ViewModels.PackageUnmergeViewModel::window
+    IL_0034 ldloc.2 
+    IL_0035 callvirt S4Studio.IWindow::GetOpenFilepath
+    IL_003A callvirt Task`1<IFilePickerResult>::GetAwaiter
+    IL_003F stloc.s 4
+    IL_0041 ldloca.s 4
+    IL_0043 call TaskAwaiter`1<IFilePickerResult>::get_IsCompleted
+    IL_0048 brtrue.s IL_008B
+    IL_004A ldarg.0 
+    IL_004B ldc.i4.0 
+    IL_004C dup 
+    IL_004D stloc.0 
+    IL_004E stfld .<<-ctor>b__1_0>d::<>1__state
+    IL_0053 ldarg.0 
+    IL_0054 ldloc.s 4
+    IL_0056 stfld .<<-ctor>b__1_0>d::<>u__1
+    IL_005B ldarg.0 
+    IL_005C ldflda .<<-ctor>b__1_0>d::<>t__builder
+    IL_0061 ldloca.s 4
+    IL_0063 ldarg.0 
+    IL_0064 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<>
+    IL_0069 leave IL_0194
+    IL_006E ldarg.0 
+    IL_006F ldfld .<<-ctor>b__1_0>d::<>u__1
+    IL_0074 stloc.s 4
+    IL_0076 ldarg.0 
+    IL_0077 ldflda .<<-ctor>b__1_0>d::<>u__1
+    IL_007C initobj TaskAwaiter`1<IFilePickerResult>
+    IL_0082 ldarg.0 
+    IL_0083 ldc.i4.m1 
+    IL_0084 dup 
+    IL_0085 stloc.0 
+    IL_0086 stfld .<<-ctor>b__1_0>d::<>1__state
+    IL_008B ldloca.s 4
+    IL_008D call TaskAwaiter`1<IFilePickerResult>::GetResult
+    IL_0092 stloc.3 
+    IL_0093 ldloc.3 
+    IL_0094 callvirt S4Studio.IFilePickerResult::get_Result
+    IL_0099 brfalse IL_0166
+    IL_009E ldloc.3 
+    IL_009F callvirt S4Studio.IFilePickerResult::get_FileName
+    IL_00A4 ldc.i4.1 
+    IL_00A5 ldnull 
+    IL_00A6 ldnull 
+    IL_00A7 ldnull 
+    IL_00A8 newobj S4Studio.Data.IO.Package.DBPFPackage::.ctor
+    IL_00AD stloc.s 5
+    IL_00AF ldloc.s 5
+    IL_00B1 callvirt S4Studio.Data.IO.Package.DBPFPackage::get_IsMerged
+    IL_00B6 brtrue.s IL_012E
+    IL_00B8 ldloc.1 
+    IL_00B9 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::window
+    IL_00BE call S4Studio.Resources.Strings::get_tools_unmerge_not_a_merged_package
+    IL_00C3 ldnull 
+    IL_00C4 ldloca.s 7
+    IL_00C6 initobj Nullable`1<PopupType>
+    IL_00CC ldloc.s 7
+    IL_00CE callvirt S4Studio.IWindow::Alert
+    IL_00D3 callvirt Task`1<Boolean>::GetAwaiter
+    IL_00D8 stloc.s 6
+    IL_00DA ldloca.s 6
+    IL_00DC call TaskAwaiter`1<Boolean>::get_IsCompleted
+    IL_00E1 brtrue.s IL_0124
+    IL_00E3 ldarg.0 
+    IL_00E4 ldc.i4.1 
+    IL_00E5 dup 
+    IL_00E6 stloc.0 
+    IL_00E7 stfld .<<-ctor>b__1_0>d::<>1__state
+    IL_00EC ldarg.0 
+    IL_00ED ldloc.s 6
+    IL_00EF stfld .<<-ctor>b__1_0>d::<>u__2
+    IL_00F4 ldarg.0 
+    IL_00F5 ldflda .<<-ctor>b__1_0>d::<>t__builder
+    IL_00FA ldloca.s 6
+    IL_00FC ldarg.0 
+    IL_00FD call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<>
+    IL_0102 leave IL_0194
+    IL_0107 ldarg.0 
+    IL_0108 ldfld .<<-ctor>b__1_0>d::<>u__2
+    IL_010D stloc.s 6
+    IL_010F ldarg.0 
+    IL_0110 ldflda .<<-ctor>b__1_0>d::<>u__2
+    IL_0115 initobj TaskAwaiter`1<Boolean>
+    IL_011B ldarg.0 
+    IL_011C ldc.i4.m1 
+    IL_011D dup 
+    IL_011E stloc.0 
+    IL_011F stfld .<<-ctor>b__1_0>d::<>1__state
+    IL_0124 ldloca.s 6
+    IL_0126 call TaskAwaiter`1<Boolean>::GetResult
+    IL_012B pop 
+    IL_012C leave.s IL_0181
+    IL_012E ldloc.1 
+    IL_012F ldloc.s 5
+    IL_0131 newobj S4Studio.Data.IO.Package.PackageMergeUtility::.ctor
+    IL_0136 call S4Studio.ViewModels.PackageUnmergeViewModel::set_MergeUtility
+    IL_013B ldloc.1 
+    IL_013C ldloc.3 
+    IL_013D callvirt S4Studio.IFilePickerResult::get_FileName
+    IL_0142 call S4Studio.ViewModels.PackageUnmergeViewModel::set_MergedPackagePath
+    IL_0147 call S4Studio.Settings::get_Default
+    IL_014C ldloc.3 
+    IL_014D callvirt S4Studio.IFilePickerResult::get_FileName
+    IL_0152 call System.IO.Path::GetDirectoryName
+    IL_0157 callvirt S4Studio.Settings::set_PackageUnmergeStartFolder
+    IL_015C call S4Studio.Settings::get_Default
+    IL_0161 callvirt S4Studio.Settings::Save
+    IL_0166 leave.s IL_0181
+    IL_0168 stloc.s 8
+    IL_016A ldarg.0 
+    IL_016B ldc.i4.s -2
+    IL_016D stfld .<<-ctor>b__1_0>d::<>1__state
+    IL_0172 ldarg.0 
+    IL_0173 ldflda .<<-ctor>b__1_0>d::<>t__builder
+    IL_0178 ldloc.s 8
+    IL_017A call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetException
+    IL_017F leave.s IL_0194
+    IL_0181 ldarg.0 
+    IL_0182 ldc.i4.s -2
+    IL_0184 stfld .<<-ctor>b__1_0>d::<>1__state
+    IL_0189 ldarg.0 
+    IL_018A ldflda .<<-ctor>b__1_0>d::<>t__builder
+    IL_018F call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetResult
+    IL_0194 ret 
+  method Void SetStateMachine(IAsyncStateMachine)
+    IL_0000 ldarg.0 
+    IL_0001 ldflda .<<-ctor>b__1_0>d::<>t__builder
+    IL_0006 ldarg.1 
+    IL_0007 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetStateMachine
+    IL_000C ret 
+TYPE S4Studio.ViewModels.PackageUnmergeViewModel/<<-ctor>b__1_1>d
+  field Int32 <>1__state [Public]
+  field AsyncTaskMethodBuilder <>t__builder [Public]
+  field PackageUnmergeViewModel <>4__this [Public]
+  field TaskAwaiter`1<IFilePickerResult> <>u__1 [Private]
+  method Void MoveNext()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<<-ctor>b__1_1>d::<>1__state
+    IL_0006 stloc.0 
+    IL_0007 ldarg.0 
+    IL_0008 ldfld .<<-ctor>b__1_1>d::<>4__this
+    IL_000D stloc.1 
+    IL_000E ldloc.0 
+    IL_000F brfalse.s IL_0057
+    IL_0011 call S4Studio.FilePickerOptions::Folder
+    IL_0016 stloc.2 
+    IL_0017 ldloc.1 
+    IL_0018 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::window
+    IL_001D ldloc.2 
+    IL_001E callvirt S4Studio.IWindow::GetFolderPath
+    IL_0023 callvirt Task`1<IFilePickerResult>::GetAwaiter
+    IL_0028 stloc.s 4
+    IL_002A ldloca.s 4
+    IL_002C call TaskAwaiter`1<IFilePickerResult>::get_IsCompleted
+    IL_0031 brtrue.s IL_0074
+    IL_0033 ldarg.0 
+    IL_0034 ldc.i4.0 
+    IL_0035 dup 
+    IL_0036 stloc.0 
+    IL_0037 stfld .<<-ctor>b__1_1>d::<>1__state
+    IL_003C ldarg.0 
+    IL_003D ldloc.s 4
+    IL_003F stfld .<<-ctor>b__1_1>d::<>u__1
+    IL_0044 ldarg.0 
+    IL_0045 ldflda .<<-ctor>b__1_1>d::<>t__builder
+    IL_004A ldloca.s 4
+    IL_004C ldarg.0 
+    IL_004D call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::AwaitUnsafeOnCompleted<>
+    IL_0052 leave IL_00D8
+    IL_0057 ldarg.0 
+    IL_0058 ldfld .<<-ctor>b__1_1>d::<>u__1
+    IL_005D stloc.s 4
+    IL_005F ldarg.0 
+    IL_0060 ldflda .<<-ctor>b__1_1>d::<>u__1
+    IL_0065 initobj TaskAwaiter`1<IFilePickerResult>
+    IL_006B ldarg.0 
+    IL_006C ldc.i4.m1 
+    IL_006D dup 
+    IL_006E stloc.0 
+    IL_006F stfld .<<-ctor>b__1_1>d::<>1__state
+    IL_0074 ldloca.s 4
+    IL_0076 call TaskAwaiter`1<IFilePickerResult>::GetResult
+    IL_007B stloc.3 
+    IL_007C ldloc.3 
+    IL_007D callvirt S4Studio.IFilePickerResult::get_Result
+    IL_0082 brfalse.s IL_00AA
+    IL_0084 ldloc.1 
+    IL_0085 ldloc.3 
+    IL_0086 callvirt S4Studio.IFilePickerResult::get_FolderPath
+    IL_008B call S4Studio.ViewModels.PackageUnmergeViewModel::set_OutputPath
+    IL_0090 call S4Studio.Settings::get_Default
+    IL_0095 ldloc.3 
+    IL_0096 callvirt S4Studio.IFilePickerResult::get_FolderPath
+    IL_009B callvirt S4Studio.Settings::set_PackageUnmergeOutputFolder
+    IL_00A0 call S4Studio.Settings::get_Default
+    IL_00A5 callvirt S4Studio.Settings::Save
+    IL_00AA leave.s IL_00C5
+    IL_00AC stloc.s 5
+    IL_00AE ldarg.0 
+    IL_00AF ldc.i4.s -2
+    IL_00B1 stfld .<<-ctor>b__1_1>d::<>1__state
+    IL_00B6 ldarg.0 
+    IL_00B7 ldflda .<<-ctor>b__1_1>d::<>t__builder
+    IL_00BC ldloc.s 5
+    IL_00BE call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetException
+    IL_00C3 leave.s IL_00D8
+    IL_00C5 ldarg.0 
+    IL_00C6 ldc.i4.s -2
+    IL_00C8 stfld .<<-ctor>b__1_1>d::<>1__state
+    IL_00CD ldarg.0 
+    IL_00CE ldflda .<<-ctor>b__1_1>d::<>t__builder
+    IL_00D3 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetResult
+    IL_00D8 ret 
+  method Void SetStateMachine(IAsyncStateMachine)
+    IL_0000 ldarg.0 
+    IL_0001 ldflda .<<-ctor>b__1_1>d::<>t__builder
+    IL_0006 ldarg.1 
+    IL_0007 call System.Runtime.CompilerServices.AsyncTaskMethodBuilder::SetStateMachine
+    IL_000C ret 
+TYPE S4Studio.ViewModels.PackageUnmergeViewModel/<<-ctor>b__1_3>d
+  field Int32 <>1__state [Public]
+  field AsyncVoidMethodBuilder <>t__builder [Public]
+  field PackageUnmergeViewModel <>4__this [Public]
+  field <>c__DisplayClass1_0 <>8__1 [Private]
+  field TaskAwaiter <>u__1 [Private]
+  method Void MoveNext()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<<-ctor>b__1_3>d::<>1__state
+    IL_0006 stloc.0 
+    IL_0007 ldarg.0 
+    IL_0008 ldfld .<<-ctor>b__1_3>d::<>4__this
+    IL_000D stloc.1 
+    IL_000E ldloc.0 
+    IL_000F brfalse IL_00A3
+    IL_0014 ldarg.0 
+    IL_0015 newobj .<>c__DisplayClass1_0::.ctor
+    IL_001A stfld .<<-ctor>b__1_3>d::<>8__1
+    IL_001F ldarg.0 
+    IL_0020 ldfld .<<-ctor>b__1_3>d::<>8__1
+    IL_0025 ldloc.1 
+    IL_0026 stfld .<>c__DisplayClass1_0::<>4__this
+    IL_002B ldloc.1 
+    IL_002C call S4Studio.ViewModels.PackageUnmergeViewModel::get_MergedPackagePath
+    IL_0031 call System.IO.Path::GetFileNameWithoutExtension
+    IL_0036 stloc.2 
+    IL_0037 ldc.i4.1 
+    IL_0038 stloc.3 
+    IL_0039 ldloc.2 
+    IL_003A stloc.s 4
+    IL_003C br.s IL_0070
+    IL_003E ldc.i4.1 
+    IL_003F ldc.i4.2 
+    IL_0040 newobj System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor
+    IL_0045 stloc.s 5
+    IL_0047 ldloca.s 5
+    IL_0049 ldloc.2 
+    IL_004A call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted
+    IL_004F ldloca.s 5
+    IL_0051 ldstr " "
+    IL_0056 call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral
+    IL_005B ldloca.s 5
+    IL_005D ldloc.3 
+    IL_005E dup 
+    IL_005F ldc.i4.1 
+    IL_0060 add 
+    IL_0061 stloc.3 
+    IL_0062 call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<>
+    IL_0067 ldloca.s 5
+    IL_0069 call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear
+    IL_006E stloc.s 4
+    IL_0070 ldloc.1 
+    IL_0071 call S4Studio.ViewModels.PackageUnmergeViewModel::get_OutputPath
+    IL_0076 ldloc.s 4
+    IL_0078 call System.IO.Path::Combine
+    IL_007D call System.IO.Directory::Exists
+    IL_0082 brtrue.s IL_003E
+    IL_0084 ldarg.0 
+    IL_0085 ldfld .<<-ctor>b__1_3>d::<>8__1
+    IL_008A ldloc.1 
+    IL_008B call S4Studio.ViewModels.PackageUnmergeViewModel::get_OutputPath
+    IL_0090 ldloc.s 4
+    IL_0092 call System.IO.Path::Combine
+    IL_0097 stfld .<>c__DisplayClass1_0::final_output_path
+    IL_009C ldloc.1 
+    IL_009D ldc.i4.1 
+    IL_009E call S4Studio.ViewModels.ViewModelBase::set_IsBusy
+    IL_00A3 nop 
+    IL_00A4 ldloc.0 
+    IL_00A5 brfalse.s IL_00F6
+    IL_00A7 call System.Threading.Tasks.Task::get_Factory
+    IL_00AC ldarg.0 
+    IL_00AD ldfld .<<-ctor>b__1_3>d::<>8__1
+    IL_00B2 ldftn .<>c__DisplayClass1_0::<.ctor>b__4
+    IL_00B8 newobj System.Action::.ctor
+    IL_00BD callvirt System.Threading.Tasks.TaskFactory::StartNew
+    IL_00C2 callvirt System.Threading.Tasks.Task::GetAwaiter
+    IL_00C7 stloc.s 6
+    IL_00C9 ldloca.s 6
+    IL_00CB call System.Runtime.CompilerServices.TaskAwaiter::get_IsCompleted
+    IL_00D0 brtrue.s IL_0113
+    IL_00D2 ldarg.0 
+    IL_00D3 ldc.i4.0 
+    IL_00D4 dup 
+    IL_00D5 stloc.0 
+    IL_00D6 stfld .<<-ctor>b__1_3>d::<>1__state
+    IL_00DB ldarg.0 
+    IL_00DC ldloc.s 6
+    IL_00DE stfld .<<-ctor>b__1_3>d::<>u__1
+    IL_00E3 ldarg.0 
+    IL_00E4 ldflda .<<-ctor>b__1_3>d::<>t__builder
+    IL_00E9 ldloca.s 6
+    IL_00EB ldarg.0 
+    IL_00EC call System.Runtime.CompilerServices.AsyncVoidMethodBuilder::AwaitUnsafeOnCompleted<>
+    IL_00F1 leave IL_024A
+    IL_00F6 ldarg.0 
+    IL_00F7 ldfld .<<-ctor>b__1_3>d::<>u__1
+    IL_00FC stloc.s 6
+    IL_00FE ldarg.0 
+    IL_00FF ldflda .<<-ctor>b__1_3>d::<>u__1
+    IL_0104 initobj System.Runtime.CompilerServices.TaskAwaiter
+    IL_010A ldarg.0 
+    IL_010B ldc.i4.m1 
+    IL_010C dup 
+    IL_010D stloc.0 
+    IL_010E stfld .<<-ctor>b__1_3>d::<>1__state
+    IL_0113 ldloca.s 6
+    IL_0115 call System.Runtime.CompilerServices.TaskAwaiter::GetResult
+    IL_011A ldarg.0 
+    IL_011B ldfld .<<-ctor>b__1_3>d::<>8__1
+    IL_0120 ldfld .<>c__DisplayClass1_0::final_output_path
+    IL_0125 ldstr "Un-merged package information.txt"
+    IL_012A call System.IO.Path::Combine
+    IL_012F call System.IO.File::CreateText
+    IL_0134 stloc.s 7
+    IL_0136 ldloc.s 7
+    IL_0138 ldstr "This folder contains the content of the merged package:"
+    IL_013D callvirt System.IO.TextWriter::WriteLine
+    IL_0142 ldloc.s 7
+    IL_0144 ldloc.1 
+    IL_0145 call S4Studio.ViewModels.PackageUnmergeViewModel::get_MergedPackagePath
+    IL_014A call System.IO.Path::GetFileName
+    IL_014F dup 
+    IL_0150 brtrue.s IL_0158
+    IL_0152 pop 
+    IL_0153 ldstr ""
+    IL_0158 callvirt System.IO.TextWriter::WriteLine
+    IL_015D ldloc.s 7
+    IL_015F ldstr "The original location of this package is: "
+    IL_0164 callvirt System.IO.TextWriter::WriteLine
+    IL_0169 ldloc.s 7
+    IL_016B ldloc.1 
+    IL_016C call S4Studio.ViewModels.PackageUnmergeViewModel::get_MergedPackagePath
+    IL_0171 call System.IO.Path::GetDirectoryName
+    IL_0176 dup 
+    IL_0177 brtrue.s IL_017F
+    IL_0179 pop 
+    IL_017A ldstr ""
+    IL_017F callvirt System.IO.TextWriter::WriteLine
+    IL_0184 ldloc.s 7
+    IL_0186 ldc.i4.s 45
+    IL_0188 ldc.i4.1 
+    IL_0189 newobj System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor
+    IL_018E stloc.s 5
+    IL_0190 ldloca.s 5
+    IL_0192 ldstr "The merged package contained "
+    IL_0197 call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral
+    IL_019C ldloca.s 5
+    IL_019E ldloc.1 
+    IL_019F call S4Studio.ViewModels.PackageUnmergeViewModel::get_MergeUtility
+    IL_01A4 callvirt S4Studio.Data.IO.Package.PackageMergeUtility::get_Manifest
+    IL_01A9 callvirt S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_PackageCount
+    IL_01AE call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<>
+    IL_01B3 ldloca.s 5
+    IL_01B5 ldstr " .package files."
+    IL_01BA call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral
+    IL_01BF ldloca.s 5
+    IL_01C1 call System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear
+    IL_01C6 callvirt System.IO.TextWriter::WriteLine
+    IL_01CB leave.s IL_01DD
+    IL_01CD ldloc.0 
+    IL_01CE ldc.i4.0 
+    IL_01CF bge.s IL_01DC
+    IL_01D1 ldloc.s 7
+    IL_01D3 brfalse.s IL_01DC
+    IL_01D5 ldloc.s 7
+    IL_01D7 callvirt System.IDisposable::Dispose
+    IL_01DC endfinally 
+    IL_01DD ldarg.0 
+    IL_01DE ldfld .<<-ctor>b__1_3>d::<>8__1
+    IL_01E3 ldfld .<>c__DisplayClass1_0::final_output_path
+    IL_01E8 call S4Studio.Util.UserFileUtil::ShowFile
+    IL_01ED leave.s IL_0200
+    IL_01EF stloc.s 8
+    IL_01F1 ldloc.1 
+    IL_01F2 ldfld S4Studio.ViewModels.PackageUnmergeViewModel::window
+    IL_01F7 ldloc.s 8
+    IL_01F9 callvirt S4Studio.IWindow::ShowException
+    IL_01FE leave.s IL_0200
+    IL_0200 leave.s IL_020E
+    IL_0202 ldloc.0 
+    IL_0203 ldc.i4.0 
+    IL_0204 bge.s IL_020D
+    IL_0206 ldloc.1 
+    IL_0207 ldc.i4.0 
+    IL_0208 call S4Studio.ViewModels.ViewModelBase::set_IsBusy
+    IL_020D endfinally 
+    IL_020E leave.s IL_0230
+    IL_0210 stloc.s 9
+    IL_0212 ldarg.0 
+    IL_0213 ldc.i4.s -2
+    IL_0215 stfld .<<-ctor>b__1_3>d::<>1__state
+    IL_021A ldarg.0 
+    IL_021B ldnull 
+    IL_021C stfld .<<-ctor>b__1_3>d::<>8__1
+    IL_0221 ldarg.0 
+    IL_0222 ldflda .<<-ctor>b__1_3>d::<>t__builder
+    IL_0227 ldloc.s 9
+    IL_0229 call System.Runtime.CompilerServices.AsyncVoidMethodBuilder::SetException
+    IL_022E leave.s IL_024A
+    IL_0230 ldarg.0 
+    IL_0231 ldc.i4.s -2
+    IL_0233 stfld .<<-ctor>b__1_3>d::<>1__state
+    IL_0238 ldarg.0 
+    IL_0239 ldnull 
+    IL_023A stfld .<<-ctor>b__1_3>d::<>8__1
+    IL_023F ldarg.0 
+    IL_0240 ldflda .<<-ctor>b__1_3>d::<>t__builder
+    IL_0245 call System.Runtime.CompilerServices.AsyncVoidMethodBuilder::SetResult
+    IL_024A ret 
+  method Void SetStateMachine(IAsyncStateMachine)
+    IL_0000 ldarg.0 
+    IL_0001 ldflda .<<-ctor>b__1_3>d::<>t__builder
+    IL_0006 ldarg.1 
+    IL_0007 call System.Runtime.CompilerServices.AsyncVoidMethodBuilder::SetStateMachine
+    IL_000C ret 
+TYPE S4Studio.ViewModels.PackageUnmergeViewModel/<>c__DisplayClass1_0
+  field String final_output_path [Public]
+  field PackageUnmergeViewModel <>4__this [Public]
+  method Void .ctor()
+    IL_0000 ldarg.0 
+    IL_0001 call System.Object::.ctor
+    IL_0006 ret 
+  method Void <.ctor>b__4()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<>c__DisplayClass1_0::<>4__this
+    IL_0006 call S4Studio.ViewModels.PackageUnmergeViewModel::get_MergeUtility
+    IL_000B ldarg.0 
+    IL_000C ldfld .<>c__DisplayClass1_0::final_output_path
+    IL_0011 callvirt S4Studio.Data.IO.Package.PackageMergeUtility::Unmerge
+    IL_0016 ret 
+

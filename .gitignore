@@ -1,0 +1,38 @@
+# Databases & Heavy Cache files (exceed GitHub limits)
+*.sqlite
+*.sqlite3
+*.db
+*.pickle
+*.pkl
+*.npy
+*.package
+
+# Project specific caches and dumps
+**/cache/
+**/research/merging/bench/
+**/research/usedcc/*.sqlite
+**/research/bench/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.class
+*.env
+.venv/
+env/
+venv/
+
+# .NET / C# build artifacts
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# System files
+Thumbs.db
+Desktop.ini
+desktop.ini
+.DS_Store
+
+# Logs
+*.log

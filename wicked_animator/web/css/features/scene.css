@@ -1,0 +1,83 @@
+/* Scene tools (R2-3): see-through / bones / clipping buttons, the clipping card, the trial-body pill, the Place tool's
+   spots card, hair and other-body rows in the Body step. Tokens from motion.css with fallbacks. */
+
+/* (the view buttons' wrap rule for laptop-sized stages moved to app.css) */
+
+/* ---------------------------------------------------------------- the clipping button: a progress ring while it runs */
+#btn-clip { position: relative; }
+#btn-clip.busy::after {
+  content: ''; position: absolute; inset: -3px; border-radius: inherit; pointer-events: none;
+  background: conic-gradient(var(--danger, #fb5471) var(--p, 0%), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+}
+#btn-clip.busy { color: #fff; }
+
+/* ---------------------------------------------------------------- the clipping card (bottom left of the stage) */
+.clip-card {
+  position: absolute; left: 14px; bottom: 58px; z-index: 5; width: min(460px, calc(100% - 28px)); max-height: min(52%, 420px);
+  display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 10px; border-radius: 14px;
+  background: var(--glass, rgba(17, 14, 24, .86)); backdrop-filter: var(--glass-blur, blur(12px));
+  border: 1px solid var(--line-2, #352e42); box-shadow: var(--shadow, 0 18px 50px rgba(0, 0, 0, .5));
+  animation: waClipPop var(--dur-3, .3s) var(--ease-out, cubic-bezier(.23, 1, .32, 1)) both;
+}
+@keyframes waClipPop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.clip-head { display: flex; align-items: center; gap: 8px; }
+.clip-head > svg { width: 18px; height: 18px; color: var(--danger, #fb5471); flex: none; }
+.clip-head b { flex: 1; font-size: 13.5px; }
+.clip-rows { overflow-y: auto; display: flex; flex-direction: column; gap: 5px; min-height: 0; }
+.clip-row { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 10px; background: rgba(251, 84, 113, .07); border: 1px solid rgba(251, 84, 113, .22); }
+.clip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger, #fb5471); box-shadow: 0 0 8px var(--danger, #fb5471); flex: none; }
+.clip-text { flex: 1; font-size: 12px; line-height: 1.4; min-width: 0; }
+.clip-actions { display: flex; gap: 5px; flex: none; }
+.clip-actions .btn.primary { background: var(--grad, linear-gradient(135deg, #ff4f9a, #8b5cf6)); border-color: transparent; color: #fff; }
+.clip-foot { margin: 2px 2px 0; }
+
+/* ---------------------------------------------------------------- trying other bodies: a pill over the stage */
+.vp-trial {
+  position: absolute; top: 104px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 8px;
+  padding: 6px 7px 6px 14px; border-radius: 999px; white-space: nowrap; font-size: 12px; color: var(--text, #f2eef8);
+  background: rgba(24, 18, 34, .82); backdrop-filter: blur(10px);
+  box-shadow: 0 0 0 1px var(--accent-line, rgba(255, 79, 154, .45)), 0 0 24px rgba(168, 85, 247, .35);
+  animation: fade var(--dur-2, .2s) ease both;
+}
+.vp-trial.hidden { display: none; }
+.vp-trial b { color: #fff; }
+.vp-trial-btn { height: 24px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line-2, #352e42); background: var(--panel-3, #211d2a); color: var(--text, #f2eef8); font-weight: 700; font-size: 11.5px; cursor: pointer; }
+.vp-trial-btn:hover { border-color: var(--accent-line, rgba(255, 79, 154, .45)); }
+.vp-trial-btn.stop { background: transparent; color: var(--muted, #a39bb2); }
+
+/* ---------------------------------------------------------------- the Place tool's spots (inspector card) */
+.spot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.spot-btn { justify-content: flex-start; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #60a5fa; box-shadow: 0 0 6px currentColor; }
+.spot-btn.edge .spot-dot { background: #fbbf24; }
+.spot-btn.in .spot-dot { background: #a78bfa; }
+.spot-btn.lie .spot-dot { background: #3ddc97; border-radius: 4px; width: 14px; }
+
+/* ---------------------------------------------------------------- Body step: hair */
+.hair-row .chips { margin-top: 2px; }
+.hair-row .chipbtn.tray { border-style: dashed; }
+.hair-dots { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 9px; }
+.hair-dots button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--line-2, #352e42); cursor: pointer; transition: transform var(--dur-1, .15s); }
+.hair-dots button:hover { transform: scale(1.1); }
+.hair-dots button.active { border-color: #fff; }
+.hair-note { font-size: 11.5px; color: var(--muted, #a39bb2); margin-top: 6px; }
+
+/* ---------------------------------------------------------------- Body step: other bodies */
+.try-bodies .chips { gap: 6px; }
+.body-chip { display: inline-flex; align-items: center; gap: 6px; padding-left: 4px; max-width: 150px; }
+.body-chip img, .body-chip .dot { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #fff; flex: none; }
+.body-chip .dot { display: grid; place-items: center; background: var(--panel-4, #2a2535); color: var(--muted, #a39bb2); font-size: 11px; font-weight: 800; }
+.body-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.body-chip.loading { opacity: .6; }
+.size-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.size-row > span { font-size: 12px; color: var(--muted, #a39bb2); font-weight: 600; flex: none; }
+.size-row .seg-inline { flex: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .clip-card, .vp-trial { animation: none; }
+  .hair-dots button { transition: none; }
+}
+html.reduce-motion .clip-card, html.reduce-motion .vp-trial { animation: none; }
+html.reduce-motion .hair-dots button { transition: none; }

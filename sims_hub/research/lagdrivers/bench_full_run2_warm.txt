@@ -1,0 +1,2 @@
+phase1 index: 624 pkgs, 2364302 entries, 75.7 MB index read in 0.76s
+phase2 CASP: 755662 parts, read 336 MB, inflated 522 MB, wall 102.1s (io 93.2s, zlib 6.0s)

@@ -1,0 +1,1324 @@
+TYPE S4Studio.Data.IO.Package.MergedFolderItem
+  field WeakReference manifest [Private]
+  field MergedFolderItem parent [Private]
+  field String <Name>k__BackingField [Private]
+  field List`1<MergedFolderItem> <Folders>k__BackingField [Private]
+  field List`1<MergedPackageItem> <Packages>k__BackingField [Private]
+  method S4SMergedPackageManifest get_Manifest()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::manifest
+    IL_0006 callvirt System.WeakReference::get_Target
+    IL_000B isinst S4Studio.Data.IO.Package.S4SMergedPackageManifest
+    IL_0010 ret 
+  method Void .ctor(S4SMergedPackageManifest,MergedFolderItem)
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Core.Serializable::.ctor
+    IL_0006 ldarg.0 
+    IL_0007 ldarg.1 
+    IL_0008 newobj System.WeakReference::.ctor
+    IL_000D stfld S4Studio.Data.IO.Package.MergedFolderItem::manifest
+    IL_0012 ldarg.0 
+    IL_0013 ldarg.2 
+    IL_0014 stfld S4Studio.Data.IO.Package.MergedFolderItem::parent
+    IL_0019 ldarg.0 
+    IL_001A ldsfld System.String::Empty
+    IL_001F call S4Studio.Data.IO.Package.MergedFolderItem::set_Name
+    IL_0024 ldarg.0 
+    IL_0025 newobj List`1<MergedFolderItem>::.ctor
+    IL_002A call S4Studio.Data.IO.Package.MergedFolderItem::set_Folders
+    IL_002F ldarg.0 
+    IL_0030 newobj List`1<MergedPackageItem>::.ctor
+    IL_0035 call S4Studio.Data.IO.Package.MergedFolderItem::set_Packages
+    IL_003A ret 
+  method Void Remove()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Package.MergedFolderItem::get_Parent
+    IL_0006 dup 
+    IL_0007 brtrue.s IL_000B
+    IL_0009 pop 
+    IL_000A ret 
+    IL_000B call S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_0010 ldarg.0 
+    IL_0011 callvirt List`1<MergedFolderItem>::Remove
+    IL_0016 pop 
+    IL_0017 ret 
+  method String get_Name()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::<Name>k__BackingField
+    IL_0006 ret 
+  method Void set_Name(String)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::<Name>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 ldc.i4.4 
+    IL_0008 call System.String::Equals
+    IL_000D brfalse.s IL_0010
+    IL_000F ret 
+    IL_0010 nop 
+    IL_0011 ldarg.0 
+    IL_0012 ldarg.1 
+    IL_0013 stfld S4Studio.Data.IO.Package.MergedFolderItem::<Name>k__BackingField
+    IL_0018 ldarg.0 
+    IL_0019 ldstr "FullPath"
+    IL_001E callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0023 ldarg.0 
+    IL_0024 ldstr "Name"
+    IL_0029 callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_002E nop 
+    IL_002F ret 
+  method List`1<MergedFolderItem> get_Folders()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::<Folders>k__BackingField
+    IL_0006 ret 
+  method Void set_Folders(List`1<MergedFolderItem>)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::<Folders>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.Data.IO.Package.MergedFolderItem::<Folders>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldstr "IsEmpty"
+    IL_001D callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0022 ldarg.0 
+    IL_0023 ldstr "Folders"
+    IL_0028 callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_002D nop 
+    IL_002E ret 
+  method List`1<MergedPackageItem> get_Packages()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::<Packages>k__BackingField
+    IL_0006 ret 
+  method Void set_Packages(List`1<MergedPackageItem>)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::<Packages>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.Data.IO.Package.MergedFolderItem::<Packages>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldstr "IsEmpty"
+    IL_001D callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0022 ldarg.0 
+    IL_0023 ldstr "Packages"
+    IL_0028 callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_002D nop 
+    IL_002E ret 
+  method Void Read(Stream)
+    IL_0000 ldarg.1 
+    IL_0001 newobj S4Studio.Data.IO.Util.BinaryStreamWrapper::.ctor
+    IL_0006 stloc.0 
+    IL_0007 ldloc.0 
+    IL_0008 call System.Text.Encoding::get_UTF8
+    IL_000D callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::set_CharacterEncoding
+    IL_0012 ldarg.0 
+    IL_0013 ldloc.0 
+    IL_0014 ldc.i4.3 
+    IL_0015 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadString
+    IL_001A call S4Studio.Data.IO.Package.MergedFolderItem::set_Name
+    IL_001F ldloc.0 
+    IL_0020 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadUInt32
+    IL_0025 stloc.1 
+    IL_0026 ldarg.0 
+    IL_0027 newobj List`1<MergedFolderItem>::.ctor
+    IL_002C call S4Studio.Data.IO.Package.MergedFolderItem::set_Folders
+    IL_0031 ldc.i4.0 
+    IL_0032 stloc.3 
+    IL_0033 br.s IL_005C
+    IL_0035 ldarg.0 
+    IL_0036 call S4Studio.Data.IO.Package.MergedFolderItem::get_Manifest
+    IL_003B ldarg.0 
+    IL_003C newobj S4Studio.Data.IO.Package.MergedFolderItem::.ctor
+    IL_0041 stloc.s 4
+    IL_0043 ldloc.s 4
+    IL_0045 ldarg.1 
+    IL_0046 callvirt S4Studio.Data.IO.Core.Serializable::Read
+    IL_004B ldarg.0 
+    IL_004C call S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_0051 ldloc.s 4
+    IL_0053 callvirt List`1<MergedFolderItem>::Add
+    IL_0058 ldloc.3 
+    IL_0059 ldc.i4.1 
+    IL_005A add 
+    IL_005B stloc.3 
+    IL_005C ldloc.3 
+    IL_005D ldloc.1 
+    IL_005E blt.un.s IL_0035
+    IL_0060 ldloc.0 
+    IL_0061 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadUInt32
+    IL_0066 stloc.2 
+    IL_0067 ldc.i4.0 
+    IL_0068 stloc.s 5
+    IL_006A br.s IL_008F
+    IL_006C ldarg.0 
+    IL_006D newobj S4Studio.Data.IO.Package.MergedPackageItem::.ctor
+    IL_0072 stloc.s 6
+    IL_0074 ldloc.s 6
+    IL_0076 ldarg.1 
+    IL_0077 callvirt S4Studio.Data.IO.Core.Serializable::Read
+    IL_007C ldarg.0 
+    IL_007D call S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0082 ldloc.s 6
+    IL_0084 callvirt List`1<MergedPackageItem>::Add
+    IL_0089 ldloc.s 5
+    IL_008B ldc.i4.1 
+    IL_008C add 
+    IL_008D stloc.s 5
+    IL_008F ldloc.s 5
+    IL_0091 ldloc.2 
+    IL_0092 blt.un.s IL_006C
+    IL_0094 ret 
+  method String get_FullPath()
+    IL_0000 newobj Stack`1<String>::.ctor
+    IL_0005 stloc.0 
+    IL_0006 ldloc.0 
+    IL_0007 ldarg.0 
+    IL_0008 call S4Studio.Data.IO.Package.MergedFolderItem::get_Name
+    IL_000D callvirt Stack`1<String>::Push
+    IL_0012 ldarg.0 
+    IL_0013 call S4Studio.Data.IO.Package.MergedFolderItem::get_Parent
+    IL_0018 stloc.1 
+    IL_0019 br.s IL_002E
+    IL_001B ldloc.0 
+    IL_001C ldloc.1 
+    IL_001D callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Name
+    IL_0022 callvirt Stack`1<String>::Push
+    IL_0027 ldloc.1 
+    IL_0028 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Parent
+    IL_002D stloc.1 
+    IL_002E ldloc.1 
+    IL_002F brtrue.s IL_001B
+    IL_0031 ldloc.0 
+    IL_0032 callvirt Stack`1<String>::ToArray
+    IL_0037 call System.IO.Path::Combine
+    IL_003C ret 
+  method Void Write(Stream)
+    IL_0000 ldarg.1 
+    IL_0001 newobj S4Studio.Data.IO.Util.BinaryStreamWrapper::.ctor
+    IL_0006 stloc.0 
+    IL_0007 ldloc.0 
+    IL_0008 call System.Text.Encoding::get_UTF8
+    IL_000D callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::set_CharacterEncoding
+    IL_0012 ldloc.0 
+    IL_0013 ldarg.0 
+    IL_0014 call S4Studio.Data.IO.Package.MergedFolderItem::get_Name
+    IL_0019 ldc.i4.3 
+    IL_001A callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::WriteString
+    IL_001F ldloc.0 
+    IL_0020 ldarg.0 
+    IL_0021 call S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_0026 callvirt List`1<MergedFolderItem>::get_Count
+    IL_002B callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::Write
+    IL_0030 ldarg.0 
+    IL_0031 call S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_0036 callvirt List`1<MergedFolderItem>::GetEnumerator
+    IL_003B stloc.1 
+    IL_003C br.s IL_004B
+    IL_003E ldloca.s 1
+    IL_0040 call Enumerator<MergedFolderItem>::get_Current
+    IL_0045 ldarg.1 
+    IL_0046 callvirt S4Studio.Data.IO.Core.Serializable::Write
+    IL_004B ldloca.s 1
+    IL_004D call Enumerator<MergedFolderItem>::MoveNext
+    IL_0052 brtrue.s IL_003E
+    IL_0054 leave.s IL_0064
+    IL_0056 ldloca.s 1
+    IL_0058 constrained. Enumerator<MergedFolderItem>
+    IL_005E callvirt System.IDisposable::Dispose
+    IL_0063 endfinally 
+    IL_0064 ldloc.0 
+    IL_0065 ldarg.0 
+    IL_0066 call S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_006B callvirt List`1<MergedPackageItem>::get_Count
+    IL_0070 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::Write
+    IL_0075 ldarg.0 
+    IL_0076 call S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_007B callvirt List`1<MergedPackageItem>::GetEnumerator
+    IL_0080 stloc.2 
+    IL_0081 br.s IL_0090
+    IL_0083 ldloca.s 2
+    IL_0085 call Enumerator<MergedPackageItem>::get_Current
+    IL_008A ldarg.1 
+    IL_008B callvirt S4Studio.Data.IO.Core.Serializable::Write
+    IL_0090 ldloca.s 2
+    IL_0092 call Enumerator<MergedPackageItem>::MoveNext
+    IL_0097 brtrue.s IL_0083
+    IL_0099 leave.s IL_00A9
+    IL_009B ldloca.s 2
+    IL_009D constrained. Enumerator<MergedPackageItem>
+    IL_00A3 callvirt System.IDisposable::Dispose
+    IL_00A8 endfinally 
+    IL_00A9 ret 
+  method MergedPackageItem AddPackage(IDBPFPackage)
+    IL_0000 ldarg.0 
+    IL_0001 ldarg.1 
+    IL_0002 callvirt S4Studio.Data.IO.Package.IDBPFPackage::get_Filename
+    IL_0007 call System.IO.Path::GetFileNameWithoutExtension
+    IL_000C ldarg.1 
+    IL_000D callvirt S4Studio.Data.IO.Package.IDBPFPackage::get_Entries
+    IL_0012 call S4Studio.Data.IO.Package.MergedFolderItem::AddPackage
+    IL_0017 ret 
+  method MergedPackageItem AddPackage(String,IEnumerable`1<IResourceKey>)
+    IL_0000 newobj .<>c__DisplayClass23_0::.ctor
+    IL_0005 stloc.0 
+    IL_0006 ldloc.0 
+    IL_0007 ldarg.1 
+    IL_0008 stfld .<>c__DisplayClass23_0::p_name
+    IL_000D ldarg.0 
+    IL_000E call S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0013 ldloc.0 
+    IL_0014 ldftn .<>c__DisplayClass23_0::<AddPackage>b__0
+    IL_001A newobj Func`2<MergedPackageItem,Boolean>::.ctor
+    IL_001F call System.Linq.Enumerable::FirstOrDefault<>
+    IL_0024 stloc.1 
+    IL_0025 ldloc.1 
+    IL_0026 brtrue.s IL_0047
+    IL_0028 ldarg.0 
+    IL_0029 newobj S4Studio.Data.IO.Package.MergedPackageItem::.ctor
+    IL_002E dup 
+    IL_002F ldloc.0 
+    IL_0030 ldfld .<>c__DisplayClass23_0::p_name
+    IL_0035 callvirt S4Studio.Data.IO.Package.MergedPackageItem::set_Name
+    IL_003A stloc.1 
+    IL_003B ldarg.0 
+    IL_003C call S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0041 ldloc.1 
+    IL_0042 callvirt List`1<MergedPackageItem>::Add
+    IL_0047 ldarg.2 
+    IL_0048 callvirt IEnumerable`1<IResourceKey>::GetEnumerator
+    IL_004D stloc.2 
+    IL_004E br.s IL_0076
+    IL_0050 ldloc.2 
+    IL_0051 callvirt IEnumerator`1<IResourceKey>::get_Current
+    IL_0056 stloc.3 
+    IL_0057 ldloc.1 
+    IL_0058 callvirt S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_005D ldloc.3 
+    IL_005E callvirt List`1<IResourceKey>::Contains
+    IL_0063 brtrue.s IL_0076
+    IL_0065 ldloc.1 
+    IL_0066 callvirt S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_006B ldloc.3 
+    IL_006C newobj S4Studio.Data.IO.Core.ResourceKey::.ctor
+    IL_0071 callvirt List`1<IResourceKey>::Add
+    IL_0076 ldloc.2 
+    IL_0077 callvirt System.Collections.IEnumerator::MoveNext
+    IL_007C brtrue.s IL_0050
+    IL_007E leave.s IL_008A
+    IL_0080 ldloc.2 
+    IL_0081 brfalse.s IL_0089
+    IL_0083 ldloc.2 
+    IL_0084 callvirt System.IDisposable::Dispose
+    IL_0089 endfinally 
+    IL_008A ldloc.1 
+    IL_008B ret 
+  method String ToString()
+    IL_0000 ldsflda S4Studio.Util.FileUtil::DirectorySeparatorChar
+    IL_0005 call System.Char::ToString
+    IL_000A ldarg.0 
+    IL_000B call S4Studio.Data.IO.Package.MergedFolderItem::get_Name
+    IL_0010 ldsflda S4Studio.Util.FileUtil::DirectorySeparatorChar
+    IL_0015 call System.Char::ToString
+    IL_001A call System.String::Concat
+    IL_001F ret 
+  method Boolean get_IsEmpty()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0006 call System.Linq.Enumerable::Any<>
+    IL_000B brtrue.s IL_0038
+    IL_000D ldarg.0 
+    IL_000E call S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_0013 ldsfld .<>c::<>9__26_0
+    IL_0018 dup 
+    IL_0019 brtrue.s IL_0032
+    IL_001B pop 
+    IL_001C ldsfld .<>c::<>9
+    IL_0021 ldftn .<>c::<get_IsEmpty>b__26_0
+    IL_0027 newobj Func`2<MergedFolderItem,Boolean>::.ctor
+    IL_002C dup 
+    IL_002D stsfld .<>c::<>9__26_0
+    IL_0032 call System.Linq.Enumerable::Any<>
+    IL_0037 ret 
+    IL_0038 ldc.i4.1 
+    IL_0039 ret 
+  method MergedFolderItem get_Parent()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::parent
+    IL_0006 ret 
+  method Void set_Parent(MergedFolderItem)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedFolderItem::parent
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.Data.IO.Package.MergedFolderItem::parent
+    IL_0017 ldarg.0 
+    IL_0018 ldstr "FullPath"
+    IL_001D callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0022 ldarg.0 
+    IL_0023 ldstr "Parent"
+    IL_0028 callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_002D nop 
+    IL_002E ret 
+  method MergedFolderItem GetPath(String)
+    IL_0000 newobj .<>c__DisplayClass30_0::.ctor
+    IL_0005 stloc.0 
+    IL_0006 ldarg.1 
+    IL_0007 dup 
+    IL_0008 brtrue.s IL_0010
+    IL_000A pop 
+    IL_000B ldstr ""
+    IL_0010 callvirt System.String::Trim
+    IL_0015 ldsfld S4Studio.Util.FileUtil::DirectorySeparatorChar
+    IL_001A callvirt System.String::TrimStart
+    IL_001F ldsfld S4Studio.Util.FileUtil::DirectorySeparatorChar
+    IL_0024 callvirt System.String::TrimEnd
+    IL_0029 starg.s 1
+    IL_002B ldarg.1 
+    IL_002C ldsfld S4Studio.Util.FileUtil::DirectorySeparatorChar
+    IL_0031 ldc.i4.0 
+    IL_0032 callvirt System.String::Split
+    IL_0037 ldsfld .<>c::<>9__30_0
+    IL_003C dup 
+    IL_003D brtrue.s IL_0056
+    IL_003F pop 
+    IL_0040 ldsfld .<>c::<>9
+    IL_0045 ldftn .<>c::<GetPath>b__30_0
+    IL_004B newobj Func`2<String,Boolean>::.ctor
+    IL_0050 dup 
+    IL_0051 stsfld .<>c::<>9__30_0
+    IL_0056 call System.Linq.Enumerable::Where<>
+    IL_005B call System.Linq.Enumerable::ToArray<>
+    IL_0060 newobj Queue`1<String>::.ctor
+    IL_0065 stloc.1 
+    IL_0066 ldarg.0 
+    IL_0067 stloc.2 
+    IL_0068 ldloc.0 
+    IL_0069 ldnull 
+    IL_006A stfld .<>c__DisplayClass30_0::qi
+    IL_006F br.s IL_00D4
+    IL_0071 ldloc.0 
+    IL_0072 ldloc.1 
+    IL_0073 callvirt Queue`1<String>::Dequeue
+    IL_0078 stfld .<>c__DisplayClass30_0::qi
+    IL_007D ldloc.2 
+    IL_007E callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_0083 ldloc.0 
+    IL_0084 ldfld .<>c__DisplayClass30_0::<>9__1
+    IL_0089 dup 
+    IL_008A brtrue.s IL_00A4
+    IL_008C pop 
+    IL_008D ldloc.0 
+    IL_008E ldloc.0 
+    IL_008F ldftn .<>c__DisplayClass30_0::<GetPath>b__1
+    IL_0095 newobj Func`2<MergedFolderItem,Boolean>::.ctor
+    IL_009A dup 
+    IL_009B stloc.s 4
+    IL_009D stfld .<>c__DisplayClass30_0::<>9__1
+    IL_00A2 ldloc.s 4
+    IL_00A4 call System.Linq.Enumerable::FirstOrDefault<>
+    IL_00A9 stloc.3 
+    IL_00AA ldloc.3 
+    IL_00AB brtrue.s IL_00D2
+    IL_00AD ldarg.0 
+    IL_00AE call S4Studio.Data.IO.Package.MergedFolderItem::get_Manifest
+    IL_00B3 ldloc.2 
+    IL_00B4 newobj S4Studio.Data.IO.Package.MergedFolderItem::.ctor
+    IL_00B9 dup 
+    IL_00BA ldloc.0 
+    IL_00BB ldfld .<>c__DisplayClass30_0::qi
+    IL_00C0 callvirt S4Studio.Data.IO.Package.MergedFolderItem::set_Name
+    IL_00C5 stloc.3 
+    IL_00C6 ldloc.2 
+    IL_00C7 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_00CC ldloc.3 
+    IL_00CD callvirt List`1<MergedFolderItem>::Add
+    IL_00D2 ldloc.3 
+    IL_00D3 stloc.2 
+    IL_00D4 ldloc.1 
+    IL_00D5 call System.Linq.Enumerable::Any<>
+    IL_00DA brtrue.s IL_0071
+    IL_00DC ldloc.2 
+    IL_00DD ret 
+TYPE S4Studio.Data.IO.Package.MergedFolderItem/<>c
+  field <>c <>9 [Public, Static, InitOnly]
+  field Func`2<MergedFolderItem,Boolean> <>9__26_0 [Public, Static]
+  field Func`2<String,Boolean> <>9__30_0 [Public, Static]
+  method Void .cctor()
+    IL_0000 newobj .<>c::.ctor
+    IL_0005 stsfld .<>c::<>9
+    IL_000A ret 
+  method Void .ctor()
+    IL_0000 ldarg.0 
+    IL_0001 call System.Object::.ctor
+    IL_0006 ret 
+  method Boolean <get_IsEmpty>b__26_0(MergedFolderItem)
+    IL_0000 ldarg.1 
+    IL_0001 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_IsEmpty
+    IL_0006 ldc.i4.0 
+    IL_0007 ceq 
+    IL_0009 ret 
+  method Boolean <GetPath>b__30_0(String)
+    IL_0000 ldarg.1 
+    IL_0001 call System.String::IsNullOrEmpty
+    IL_0006 ldc.i4.0 
+    IL_0007 ceq 
+    IL_0009 ret 
+TYPE S4Studio.Data.IO.Package.MergedFolderItem/<>c__DisplayClass23_0
+  field String p_name [Public]
+  method Void .ctor()
+    IL_0000 ldarg.0 
+    IL_0001 call System.Object::.ctor
+    IL_0006 ret 
+  method Boolean <AddPackage>b__0(MergedPackageItem)
+    IL_0000 ldarg.1 
+    IL_0001 callvirt S4Studio.Data.IO.Package.MergedPackageItem::get_Name
+    IL_0006 ldarg.0 
+    IL_0007 ldfld .<>c__DisplayClass23_0::p_name
+    IL_000C call System.String::op_Equality
+    IL_0011 ret 
+TYPE S4Studio.Data.IO.Package.MergedFolderItem/<>c__DisplayClass30_0
+  field String qi [Public]
+  field Func`2<MergedFolderItem,Boolean> <>9__1 [Public]
+  method Void .ctor()
+    IL_0000 ldarg.0 
+    IL_0001 call System.Object::.ctor
+    IL_0006 ret 
+  method Boolean <GetPath>b__1(MergedFolderItem)
+    IL_0000 ldarg.1 
+    IL_0001 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Name
+    IL_0006 ldarg.0 
+    IL_0007 ldfld .<>c__DisplayClass30_0::qi
+    IL_000C call System.String::op_Equality
+    IL_0011 ret 
+TYPE S4Studio.Data.IO.Package.MergedPackageItem
+  field WeakReference folder [Private, InitOnly]
+  field String <Name>k__BackingField [Private]
+  field List`1<IResourceKey> <Resources>k__BackingField [Private]
+  method Void .ctor(MergedFolderItem)
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Core.Serializable::.ctor
+    IL_0006 ldarg.0 
+    IL_0007 ldarg.1 
+    IL_0008 newobj System.WeakReference::.ctor
+    IL_000D stfld S4Studio.Data.IO.Package.MergedPackageItem::folder
+    IL_0012 ldarg.0 
+    IL_0013 ldsfld System.String::Empty
+    IL_0018 call S4Studio.Data.IO.Package.MergedPackageItem::set_Name
+    IL_001D ldarg.0 
+    IL_001E newobj List`1<IResourceKey>::.ctor
+    IL_0023 call S4Studio.Data.IO.Package.MergedPackageItem::set_Resources
+    IL_0028 ret 
+  method S4SMergedPackageManifest get_Manifest()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Package.MergedPackageItem::get_Folder
+    IL_0006 dup 
+    IL_0007 brtrue.s IL_000C
+    IL_0009 pop 
+    IL_000A ldnull 
+    IL_000B ret 
+    IL_000C call S4Studio.Data.IO.Package.MergedFolderItem::get_Manifest
+    IL_0011 ret 
+  method MergedFolderItem get_Folder()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedPackageItem::folder
+    IL_0006 callvirt System.WeakReference::get_Target
+    IL_000B isinst S4Studio.Data.IO.Package.MergedFolderItem
+    IL_0010 ret 
+  method String get_Name()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedPackageItem::<Name>k__BackingField
+    IL_0006 ret 
+  method Void set_Name(String)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedPackageItem::<Name>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 ldc.i4.4 
+    IL_0008 call System.String::Equals
+    IL_000D brfalse.s IL_0010
+    IL_000F ret 
+    IL_0010 nop 
+    IL_0011 ldarg.0 
+    IL_0012 ldarg.1 
+    IL_0013 stfld S4Studio.Data.IO.Package.MergedPackageItem::<Name>k__BackingField
+    IL_0018 ldarg.0 
+    IL_0019 ldstr "Name"
+    IL_001E callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0023 nop 
+    IL_0024 ret 
+  method List`1<IResourceKey> get_Resources()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedPackageItem::<Resources>k__BackingField
+    IL_0006 ret 
+  method Void set_Resources(List`1<IResourceKey>)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.MergedPackageItem::<Resources>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.Data.IO.Package.MergedPackageItem::<Resources>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldstr "Resources"
+    IL_001D callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0022 nop 
+    IL_0023 ret 
+  method Void Remove()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Package.MergedPackageItem::get_Folder
+    IL_0006 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_000B ldarg.0 
+    IL_000C callvirt List`1<MergedPackageItem>::Remove
+    IL_0011 pop 
+    IL_0012 ret 
+  method Void Read(Stream)
+    IL_0000 ldarg.1 
+    IL_0001 newobj S4Studio.Data.IO.Util.BinaryStreamWrapper::.ctor
+    IL_0006 stloc.0 
+    IL_0007 ldloc.0 
+    IL_0008 call System.Text.Encoding::get_UTF8
+    IL_000D callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::set_CharacterEncoding
+    IL_0012 ldarg.0 
+    IL_0013 ldloc.0 
+    IL_0014 ldc.i4.3 
+    IL_0015 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadString
+    IL_001A call S4Studio.Data.IO.Package.MergedPackageItem::set_Name
+    IL_001F ldloc.0 
+    IL_0020 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadInt32
+    IL_0025 stloc.1 
+    IL_0026 ldarg.0 
+    IL_0027 newobj List`1<IResourceKey>::.ctor
+    IL_002C call S4Studio.Data.IO.Package.MergedPackageItem::set_Resources
+    IL_0031 ldc.i4.0 
+    IL_0032 stloc.2 
+    IL_0033 br.s IL_006F
+    IL_0035 newobj S4Studio.Data.IO.Core.ResourceKey::.ctor
+    IL_003A stloc.3 
+    IL_003B ldloc.3 
+    IL_003C ldloc.0 
+    IL_003D callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadUInt64
+    IL_0042 callvirt S4Studio.Data.IO.Core.ResourceKey::set_Instance
+    IL_0047 ldloc.3 
+    IL_0048 ldloc.0 
+    IL_0049 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadUInt32
+    IL_004E callvirt S4Studio.Data.IO.Core.ResourceKey::set_Type
+    IL_0053 ldloc.3 
+    IL_0054 ldloc.0 
+    IL_0055 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadUInt32
+    IL_005A callvirt S4Studio.Data.IO.Core.ResourceKey::set_Group
+    IL_005F ldarg.0 
+    IL_0060 call S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_0065 ldloc.3 
+    IL_0066 callvirt List`1<IResourceKey>::Add
+    IL_006B ldloc.2 
+    IL_006C ldc.i4.1 
+    IL_006D add 
+    IL_006E stloc.2 
+    IL_006F ldloc.2 
+    IL_0070 ldloc.1 
+    IL_0071 blt.s IL_0035
+    IL_0073 ret 
+  method Void Write(Stream)
+    IL_0000 ldarg.1 
+    IL_0001 newobj S4Studio.Data.IO.Util.BinaryStreamWrapper::.ctor
+    IL_0006 stloc.0 
+    IL_0007 ldloc.0 
+    IL_0008 call System.Text.Encoding::get_UTF8
+    IL_000D callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::set_CharacterEncoding
+    IL_0012 ldloc.0 
+    IL_0013 ldarg.0 
+    IL_0014 call S4Studio.Data.IO.Package.MergedPackageItem::get_Name
+    IL_0019 ldc.i4.3 
+    IL_001A callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::WriteString
+    IL_001F ldloc.0 
+    IL_0020 ldarg.0 
+    IL_0021 call S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_0026 callvirt List`1<IResourceKey>::get_Count
+    IL_002B callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::Write
+    IL_0030 ldarg.0 
+    IL_0031 call S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_0036 callvirt List`1<IResourceKey>::GetEnumerator
+    IL_003B stloc.1 
+    IL_003C br.s IL_006A
+    IL_003E ldloca.s 1
+    IL_0040 call Enumerator<IResourceKey>::get_Current
+    IL_0045 stloc.2 
+    IL_0046 ldloc.0 
+    IL_0047 ldloc.2 
+    IL_0048 callvirt S4Studio.Data.IO.Core.IResourceKey::get_Instance
+    IL_004D callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::Write
+    IL_0052 ldloc.0 
+    IL_0053 ldloc.2 
+    IL_0054 callvirt S4Studio.Data.IO.Core.IResourceKey::get_Type
+    IL_0059 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::Write
+    IL_005E ldloc.0 
+    IL_005F ldloc.2 
+    IL_0060 callvirt S4Studio.Data.IO.Core.IResourceKey::get_Group
+    IL_0065 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::Write
+    IL_006A ldloca.s 1
+    IL_006C call Enumerator<IResourceKey>::MoveNext
+    IL_0071 brtrue.s IL_003E
+    IL_0073 leave.s IL_0083
+    IL_0075 ldloca.s 1
+    IL_0077 constrained. Enumerator<IResourceKey>
+    IL_007D callvirt System.IDisposable::Dispose
+    IL_0082 endfinally 
+    IL_0083 ret 
+  method String ToString()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Package.MergedPackageItem::get_Name
+    IL_0006 ldstr ".package"
+    IL_000B call System.String::Concat
+    IL_0010 ret 
+TYPE S4Studio.Data.IO.Package.S4SMergedPackageManifest
+  field UInt32 Type [Public, Static]
+  field MergedFolderItem <Root>k__BackingField [Private]
+  field UInt32 <Version>k__BackingField [Private]
+  method Void .ctor(IResourceKey)
+    IL_0000 ldarg.0 
+    IL_0001 ldarg.1 
+    IL_0002 call S4Studio.Data.IO.Core.PackedResource::.ctor
+    IL_0007 ldarg.0 
+    IL_0008 ldarg.0 
+    IL_0009 ldnull 
+    IL_000A newobj S4Studio.Data.IO.Package.MergedFolderItem::.ctor
+    IL_000F call S4Studio.Data.IO.Package.S4SMergedPackageManifest::set_Root
+    IL_0014 ldarg.0 
+    IL_0015 ldc.i4.1 
+    IL_0016 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::set_Version
+    IL_001B ret 
+  method Void .ctor()
+    IL_0000 ldarg.0 
+    IL_0001 ldsfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::Type
+    IL_0006 newobj S4Studio.Data.IO.Core.ResourceKey::.ctor
+    IL_000B call S4Studio.Data.IO.Package.S4SMergedPackageManifest::.ctor
+    IL_0010 ret 
+  method MergedFolderItem get_Root()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::<Root>k__BackingField
+    IL_0006 ret 
+  method Void set_Root(MergedFolderItem)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::<Root>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 call System.Object::Equals
+    IL_000C brfalse.s IL_000F
+    IL_000E ret 
+    IL_000F nop 
+    IL_0010 ldarg.0 
+    IL_0011 ldarg.1 
+    IL_0012 stfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::<Root>k__BackingField
+    IL_0017 ldarg.0 
+    IL_0018 ldc.i4.1 
+    IL_0019 callvirt S4Studio.Data.IO.Core.PackedResource::set_IsChanged
+    IL_001E ldarg.0 
+    IL_001F ldstr "Root"
+    IL_0024 callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0029 nop 
+    IL_002A ret 
+  method UInt32 get_Version()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::<Version>k__BackingField
+    IL_0006 ret 
+  method Void set_Version(UInt32)
+    IL_0000 ldarg.0 
+    IL_0001 ldfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::<Version>k__BackingField
+    IL_0006 ldarg.1 
+    IL_0007 ceq 
+    IL_0009 brfalse.s IL_000C
+    IL_000B ret 
+    IL_000C nop 
+    IL_000D ldarg.0 
+    IL_000E ldarg.1 
+    IL_000F stfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::<Version>k__BackingField
+    IL_0014 ldarg.0 
+    IL_0015 ldc.i4.1 
+    IL_0016 callvirt S4Studio.Data.IO.Core.PackedResource::set_IsChanged
+    IL_001B ldarg.0 
+    IL_001C ldstr "Version"
+    IL_0021 callvirt S4Studio.Data.IO.Core.DataObject::OnPropertyChanged
+    IL_0026 nop 
+    IL_0027 ret 
+  method Int32 get_PackageCount()
+    IL_0000 ldarg.0 
+    IL_0001 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::EnumeratePackages
+    IL_0006 call System.Linq.Enumerable::Count<>
+    IL_000B ret 
+  method Void Read(Stream)
+    IL_0000 ldarg.1 
+    IL_0001 newobj S4Studio.Data.IO.Util.BinaryStreamWrapper::.ctor
+    IL_0006 stloc.0 
+    IL_0007 ldloc.0 
+    IL_0008 call System.Text.Encoding::get_UTF8
+    IL_000D callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::set_CharacterEncoding
+    IL_0012 ldarg.0 
+    IL_0013 ldloc.0 
+    IL_0014 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::ReadUInt32
+    IL_0019 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::set_Version
+    IL_001E ldarg.0 
+    IL_001F ldarg.0 
+    IL_0020 ldnull 
+    IL_0021 newobj S4Studio.Data.IO.Package.MergedFolderItem::.ctor
+    IL_0026 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::set_Root
+    IL_002B ldarg.0 
+    IL_002C call S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_Root
+    IL_0031 ldarg.1 
+    IL_0032 callvirt S4Studio.Data.IO.Core.Serializable::Read
+    IL_0037 ret 
+  method IEnumerable`1<MergedPackageItem> EnumeratePackages()
+    IL_0000 ldc.i4.s -2
+    IL_0002 newobj .<EnumeratePackages>d__14::.ctor
+    IL_0007 dup 
+    IL_0008 ldarg.0 
+    IL_0009 stfld .<EnumeratePackages>d__14::<>4__this
+    IL_000E ret 
+  method MergedPackageItem FindResource(IResourceKey)
+    IL_0000 newobj Stack`1<MergedFolderItem>::.ctor
+    IL_0005 stloc.0 
+    IL_0006 ldloc.0 
+    IL_0007 ldarg.0 
+    IL_0008 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_Root
+    IL_000D callvirt Stack`1<MergedFolderItem>::Push
+    IL_0012 br IL_0099
+    IL_0017 ldloc.0 
+    IL_0018 callvirt Stack`1<MergedFolderItem>::Pop
+    IL_001D stloc.1 
+    IL_001E ldloc.1 
+    IL_001F callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0024 callvirt List`1<MergedPackageItem>::GetEnumerator
+    IL_0029 stloc.2 
+    IL_002A br.s IL_0047
+    IL_002C ldloca.s 2
+    IL_002E call Enumerator<MergedPackageItem>::get_Current
+    IL_0033 stloc.3 
+    IL_0034 ldloc.3 
+    IL_0035 callvirt S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_003A ldarg.1 
+    IL_003B callvirt List`1<IResourceKey>::Contains
+    IL_0040 brfalse.s IL_0047
+    IL_0042 ldloc.3 
+    IL_0043 stloc.s 4
+    IL_0045 leave.s IL_00A6
+    IL_0047 ldloca.s 2
+    IL_0049 call Enumerator<MergedPackageItem>::MoveNext
+    IL_004E brtrue.s IL_002C
+    IL_0050 leave.s IL_0060
+    IL_0052 ldloca.s 2
+    IL_0054 constrained. Enumerator<MergedPackageItem>
+    IL_005A callvirt System.IDisposable::Dispose
+    IL_005F endfinally 
+    IL_0060 ldloc.1 
+    IL_0061 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_0066 callvirt List`1<MergedFolderItem>::GetEnumerator
+    IL_006B stloc.s 5
+    IL_006D br.s IL_0080
+    IL_006F ldloca.s 5
+    IL_0071 call Enumerator<MergedFolderItem>::get_Current
+    IL_0076 stloc.s 6
+    IL_0078 ldloc.0 
+    IL_0079 ldloc.s 6
+    IL_007B callvirt Stack`1<MergedFolderItem>::Push
+    IL_0080 ldloca.s 5
+    IL_0082 call Enumerator<MergedFolderItem>::MoveNext
+    IL_0087 brtrue.s IL_006F
+    IL_0089 leave.s IL_0099
+    IL_008B ldloca.s 5
+    IL_008D constrained. Enumerator<MergedFolderItem>
+    IL_0093 callvirt System.IDisposable::Dispose
+    IL_0098 endfinally 
+    IL_0099 ldloc.0 
+    IL_009A call System.Linq.Enumerable::Any<>
+    IL_009F brtrue IL_0017
+    IL_00A4 ldnull 
+    IL_00A5 ret 
+    IL_00A6 ldloc.s 4
+    IL_00A8 ret 
+  method Void RemoveResource(IResourceKey)
+    IL_0000 newobj Stack`1<MergedFolderItem>::.ctor
+    IL_0005 stloc.0 
+    IL_0006 ldloc.0 
+    IL_0007 ldarg.0 
+    IL_0008 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_Root
+    IL_000D callvirt Stack`1<MergedFolderItem>::Push
+    IL_0012 br IL_00A1
+    IL_0017 ldloc.0 
+    IL_0018 callvirt Stack`1<MergedFolderItem>::Pop
+    IL_001D stloc.1 
+    IL_001E ldloc.1 
+    IL_001F callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0024 callvirt List`1<MergedPackageItem>::GetEnumerator
+    IL_0029 stloc.2 
+    IL_002A br.s IL_004F
+    IL_002C ldloca.s 2
+    IL_002E call Enumerator<MergedPackageItem>::get_Current
+    IL_0033 stloc.3 
+    IL_0034 ldloc.3 
+    IL_0035 callvirt S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_003A ldarg.1 
+    IL_003B callvirt List`1<IResourceKey>::Contains
+    IL_0040 brfalse.s IL_004F
+    IL_0042 ldloc.3 
+    IL_0043 callvirt S4Studio.Data.IO.Package.MergedPackageItem::get_Resources
+    IL_0048 ldarg.1 
+    IL_0049 callvirt List`1<IResourceKey>::Remove
+    IL_004E pop 
+    IL_004F ldloca.s 2
+    IL_0051 call Enumerator<MergedPackageItem>::MoveNext
+    IL_0056 brtrue.s IL_002C
+    IL_0058 leave.s IL_0068
+    IL_005A ldloca.s 2
+    IL_005C constrained. Enumerator<MergedPackageItem>
+    IL_0062 callvirt System.IDisposable::Dispose
+    IL_0067 endfinally 
+    IL_0068 ldloc.1 
+    IL_0069 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_006E callvirt List`1<MergedFolderItem>::GetEnumerator
+    IL_0073 stloc.s 4
+    IL_0075 br.s IL_0088
+    IL_0077 ldloca.s 4
+    IL_0079 call Enumerator<MergedFolderItem>::get_Current
+    IL_007E stloc.s 5
+    IL_0080 ldloc.0 
+    IL_0081 ldloc.s 5
+    IL_0083 callvirt Stack`1<MergedFolderItem>::Push
+    IL_0088 ldloca.s 4
+    IL_008A call Enumerator<MergedFolderItem>::MoveNext
+    IL_008F brtrue.s IL_0077
+    IL_0091 leave.s IL_00A1
+    IL_0093 ldloca.s 4
+    IL_0095 constrained. Enumerator<MergedFolderItem>
+    IL_009B callvirt System.IDisposable::Dispose
+    IL_00A0 endfinally 
+    IL_00A1 ldloc.0 
+    IL_00A2 call System.Linq.Enumerable::Any<>
+    IL_00A7 brtrue IL_0017
+    IL_00AC ret 
+  method Void Write(Stream)
+    IL_0000 ldarg.1 
+    IL_0001 newobj S4Studio.Data.IO.Util.BinaryStreamWrapper::.ctor
+    IL_0006 dup 
+    IL_0007 call System.Text.Encoding::get_UTF8
+    IL_000C callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::set_CharacterEncoding
+    IL_0011 ldarg.0 
+    IL_0012 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_Version
+    IL_0017 callvirt S4Studio.Data.IO.Util.BinaryStreamWrapper::Write
+    IL_001C ldarg.0 
+    IL_001D call S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_Root
+    IL_0022 ldarg.1 
+    IL_0023 callvirt S4Studio.Data.IO.Core.Serializable::Write
+    IL_0028 ret 
+  method IEnumerable`1<MergedPackageItem> FindPackages(String)
+    IL_0000 ldc.i4.s -2
+    IL_0002 newobj .<FindPackages>d__18::.ctor
+    IL_0007 dup 
+    IL_0008 ldarg.0 
+    IL_0009 stfld .<FindPackages>d__18::<>4__this
+    IL_000E dup 
+    IL_000F ldarg.1 
+    IL_0010 stfld .<FindPackages>d__18::<>3__package_name
+    IL_0015 ret 
+  method Void .cctor()
+    IL_0000 ldstr "S4SMergedPackageManifest"
+    IL_0005 call S4Studio.Data.Util.FNV::Hash32
+    IL_000A stsfld S4Studio.Data.IO.Package.S4SMergedPackageManifest::Type
+    IL_000F ret 
+TYPE S4Studio.Data.IO.Package.S4SMergedPackageManifest/<EnumeratePackages>d__14
+  field Int32 <>1__state [Private]
+  field MergedPackageItem <>2__current [Private]
+  field Int32 <>l__initialThreadId [Private]
+  field S4SMergedPackageManifest <>4__this [Public]
+  field Stack`1<MergedFolderItem> <stack>5__2 [Private]
+  field MergedFolderItem <cur>5__3 [Private]
+  field Enumerator<MergedPackageItem> <>7__wrap3 [Private]
+  method Void .ctor(Int32)
+    IL_0000 ldarg.0 
+    IL_0001 call System.Object::.ctor
+    IL_0006 ldarg.0 
+    IL_0007 ldarg.1 
+    IL_0008 stfld .<EnumeratePackages>d__14::<>1__state
+    IL_000D ldarg.0 
+    IL_000E call System.Environment::get_CurrentManagedThreadId
+    IL_0013 stfld .<EnumeratePackages>d__14::<>l__initialThreadId
+    IL_0018 ret 
+  method Void System.IDisposable.Dispose()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<EnumeratePackages>d__14::<>1__state
+    IL_0006 stloc.0 
+    IL_0007 ldloc.0 
+    IL_0008 ldc.i4.s -3
+    IL_000A beq.s IL_0010
+    IL_000C ldloc.0 
+    IL_000D ldc.i4.1 
+    IL_000E bne.un.s IL_001A
+    IL_0010 nop 
+    IL_0011 leave.s IL_001A
+    IL_0013 ldarg.0 
+    IL_0014 call .<EnumeratePackages>d__14::<>m__Finally1
+    IL_0019 endfinally 
+    IL_001A ret 
+  method Boolean MoveNext()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<EnumeratePackages>d__14::<>1__state
+    IL_0006 stloc.1 
+    IL_0007 ldarg.0 
+    IL_0008 ldfld .<EnumeratePackages>d__14::<>4__this
+    IL_000D stloc.2 
+    IL_000E ldloc.1 
+    IL_000F brfalse.s IL_001F
+    IL_0011 ldloc.1 
+    IL_0012 ldc.i4.1 
+    IL_0013 beq IL_0099
+    IL_0018 ldc.i4.0 
+    IL_0019 stloc.0 
+    IL_001A leave IL_0125
+    IL_001F ldarg.0 
+    IL_0020 ldc.i4.m1 
+    IL_0021 stfld .<EnumeratePackages>d__14::<>1__state
+    IL_0026 ldarg.0 
+    IL_0027 newobj Stack`1<MergedFolderItem>::.ctor
+    IL_002C stfld .<EnumeratePackages>d__14::<stack>5__2
+    IL_0031 ldarg.0 
+    IL_0032 ldfld .<EnumeratePackages>d__14::<stack>5__2
+    IL_0037 ldloc.2 
+    IL_0038 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_Root
+    IL_003D callvirt Stack`1<MergedFolderItem>::Push
+    IL_0042 br IL_010A
+    IL_0047 ldarg.0 
+    IL_0048 ldarg.0 
+    IL_0049 ldfld .<EnumeratePackages>d__14::<stack>5__2
+    IL_004E callvirt Stack`1<MergedFolderItem>::Pop
+    IL_0053 stfld .<EnumeratePackages>d__14::<cur>5__3
+    IL_0058 ldarg.0 
+    IL_0059 ldarg.0 
+    IL_005A ldfld .<EnumeratePackages>d__14::<cur>5__3
+    IL_005F callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0064 callvirt List`1<MergedPackageItem>::GetEnumerator
+    IL_0069 stfld .<EnumeratePackages>d__14::<>7__wrap3
+    IL_006E ldarg.0 
+    IL_006F ldc.i4.s -3
+    IL_0071 stfld .<EnumeratePackages>d__14::<>1__state
+    IL_0076 br.s IL_00A1
+    IL_0078 ldarg.0 
+    IL_0079 ldflda .<EnumeratePackages>d__14::<>7__wrap3
+    IL_007E call Enumerator<MergedPackageItem>::get_Current
+    IL_0083 stloc.3 
+    IL_0084 ldarg.0 
+    IL_0085 ldloc.3 
+    IL_0086 stfld .<EnumeratePackages>d__14::<>2__current
+    IL_008B ldarg.0 
+    IL_008C ldc.i4.1 
+    IL_008D stfld .<EnumeratePackages>d__14::<>1__state
+    IL_0092 ldc.i4.1 
+    IL_0093 stloc.0 
+    IL_0094 leave IL_0125
+    IL_0099 ldarg.0 
+    IL_009A ldc.i4.s -3
+    IL_009C stfld .<EnumeratePackages>d__14::<>1__state
+    IL_00A1 ldarg.0 
+    IL_00A2 ldflda .<EnumeratePackages>d__14::<>7__wrap3
+    IL_00A7 call Enumerator<MergedPackageItem>::MoveNext
+    IL_00AC brtrue.s IL_0078
+    IL_00AE ldarg.0 
+    IL_00AF call .<EnumeratePackages>d__14::<>m__Finally1
+    IL_00B4 ldarg.0 
+    IL_00B5 ldflda .<EnumeratePackages>d__14::<>7__wrap3
+    IL_00BA initobj Enumerator<MergedPackageItem>
+    IL_00C0 ldarg.0 
+    IL_00C1 ldfld .<EnumeratePackages>d__14::<cur>5__3
+    IL_00C6 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_00CB callvirt List`1<MergedFolderItem>::GetEnumerator
+    IL_00D0 stloc.s 4
+    IL_00D2 br.s IL_00EA
+    IL_00D4 ldloca.s 4
+    IL_00D6 call Enumerator<MergedFolderItem>::get_Current
+    IL_00DB stloc.s 5
+    IL_00DD ldarg.0 
+    IL_00DE ldfld .<EnumeratePackages>d__14::<stack>5__2
+    IL_00E3 ldloc.s 5
+    IL_00E5 callvirt Stack`1<MergedFolderItem>::Push
+    IL_00EA ldloca.s 4
+    IL_00EC call Enumerator<MergedFolderItem>::MoveNext
+    IL_00F1 brtrue.s IL_00D4
+    IL_00F3 leave.s IL_0103
+    IL_00F5 ldloca.s 4
+    IL_00F7 constrained. Enumerator<MergedFolderItem>
+    IL_00FD callvirt System.IDisposable::Dispose
+    IL_0102 endfinally 
+    IL_0103 ldarg.0 
+    IL_0104 ldnull 
+    IL_0105 stfld .<EnumeratePackages>d__14::<cur>5__3
+    IL_010A ldarg.0 
+    IL_010B ldfld .<EnumeratePackages>d__14::<stack>5__2
+    IL_0110 call System.Linq.Enumerable::Any<>
+    IL_0115 brtrue IL_0047
+    IL_011A ldc.i4.0 
+    IL_011B stloc.0 
+    IL_011C leave.s IL_0125
+    IL_011E ldarg.0 
+    IL_011F call .<EnumeratePackages>d__14::System.IDisposable.Dispose
+    IL_0124 endfinally 
+    IL_0125 ldloc.0 
+    IL_0126 ret 
+  method Void <>m__Finally1()
+    IL_0000 ldarg.0 
+    IL_0001 ldc.i4.m1 
+    IL_0002 stfld .<EnumeratePackages>d__14::<>1__state
+    IL_0007 ldarg.0 
+    IL_0008 ldflda .<EnumeratePackages>d__14::<>7__wrap3
+    IL_000D constrained. Enumerator<MergedPackageItem>
+    IL_0013 callvirt System.IDisposable::Dispose
+    IL_0018 ret 
+  method MergedPackageItem System.Collections.Generic.IEnumerator<S4Studio.Data.IO.Package.MergedPackageItem>.get_Current()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<EnumeratePackages>d__14::<>2__current
+    IL_0006 ret 
+  method Void System.Collections.IEnumerator.Reset()
+    IL_0000 newobj System.NotSupportedException::.ctor
+    IL_0005 throw 
+  method Object System.Collections.IEnumerator.get_Current()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<EnumeratePackages>d__14::<>2__current
+    IL_0006 ret 
+  method IEnumerator`1<MergedPackageItem> System.Collections.Generic.IEnumerable<S4Studio.Data.IO.Package.MergedPackageItem>.GetEnumerator()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<EnumeratePackages>d__14::<>1__state
+    IL_0006 ldc.i4.s -2
+    IL_0008 bne.un.s IL_0022
+    IL_000A ldarg.0 
+    IL_000B ldfld .<EnumeratePackages>d__14::<>l__initialThreadId
+    IL_0010 call System.Environment::get_CurrentManagedThreadId
+    IL_0015 bne.un.s IL_0022
+    IL_0017 ldarg.0 
+    IL_0018 ldc.i4.0 
+    IL_0019 stfld .<EnumeratePackages>d__14::<>1__state
+    IL_001E ldarg.0 
+    IL_001F stloc.0 
+    IL_0020 br.s IL_0035
+    IL_0022 ldc.i4.0 
+    IL_0023 newobj .<EnumeratePackages>d__14::.ctor
+    IL_0028 stloc.0 
+    IL_0029 ldloc.0 
+    IL_002A ldarg.0 
+    IL_002B ldfld .<EnumeratePackages>d__14::<>4__this
+    IL_0030 stfld .<EnumeratePackages>d__14::<>4__this
+    IL_0035 ldloc.0 
+    IL_0036 ret 
+  method IEnumerator System.Collections.IEnumerable.GetEnumerator()
+    IL_0000 ldarg.0 
+    IL_0001 call .<EnumeratePackages>d__14::System.Collections.Generic.IEnumerable<S4Studio.Data.IO.Package.MergedPackageItem>.GetEnumerator
+    IL_0006 ret 
+TYPE S4Studio.Data.IO.Package.S4SMergedPackageManifest/<FindPackages>d__18
+  field Int32 <>1__state [Private]
+  field MergedPackageItem <>2__current [Private]
+  field Int32 <>l__initialThreadId [Private]
+  field S4SMergedPackageManifest <>4__this [Public]
+  field String package_name [Private]
+  field String <>3__package_name [Public]
+  field Stack`1<MergedFolderItem> <stack>5__2 [Private]
+  field MergedFolderItem <cur>5__3 [Private]
+  field Enumerator<MergedPackageItem> <>7__wrap3 [Private]
+  method Void .ctor(Int32)
+    IL_0000 ldarg.0 
+    IL_0001 call System.Object::.ctor
+    IL_0006 ldarg.0 
+    IL_0007 ldarg.1 
+    IL_0008 stfld .<FindPackages>d__18::<>1__state
+    IL_000D ldarg.0 
+    IL_000E call System.Environment::get_CurrentManagedThreadId
+    IL_0013 stfld .<FindPackages>d__18::<>l__initialThreadId
+    IL_0018 ret 
+  method Void System.IDisposable.Dispose()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<FindPackages>d__18::<>1__state
+    IL_0006 stloc.0 
+    IL_0007 ldloc.0 
+    IL_0008 ldc.i4.s -3
+    IL_000A beq.s IL_0010
+    IL_000C ldloc.0 
+    IL_000D ldc.i4.1 
+    IL_000E bne.un.s IL_001A
+    IL_0010 nop 
+    IL_0011 leave.s IL_001A
+    IL_0013 ldarg.0 
+    IL_0014 call .<FindPackages>d__18::<>m__Finally1
+    IL_0019 endfinally 
+    IL_001A ret 
+  method Boolean MoveNext()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<FindPackages>d__18::<>1__state
+    IL_0006 stloc.1 
+    IL_0007 ldarg.0 
+    IL_0008 ldfld .<FindPackages>d__18::<>4__this
+    IL_000D stloc.2 
+    IL_000E ldloc.1 
+    IL_000F brfalse.s IL_001F
+    IL_0011 ldloc.1 
+    IL_0012 ldc.i4.1 
+    IL_0013 beq IL_00B9
+    IL_0018 ldc.i4.0 
+    IL_0019 stloc.0 
+    IL_001A leave IL_0148
+    IL_001F ldarg.0 
+    IL_0020 ldc.i4.m1 
+    IL_0021 stfld .<FindPackages>d__18::<>1__state
+    IL_0026 ldarg.0 
+    IL_0027 newobj Stack`1<MergedFolderItem>::.ctor
+    IL_002C stfld .<FindPackages>d__18::<stack>5__2
+    IL_0031 ldarg.0 
+    IL_0032 ldfld .<FindPackages>d__18::<stack>5__2
+    IL_0037 ldloc.2 
+    IL_0038 call S4Studio.Data.IO.Package.S4SMergedPackageManifest::get_Root
+    IL_003D callvirt Stack`1<MergedFolderItem>::Push
+    IL_0042 br IL_012D
+    IL_0047 ldarg.0 
+    IL_0048 ldarg.0 
+    IL_0049 ldfld .<FindPackages>d__18::<stack>5__2
+    IL_004E callvirt Stack`1<MergedFolderItem>::Pop
+    IL_0053 stfld .<FindPackages>d__18::<cur>5__3
+    IL_0058 ldarg.0 
+    IL_0059 ldarg.0 
+    IL_005A ldfld .<FindPackages>d__18::<cur>5__3
+    IL_005F callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Packages
+    IL_0064 callvirt List`1<MergedPackageItem>::GetEnumerator
+    IL_0069 stfld .<FindPackages>d__18::<>7__wrap3
+    IL_006E ldarg.0 
+    IL_006F ldc.i4.s -3
+    IL_0071 stfld .<FindPackages>d__18::<>1__state
+    IL_0076 br IL_0104
+    IL_007B ldarg.0 
+    IL_007C ldflda .<FindPackages>d__18::<>7__wrap3
+    IL_0081 call Enumerator<MergedPackageItem>::get_Current
+    IL_0086 stloc.3 
+    IL_0087 ldloc.3 
+    IL_0088 callvirt S4Studio.Data.IO.Package.MergedPackageItem::get_Name
+    IL_008D callvirt System.String::ToLower
+    IL_0092 ldarg.0 
+    IL_0093 ldfld .<FindPackages>d__18::package_name
+    IL_0098 callvirt System.String::ToLower
+    IL_009D callvirt System.String::Contains
+    IL_00A2 brfalse.s IL_00C1
+    IL_00A4 ldarg.0 
+    IL_00A5 ldloc.3 
+    IL_00A6 stfld .<FindPackages>d__18::<>2__current
+    IL_00AB ldarg.0 
+    IL_00AC ldc.i4.1 
+    IL_00AD stfld .<FindPackages>d__18::<>1__state
+    IL_00B2 ldc.i4.1 
+    IL_00B3 stloc.0 
+    IL_00B4 leave IL_0148
+    IL_00B9 ldarg.0 
+    IL_00BA ldc.i4.s -3
+    IL_00BC stfld .<FindPackages>d__18::<>1__state
+    IL_00C1 ldarg.0 
+    IL_00C2 ldfld .<FindPackages>d__18::<cur>5__3
+    IL_00C7 callvirt S4Studio.Data.IO.Package.MergedFolderItem::get_Folders
+    IL_00CC callvirt List`1<MergedFolderItem>::GetEnumerator
+    IL_00D1 stloc.s 4
+    IL_00D3 br.s IL_00EB
+    IL_00D5 ldloca.s 4
+    IL_00D7 call Enumerator<MergedFolderItem>::get_Current
+    IL_00DC stloc.s 5
+    IL_00DE ldarg.0 
+    IL_00DF ldfld .<FindPackages>d__18::<stack>5__2
+    IL_00E4 ldloc.s 5
+    IL_00E6 callvirt Stack`1<MergedFolderItem>::Push
+    IL_00EB ldloca.s 4
+    IL_00ED call Enumerator<MergedFolderItem>::MoveNext
+    IL_00F2 brtrue.s IL_00D5
+    IL_00F4 leave.s IL_0104
+    IL_00F6 ldloca.s 4
+    IL_00F8 constrained. Enumerator<MergedFolderItem>
+    IL_00FE callvirt System.IDisposable::Dispose
+    IL_0103 endfinally 
+    IL_0104 ldarg.0 
+    IL_0105 ldflda .<FindPackages>d__18::<>7__wrap3
+    IL_010A call Enumerator<MergedPackageItem>::MoveNext
+    IL_010F brtrue IL_007B
+    IL_0114 ldarg.0 
+    IL_0115 call .<FindPackages>d__18::<>m__Finally1
+    IL_011A ldarg.0 
+    IL_011B ldflda .<FindPackages>d__18::<>7__wrap3
+    IL_0120 initobj Enumerator<MergedPackageItem>
+    IL_0126 ldarg.0 
+    IL_0127 ldnull 
+    IL_0128 stfld .<FindPackages>d__18::<cur>5__3
+    IL_012D ldarg.0 
+    IL_012E ldfld .<FindPackages>d__18::<stack>5__2
+    IL_0133 call System.Linq.Enumerable::Any<>
+    IL_0138 brtrue IL_0047
+    IL_013D ldc.i4.0 
+    IL_013E stloc.0 
+    IL_013F leave.s IL_0148
+    IL_0141 ldarg.0 
+    IL_0142 call .<FindPackages>d__18::System.IDisposable.Dispose
+    IL_0147 endfinally 
+    IL_0148 ldloc.0 
+    IL_0149 ret 
+  method Void <>m__Finally1()
+    IL_0000 ldarg.0 
+    IL_0001 ldc.i4.m1 
+    IL_0002 stfld .<FindPackages>d__18::<>1__state
+    IL_0007 ldarg.0 
+    IL_0008 ldflda .<FindPackages>d__18::<>7__wrap3
+    IL_000D constrained. Enumerator<MergedPackageItem>
+    IL_0013 callvirt System.IDisposable::Dispose
+    IL_0018 ret 
+  method MergedPackageItem System.Collections.Generic.IEnumerator<S4Studio.Data.IO.Package.MergedPackageItem>.get_Current()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<FindPackages>d__18::<>2__current
+    IL_0006 ret 
+  method Void System.Collections.IEnumerator.Reset()
+    IL_0000 newobj System.NotSupportedException::.ctor
+    IL_0005 throw 
+  method Object System.Collections.IEnumerator.get_Current()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<FindPackages>d__18::<>2__current
+    IL_0006 ret 
+  method IEnumerator`1<MergedPackageItem> System.Collections.Generic.IEnumerable<S4Studio.Data.IO.Package.MergedPackageItem>.GetEnumerator()
+    IL_0000 ldarg.0 
+    IL_0001 ldfld .<FindPackages>d__18::<>1__state
+    IL_0006 ldc.i4.s -2
+    IL_0008 bne.un.s IL_0022
+    IL_000A ldarg.0 
+    IL_000B ldfld .<FindPackages>d__18::<>l__initialThreadId
+    IL_0010 call System.Environment::get_CurrentManagedThreadId
+    IL_0015 bne.un.s IL_0022
+    IL_0017 ldarg.0 
+    IL_0018 ldc.i4.0 
+    IL_0019 stfld .<FindPackages>d__18::<>1__state
+    IL_001E ldarg.0 
+    IL_001F stloc.0 
+    IL_0020 br.s IL_0035
+    IL_0022 ldc.i4.0 
+    IL_0023 newobj .<FindPackages>d__18::.ctor
+    IL_0028 stloc.0 
+    IL_0029 ldloc.0 
+    IL_002A ldarg.0 
+    IL_002B ldfld .<FindPackages>d__18::<>4__this
+    IL_0030 stfld .<FindPackages>d__18::<>4__this
+    IL_0035 ldloc.0 
+    IL_0036 ldarg.0 
+    IL_0037 ldfld .<FindPackages>d__18::<>3__package_name
+    IL_003C stfld .<FindPackages>d__18::package_name
+    IL_0041 ldloc.0 
+    IL_0042 ret 
+  method IEnumerator System.Collections.IEnumerable.GetEnumerator()
+    IL_0000 ldarg.0 
+    IL_0001 call .<FindPackages>d__18::System.Collections.Generic.IEnumerable<S4Studio.Data.IO.Package.MergedPackageItem>.GetEnumerator
+    IL_0006 ret 
+

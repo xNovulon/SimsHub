@@ -1,0 +1,92 @@
+/* R2-6: the promo kit (pk-) and pose packs (pp-). Uses the design tokens (motion.css) with fallbacks; every
+   animation has an off switch for reduced motion. */
+
+/* ---------------------------------------------------------------- Share step: "Show it off" */
+.sh-promo, .sh-pose { justify-content: flex-start; gap: 10px; }
+.sh-promo svg, .sh-pose svg { width: 18px; height: 18px; }
+
+/* ---------------------------------------------------------------- promo kit dialog */
+.pk-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
+.pk-what { display: flex; flex-direction: column; gap: 8px; }
+.pk-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--panel-2, #191522);
+  border: 1px solid var(--line, #262130); }
+.pk-item > svg { width: 22px; height: 22px; color: var(--accent-hi, #ff8cc4); margin-top: 1px; }
+.pk-item b { display: block; font-size: 13px; }
+.pk-item span { font-size: 11.5px; color: var(--muted, #a39bb2); line-height: 1.45; }
+.pk-opts .field { margin: 6px 0 12px; }
+.pk-seg { width: 100%; }
+.pk-status { margin-top: 12px; opacity: 0; transition: opacity var(--dur-2, .22s) var(--ease-out, ease-out); }
+.pk-status.on { opacity: 1; }
+.pk-status span { display: block; min-height: 1.5em; font-size: 12px; color: var(--muted, #a39bb2); margin-top: 7px; }
+.pk-bar { height: 6px; border-radius: 999px; background: var(--panel-3, #221d2c); overflow: hidden; }
+.pk-bar i { display: block; height: 100%; width: 100%; transform-origin: left; transform: scaleX(0); background: var(--grad, #ff4f9a);
+  transition: transform var(--dur-3, .3s) var(--ease-out, ease-out); }
+.modal.pk-busy .pk-opts .field, .modal.pk-busy .pk-opts .toggle-row { opacity: .5; pointer-events: none; }
+
+/* the result */
+.pk-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin: 12px 0 6px; }
+.pk-shelf figure { margin: 0; padding: 6px; border-radius: 12px; background: var(--panel-2, #191522); border: 1px solid var(--line, #262130);
+  animation: pk-in var(--dur-3, .3s) var(--ease-out, ease-out) both; animation-delay: calc(var(--i, 0) * var(--stagger, 32ms) + 120ms); }
+.pk-shelf img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #000; }
+.pk-shelf figure.sq img { aspect-ratio: 1; object-fit: contain; background: #0b0a10; }
+.pk-shelf figcaption { font-size: 11.5px; color: var(--muted, #a39bb2); padding: 6px 2px 0; }
+.pk-text { width: 100%; resize: vertical; min-height: 150px; padding: 10px 12px; border-radius: 11px; border: 1px solid var(--line-2, #332b40);
+  background: var(--panel-2, #191522); color: var(--text, #f2eef8); font: 12px/1.5 var(--mono, ui-monospace, monospace); }
+.pk-done .section-title { display: flex; align-items: center; justify-content: space-between; }
+@keyframes pk-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* ---------------------------------------------------------------- pose pack dialog */
+.pp-wrap { display: flex; flex-direction: column; gap: 10px; }
+.pp-lock { align-items: flex-start; line-height: 1.5; font-size: 12.5px; }
+.pp-lock svg, .pp-ok svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.pp-ok { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 11px; font-size: 12px; line-height: 1.5;
+  background: rgba(52, 211, 153, .08); border: 1px solid rgba(52, 211, 153, .35); color: #c9f7e2; }
+.pp-ok svg { color: var(--ok, #34d399); }
+.pp-cols { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.pp-count { font-size: 11.5px; font-weight: 600; color: var(--muted, #a39bb2); text-transform: none; letter-spacing: 0; }
+.pp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 9px; max-height: min(52vh, 460px);
+  overflow: auto; padding: 2px; }
+.pp-tile { display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 12px; cursor: pointer; background: var(--panel-2, #191522);
+  border: 1px solid var(--line, #262130); transition: border-color var(--dur-1, .15s), background var(--dur-1, .15s), transform var(--dur-press, .11s);
+  animation: pk-in var(--dur-3, .3s) var(--ease-out, ease-out) both; animation-delay: calc(min(var(--i, 0), 12) * var(--stagger, 32ms)); }
+.pp-tile:active { transform: scale(.98); }
+.pp-tile.on { border-color: var(--accent-line, rgba(255, 79, 154, .45)); background: var(--accent-soft, rgba(255, 79, 154, .13)); }
+.pp-tile small { font-size: 10.5px; color: var(--faint, #8b83a0); padding: 0 2px; }
+.pp-pic { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #140f1c; }
+.pp-pic img { display: block; width: 100%; height: 100%; object-fit: cover; animation: pp-show var(--dur-2, .22s) var(--ease-out, ease-out) both; }
+.pp-skel { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .06) 45%, transparent 70%) #16111f;
+  background-size: 220% 100%; animation: pp-shimmer 1.1s linear infinite; }
+.pp-meta { display: flex; align-items: center; gap: 6px; }
+.pp-meta input[type=checkbox] { flex: none; accent-color: var(--accent, #ff4f9a); }
+.pp-name { min-width: 0; height: 28px; padding: 0 8px; font-size: 12px; }
+.pp-side .field { margin: 4px 0 10px; }
+.pp-note { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 11px; margin: 8px 0;
+  background: var(--violet-soft, rgba(168, 85, 247, .14)); border: 1px solid rgba(168, 85, 247, .35); }
+.pp-note > svg { width: 22px; height: 22px; color: #d6c4ff; flex: none; }
+.pp-note b { display: block; font-size: 12.5px; }
+.pp-note span { font-size: 11.5px; color: var(--muted, #a39bb2); line-height: 1.45; }
+.pp-steps { margin: 12px 0 0; padding-left: 20px; color: var(--muted, #a39bb2); font-size: 12.5px; line-height: 1.7; }
+@keyframes pp-shimmer { to { background-position: -120% 0; } }
+@keyframes pp-show { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 860px) {
+  .pk-grid, .pp-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* reduced motion: nothing moves (the static states stay) */
+@media (prefers-reduced-motion: reduce) {
+  .pk-shelf figure, .pp-tile, .pp-pic img { animation: none; }
+  .pp-skel { animation: none; }
+  .pk-bar i, .pk-status { transition: none; }
+}
+html.reduce-motion .pk-shelf figure, html.reduce-motion .pp-tile, html.reduce-motion .pp-pic img, html.reduce-motion .pp-skel { animation: none; }
+html.reduce-motion .pk-bar i, html.reduce-motion .pk-status { transition: none; }
+
+/* a pose pack the adults-only lock refuses: the poses show as locked, nothing to pick */
+.pp-locked .pp-grid { opacity: .55; pointer-events: none; }
+.pp-locked-pic { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint, #8b83a0);
+  background: repeating-linear-gradient(135deg, #16111f 0 10px, #19131f 10px 20px); }
+.pp-locked-pic svg { width: 26px; height: 26px; }
+.pp-installed { margin: 4px 2px 0; font-size: 12px; color: var(--muted, #a39bb2); }
+.pp-installed .path { margin-top: 3px; word-break: break-all; }
+.pp-locked .pp-side { opacity: .55; pointer-events: none; }

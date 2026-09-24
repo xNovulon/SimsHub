@@ -1,0 +1,20 @@
+Timeout (0:00:00.050000)!
+Thread 0x00013ad8 (most recent call first):
+  File "py37/hitch_test.py", line 20 in slow_mod_function
+  File "py37/hitch_test.py", line 28 in tick
+  File "<string>", line 1 in <module>
+Timeout (0:00:00.050000)!
+Thread 0x00013ad8 (most recent call first):
+  File "py37/hitch_test.py", line 20 in slow_mod_function
+  File "py37/hitch_test.py", line 28 in tick
+  File "<string>", line 1 in <module>
+Timeout (0:00:00.050000)!
+Thread 0x00013ad8 (most recent call first):
+  File "py37/hitch_test.py", line 20 in slow_mod_function
+  File "py37/hitch_test.py", line 28 in tick
+  File "<string>", line 1 in <module>
+Timeout (0:00:00.050000)!
+Thread 0x00013ad8 (most recent call first):
+  File "py37/hitch_test.py", line 21 in slow_mod_function
+  File "py37/hitch_test.py", line 30 in tick
+  File "<string>", line 1 in <module>

@@ -1,0 +1,246 @@
+{
+ "status": {
+  "parsed_comp_5A42": 1528,
+  "tgi_list_ends_at_eof": 2025,
+  "header_tail_ok": 2000,
+  "parsed_comp_0000": 472,
+  "parsed_comp_FFFF": 25,
+  "header_fail": 25
+ },
+ "versions": {
+  "18": 25,
+  "26": 1,
+  "27": 1,
+  "30": 5,
+  "32": 3,
+  "37": 11,
+  "40": 61,
+  "41": 5,
+  "42": 344,
+  "43": 224,
+  "44": 21,
+  "46": 748,
+  "49": 386,
+  "50": 157,
+  "51": 33
+ },
+ "ref_types": {
+  "GEOM": 11191,
+  "RLE2": 3011,
+  "null": 2032,
+  "RMAP": 1597,
+  "RLES": 1346,
+  "_IMG": 1283,
+  "LRLE": 183,
+  "BOND": 125,
+  "0333406C": 109,
+  "062C8204": 100,
+  "033A1435": 50,
+  "BUFF": 27,
+  "736884F1": 25,
+  "80B0EA64": 2
+ },
+ "resolution": {
+  "0333406C/missing": 109,
+  "033A1435/library": 50,
+  "062C8204/library": 100,
+  "736884F1/library": 25,
+  "80B0EA64/missing": 2,
+  "BOND/library": 125,
+  "BUFF/library": 1,
+  "BUFF/missing": 26,
+  "GEOM/game": 537,
+  "GEOM/library": 10455,
+  "GEOM/missing": 199,
+  "LRLE/library": 183,
+  "RLE2/game": 75,
+  "RLE2/library": 2866,
+  "RLE2/missing": 70,
+  "RLES/game": 45,
+  "RLES/library": 1296,
+  "RLES/missing": 5,
+  "RMAP/game": 71,
+  "RMAP/library": 1523,
+  "RMAP/missing": 3,
+  "_IMG/library": 990,
+  "_IMG/missing": 293,
+  "null/missing": 7
+ },
+ "thumbnails": {
+  "no_thum_same_instance": 1443,
+  "has_thum_same_instance": 582,
+  "thum_group_00000002": 516,
+  "thum_group_00000102": 327,
+  "thum_group_00000001": 12,
+  "thum_group_00000101": 12
+ },
+ "key_fields": {
+  "buff_key->BUFF": 27,
+  "buff_key->null": 1973,
+  "diffuse_key->LRLE": 183,
+  "diffuse_key->RLE2": 1817,
+  "emission_key->_IMG": 5,
+  "emission_key->null": 1993,
+  "lod0->GEOM": 2929,
+  "lod1->GEOM": 2767,
+  "lod2->GEOM": 2751,
+  "lod3->80B0EA64": 2,
+  "lod3->GEOM": 2744,
+  "naked_key->null": 2000,
+  "normal_key->_IMG": 954,
+  "normal_key->null": 1046,
+  "parent_key->null": 2000,
+  "region_map_key->RMAP": 1597,
+  "region_map_key->null": 403,
+  "shadow_key->RLE2": 1191,
+  "shadow_key->null": 809,
+  "specular_key->RLES": 1346,
+  "specular_key->null": 654,
+  "variant_thumb_key->_IMG": 39,
+  "variant_thumb_key->null": 1961
+ },
+ "header_by_version": {
+  "18/exc": 25,
+  "26/True": 1,
+  "27/True": 1,
+  "30/True": 5,
+  "32/True": 3,
+  "37/True": 11,
+  "40/True": 61,
+  "41/True": 5,
+  "42/True": 344,
+  "43/True": 224,
+  "44/True": 21,
+  "46/True": 748,
+  "49/True": 386,
+  "50/True": 157,
+  "51/True": 33
+ },
+ "failures": [
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/16.package",
+   "28629FD26C201D1C",
+   "v18 header exception error('unpack_from requires a buffer of at least 3422601358 bytes for unpacking 12 bytes at offset 3422601346 (actual buffer size is 45649)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/16.package",
+   "652F827F7F1AC4A5",
+   "v18 header exception error('unpack_from requires a buffer of at least 4093747918 bytes for unpacking 12 bytes at offset 4093747906 (actual buffer size is 76223)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/19.package",
+   "4935673C7978640A",
+   "v18 header exception error('unpack_from requires a buffer of at least 3221274786 bytes for unpacking 12 bytes at offset 3221274774 (actual buffer size is 120189)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/21.package",
+   "410C0637075CBF46",
+   "v18 header exception error('unpack_from requires a buffer of at least 3422601358 bytes for unpacking 12 bytes at offset 3422601346 (actual buffer size is 105823)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/29.package",
+   "10725BCD63ED2ADD",
+   "v18 header exception error('unpack_from requires a buffer of at least 8120276094 bytes for unpacking 12 bytes at offset 8120276082 (actual buffer size is 80331)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/31.package",
+   "06DFB4C729956ACF",
+   "v18 header exception error('unpack_from requires a buffer of at least 25956923 bytes for unpacking 12 bytes at offset 25956911 (actual buffer size is 58745)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/33.package",
+   "26038893066EC8BB",
+   "v18 header exception error('unpack_from requires a buffer of at least 15995329 bytes for unpacking 12 bytes at offset 15995317 (actual buffer size is 82333)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/33.package",
+   "5ADDD2746DC372BF",
+   "v18 header exception error('unpack_from requires a buffer of at least 15995329 bytes for unpacking 12 bytes at offset 15995317 (actual buffer size is 82331)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/33.package",
+   "7AB25E1B07E6F0F2",
+   "v18 header exception error('unpack_from requires a buffer of at least 15995329 bytes for unpacking 12 bytes at offset 15995317 (actual buffer size is 82335)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/40.package",
+   "6302D57944DCA640",
+   "v18 header exception error('unpack_from requires a buffer of at least 6643836622 bytes for unpacking 12 bytes at offset 6643836610 (actual buffer size is 30821)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/44.package",
+   "5FA273DE3F73A657",
+   "v18 header exception error('unpack_from requires a buffer of at least 12062607 bytes for unpacking 12 bytes at offset 12062595 (actual buffer size is 45091)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/49.package",
+   "71B769076DED4F14",
+   "v18 header exception error('unpack_from requires a buffer of at least 6643836622 bytes for unpacking 12 bytes at offset 6643836610 (actual buffer size is 45949)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/50.package",
+   "6A06C510764FEB47",
+   "v18 header exception error('unpack_from requires a buffer of at least 18350479 bytes for unpacking 12 bytes at offset 18350467 (actual buffer size is 76177)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/51.package",
+   "74A23F803570F191",
+   "v18 header exception error('unpack_from requires a buffer of at least 28049979 bytes for unpacking 12 bytes at offset 28049967 (actual buffer size is 32619)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/51.package",
+   "060516B564A070B9",
+   "v18 header exception error('unpack_from requires a buffer of at least 3623950532 bytes for unpacking 12 bytes at offset 3623950520 (actual buffer size is 76173)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/52.package",
+   "63875A49521E8183",
+   "v18 header exception error('unpack_from requires a buffer of at least 28053007 bytes for unpacking 12 bytes at offset 28052995 (actual buffer size is 41747)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/54.package",
+   "66E4EF257F42961E",
+   "v18 header exception error('unpack_from requires a buffer of at least 3623950532 bytes for unpacking 12 bytes at offset 3623950520 (actual buffer size is 76175)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/54.package",
+   "30A0201C6C01EC2C",
+   "v18 header exception error('unpack_from requires a buffer of at least 26480967 bytes for unpacking 12 bytes at offset 26480955 (actual buffer size is 63547)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/55.package",
+   "6E0C117B309BC74A",
+   "v18 header exception error('unpack_from requires a buffer of at least 7851851604 bytes for unpacking 12 bytes at offset 7851851592 (actual buffer size is 31931)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/61.package",
+   "4F288AF370CAEF7F",
+   "v18 header exception error('unpack_from requires a buffer of at least 3623950532 bytes for unpacking 12 bytes at offset 3623950520 (actual buffer size is 76173)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/72.package",
+   "182655A451A8805D",
+   "v18 header exception error('unpack_from requires a buffer of at least 8392567 bytes for unpacking 12 bytes at offset 8392555 (actual buffer size is 107001)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/m4.package",
+   "41D515A3620352C9",
+   "v18 header exception error('unpack_from requires a buffer of at least 3892438154 bytes for unpacking 12 bytes at offset 3892438142 (actual buffer size is 50223)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/m5.package",
+   "1B8EA90A197B3F58",
+   "v18 header exception error('unpack_from requires a buffer of at least 4563457436 bytes for unpacking 12 bytes at offset 4563457424 (actual buffer size is 42293)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/m8.package",
+   "62BB49065C9D3FAD",
+   "v18 header exception error('unpack_from requires a buffer of at least 8392567 bytes for unpacking 12 bytes at offset 8392555 (actual buffer size is 107003)')"
+  ],
+  [
+   "C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\Mods_parked\\sim/m8.package",
+   "491DF8DD684D0E78",
+   "v18 header exception error('unpack_from requires a buffer of at least 3623950532 bytes for unpacking 12 bytes at offset 3623950520 (actual buffer size is 76171)')"
+  ]
+ ]
+}

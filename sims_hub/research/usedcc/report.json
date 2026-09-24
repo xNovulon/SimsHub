@@ -1,0 +1,579 @@
+{
+ "sources": {
+  "saves_all": 44,
+  "saves_current_slots": 9,
+  "tray_files": 1039,
+  "tray_by_ext": {
+   ".blueprint": 54,
+   ".householdbinary": 107,
+   ".bpi": 307,
+   ".sgi": 116,
+   ".hhi": 214,
+   ".rmi": 40,
+   ".room": 20,
+   ".trayitem": 181
+  },
+  "tray_unparsed_raw_scanned": 76,
+  "uncompressed_bytes_walked": 8679094074,
+  "values_walked": 517755423,
+  "resource_errors": 0
+ },
+ "cas_parts": {
+  "all_saves_and_tray": {
+   "distinct_part_ids": 30280,
+   "classes": {
+    "ea": 16520,
+    "override_of_ea": 593,
+    "cc": 7635,
+    "unknown": 5532
+   }
+  },
+  "current_saves_and_tray": {
+   "distinct_part_ids": 23768,
+   "classes": {
+    "ea": 11219,
+    "override_of_ea": 342,
+    "unknown": 5214,
+    "cc": 6993
+   }
+  },
+  "from_save": {
+   "distinct_part_ids": 29308,
+   "classes": {
+    "ea": 16370,
+    "override_of_ea": 592,
+    "cc": 7174,
+    "unknown": 5172
+   }
+  },
+  "from_tray": {
+   "distinct_part_ids": 4003,
+   "classes": {
+    "cc": 1561,
+    "ea": 1143,
+    "unknown": 1245,
+    "override_of_ea": 54
+   }
+  },
+  "casp_ids_seen_elsewhere_only": {
+   "distinct": 223,
+   "top_paths": [
+    [
+     "hh.1.21.1.1",
+     1333
+    ],
+    [
+     "RD.5.25.1.1",
+     1133
+    ],
+    [
+     "RD.2.8.43.1.0",
+     550
+    ],
+    [
+     "RD.19.1.1.3",
+     192
+    ]
+   ]
+  },
+  "share_of_library_unique_casps": 0.0134,
+  "library_unique_casps": 614076,
+  "used_cc_casps": 8228,
+  "packages_holding_used_casps": 145,
+  "copies_of_used_casps_in_library": 11916,
+  "top_packages": [
+   [
+    "Mods_parked\\sim/4.package",
+    561
+   ],
+   [
+    "Mods_parked\\sim/13.package",
+    501
+   ],
+   [
+    "Mods_parked\\sim/m1.package",
+    444
+   ],
+   [
+    "Mods_parked\\sim/m2.package",
+    430
+   ],
+   [
+    "Mods_parked\\sim/m27.package",
+    391
+   ],
+   [
+    "Mods_parked\\sim/m3.package",
+    380
+   ],
+   [
+    "Mods_parked\\sim/128.package",
+    373
+   ],
+   [
+    "Mods_parked\\sim/101.package",
+    328
+   ],
+   [
+    "Mods_parked\\sim/19.package",
+    324
+   ],
+   [
+    "Mods_parked\\sim/102.package",
+    240
+   ],
+   [
+    "Mods_parked\\sim/m5.package",
+    239
+   ],
+   [
+    "Mods_parked\\sim/m4.package",
+    233
+   ],
+   [
+    "Mods_parked\\sim/m15.package",
+    219
+   ],
+   [
+    "Mods_parked\\sim/106.package",
+    215
+   ],
+   [
+    "Mods_parked\\sim/18.package",
+    205
+   ]
+  ]
+ },
+ "cas_pack": {
+  "keys": 53273,
+  "bytes_on_disk": 7099827734,
+  "bytes_uncompressed": 21521284933,
+  "by_type_bytes": {
+   "GEOM": 4102101435,
+   "RLE2": 1201341456,
+   "LRLE": 1034522521,
+   "_IMG": 556636988,
+   "RLES": 124655826,
+   "THUM": 76950340,
+   "CASP": 3340099,
+   "RMAP": 279069
+  },
+  "by_type_count": {
+   "GEOM": 21244,
+   "RLE2": 8614,
+   "CASP": 8228,
+   "THUM": 6210,
+   "RMAP": 3357,
+   "RLES": 2701,
+   "_IMG": 1602,
+   "LRLE": 1317
+  },
+  "ref_resolution": {
+   "exact": 53186,
+   "missing": 611,
+   "ea_game": 6440,
+   "other_texture_type": 106,
+   "same_type_other_group": 346
+  },
+  "missing_by_type": {
+   "BUFF": 346,
+   "RLE2": 31,
+   "GEOM": 147,
+   "RMAP": 27,
+   "_IMG": 19,
+   "RLES": 41
+  },
+  "missing_examples": [
+   "4.package CASP 000000000000198F -> BUFF 6017E896:00000000:000000000003E181",
+   "4.package CASP 00000000000019A3 -> BUFF 6017E896:00000000:000000000003E181",
+   "106.package CASP 000000000004A595 -> BUFF 6017E896:00000000:000000000004A365",
+   "106.package CASP 000000000004A59B -> BUFF 6017E896:00000000:000000000004A365",
+   "106.package CASP 000000000004A5A1 -> BUFF 6017E896:00000000:000000000004A365",
+   "106.package CASP 000000000004A5A2 -> BUFF 6017E896:00000000:000000000004A365",
+   "106.package CASP 000000000004A5A4 -> BUFF 6017E896:00000000:000000000004A365",
+   "106.package CASP 000000000004A5A9 -> BUFF 6017E896:00000000:000000000004A365",
+   "106.package CASP 000000000004A5AE -> BUFF 6017E896:00000000:000000000004A365",
+   "106.package CASP 000000000004A5AF -> BUFF 6017E896:00000000:000000000004A365"
+  ],
+  "secs": 68.9
+ },
+ "cas_pack_current_only": {
+  "keys": 49854,
+  "bytes_on_disk": 6743759219,
+  "bytes_uncompressed": 20559309244,
+  "by_type_bytes": {
+   "GEOM": 3985318694,
+   "RLE2": 1126496271,
+   "LRLE": 907818044,
+   "_IMG": 533353117,
+   "RLES": 119641624,
+   "THUM": 67840828,
+   "CASP": 3021231,
+   "RMAP": 269410
+  },
+  "by_type_count": {
+   "GEOM": 20484,
+   "RLE2": 7980,
+   "CASP": 7335,
+   "THUM": 5482,
+   "RMAP": 3249,
+   "RLES": 2606,
+   "_IMG": 1540,
+   "LRLE": 1178
+  },
+  "used_cc_casps": 7335,
+  "ref_resolution": {
+   "exact": 50205,
+   "missing": 408,
+   "ea_game": 3721,
+   "other_texture_type": 98,
+   "same_type_other_group": 338
+  }
+ },
+ "sim_look": {
+  "skin_tone": {
+   "distinct_values": 251,
+   "classes": {
+    "override_of_ea": 21,
+    "unknown": 123,
+    "ea": 67,
+    "cc": 40
+   },
+   "library_TONE_total": 456,
+   "used_cc_ids": [
+    "0000000000002F5A",
+    "0000000000002F68",
+    "0000000000002F69",
+    "0000000000002F6A",
+    "0000000000002F6B",
+    "0000000000003840",
+    "0000000000005545",
+    "00000000000077D6",
+    "00000000000077D7",
+    "00000000000077FA",
+    "0000000000007AD4",
+    "000000000000AFC5",
+    "000000000000AFC7",
+    "000000000000AFC8",
+    "000000000000AFCA",
+    "000000000000AFCB",
+    "000000000000AFCC",
+    "000000000002EBF8",
+    "000000000002EBFD",
+    "000000000002EC00",
+    "000000000002ED9D",
+    "000000000092285E",
+    "0000000000C20CB5",
+    "0000000000E159F0",
+    "0000000001E8EDF8",
+    "0000000007DEA9BC",
+    "000000000B0C0AC5",
+    "000000000E9E226A",
+    "00000000116ADDE8",
+    "0000000013565188",
+    "000000001659E797",
+    "000000001D3BF663",
+    "000000001DE68980",
+    "000000001E17A9E2",
+    "0000000022E0D35E",
+    "0000000023409393",
+    "000000002776144D",
+    "0000000028990536",
+    "000000002EA85F93",
+    "000000003022D3A1",
+    "00000000314B2CAD",
+    "00000000329CBA19",
+    "00000000355EC60E",
+    "000000003AF69EF3",
+    "000000003C78CD60",
+    "00000000429A94E2",
+    "000000004678914F",
+    "0000000047A7ABBD",
+    "0000000048F76C44",
+    "000000004E707C1C"
+   ]
+  },
+  "sculpt": {
+   "distinct_values": 1550,
+   "classes": {
+    "unknown": 1004,
+    "ea": 475,
+    "cc": 71
+   },
+   "library_9D1AB874_total": 177,
+   "used_cc_ids": [
+    "804F62287E5695C8",
+    "819E6F360A579E15",
+    "8335BF2D38FD5636",
+    "83618BDBE7A18721",
+    "847122050DD18771",
+    "85B0279AABEC8699",
+    "86FF174F522AD57C",
+    "8935B0936C912EBF",
+    "8BF5F6912F371828",
+    "8E0CE69AB991DCB6",
+    "91839560625BF5A6",
+    "918AE842531EA549",
+    "91E37DD4B33EEA47",
+    "9276BCF9183169B3",
+    "93673271C890767E",
+    "96D484A8B4E9FF25",
+    "97A023BE815B8701",
+    "982D2B8183DBC797",
+    "9B2C64685B030BE4",
+    "9F65466D460E94CD",
+    "A0682D66D2ECF4BD",
+    "A1A5252162079C81",
+    "A26AA0C49CA7E6D3",
+    "A289077B8F3C9C33",
+    "A53C03F14A268B1E",
+    "A7CDAC4E09E3D86F",
+    "A807C3B8E8D9CBD5",
+    "A9C6DEB0A66452C1",
+    "A9E9D2929CF697C6",
+    "AA017DCBC20F8F3D",
+    "AAF5AC0E7F83075B",
+    "B21BB0B0155A5FC8",
+    "B4A314BD8D81CC22",
+    "B796C0E7CD92B1A0",
+    "B9ADC49556344EA5",
+    "BAC5F31BA1E0F4A2",
+    "BCB848492863E10E",
+    "BDC04559DA80D2B9",
+    "BEEB5BF0B409AFB9",
+    "BFDF16CE1223C5F2",
+    "C1F717896806D8BC",
+    "C2FBD9C1F32A5A27",
+    "C5BAECA0B3E23896",
+    "C8AA44D04BF461FF",
+    "C939D3A0612FF293",
+    "CB1594C4C23C2E8E",
+    "CF7E8ACB50C178D2",
+    "D42CB9037E2D395B",
+    "D56422E0A3EED2DD",
+    "DA79BDEECADCFEBD"
+   ]
+  },
+  "face_modifier": {
+   "distinct_values": 1525,
+   "classes": {
+    "ea": 997,
+    "override_of_ea": 1,
+    "unknown": 378,
+    "cc": 149
+   },
+   "library_SMOD_total": 503,
+   "used_cc_ids": [
+    "8024A5401F9B4336",
+    "803FFAF5DA0F6FD5",
+    "80431C80BFD328C8",
+    "80C94DB75974B252",
+    "80F70BCE222056BC",
+    "814F0882DC63859D",
+    "81B2ECF2657E9648",
+    "828DD3FE1BBEB737",
+    "84A9BFDC9067300E",
+    "8518BBB21921422C",
+    "859469DF5F04759D",
+    "85D280D6ACD69121",
+    "8760EA45826A84F8",
+    "87C796B19676A91A",
+    "88782C64EFA2F50E",
+    "8AC6560E8648E214",
+    "8AC75951FCEE723F",
+    "8B1CCB98F6CCF3F8",
+    "8DF0A77EE95EE328",
+    "8DF0A77EE95EE329",
+    "8DF0A77EE95EE32B",
+    "8DF0A77EE95EE32E",
+    "8DF0A77EE95EE32F",
+    "8E10EE3E0FB64D34",
+    "8ED004A68C3C69C8",
+    "8F28A81EF56A15D9",
+    "8FB3CD7A3DC2F94D",
+    "907FE854C589CCA4",
+    "916FC0098EBD667D",
+    "9446849FA2CD0D08",
+    "94E38C48F4CDE792",
+    "953169CB3E8E2118",
+    "95AC1A34E1C7BA7B",
+    "97A84549D1721A96",
+    "9B3AD7EC385AAA1D",
+    "9B90707227A57230",
+    "9BDF554AAC316F5C",
+    "9BFEF19BDFC0CFB9",
+    "9CEF7DF40DE9C174",
+    "9D268C0E7B42AA01",
+    "9D2EC3931F016DB5",
+    "A035226B6FB672BB",
+    "A17746FAB38BAD5F",
+    "A17C554631555342",
+    "A1CA1B97AD4EA4AD",
+    "A280B0A21B7401B3",
+    "A299676F3EBFC180",
+    "A2B36F841AB36BD1",
+    "A6D044A6D3B8678A",
+    "A755FE123441F9CE"
+   ]
+  },
+  "body_modifier": {
+   "distinct_values": 595,
+   "classes": {
+    "unknown": 250,
+    "ea": 213,
+    "cc": 132
+   },
+   "library_SMOD_total": 503,
+   "used_cc_ids": [
+    "80CF78950147CB07",
+    "8105FBAEFDFF6484",
+    "8194498A3A273DFD",
+    "84E5E8C0E260FB89",
+    "851B788A6A0922D7",
+    "86652F71EDB342B1",
+    "87B2B6B0D5770539",
+    "87C09A316FEEB6A4",
+    "8851C35C0115C1A7",
+    "8851D39C801A36A0",
+    "8868FE7BAD4FD82F",
+    "89800B6DFA1D2884",
+    "89B10192128DD48E",
+    "8A99D2CB2F1C8C5F",
+    "8D06009E4AE59442",
+    "8E331925F00A2AFD",
+    "8E846C5E9B3E907E",
+    "8E889AD175A55D9C",
+    "8F37BFA417C298D4",
+    "8FCD055BF58234DE",
+    "90003BAD24350B23",
+    "91296F871EF85580",
+    "914848819D4EE128",
+    "91EC0FC54E230D76",
+    "923AE7BAFFB535E5",
+    "923C24AA38E212E1",
+    "9348F7414C7F40E5",
+    "952BDE8FF5861E3A",
+    "962EA156F9101C04",
+    "98427A452F9ABE24",
+    "98CF81310E02F47E",
+    "990C0C5D01009986",
+    "996CBEB91882DAA5",
+    "9C0330F58F15A5A6",
+    "9C840558D42239ED",
+    "9EFF00F74700CA10",
+    "9FA57280F1416CF4",
+    "A0B4845CB7D43CD6",
+    "A2B27380D627A998",
+    "A2B8F83095C1FF95",
+    "A332063AD0B8440C",
+    "A41BD99CDBBE8574",
+    "A44C52E0BCCDEA3D",
+    "A4F1ACCA8AE5633C",
+    "A54AF72D27695D0F",
+    "A6887489B5275963",
+    "A9935CAC3E22E3D4",
+    "A99E064328FE8602",
+    "ACFF46AC7B03599C",
+    "AE285255F9703129"
+   ]
+  }
+ },
+ "sim_look_pack": {
+  "keys": 918,
+  "bytes_on_disk": 49904879,
+  "bytes_uncompressed": 49904886,
+  "by_type_bytes": {
+   "DMAP": 47320787,
+   "BGEO": 2306442,
+   "RLE2": 212488,
+   "SMOD": 34456,
+   "9D1AB874": 12771,
+   "TONE": 9099,
+   "BOND": 8836
+  },
+  "by_type_count": {
+   "DMAP": 296,
+   "SMOD": 282,
+   "BGEO": 170,
+   "9D1AB874": 71,
+   "TONE": 61,
+   "BOND": 32,
+   "RLE2": 6
+  }
+ },
+ "objects": {
+  "distinct_guid_values_on_ObjectList_paths": 44495,
+  "classes": {
+   "ea": 44204,
+   "override_of_ea": 9,
+   "unknown": 275,
+   "cc": 7
+  },
+  "used_cc_objects": 16,
+  "library_objd": 2828,
+  "paths": [
+   [
+    "R6",
+    428
+   ],
+   [
+    "RD.8",
+    1
+   ]
+  ]
+ },
+ "objects_pack": {
+  "keys": 74,
+  "bytes_on_disk": 343196,
+  "bytes_uncompressed": 2391092,
+  "by_type_bytes": {
+   "_IMG": 127237,
+   "OTHM": 121233,
+   "MLOD": 86637,
+   "MODL": 3196,
+   "OBJD": 2308,
+   "COBJ": 1762,
+   "8EAF13DE": 339,
+   "FTPT": 295,
+   "RSLT": 189
+  },
+  "by_type_count": {
+   "OTHM": 19,
+   "COBJ": 16,
+   "_IMG": 12,
+   "MLOD": 8,
+   "OBJD": 7,
+   "MODL": 3,
+   "8EAF13DE": 3,
+   "RSLT": 3,
+   "FTPT": 3
+  }
+ },
+ "other_library_ids_mentioned_in_saves_by_type": {
+  "THUM": 7841,
+  "SMOD": 1312,
+  "BGEO": 793,
+  "545AC67A": 355,
+  "9D1AB874": 240,
+  "CB5FDDC7": 193,
+  "BOND": 150,
+  "339BC5BD": 112,
+  "BUFF": 51,
+  "LRLE": 32,
+  "OTHM": 31,
+  "RLE2": 22,
+  "5B02819E": 16,
+  "CPRE": 16,
+  "5B282D45": 16,
+  "9C07855F": 7,
+  "FTPT": 6,
+  "0E4D15FB": 6,
+  "MODL": 5,
+  "MLOD": 5
+ },
+ "raw_scan_hits": [
+  73,
+  68
+ ],
+ "library_bytes": 258999304241
+}

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Novulon's Wicked Animator</title>
+<link rel="icon" href="img/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/motion.css" data-optional>
+<link rel="stylesheet" href="css/bones.css" data-optional>
+<link rel="stylesheet" href="css/capture.css" data-optional>
+<link rel="stylesheet" href="css/doctor.css" data-optional>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script>
+// Start-up safety net (a plain script, so it runs even when the app's own files can't): if a file of the app or
+// the 3D engine fails to load, or the app breaks before it has started, the spinner is replaced by a message and
+// a Reload button - instead of "Loading..." forever.
+(function () {
+  var failed = false;
+  function started() { var l = document.getElementById('loading'); return !l || l.classList.contains('done'); }
+  function fail(detail) {
+    if (failed || started()) return;
+    failed = true;
+    var show = function () {
+      var box = document.getElementById('loading'), text = document.getElementById('loading-text');
+      if (!box || !text) return;
+      var spin = box.querySelector('.spinner');
+      if (spin) spin.style.display = 'none';
+      text.textContent = 'Could not start - reload the page (Ctrl+R).';
+      if (detail) {
+        var d = document.createElement('small');
+        d.className = 'loading-detail';
+        d.textContent = detail;
+        box.appendChild(d);
+      }
+      var b = document.createElement('button');
+      b.className = 'btn primary';
+      b.textContent = 'Reload';
+      b.onclick = function () { location.reload(); };
+      box.appendChild(b);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show); else show();
+  }
+  window.__startFailed = fail;
+  // resource errors don't bubble: listen in the capture phase to see a <script> or <link> that failed
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'SCRIPT') {
+      var src = t.src || '';
+      // the 3D engine comes from the internet (it is loaded by the app's own files, so it shows as one of them)
+      fail(navigator.onLine === false ? 'You seem to be offline - the 3D engine loads from the internet. Connect, then reload.'
+        : /^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(src) || !src ? 'A part of the app did not load.'
+        : 'The 3D engine did not load from the internet - check your connection.');
+    } else if (t && t.tagName === 'LINK' && t.rel === 'stylesheet' && t.href.indexOf(location.origin) === 0 && !t.hasAttribute('data-optional')) {
+      fail('The app\'s look (app.css) did not load.');
+    } else if (t === window || !t || !t.tagName) {
+      fail(e.message ? 'Error: ' + e.message : '');       // a broken file stops the app before it starts
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    fail(r && r.message ? 'Error: ' + r.message : '');
+  });
+  // the in-app "Reduce motion" switch, applied before anything paints
+  try { if (JSON.parse(localStorage.getItem('fsa.reduceMotion') || 'false')) document.documentElement.classList.add('reduce-motion'); } catch (e) { /* storage blocked */ }
+})();
+</script>
+</head>
+<body>
+<!-- the launch intro: static, so it paints before any module, font or model has loaded (js/splash.js runs it) -->
+<div id="splash" aria-hidden="true">
+  <div class="orb a"></div><div class="orb b"></div>
+  <div class="sp-center">
+    <svg class="sp-logo" viewBox="0 0 64 64">
+      <defs>
+        <linearGradient id="sp-brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5aa3"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient>
+        <linearGradient id="sp-sheen-g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        <clipPath id="sp-clip"><rect x="2" y="2" width="60" height="60" rx="16"/></clipPath>
+      </defs>
+      <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#sp-brand)"/>
+      <g class="sp-n" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+        <path pathLength="1" d="M17 50V15"/><path pathLength="1" d="M17 15C26 27 36 40 46.5 50"/><path pathLength="1" d="M46.5 50V30.5"/>
+      </g>
+      <g class="sp-bob">
+        <path d="M46.5 4 40.5 14.4 46.5 14.4z" fill="#ffffff"/><path d="M46.5 4 52.5 14.4 46.5 14.4z" fill="#ffe3f0"/>
+        <path d="M40.5 14.4 46.5 23.6 46.5 14.4z" fill="#f3dcff"/><path d="M52.5 14.4 46.5 23.6 46.5 14.4z" fill="#d7b8ff"/>
+      </g>
+      <g clip-path="url(#sp-clip)"><rect class="sp-sheen" x="0" y="-6" width="22" height="76" fill="url(#sp-sheen-g)"/></g>
+    </svg>
+    <div class="sp-word"><b>Novulon's</b><span>Wicked Animator</span></div>
+    <div class="sp-bar"><i></i></div>
+    <div class="sp-status">Waking up the sims...</div>
+  </div>
+</div>
+<script>
+// Automated test browsers (and ?slot=test) never see the intro, so their first picture is the app itself;
+// ?splash=show plays it anyway (the design check does that).
+(function () {
+  var q = location.search, sp = document.getElementById('splash');
+  if (sp && (navigator.webdriver || /[?&]slot=test\b/.test(q)) && !/[?&]splash=show\b/.test(q)) sp.remove();
+})();
+</script>
+<div id="app">
+  <header id="topbar">
+    <div class="brand" id="brand" title="Home">
+      <img src="img/logo.svg" alt="" class="logo">
+      <div class="brand-text"><b>Novulon's</b><span>Wicked Animator</span></div>
+    </div>
+    <button class="project-chip" id="project-chip" title="Name, creator, kind and tags">
+      <span class="pc-kind" id="pc-kind">Vaginal</span>
+      <span class="pc-name" id="pc-name">Untitled animation</span>
+      <span class="pc-by" id="pc-by">by you</span>
+      <span id="dirty-dot" class="dirty" title="Unsaved changes"></span>
+    </button>
+    <div class="top-actions">
+      <button class="search-pill" id="btn-palette" title="Search or do anything (Ctrl+K)"><svg><use href="#i-search"/></svg><span class="long">Search</span><kbd>Ctrl K</kbd></button>
+      <button class="icon-btn" id="btn-undo" title="Undo (Ctrl+Z)"><svg><use href="#i-undo"/></svg></button>
+      <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z or Ctrl+Y)"><svg><use href="#i-redo"/></svg></button>
+      <div class="sep"></div>
+      <button class="btn magic" id="btn-magic" title="One click: a complete animation - posed, moving, with physics, faces and sound"><svg><use href="#i-wand"/></svg>Magic</button>
+      <button class="btn ghost" id="btn-save" title="Save (Ctrl+S)"><svg><use href="#i-save"/></svg>Save</button>
+      <button class="btn" id="btn-share" title="Pack animations and progressions into one mod file to share"><svg><use href="#i-package"/></svg>Export mod</button>
+      <button class="btn primary" id="btn-export" title="Put it in your game's Mods folder to try it"><svg><use href="#i-send"/></svg>Send to game</button>
+    </div>
+  </header>
+
+  <nav id="rail">
+    <button data-step="home" title="Home: your animations, progressions, new animation"><svg><use href="#i-home"/></svg><span>Home</span></button>
+    <div class="rail-sep"></div>
+    <button data-step="scene" class="active"><i>1</i><svg><use href="#i-scene"/></svg><span>Scene</span></button>
+    <button data-step="pose"><i>2</i><svg><use href="#i-pose"/></svg><span>Pose</span></button>
+    <button data-step="motion"><i>3</i><svg><use href="#i-motion"/></svg><span>Motion</span></button>
+    <button data-step="body"><i>4</i><svg><use href="#i-body"/></svg><span>Body</span></button>
+    <button data-step="face"><i>5</i><svg><use href="#i-face"/></svg><span>Face</span></button>
+    <button data-step="sounds"><i>6</i><svg><use href="#i-sound"/></svg><span>Sounds</span></button>
+    <button data-step="details"><i>7</i><svg><use href="#i-tag"/></svg><span>Details</span></button>
+    <button data-step="share"><i>8</i><svg><use href="#i-package"/></svg><span>Share</span></button>
+    <div class="rail-sep"></div>
+    <button data-step="library"><svg><use href="#i-library"/></svg><span>Library</span></button>
+    <div class="rail-grow"></div>
+    <button id="btn-help" title="Controls and shortcuts (?)"><svg><use href="#i-help"/></svg><span>Help</span></button>
+  </nav>
+
+  <aside id="left">
+    <div class="panel-head">
+      <h2 id="panel-title">Scene</h2>
+      <p id="panel-sub">Who is in it and where it happens</p>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+    <div class="panel-foot" id="panel-foot"></div>
+  </aside>
+
+  <main id="viewport-wrap">
+    <canvas id="viewport" tabindex="0"></canvas>
+    <div id="ref-layer"></div>
+    <div id="drop-zone" class="hidden"><svg><use href="#i-image"/></svg><b>Drop a picture or video</b><span>It becomes a see-through reference to trace</span></div>
+    <!-- one row over the stage: the tools in the middle (or on the left when it is narrow), the view on the right;
+         they can never cover each other -->
+    <div class="vp-top">
+      <div class="vp-toolbar tools-cell top-center">
+        <div class="seg tools" id="tool-seg">
+          <button data-tool="rotate" class="active" title="Click a body part, then turn it with the rings (R)"><svg><use href="#i-rotate"/></svg><span>Pose</span></button>
+          <button data-tool="ik" title="Drag hands, feet and hips - the arms and legs follow (G)"><svg><use href="#i-hand"/></svg><span>Drag</span></button>
+          <button data-tool="move" title="Move or turn a whole sim (M)"><svg><use href="#i-move"/></svg><span>Place</span></button>
+        </div>
+      </div>
+      <div class="vp-toolbar view-cell top-right">
+        <div class="seg small" id="view-seg">
+          <button data-view="persp" class="active" title="Free view">3D</button>
+          <button data-view="front" title="Front view">Front</button>
+          <button data-view="side" title="Side view">Side</button>
+          <button data-view="top" title="View from above">Top</button>
+        </div>
+        <button class="icon-btn glass toggle" id="btn-onion" title="Ghosts: see the keys before and after this one"><svg><use href="#i-ghost"/></svg></button>
+        <button class="icon-btn glass toggle" id="btn-trail" title="Motion trail: the path of the selected part over the loop"><svg><use href="#i-trail"/></svg></button>
+        <button class="icon-btn glass toggle" id="btn-showcase" title="Showcase: the camera slowly circles the sims"><svg><use href="#i-turn"/></svg></button>
+        <button class="icon-btn glass" id="btn-ref" title="Reference picture or video: trace real motion (or drop a file on the view)"><svg><use href="#i-image"/></svg></button>
+        <button class="icon-btn glass" id="btn-record" title="Record a video (with sound) of two loops - to show it off or post it"><svg><use href="#i-rec"/></svg></button>
+      </div>
+    </div>
+    <div class="vp-editing hidden" id="vp-editing"><svg><use href="#i-pause"/></svg>Posing - motion and physics are paused on this sim until you click empty space</div>
+    <div class="vp-hud" id="vp-hud"></div>
+    <div class="vp-cam" id="vp-cam"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly<span class="long"> · <kbd>Q</kbd><kbd>E</kbd> down/up · <kbd>Shift</kbd> slow</span> · <b>Right-drag</b> look<span class="long"> · <b>Wheel</b> in/out</span></div>
+    <div id="preview-bar" class="preview-bar hidden">
+      <span class="dot"></span><span id="preview-title">Preview</span>
+      <button class="icon-btn" id="btn-preview-play" title="Play / pause the preview"><svg><use href="#i-pause"/></svg></button>
+      <input type="range" id="preview-scrub" min="0" max="100" value="0">
+      <span class="frame-chip" id="preview-frame">0</span>
+      <button class="btn small" id="btn-preview-pose" title="Copy the pose shown now into your sims at this frame">Use this pose</button>
+      <button class="btn small" id="btn-preview-import" title="Turn this animation into keys you can edit">Import as keys</button>
+      <button class="icon-btn" id="btn-preview-close" title="Close preview"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="vp-letterbox" aria-hidden="true"></div>
+    <div id="loading" class="loading"><div class="spinner"></div><span id="loading-text">Loading the game's sims...</span></div>
+  </main>
+
+  <aside id="right">
+    <div id="inspector"></div>
+  </aside>
+
+  <footer id="timeline">
+    <div id="tl-resize" title="Drag to make the timeline taller or shorter (double-click: automatic)"></div>
+    <div class="tl-controls">
+      <div class="seg small tl-view" id="tl-view-seg"><button data-tlview="keys" class="active" title="Keys of every sim (Tab)"><svg><use href="#i-key"/></svg>Keys</button><button data-tlview="curves" title="How the selected part turns over time (Tab)"><svg><use href="#i-curve"/></svg>Curves</button></div>
+      <div class="tl-buttons">
+        <button class="icon-btn" id="btn-first" title="First frame (Home)"><svg><use href="#i-first"/></svg></button>
+        <button class="icon-btn" id="btn-prev-key" title="Previous key (,)"><svg><use href="#i-prev"/></svg></button>
+        <button class="icon-btn play" id="btn-play" title="Play / pause (Space)"><svg><use href="#i-play"/></svg></button>
+        <button class="icon-btn" id="btn-next-key" title="Next key (.)"><svg><use href="#i-next"/></svg></button>
+        <button class="icon-btn toggle on" id="btn-loop" title="Loop - WickedWhims animations loop"><svg><use href="#i-loop"/></svg></button>
+      </div>
+      <div class="tl-time">
+        <span class="tl-frame" id="tl-frame">0</span>
+        <span class="muted">/</span>
+        <label class="tl-len" title="Length of one loop"><input id="tl-seconds-in" type="number" min="0.4" max="100" step="0.1" value="3"><span>s</span></label>
+        <span class="muted small" id="tl-frames-note">90 frames</span>
+        <select id="tl-speed" title="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+        <button class="icon-btn toggle on" id="btn-sound" title="Hear the sounds while it plays"><svg><use href="#i-sound"/></svg></button>
+      </div>
+      <div class="tl-keys">
+        <button class="btn small key-btn" id="btn-key" title="Keep the selected sim's pose at this frame (K)"><svg><use href="#i-key"/></svg>Key pose</button>
+        <button class="btn small ghost" id="btn-key-all" title="Key every sim here (Shift+K)">Key all</button>
+        <button class="icon-btn" id="btn-del-key" title="Delete the key here (Delete)"><svg><use href="#i-trash"/></svg></button>
+        <div class="ease-pick" id="ease-pick" title="How the motion flows from this key into the next"></div>
+        <button class="icon-btn toggle on rec" id="btn-autokey" title="Auto key: every change you make is kept at this frame"><svg><use href="#i-rec"/></svg></button>
+      </div>
+    </div>
+    <canvas id="tl-canvas"></canvas>
+    <div id="curve-wrap" class="hidden"><div id="curve-bar" class="curve-bar"></div><canvas id="curve-canvas"></canvas></div>
+  </footer>
+</div>
+
+<div id="home" class="home hidden"></div>
+<div id="modal-root"></div>
+<div id="toasts"></div>
+<div id="tour-root"></div>
+
+<svg width="0" height="0" style="position:absolute;left:0;top:0;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <linearGradient id="g-brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4f9a"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+  </defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-scene" viewBox="0 0 24 24"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-pose" viewBox="0 0 24 24"><circle cx="12" cy="4.6" r="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M5 9.5 12 8l7 1.5M12 8v6.5m0 0-3.5 6M12 14.5l3.5 6" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-motion" viewBox="0 0 24 24"><path d="M3 12c2.2-5 4.4-5 6.6 0s4.4 5 6.6 0 3.3-4 4.8-2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M3 18h4M10 18h4M17 18h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/></symbol>
+  <symbol id="i-body" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-face" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M8.5 14.2c1.8 2 5.2 2 7 0" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="9.2" cy="10" r="1" fill="currentColor"/><circle cx="14.8" cy="10" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="m16 9.5 5 5m0-5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.4 6.4a1.5 1.5 0 0 1-2.1 0z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M12 3 20 7v10l-8 4-8-4V7zM4 7l8 4 8-4M12 11v10M8 5l8 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 4.5h4v15H4zM10 4.5h4v15h-4zM16.2 5.2l3.6-1 3 14.4-3.6 1z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round" transform="translate(-1 0)"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.6" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="12" cy="16.8" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16M5 11.5h9.5a5 5 0 0 1 0 10H12" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 7 4.5 4.5L15 16M19 11.5H9.5a5 5 0 0 0 0 10H12" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-new" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.8" fill="none"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 3v5h7V3M7 21v-7h10v7" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="m20 20-4.2-4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1V4.5a1.5 1.5 0 0 1 3 0V11m0-4.5a1.5 1.5 0 0 1 3 0V13m-9 0-1.6-1.6a1.7 1.7 0 0 0-2.5 2.3L9 19a4 4 0 0 0 3 1.5h1.5A5.5 5.5 0 0 0 19 15V9.5a1.5 1.5 0 0 0-3 0" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3m3-3 3 3M12 21l-3-3m3 3 3-3M3 12l3-3m-3 3 3 3M21 12l-3-3m3 3-3 3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-ghost" viewBox="0 0 24 24"><path d="M6 20V10a6 6 0 0 1 12 0v10l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/><circle cx="10" cy="10.5" r="1" fill="currentColor"/><circle cx="14" cy="10.5" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-trail" viewBox="0 0 24 24"><path d="M4 18c3-9 6-12 9-9s5 3 7-3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-dasharray="1.5 2.5"/><circle cx="20" cy="6" r="2" fill="currentColor"/><circle cx="4" cy="18" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-first" viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M17 3l3 3-3 3M20 6H8a4 4 0 0 0-4 4v1M7 21l-3-3 3-3M4 18h12a4 4 0 0 0 4-4v-1" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-curve" viewBox="0 0 24 24"><path d="M3 18c4 0 5-12 9-12s5 12 9 12" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><circle cx="12" cy="6" r="1.8" fill="currentColor"/><circle cx="3" cy="18" r="1.5" fill="currentColor"/><circle cx="21" cy="18" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="m4.5 17 5-5.5 3.5 3.5 2.5-2.5 4 4.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><circle cx="15.5" cy="9.3" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-select" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-dasharray="3 2.5"/><path d="m12 9 3 3-3 3-3-3z" fill="currentColor"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="m12 3 9 9-9 9-9-9z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-rec" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.5" fill="currentColor"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.4" fill="none" opacity=".5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M12 3v18M9 7 4 12l5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.7" fill="none"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7" fill="none"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A16.8 16.8 0 0 0 2 12s3.5 7 10 7a9.9 9.9 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3 3H7l3-3zM12 12v8" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8.5-11H12.5z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-chain" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.8" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.7" fill="none"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.6" fill="none"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M9 5V3.5h6V5M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-turn" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><path d="m4 20 11-11M14 4v3M17.5 6.5l2-2M20 10h-3M12.5 7.5l2 2" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-light" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-couple" viewBox="0 0 24 24"><circle cx="8" cy="7" r="2.6" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="16.5" cy="8" r="2.3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M3 19.5a5 5 0 0 1 10 0M12.8 19.5a4 4 0 0 1 7.7-1.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-blank" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 8.5v7M8.5 12h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M7 5v14M17 5v14M3 9.5h4M3 14.5h4M17 9.5h4M17 14.5h4" stroke="currentColor" stroke-width="1.4" fill="none"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18v-8m0 5h18v3M21 15v-2a3 3 0 0 0-3-3h-7v5M6.5 12.5a1.5 1.5 0 1 0 0-.01" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<script type="module" src="js/splash.js"></script>
+<script type="module" src="js/polish.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

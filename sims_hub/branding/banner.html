@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Novulon's Sims Hub banner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0a10; --line: #2c2638;
+    --text: #f2eef8; --muted: #a9a1b8; --faint: #7a7290;
+    --pink: #ff4f9a; --violet: #8b5cf6;
+    --grad: linear-gradient(135deg, #ff4f9a 0%, #c04fe0 55%, #8b5cf6 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1600px; height: 640px; overflow: hidden; background: var(--bg); }
+  body { font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+
+  .banner { position: relative; width: 1600px; height: 640px; overflow: hidden;
+    background:
+      radial-gradient(640px 440px at 6% 0%, rgba(255, 79, 154, .30), transparent 70%),
+      radial-gradient(720px 500px at 95% 110%, rgba(139, 92, 246, .34), transparent 70%),
+      radial-gradient(520px 320px at 55% 45%, rgba(192, 79, 224, .08), transparent 70%),
+      linear-gradient(180deg, #110e18, #0b0a10); }
+  .grid { position: absolute; inset: 0; opacity: .35;
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(900px 480px at 30% 45%, #000 30%, transparent 80%); }
+  .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--grad); }
+  .bob { position: absolute; right: -60px; top: -90px; width: 460px; height: 700px; opacity: .09; }
+
+  /* ---------------- left: identity + promise + features */
+  .left { position: absolute; left: 72px; top: 56px; width: 900px; }
+  .head { display: flex; align-items: center; gap: 30px; }
+  .logo { width: 132px; height: 132px; flex: none; filter: drop-shadow(0 14px 34px rgba(255, 79, 154, .45)) drop-shadow(0 0 50px rgba(139, 92, 246, .25)); }
+  .kicker { font-size: 21px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase; color: var(--muted); }
+  .name { font-size: 96px; font-weight: 800; letter-spacing: -3px; line-height: 1; margin-top: 4px;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tagline { font-size: 27px; font-weight: 700; margin-top: 8px; }
+  .tagline em { font-style: normal; color: var(--pink); }
+
+  .promise { margin-top: 34px; font-size: 35px; font-weight: 800; letter-spacing: -.6px; line-height: 1.2; }
+  .promise span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; margin-top: 26px; }
+  .f { display: flex; gap: 14px; align-items: flex-start; padding: 15px 18px; border-radius: 16px;
+    background: rgba(28, 24, 38, .82); border: 1px solid var(--line); }
+  .f .ic { width: 42px; height: 42px; border-radius: 12px; flex: none; display: grid; place-items: center; }
+  .f .ic svg { width: 23px; height: 23px; }
+  .f b { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.2px; }
+  .f span { display: block; font-size: 15.5px; font-weight: 600; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+  .i1 { background: rgba(255, 79, 154, .15); } .i2 { background: rgba(96, 165, 250, .15); }
+  .i3 { background: rgba(52, 211, 153, .14); } .i4 { background: rgba(199, 125, 255, .16); }
+
+  /* ---------------- right: how it works */
+  .card { position: absolute; right: 70px; top: 56px; width: 520px; border-radius: 24px; padding: 26px 28px 24px;
+    background: linear-gradient(180deg, rgba(30, 25, 41, .97), rgba(18, 15, 25, .97));
+    border: 1px solid #3a3149; box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 80px rgba(139, 92, 246, .18); }
+  .card h3 { font-size: 15px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: var(--pink); }
+  .card h2 { font-size: 27px; font-weight: 800; letter-spacing: -.4px; margin-top: 6px; line-height: 1.2; }
+  .steps { margin-top: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .step { display: flex; gap: 15px; align-items: flex-start; }
+  .num { width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    font-size: 18px; font-weight: 800; color: #fff; background: var(--grad); box-shadow: 0 6px 18px rgba(255, 79, 154, .35); }
+  .step b { display: block; font-size: 18.5px; font-weight: 800; }
+  .step span { display: block; font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+
+  .meter { margin-top: 20px; padding: 16px 18px; border-radius: 16px; background: rgba(255, 255, 255, .03); border: 1px solid #2d2639; }
+  .mrow { display: flex; align-items: center; gap: 12px; font-size: 14.5px; font-weight: 700; color: var(--muted); }
+  .mrow + .mrow { margin-top: 10px; }
+  .mrow .lbl { width: 150px; }
+  .bar { flex: 1; height: 11px; border-radius: 99px; background: #241f2f; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 99px; }
+  .bar .all { width: 100%; background: linear-gradient(90deg, #6f6780, #8a8299); }
+  .bar .one { width: 3.5%; background: var(--grad); box-shadow: 0 0 14px rgba(255, 79, 154, .7); }
+  .mrow .val { width: 78px; text-align: right; color: var(--text); }
+  .mrow .val.hot { color: var(--pink); }
+  .note { margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--faint); }
+</style>
+</head>
+<body>
+<div class="banner">
+  <div class="grid"></div>
+  <svg class="bob" viewBox="0 0 100 150" aria-hidden="true">
+    <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5aa3"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+    <path d="M50 2 96 60 50 148 4 60Z" fill="url(#bg)"/>
+    <path d="M50 2 50 148M4 60h92M50 2 28 60 50 148 72 60Z" fill="none" stroke="#fff" stroke-width="1.4" stroke-opacity=".6"/>
+  </svg>
+
+  <div class="left">
+    <div class="head">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+        <defs><linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5aa3"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+        <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#brand)"/>
+        <g fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 50V15"/><path d="M17 15C26 27 36 40 46.5 50"/><path d="M46.5 50V30.5"/></g>
+        <path d="M46.5 4 40.5 14.4 46.5 14.4z" fill="#ffffff"/><path d="M46.5 4 52.5 14.4 46.5 14.4z" fill="#ffe3f0"/>
+        <path d="M40.5 14.4 46.5 23.6 46.5 14.4z" fill="#f3dcff"/><path d="M52.5 14.4 46.5 23.6 46.5 14.4z" fill="#d7b8ff"/>
+      </svg>
+      <div>
+        <div class="kicker">The Sims 4 &middot; Novulon's</div>
+        <div class="name">Sims Hub</div>
+        <div class="tagline">Animator for Sims 4 <em>&amp;</em> Fast Loader</div>
+      </div>
+    </div>
+
+    <div class="promise">Huge CC folder? Launch with <span>only the CC</span><br><span>your save uses</span>, and the game loads way faster.</div>
+
+    <div class="features">
+      <div class="f"><div class="ic i1"><svg viewBox="0 0 24 24" fill="none" stroke="#ff6aae" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+        <div><b>Faster loading</b><span>At launch, skips any CC your save doesn't use. Nothing gets deleted.</span></div></div>
+      <div class="f"><div class="ic i2"><svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+        <div><b>Less lag, same graphics</b><span>Fixes the settings that slow the game, keeps max quality.</span></div></div>
+      <div class="f"><div class="ic i3"><svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div>
+        <div><b>Auto-merge new mods</b><span>Drop in downloads. Script mods are never touched.</span></div></div>
+      <div class="f"><div class="ic i4"><svg viewBox="0 0 24 24" fill="none" stroke="#c77dff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z" fill="#c77dff"/></svg></div>
+        <div><b>WickedWhims Animator</b><span>Make animations and send them straight to your game.</span></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>How it works</h3>
+    <h2>One click, and your game launches with only what it needs</h2>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div><b>Pick the save you want to play</b><span>The Hub lists every save you have. Click Play.</span></div></div>
+      <div class="step"><div class="num">2</div><div><b>It finds everything that save uses</b><span>Every hair, outfit, skin and object its sims and lots use.</span></div></div>
+      <div class="step"><div class="num">3</div><div><b>The game launches with just that</b><span>The rest of your CC is set aside for that session only.</span></div></div>
+    </div>
+    <div class="meter">
+      <div class="mrow"><span class="lbl">Your whole CC folder</span><span class="bar"><i class="all"></i></span><span class="val">755,662</span></div>
+      <div class="mrow"><span class="lbl">Loaded in fast mode</span><span class="bar"><i class="one"></i></span><span class="val hot">15,905</span></div>
+      <div class="note">CC items loaded at startup, measured on a real 259 GB folder</div>
+    </div>
+  </div>
+
+  <div class="edge"></div>
+</div>
+</body>
+</html>

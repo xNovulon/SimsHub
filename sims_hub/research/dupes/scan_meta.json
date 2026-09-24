@@ -1,0 +1,26 @@
+{
+ "pass1_seconds": 104.6,
+ "pass1_bytes": 80445898887,
+ "pass2_seconds": 2.0,
+ "pass2_bytes": 120881628,
+ "pass2_copies": 4205,
+ "pass1_decompressed_copies": 69947,
+ "errors": {
+  "1898509": "error: Error -3 while decompressing data: incorrect header check",
+  "1898511": "error: Error -3 while decompressing data: incorrect header check",
+  "1898513": "error: Error -3 while decompressing data: incorrect header check",
+  "1898515": "error: Error -3 while decompressing data: incorrect header check",
+  "1898517": "error: Error -3 while decompressing data: unknown compression method",
+  "1898519": "error: Error -3 while decompressing data: incorrect header check",
+  "1898521": "error: Error -3 while decompressing data: incorrect header check",
+  "337911": "error: Error -3 while decompressing data: incorrect header check",
+  "337913": "error: Error -3 while decompressing data: incorrect header check",
+  "337915": "error: Error -3 while decompressing data: incorrect header check",
+  "337917": "error: Error -3 while decompressing data: incorrect header check",
+  "337919": "error: Error -3 while decompressing data: unknown compression method",
+  "337921": "error: Error -3 while decompressing data: incorrect header check",
+  "337923": "error: Error -3 while decompressing data: incorrect header check"
+ },
+ "n_errors": 14,
+ "workers": 6
+}

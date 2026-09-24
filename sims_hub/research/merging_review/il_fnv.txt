@@ -1,0 +1,39 @@
+TYPE S4Studio.Data.Util.FNV
+  method UInt32 Hash32(UInt32,String)
+    IL_0000 ldarg.1 
+    IL_0001 ldc.i4.s 32
+    IL_0003 ldarg.0 
+    IL_0004 conv.u8 
+    IL_0005 newobj Nullable`1<UInt64>::.ctor
+    IL_000A ldc.i4.0 
+    IL_000B ldc.i4.0 
+    IL_000C call S4Studio.Data.Util.FNVGenerator::Hash
+    IL_0011 conv.u4 
+    IL_0012 ret 
+  method UInt32 Hash32(String)
+    IL_0000 ldarg.0 
+    IL_0001 ldc.i4.s 32
+    IL_0003 ldloca.s 0
+    IL_0005 initobj Nullable`1<UInt64>
+    IL_000B ldloc.0 
+    IL_000C ldc.i4.0 
+    IL_000D ldc.i4.0 
+    IL_000E call S4Studio.Data.Util.FNVGenerator::Hash
+    IL_0013 conv.u4 
+    IL_0014 ret 
+  method UInt32 Hash32(String,Boolean,Boolean)
+    IL_0000 ldarg.0 
+    IL_0001 ldc.i4.s 32
+    IL_0003 ldarg.1 
+    IL_0004 stloc.0 
+    IL_0005 ldarg.2 
+    IL_0006 stloc.1 
+    IL_0007 ldloca.s 2
+    IL_0009 initobj Nullable`1<UInt64>
+    IL_000F ldloc.2 
+    IL_0010 ldloc.0 
+    IL_0011 ldloc.1 
+    IL_0012 call S4Studio.Data.Util.FNVGenerator::Hash
+    IL_0017 conv.u4 
+    IL_0018 ret 
+

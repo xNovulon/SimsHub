@@ -1,0 +1,412 @@
+/* =====================================================================================================
+   Novulon's Wicked Animator - "Velvet Stage": the motion & polish layer (design.md), linked after app.css.
+   Tokens, keyframes, micro-interactions, the splash, celebrations, the palette, tooltips, skeletons and
+   empty states. Every animation has an off switch: @media (prefers-reduced-motion) and html.reduce-motion.
+   Rule: entrance animations inside #panel-body are gated by #left.entering (or a one-shot class), because
+   renderStep() rebuilds the panel after every edit.
+   ===================================================================================================== */
+
+@property --wa-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+:root {
+  /* easing: strong ease-out for anything entering, in-out for things moving on screen, springs for direct
+     manipulation (toggles, picked tiles, checks). linear() springs are sampled damped-spring step responses. */
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out: cubic-bezier(.77, 0, .175, 1);
+  --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  --ease-exit: cubic-bezier(.55, 0, 1, .45);
+  /* damping .6 - about 9% overshoot */
+  --spring-pop: linear(0, .078, .256, .469, .672, .839, .962, 1.041, 1.082, 1.095, 1.089, 1.072, 1.052, 1.033, 1.017, 1.005, .997, .992, .991, .991, .993, .995, .997, .998, 1);
+  /* damping .78 - about 2% overshoot, feels "settled" */
+  --spring-soft: linear(0, .046, .155, .292, .434, .567, .683, .779, .855, .913, .955, .983, 1.002, 1.013, 1.018, 1.02, 1.019, 1.017, 1.014, 1.012, 1.009, 1.007, 1.005, 1.003, 1);
+  --dur-press: 110ms;
+  --dur-1: 150ms;   /* hover, colour changes */
+  --dur-2: 220ms;   /* popovers, toasts, tooltips */
+  --dur-3: 300ms;   /* panels, dialogs */
+  --dur-4: 460ms;   /* home <-> editor, big moments */
+  --stagger: 32ms;
+
+  /* surfaces & lines (translucent hairlines read correctly on glass and on the 3D stage) */
+  --hair: rgba(255, 255, 255, .07);
+  --hair-2: rgba(255, 255, 255, .11);
+  --hair-3: rgba(255, 255, 255, .18);
+  --glass: rgba(17, 14, 24, .72);
+  --glass-blur: blur(12px) saturate(1.35);
+  --accent-hi: #ff8cc4;
+  --violet: #8b5cf6;
+  --plumbob: #3ddc84;
+  --lift: inset 0 1px 0 rgba(255, 255, 255, .045);
+
+  /* type scale */
+  --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-lg: 15px; --fs-xl: 19px; --fs-2xl: 28px; --fs-3xl: 44px;
+}
+
+/* ------------------------------------------------------------------ 1. launch intro (splash) */
+#splash {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(900px 620px at 50% 44%, #22182f 0%, #110d18 48%, #0b0a10 78%);
+}
+#splash .orb { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; opacity: 0; pointer-events: none;
+  animation: waOrb 1600ms var(--ease-out) forwards; }
+#splash .orb.a { left: -30vmax; top: -38vmax; background: radial-gradient(circle, rgba(255, 79, 154, .30), transparent 62%); }
+#splash .orb.b { right: -32vmax; bottom: -42vmax; background: radial-gradient(circle, rgba(139, 92, 246, .32), transparent 62%); animation-delay: 140ms; }
+@keyframes waOrb { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: scale(1); } }
+
+.sp-center { position: relative; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.sp-logo { width: 112px; height: 112px; overflow: visible; view-transition-name: brand-logo;
+  filter: drop-shadow(0 18px 48px rgba(255, 79, 154, .45));
+  animation: waLogoIn 900ms var(--spring-pop) 80ms both; }
+@keyframes waLogoIn { from { opacity: 0; transform: perspective(600px) rotateX(24deg) scale(.66); filter: blur(10px) drop-shadow(0 0 0 rgba(255, 79, 154, 0)); } }
+/* the N draws itself like a pen stroke */
+/* each stroke starts when the one before has arrived, so the pen never leaves a stray dot */
+.sp-n path { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: waDraw 360ms var(--ease-in-out) both; }
+.sp-n path:nth-child(1) { animation-delay: 300ms; }
+.sp-n path:nth-child(2) { animation-delay: 650ms; animation-duration: 420ms; }
+.sp-n path:nth-child(3) { animation-delay: 1060ms; animation-duration: 260ms; }
+/* opacity 0 until the stroke starts: a round cap on a zero-length dash would otherwise show as a dot */
+@keyframes waDraw { 0% { opacity: 0; stroke-dashoffset: 1; } 2% { opacity: 1; } to { opacity: 1; stroke-dashoffset: 0; } }
+/* the plumbob drops in, lands with a little bounce, then floats while the app is still loading */
+.sp-bob { transform-box: fill-box; transform-origin: 50% 50%; animation: waBobIn 760ms var(--spring-pop) 820ms both, waBobFloat 2600ms ease-in-out 1600ms infinite; }
+@keyframes waBobIn { from { opacity: 0; transform: translateY(-16px) scale(.5) rotate(-25deg); } }
+@keyframes waBobFloat { 50% { transform: translateY(-1.6px); } }
+/* a light sweep across the tile */
+.sp-sheen { transform: translateX(-30px) skewX(-20deg); animation: waSheen 900ms var(--ease-out) 1180ms forwards; }
+@keyframes waSheen { to { transform: translateX(96px) skewX(-20deg); } }
+
+.sp-word { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.sp-word b { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .22em; text-transform: uppercase;
+  animation: waTrack 900ms var(--ease-out) 700ms both; }
+.sp-word span { margin-top: 6px; font-size: 34px; font-weight: 800; letter-spacing: -.02em; background: var(--grad);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: waReveal 760ms var(--ease-out) 820ms both; }
+@keyframes waTrack { from { opacity: 0; letter-spacing: .6em; } }
+@keyframes waReveal { from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateY(6px); } to { clip-path: inset(0 0 0 0); } }
+
+/* real progress (main.js init stages set --p 0..1); indeterminate shimmer until the first value arrives */
+.sp-bar { width: 220px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; margin-top: 8px;
+  animation: waRise 500ms var(--ease-out) 1000ms both; }
+.sp-bar i { display: block; height: 100%; border-radius: inherit; background: var(--grad); transform-origin: 0 50%;
+  transform: scaleX(var(--p, .08)); transition: transform 420ms var(--ease-out); }
+.sp-status { font-size: 12px; color: var(--faint); min-height: 16px; animation: waRise 500ms var(--ease-out) 1100ms both; }
+
+/* skipped (any key / click) or a reload in the same session: no show, just the bar */
+#splash.fast * { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+#splash.out { animation: waFadeOut 380ms var(--ease-out) forwards; pointer-events: none; }
+#splash.out .sp-center { animation: waSplashAway 380ms var(--ease-out) forwards; }
+@keyframes waSplashAway { to { transform: scale(1.06); filter: blur(6px); opacity: 0; } }
+
+/* the logo flies from the splash to Home (and Home -> editor to the top bar) with the View Transitions API.
+   Exactly one element may carry the name at a time. */
+body:not(:has(#splash)) .home:not(.hidden) .home-top .logo { view-transition-name: brand-logo; }
+body:not(:has(#splash)):has(#home.hidden) .brand .logo { view-transition-name: brand-logo; }
+::view-transition-group(brand-logo) { animation-duration: 620ms; animation-timing-function: var(--ease-out); }
+::view-transition-old(root) { animation: 260ms var(--ease-out) both waFadeOut; }
+::view-transition-new(root) { animation: 380ms var(--ease-out) 60ms both waEditorIn; }
+@keyframes waEditorIn { from { opacity: 0; transform: scale(.985); } }
+/* a project card grows into the stage (set on the clicked .proj .thumb just before the transition) */
+::view-transition-group(stage-hero) { animation-duration: 520ms; animation-timing-function: var(--ease-drawer); }
+
+/* Home: the first time it opens in a session, its parts rise in one after another (home.js adds .intro once
+   and sets --i on the direct children of .home-inner and .starts) */
+.home.intro .home-inner > *, .home.intro .starts > * { animation: waRise 460ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
+.proj .thumb img { transition: transform 700ms var(--ease-out); }
+.proj:hover .thumb img { transform: scale(1.05); }
+
+/* ------------------------------------------------------------------ 2. steps and panels */
+#left.entering .panel-head > * { animation: waRise var(--dur-3) var(--ease-out) both; }
+#left.entering .panel-head > p { animation-delay: 40ms; }
+#left.entering #panel-body > * { animation: waSlideIn var(--dur-3) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger) + 50ms); }
+#left.entering[data-dir="back"] #panel-body > * { animation-name: waSlideBack; }
+#left.entering .panel-foot { animation: waRise var(--dur-3) var(--ease-out) 120ms both; }
+@keyframes waSlideIn { from { opacity: 0; transform: translateX(14px); } }
+@keyframes waSlideBack { from { opacity: 0; transform: translateX(-14px); } }
+@keyframes waRise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes waFade { from { opacity: 0; } }
+@keyframes waFadeOut { to { opacity: 0; } }
+
+/* the right inspector cross-fades when the selection changes (inspector.js adds .swap for 200 ms) */
+#inspector.swap > * { animation: waFade 180ms var(--ease-out) both; }
+
+/* rail: one glowing pill glides to the active step instead of jumping */
+#rail { position: relative; }
+#rail > button { z-index: 1; }
+#rail.has-glider button.active { background: transparent; box-shadow: none; }   /* only once main.js draws the glider */
+.rail-glider { position: absolute; left: 8px; right: 8px; top: 0; height: var(--gh, 58px); border-radius: 12px; pointer-events: none; z-index: 0;
+  background: linear-gradient(160deg, rgba(255, 79, 154, .22), rgba(168, 85, 247, .17));
+  box-shadow: inset 0 0 0 1px rgba(255, 79, 154, .38), 0 8px 22px rgba(255, 79, 154, .12);
+  transform: translateY(var(--gy, 0px)); transition: transform 420ms var(--spring-soft), height 220ms var(--ease-out), opacity 160ms; }
+.rail-glider.off { opacity: 0; }
+#rail button.active svg { animation: waIconPop 460ms var(--spring-pop); }
+#rail button.done::after { animation: waPop 420ms var(--spring-pop) both; }
+@keyframes waIconPop { 35% { transform: scale(1.18) translateY(-1px); } }
+@keyframes waPop { from { opacity: 0; transform: scale(.3); } }
+
+/* dialogs: enter with a short rise, leave faster than they came (ui.js modal close adds .leaving) */
+#modal-root .backdrop { background: rgba(6, 4, 10, .6); backdrop-filter: blur(6px); animation: waFade 200ms var(--ease-out) both; }
+.modal { transform-origin: 50% 40%; animation: waModalIn 260ms var(--ease-out) both; box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px var(--hair), var(--lift); }
+@keyframes waModalIn { from { opacity: 0; transform: translateY(12px) scale(.965); } }
+#modal-root .backdrop.leaving { animation: waFadeOut 170ms var(--ease-exit) forwards; pointer-events: none; }
+#modal-root .backdrop.leaving .modal { animation: waModalOut 170ms var(--ease-exit) forwards; }
+@keyframes waModalOut { to { opacity: 0; transform: translateY(6px) scale(.98); } }
+
+.ctx-menu { transform-origin: top left; animation: waMenuIn 140ms var(--ease-out) both; }
+@keyframes waMenuIn { from { opacity: 0; transform: translateY(-4px) scale(.96); } }
+
+.toast, .choice-bar { animation: waToastIn 320ms var(--spring-soft) both; display: flex; align-items: center; gap: 9px; }
+.toast svg { width: 16px; height: 16px; }
+.toast.ok svg { color: var(--ok); }
+.toast.err svg { color: var(--danger); }
+@keyframes waToastIn { from { opacity: 0; transform: translateY(12px) scale(.96); filter: blur(3px); } }
+.choice-bar { position: relative; overflow: hidden; }
+.choice-bar::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; border-radius: 2px; background: var(--grad);
+  transform-origin: 0 50%; opacity: 0; transform: scaleX(0); }
+.choice-bar.counting::after { opacity: .7; animation: waCountdown var(--timeout, 12s) linear forwards; }
+.choice-bar:hover::after { animation-play-state: paused; }
+@keyframes waCountdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+.preview-bar:not(.hidden) { animation: waDropIn 360ms var(--spring-soft) both; }
+.vp-editing:not(.hidden) { animation: waDropIn 300ms var(--ease-out) both; }
+@keyframes waDropIn { from { opacity: 0; transform: translate(-50%, -10px); } to { transform: translate(-50%, 0); } }
+
+/* ------------------------------------------------------------------ 3. micro-interactions */
+/* explicit property lists instead of "transition: .15s" (which animates every property, layout included) */
+.btn, .icon-btn, .chipbtn, .seg button, #rail button, .tile, .furn, .pin, .sim-card, .add-tile, .start, .proj,
+.lib-item, .pick, .proj-item, .swatches button, .brand, .project-chip, .search, .text, select, textarea {
+  transition-property: background-color, border-color, color, box-shadow, transform, opacity, filter;
+  transition-duration: var(--dur-1);
+  transition-timing-function: var(--ease-out);
+}
+.btn:active, .icon-btn:active, .chipbtn:active, .seg button:active, .seg-inline button:active, .pin:active, .furn:active, .add-tile:active {
+  transform: scale(.97); transition-duration: var(--dur-press);
+}
+.tile:active, .start:active, .proj:active, .sim-card:active { transform: scale(.985); transition-duration: var(--dur-press); }
+
+/* primary: a light sweep on hover (primary buttons are few, so it never gets tiring) */
+.btn.primary { position: relative; overflow: hidden; isolation: isolate; }
+.btn.primary::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, .26) 50%, transparent 68%); transform: translateX(-130%); }
+.btn.primary:hover::after { transform: translateX(130%); transition: transform 800ms var(--ease-out); }
+.btn.primary:hover { box-shadow: 0 10px 30px rgba(255, 79, 154, .38), inset 0 1px 0 rgba(255, 255, 255, .28); }
+
+/* the Magic button: the same living border, but drawn by a rotating layer (compositor only, no repaint) */
+.btn.magic { animation: none; overflow: hidden; isolation: isolate; border: 0; padding: 0 15px; background: none; }
+.btn.magic::before { content: ''; position: absolute; left: 50%; top: 50%; width: 260%; aspect-ratio: 1; z-index: -2;
+  background: conic-gradient(from 0deg, #ff4f9a, #c04fe0, #8b5cf6, #ff8cc4, #ff4f9a);
+  transform: translate(-50%, -50%) rotate(0deg); animation: waSpin 5s linear infinite; }
+.btn.magic::after { content: ''; position: absolute; inset: 1.5px; border-radius: 8.5px; z-index: -1; background: var(--panel-3); transition: background-color var(--dur-1); }
+.btn.magic:hover::after { background: #2a1d33; }
+@keyframes waSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* one clean focus ring (keyboard only) */
+:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+.modal .btn:focus-visible, .proj:focus-visible, .proj-item:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 3px; }
+.btn.primary:focus-visible { box-shadow: 0 8px 24px rgba(255, 79, 154, .28); }
+
+/* toggles: the pill fades to the brand gradient, the knob springs across and stretches while pressed */
+.switch span { background: var(--panel-4); transition: border-color var(--dur-2) var(--ease-out); }
+.switch span::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; background: var(--grad); opacity: 0; transition: opacity var(--dur-2) var(--ease-out); }
+.switch input:checked + span { background: var(--panel-4); }
+.switch input:checked + span::before { opacity: 1; }
+.switch span::after { transition: transform 380ms var(--spring-pop), width 160ms var(--ease-out), background-color 160ms; }
+.switch:active span::after { width: 20px; }
+.switch:active input:checked + span::after { transform: translateX(12px); }
+.switch input:focus-visible + span { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+
+/* toggled icon buttons: a ring ripples once when switched on */
+.icon-btn.toggle.on { animation: waRipple 420ms var(--ease-out); }
+@keyframes waRipple { from { box-shadow: 0 0 0 0 rgba(255, 79, 154, .55); } to { box-shadow: 0 0 0 7px rgba(255, 79, 154, 0); } }
+
+/* sliders: gradient fill, the knob grows under the finger, the value lights up while dragging */
+input[type=range] { background: linear-gradient(90deg, var(--accent) 0%, #b44fe6 var(--fill, 0%), var(--panel-4) var(--fill, 0%)); }
+input[type=range]::-webkit-slider-thumb { transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out); }
+input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.12); }
+input[type=range]:active::-webkit-slider-thumb { transform: scale(1.24); box-shadow: 0 2px 10px rgba(0, 0, 0, .5), 0 0 0 5px rgba(255, 79, 154, .28), 0 0 18px rgba(255, 79, 154, .55); }
+.slider output, .tl-frame, .frame-chip, .summary .big, .num { font-variant-numeric: tabular-nums; }
+.slider:has(input:active) output { color: var(--accent-hi); }
+
+/* tiles: the picture leans in on hover; a freshly picked tile rings once and its check pops (class .pop is
+   added by the renderer ONLY for the item that was just picked - see design.md 3.4) */
+.tile .thumb { overflow: hidden; }
+.tile .thumb img { transition: transform 480ms var(--ease-out), opacity 240ms var(--ease-out); }
+.tile:hover .thumb img { transform: scale(1.045); }
+.tile.pop { animation: waRing 520ms var(--ease-out); }
+.tile.pop .tile-check { animation: waPop 440ms var(--spring-pop) both; }
+@keyframes waRing { from { box-shadow: 0 0 0 0 rgba(255, 79, 154, .65); } to { box-shadow: 0 0 0 10px rgba(255, 79, 154, 0); } }
+.face-tile .emoji { display: inline-block; }
+.face-tile:hover .emoji { animation: waWiggle 520ms var(--ease-out); }
+@keyframes waWiggle { 25% { transform: rotate(-10deg) scale(1.12); } 60% { transform: rotate(8deg) scale(1.12); } }
+/* motion tiles get a tiny moving wave (step-motion.js adds <svg class="mwave">) that only moves on hover */
+.mwave { width: 100%; height: 18px; color: var(--accent-hi); opacity: .75; }
+.mwave path { stroke-dasharray: 4 3; }
+.tile:hover .mwave path { animation: waDash 900ms linear infinite; }
+@keyframes waDash { to { stroke-dashoffset: -14; } }
+
+/* the active sim card's colour bar grows in */
+.sim-card::before { content: ''; position: absolute; left: -1px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--sim, var(--accent));
+  transform: scaleY(0); transition: transform 320ms var(--spring-soft); }
+.sim-card.active::before { transform: scaleY(1); }
+
+/* thumbnails fade in when loaded (renderers add onload="this.classList.add('in')") */
+img.fade { opacity: 0; transition: opacity 260ms var(--ease-out); }
+img.fade.in { opacity: 1; }
+
+/* the unsaved dot turns into a green tick for a moment after saving (main.save adds .saved for 1.4 s) */
+.dirty.on { animation: waPop 360ms var(--spring-pop); }
+.dirty.saved { opacity: 1; width: 14px; height: 14px; background: var(--ok) center / 10px no-repeat
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 5 5 9-10' fill='none' stroke='%23062b1c' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  box-shadow: 0 0 10px rgba(52, 211, 153, .7); animation: waPop 420ms var(--spring-pop), waFadeOut 400ms var(--ease-out) 1000ms forwards; }
+
+/* custom tooltips (tooltip.js) - label plus its keyboard shortcut */
+.wa-tip { position: fixed; z-index: 95; left: 0; top: 0; pointer-events: none; display: flex; align-items: center; gap: 10px; max-width: 300px;
+  padding: 6px 9px; border-radius: 9px; background: rgba(28, 24, 36, .97); border: 1px solid var(--hair-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .5);
+  font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--text); opacity: 0; transform: translate(var(--tx, 0), var(--ty, 0)) translateY(4px) scale(.98);
+  transition: opacity 120ms var(--ease-out), transform 160ms var(--ease-out); }
+.wa-tip.show { opacity: 1; transform: translate(var(--tx, 0), var(--ty, 0)); }
+.wa-tip.warm { transition-duration: 0ms; }
+.wa-tip .keys { display: flex; gap: 3px; margin-left: auto; }
+.wa-tip kbd, .kbd-hint, .palette kbd { font: 600 10px/1 var(--mono); padding: 3px 5px; border-radius: 5px; color: var(--muted);
+  background: linear-gradient(#2a2535, #221e2c); border: 1px solid var(--hair-2); border-bottom-width: 2px; }
+/* key tips: hold Ctrl for half a second and every button shows its key */
+.key-tip { position: fixed; z-index: 97; pointer-events: none; font: 700 10px/1 var(--mono); padding: 3px 5px; border-radius: 5px; color: #1a0f16;
+  background: #ffd3e6; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); animation: waPop 260ms var(--spring-pop) both; }
+
+/* ------------------------------------------------------------------ 4. celebrations */
+#fx { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 96; }
+.success-hero { display: grid; place-items: center; margin: 2px 0 12px; }
+.success-hero svg { width: 76px; height: 76px; overflow: visible; }
+.success-hero .halo { fill: rgba(255, 79, 154, .16); transform-box: fill-box; transform-origin: center; animation: waHalo 1000ms var(--ease-out) 460ms both; }
+.success-hero .disc { fill: url(#g-brand); transform-box: fill-box; transform-origin: center; animation: waPop 520ms var(--spring-pop) 60ms both; }
+.success-hero .ring { fill: none; stroke: #ffffff; stroke-opacity: .35; stroke-width: 1.5; stroke-dasharray: 1 2; stroke-dashoffset: 1;
+  transform-box: fill-box; transform-origin: center; transform: rotate(-90deg); animation: waDraw 620ms var(--ease-out) 160ms both; }
+.success-hero .tick { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 2; stroke-dashoffset: 1;
+  animation: waDraw 360ms var(--ease-out) 480ms both; }
+@keyframes waHalo { from { transform: scale(.6); opacity: 0; } 35% { opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+.success-hero + h3 { text-align: center; margin: 0 0 4px; font-size: 18px; letter-spacing: -.01em; animation: waRise 360ms var(--ease-out) 520ms both; }
+
+/* the "spell" flash when Magic makes an animation: a soft glow grows from the button (transform only) */
+.wa-spell { position: fixed; z-index: 94; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; pointer-events: none; left: var(--x); top: var(--y);
+  background: radial-gradient(circle, rgba(255, 140, 196, .55), rgba(139, 92, 246, .28) 45%, transparent 70%); will-change: transform, opacity;
+  animation: waSpell 950ms var(--ease-out) forwards; }
+@keyframes waSpell { from { transform: scale(.2); opacity: .95; } 55% { opacity: .7; } to { transform: scale(95); opacity: 0; } }
+
+/* the collectible card for the very first animation sent to the game */
+.first-card { position: relative; width: 300px; margin: 6px auto 4px; padding: 14px; border-radius: 18px; overflow: hidden;
+  background: linear-gradient(145deg, rgba(255, 79, 154, .22), rgba(139, 92, 246, .22)), var(--panel-2); border: 1px solid rgba(255, 140, 196, .45);
+  box-shadow: 0 20px 60px rgba(255, 79, 154, .25); animation: waCardIn 900ms var(--spring-pop) 200ms both; }
+.first-card img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 11px; display: block; }
+.first-card b { display: block; margin-top: 10px; font-size: 15px; }
+.first-card small { color: var(--muted); }
+.first-card .no { position: absolute; top: 22px; right: 22px; padding: 3px 8px; border-radius: 999px; background: rgba(0, 0, 0, .55); font: 700 10.5px var(--mono); color: #ffd3e6; }
+.first-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .22) 50%, transparent 62%);
+  transform: translateX(-110%); animation: waCardSheen 1400ms var(--ease-out) 900ms forwards; pointer-events: none; }
+@keyframes waCardIn { from { opacity: 0; transform: perspective(700px) rotateY(-28deg) rotateX(10deg) scale(.85); } }
+@keyframes waCardSheen { to { transform: translateX(110%); } }
+
+/* ------------------------------------------------------------------ 5. stage overlays */
+.vp-letterbox::before, .vp-letterbox::after { content: ''; position: absolute; left: 0; right: 0; height: 7%; background: #000; z-index: 1; pointer-events: none;
+  transform: scaleY(0); transition: transform 520ms var(--ease-in-out); }
+.vp-letterbox::before { top: 0; transform-origin: top; }
+.vp-letterbox::after { bottom: 0; transform-origin: bottom; }
+body.cinematic .vp-letterbox::before, body.cinematic .vp-letterbox::after { transform: scaleY(1); }
+body.cinematic .vp-hud, body.cinematic .vp-cam { opacity: 0; transition: opacity 300ms; }
+/* fewer blurred layers over the live canvas: the hint row does not need a blur */
+.vp-cam { backdrop-filter: none; background: rgba(16, 13, 22, .78); }
+.light-pop { position: absolute; top: 58px; right: 14px; z-index: 4; width: 250px; padding: 8px; border-radius: 14px; background: var(--glass);
+  backdrop-filter: var(--glass-blur); border: 1px solid var(--hair-2); box-shadow: 0 20px 50px rgba(0, 0, 0, .5); transform-origin: top right;
+  animation: waMenuIn 160ms var(--ease-out) both; }
+.light-pop button { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; width: 100%; padding: 7px; border: 0; border-radius: 10px;
+  background: transparent; text-align: left; cursor: pointer; color: var(--text); }
+.light-pop button:hover { background: rgba(255, 255, 255, .05); }
+.light-pop button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.light-pop .sw { width: 34px; height: 34px; border-radius: 9px; box-shadow: inset 0 0 0 1px var(--hair-2); }
+.light-pop b { display: block; font-size: 12.5px; }
+.light-pop small { color: var(--muted); font-size: 11px; }
+
+/* ------------------------------------------------------------------ 6. command palette (palette.js) */
+.palette-back { position: fixed; inset: 0; z-index: 90; background: rgba(6, 4, 10, .35); display: flex; justify-content: center; align-items: flex-start;
+  padding-top: 14vh; animation: waFade 140ms var(--ease-out) both; }
+.palette { width: min(640px, 92vw); max-height: 62vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px;
+  background: rgba(22, 19, 30, .94); backdrop-filter: blur(18px) saturate(1.4); border: 1px solid var(--hair-2);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .65), 0 0 0 1px rgba(255, 79, 154, .08), var(--lift); transform-origin: 50% 0; animation: waPaletteIn 180ms var(--ease-out) both; }
+@keyframes waPaletteIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+.palette-in { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; border-bottom: 1px solid var(--hair); }
+.palette-in svg { width: 18px; height: 18px; color: var(--muted); }
+.palette-in input { flex: 1; height: 100%; border: 0; outline: none; background: transparent; font-size: 15px; font-weight: 500; }
+.palette-in input::placeholder { color: var(--faint); }
+.palette-list { list-style: none; margin: 0; padding: 6px; overflow-y: auto; scroll-padding: 34px 0 8px; }
+.palette-group { padding: 10px 10px 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
+.palette-item { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; height: 42px; padding: 0 10px; border-radius: 10px; cursor: pointer; color: var(--text); }
+.palette-item .ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: rgba(255, 255, 255, .05); color: var(--muted); }
+.palette-item .t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.palette-item .t small { margin-left: 8px; color: var(--faint); font-weight: 500; }
+.palette-item mark { background: none; color: var(--accent-hi); }
+.palette-item .keys { display: flex; gap: 3px; }
+.palette-item[aria-selected="true"] { background: linear-gradient(90deg, rgba(255, 79, 154, .16), rgba(139, 92, 246, .10)); box-shadow: inset 0 0 0 1px rgba(255, 79, 154, .28); }
+.palette-item[aria-selected="true"] .ic { background: var(--grad); color: #fff; }
+.palette-empty { padding: 26px; text-align: center; color: var(--muted); }
+.palette-foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--hair); color: var(--faint); font-size: 11px; }
+.palette-foot span { display: flex; align-items: center; gap: 5px; }
+.search-pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px 0 11px; border-radius: 10px; border: 1px solid var(--hair-2);
+  background: rgba(255, 255, 255, .03); color: var(--faint); cursor: pointer; font-weight: 600; }
+.search-pill:hover { color: var(--text); border-color: var(--hair-3); }
+
+/* ------------------------------------------------------------------ 7. empty states and skeletons */
+.skel { position: relative; overflow: hidden; background: var(--panel-2); border-radius: 10px; }
+.skel::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .055), transparent); animation: waShimmer 1400ms ease-in-out infinite; }
+@keyframes waShimmer { to { transform: translateX(100%); } }
+.skel-line { height: 10px; border-radius: 6px; margin: 7px 0; }
+.skel-card { border-radius: 16px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.skel-card .skel { border-radius: 0; aspect-ratio: 16 / 10; }
+.skel-card .meta { padding: 12px 13px; }
+.empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 26px 18px; border-radius: 16px;
+  border: 1px dashed var(--line-2); background: radial-gradient(120% 90% at 50% 0%, rgba(255, 79, 154, .06), transparent 60%); }
+.empty-state svg.art { width: 84px; height: 64px; color: var(--accent-hi); }
+.empty-state b { font-size: 14px; }
+.empty-state p { margin: 0; max-width: 360px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.empty-state .btn { margin-top: 6px; }
+.empty-state .art .float { animation: waFloat 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes waFloat { 50% { transform: translateY(-3px); } }
+
+/* ------------------------------------------------------------------ 8. typography & surface refinements */
+h1, h2, .panel-head h2, .modal header h2 { letter-spacing: -.02em; }
+.section-title { font-size: 10.5px; letter-spacing: .09em; }
+.card, .sim-card, .tile, .toggle-row, .layer, .start, .proj, .summary, .insp-head { box-shadow: var(--lift); }
+.seg { background: var(--glass); backdrop-filter: var(--glass-blur); border-color: var(--hair-2); }
+/* the active TOOL is a state, not a call to action: neutral pill, the brand gradient stays for the one main button */
+#tool-seg button.active { background: rgba(255, 255, 255, .10); color: #fff; box-shadow: inset 0 0 0 1px var(--hair-3), 0 4px 14px rgba(0, 0, 0, .25); }
+#tool-seg button.active svg { color: var(--accent-hi); }
+
+/* ------------------------------------------------------------------ 9. reduced motion (OS setting or the in-app switch) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important;
+    transition: none !important; scroll-behavior: auto !important; }
+  .toast, .modal, .palette, #splash.out { animation: waFade 120ms linear both !important; }
+  .skel::after, .btn.magic::before { animation: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+html.reduce-motion .skel::after, html.reduce-motion .btn.magic::before { animation: none !important; }
+
+/* ------------------------------------------------------------------ 10. additions (R1-C) */
+/* the splash bar shimmers until the first real progress arrives; reduced motion shows a still logo and bar */
+#splash:not(.has-p) .sp-bar i { transform: translateX(-60%) scaleX(.35); animation: waIndet 1.3s var(--ease-in-out) infinite; }
+@keyframes waIndet { to { transform: translateX(200%) scaleX(.35); } }
+#splash.still *, #splash.still { animation: none !important; }
+#splash.still .sp-n path { stroke-dashoffset: 0; opacity: 1; }
+.toast > span { min-width: 0; }
+.toast svg { flex: none; }
+/* the pick of the Magic dialog's tiles and motion tiles pops like the pose tiles */
+.motion-tile.pop { animation: waRing 520ms var(--ease-out); }
+/* a compact empty state inside a step */
+.empty-state.compact { padding: 14px 16px; margin: 10px 0 4px; }
+.empty-state.compact b { font-size: 13.5px; }
+/* the selected look in the Light popover, and the Light button while its popover is open */
+#btn-light.on { color: #fff; background: var(--accent-soft); border-color: var(--accent-line); }
+@media (prefers-reduced-motion: reduce) { #splash:not(.has-p) .sp-bar i { animation: none !important; transform: scaleX(.35); } }
+html.reduce-motion #splash:not(.has-p) .sp-bar i { animation: none !important; transform: scaleX(.35); }
+/* key chips in Key pose and Save, only where there is room */
+.kbd-hint { margin-left: 4px; padding: 2px 5px; font-size: 9.5px; }
+@media (max-width: 1499px) { .kbd-hint { display: none; } }

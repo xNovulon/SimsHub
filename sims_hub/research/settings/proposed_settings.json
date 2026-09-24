@@ -1,0 +1,45 @@
+{
+  "_note": "Proposal only - nothing was applied. Values read 2026-09-23/24 from the user's files. 'current' = value on disk, 'suggested' = lag/load-oriented value for a 16 GB RAM / RTX 4050 6 GB laptop with a very large CC library.",
+  "ConfigOverride/GraphicsRules.sgr": {
+    "current": "Simp4Sims 'SGR Full 19-08-2021' standalone rules (49,084 bytes, mtime 2025-12-11); does not include SimpsSetters.sgr/MySetters.sgr nor stock Ts4CommonRules.sgr",
+    "suggested": "move ConfigOverride\\GraphicsRules.sgr (and the orphaned MySetters.sgr / SimpsSetters.sgr) out of ConfigOverride so the stock E:\\The Sims 4\\Game\\Bin\\GraphicsRules.sgr is used; keep a backup copy"
+  },
+  "Options.ini": {
+    "simquality":              {"current": 4,   "suggested": 3,  "why": "VeryHigh + override = 2048px sim textures at every LOD; High (stock) = 1024/512/256/128"},
+    "useuncompressedtextures": {"current": 1,   "suggested": 0,  "why": "uncompressed sim textures cost VRAM/RAM on a 6 GB GPU / 16 GB RAM machine"},
+    "lightingquality":         {"current": 4,   "suggested": 3,  "why": "override VeryHigh = 5120 shadow map (stock 2048); stock High = 1024 x 3 cascades"},
+    "generalreflections":      {"current": 3,   "suggested": 1,  "why": "High re-renders the scene in mirrors/water with 8-12x the stock far plane under the override"},
+    "edgesmoothing":           {"current": 3,   "suggested": 1,  "why": "override writes FSAALevel 512 for High (stock 8); Low or Off is much cheaper"},
+    "visualeffects":           {"current": 3,   "suggested": 2,  "why": "GPU particle density 1.0 -> 0.7, no high-detail weather"},
+    "viewdistance":            {"current": 3,   "suggested": 3,  "why": "keep High only after removing the override (stock far clip 1000/1500 m vs override 9999 m); set 1 (Low) if open-world lag persists"},
+    "terrainquality":          {"current": 3,   "suggested": 2,  "why": "minor; override forces TerrainLODBoost 6 on every level"},
+    "objectquality":           {"current": 3,   "suggested": 3,  "why": "keep High after override removal (stock LOD bias 0.6666, texture threshold 1024); drop to 2 if VRAM stutter"},
+    "sceneresolution":         {"current": 3,   "suggested": 3,  "why": "native; 2 (= 25/32 scale) is the fallback if GPU-bound"},
+    "frameratelimit":          {"current": 240, "suggested": 60, "why": "vsync is off; a 240 cap lets menus/CAS/loading screens run the laptop GPU flat out (heat, shared power budget)"},
+    "fullscreen":              {"current": 1,   "suggested": "pick one mode in-game", "why": "both fullscreen=1 and windowedfullscreen=1 are set; the stock default is both 0"},
+    "windowedfullscreen":      {"current": 1,   "suggested": "pick one mode in-game"},
+    "maxprotectedsims":        {"current": 1,   "suggested": 0,  "why": "option maps to MaxProtectedSimCount 150 (1) vs 80 (0) in the rules files; fewer protected sims = more culling = smaller world population"},
+    "onlineaccess":            {"current": 1,   "suggested": 0,  "why": "optional; ConnectionStatus.txt shows the client stuck in STATE_CONNECTING / kOnlineServicesTemporarilyUnavailable"}
+  },
+  "GameConfig.ini": {
+    "enableasyncculling":        {"current": 1, "suggested": 1, "why": "async culling is already on; nothing more to enable"},
+    "enableamp":                 {"current": 1, "suggested": 1, "why": "undocumented; leave"},
+    "useappdataforscratch":      {"current": 1, "suggested": 1, "why": "undocumented; leave"},
+    "enablefeaturepreviewbuild": {"current": 3, "suggested": 3, "why": "undocumented value; leave"}
+  },
+  "Mods_parked/scripts/mc_settings.cfg": {
+    "Population_MaxSimsInZone":     {"current": 20,    "default": 20,    "suggested": 15},
+    "Population_BypassCulling":     {"current": false, "default": false, "suggested": false},
+    "RelationshipCullingType":      {"current": "E",   "default": "E",   "suggested": "E"},
+    "Cleaner_CleanRelationships":   {"current": "N,A", "default": "N,A", "suggested": "N,A"},
+    "Population_RandomUseTraySimPercent": {"current": 50, "default": 0, "suggested": 0},
+    "Logging_Enabled":              {"current": true,  "default": true,  "suggested": false},
+    "Tuner_ArchiveInteractions":    {"current": false, "default": false, "suggested": false}
+  },
+  "saves/WickedWhimsMod/settings_profiles (per-save)": {
+    "autonomy_random_frequency_modifier":      {"WW_default": 1.25, "profiles_seen": [1.8, 1.25], "suggested": 1.8},
+    "autonomy_cooldown_random_sex_min/max":    {"WW_default": [100, 1800], "profiles_seen": [[900, 3600], [100, 1800]], "suggested": [900, 3600]},
+    "loading_sex_autonomy_switch":             {"WW_default": 1, "profiles_seen": [0, 1], "suggested": 0},
+    "window_peeping_npcs_flag / creep_npc_switch": {"current": [1, 1], "suggested": [0, 0], "why": "each spawns extra NPCs (spawn chance 0.35 / 0.3) and window_peeping_create_premade_sims=1 adds sims to the save"}
+  }
+}

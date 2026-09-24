@@ -1,0 +1,8 @@
+ts4prof  23 s, 497 samples, python tick p50 8.1 ms / p95 13.5 ms / max 52.9 ms, 1 ticks > 50 ms, sim debt 0.0 -> 0.0 min
+game (EA code) self: 37.2% of sampled python time
+script mod                                     self%   incl% alarm ms/s   alarms alarm max
+fake_heavy.ts4script                            49.3    49.3     175.50      900      32.4
+fake_light.ts4script                            13.5    13.5      50.35      900      35.1
+hot mod functions:
+    245  fake_heavy.ts4script           burn  (E:\Builds\Heavy\heavy\__init__.py:5)
+     67  fake_light.ts4script           burn  (/Users/x/light.py:5)

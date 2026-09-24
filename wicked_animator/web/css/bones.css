@@ -1,0 +1,98 @@
+/* The Face tool, the All bones list and face keys (R1-B). Tokens come from app.css / motion.css, with fallbacks. */
+
+/* ---------------------------------------------------------------- the All bones list (inspector) */
+.bone-list-wrap > summary { cursor: pointer; list-style: none; user-select: none; }
+.bone-list-wrap > summary::-webkit-details-marker { display: none; }
+.bone-list-wrap > summary svg { width: 14px; height: 14px; margin-right: 6px; flex: none; }
+.bone-list-wrap > summary .count { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.bone-list { display: flex; flex-direction: column; gap: 6px; }
+.bone-search {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 2px 0 4px;
+  background: var(--panel, #16121d);
+}
+.bone-search svg { width: 15px; height: 15px; color: var(--faint, #8b83a0); flex: none; }
+.bone-search input { flex: 1; min-width: 0; }
+.bone-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.bone-chips .chip { cursor: pointer; font-weight: 600; transition-property: background-color, border-color, color; transition-duration: var(--dur-1, .15s); }
+.bone-chips .chip.on { background: var(--accent-soft, rgba(255, 79, 154, .13)); border-color: var(--accent-line, rgba(255, 79, 154, .4)); color: #ffd3e6; }
+.bone-groups { display: flex; flex-direction: column; gap: 2px; max-height: 360px; overflow: auto; overscroll-behavior: contain; padding-right: 2px; }
+.bone-group > summary {
+  display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 7px; cursor: pointer; list-style: none;
+  font-size: 11.5px; font-weight: 700; color: var(--muted, #b6aec8); user-select: none;
+}
+.bone-group > summary::-webkit-details-marker { display: none; }
+.bone-group > summary::before {
+  content: ''; width: 6px; height: 6px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor;
+  transform: rotate(-45deg); transition: transform .18s var(--ease-out, ease-out); margin: 0 2px 0 1px;
+}
+.bone-group[open] > summary::before { transform: rotate(45deg); }
+.bone-group > summary:hover { background: var(--panel-3, #211d2a); color: var(--text, #f3eefb); }
+.bone-group > summary .n { margin-left: auto; font: 600 10.5px var(--mono, monospace); color: var(--faint, #8b83a0); }
+/* rows bloom in only when you open a group (not on every redraw of the panel) */
+.bone-group.blooming[open] > .bone-row, .bone-group.blooming[open] > .bone-sub { animation: bloom 220ms var(--ease-out, ease-out) both; }
+.bone-sub { padding: 6px 8px 2px 20px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--faint, #8b83a0); }
+.bone-row {
+  /* the plain name comes first; the rig name takes what is left (and is cut short in a narrow panel) */
+  display: grid; grid-template-columns: 12px minmax(0, max-content) minmax(0, 1fr) auto; align-items: center; gap: 7px; width: 100%;
+  min-height: 26px; padding: 3px 8px 3px 14px; border: 0; border-radius: 7px; background: transparent; color: var(--text, #f3eefb);
+  font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+  transition-property: background-color, box-shadow, color; transition-duration: var(--dur-1, .15s);
+}
+.bone-row:hover, .bone-row.kb { background: var(--panel-3, #211d2a); }
+.bone-row.hot { background: var(--accent-soft, rgba(255, 79, 154, .13)); }
+.bone-row.on { box-shadow: inset 2px 0 0 var(--accent, #ff4f9a); background: var(--accent-soft, rgba(255, 79, 154, .13)); animation: boneGlow 2.4s ease-in-out infinite; }
+.bone-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bone-row code, .raw-name { font-family: var(--mono, monospace); font-size: 10.5px; color: var(--faint, #8b83a0); white-space: nowrap; }
+.bone-row code { overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.raw-name { display: inline-block; margin-top: 2px; cursor: copy; }
+.raw-name:hover { text-decoration: underline; color: var(--muted, #b6aec8); }
+.insp-head > div:last-child { min-width: 0; display: flex; flex-direction: column; }
+
+/* status dots: keyed here (pink), animated (violet ring), moves by itself (cyan badge), at rest (faint) */
+.bone-row .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .12); }
+.bone-row .dot.keyed { background: var(--accent, #ff4f9a); box-shadow: 0 0 6px rgba(255, 79, 154, .6); }
+.bone-row .dot.animated { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent-2, #a855f7); }
+.bone-row .dot.auto { background: rgba(94, 234, 212, .55); }
+.bone-row .badge { font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--panel-3, #211d2a); color: var(--faint, #8b83a0); }
+.bone-row .badge.auto { background: rgba(94, 234, 212, .14); color: #7ff0dc; border: 1px solid rgba(94, 234, 212, .35); }
+@keyframes boneGlow { 0%, 100% { box-shadow: inset 2px 0 0 var(--accent, #ff4f9a); } 50% { box-shadow: inset 2px 0 0 var(--accent, #ff4f9a), 0 0 12px rgba(255, 79, 154, .22); } }
+@keyframes bloom { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+
+/* ---------------------------------------------------------------- inspector cards */
+.sub-title { margin: 10px 0 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--faint, #8b83a0); }
+.ease-dot.face { background: #ff7ab6; transform: rotate(45deg); border-radius: 2px; }
+.face-key-card { border-color: rgba(255, 122, 182, .35); }
+
+/* ---------------------------------------------------------------- the Face step */
+.face-go svg { width: 18px; height: 18px; }
+.face-go.on { box-shadow: 0 0 0 2px rgba(255, 122, 182, .45), 0 8px 26px rgba(255, 79, 154, .25); }
+.face-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.face-legend .chip { display: inline-flex; align-items: center; gap: 6px; border-color: color-mix(in srgb, var(--c) 45%, transparent); color: var(--text, #f3eefb); }
+.face-legend .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
+.face-keys { display: flex; flex-wrap: wrap; gap: 6px; }
+.face-keys .chip { cursor: pointer; font: 600 10.5px var(--mono, monospace); transition-property: background-color, border-color, color; transition-duration: var(--dur-1, .15s); }
+.face-keys .chip:hover { color: var(--text, #f3eefb); border-color: var(--line-2, #3a3446); }
+.face-keys .chip.face-only { background: rgba(255, 122, 182, .12); border-color: rgba(255, 122, 182, .45); color: #ffc2dc; }
+.face-keys .chip.on { box-shadow: 0 0 0 1.5px #fff inset; color: #fff; }
+.more-sliders { margin-top: 8px; }
+.more-sliders > summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--muted, #b6aec8); padding: 4px 0; }
+.more-sliders > summary:hover { color: var(--text, #f3eefb); }
+
+/* ---------------------------------------------------------------- the Face tool's vignette over the stage */
+#viewport-wrap::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, .35) 100%);
+  transition: opacity 300ms var(--ease-out, ease-out);
+}
+#viewport-wrap.face-mode::before { opacity: 1; }
+
+/* ---------------------------------------------------------------- the Send result's slots (filled by other features) */
+.hero-slot:empty, .extra-slot:empty { display: none; }
+
+/* ---------------------------------------------------------------- reduced motion: nothing moves */
+@media (prefers-reduced-motion: reduce) {
+  .bone-row.on, .bone-group.blooming[open] > .bone-row, .bone-group.blooming[open] > .bone-sub { animation: none; }
+  .bone-group > summary::before, #viewport-wrap::before { transition: none; }
+}
+html.reduce-motion .bone-row.on, html.reduce-motion .bone-group.blooming[open] > .bone-row, html.reduce-motion .bone-group.blooming[open] > .bone-sub { animation: none; }
+html.reduce-motion .bone-group > summary::before, html.reduce-motion #viewport-wrap::before { transition: none; }

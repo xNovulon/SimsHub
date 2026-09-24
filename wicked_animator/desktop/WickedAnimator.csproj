@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Novulon's Wicked Animator - the desktop app (a real Windows window around the animator).
+       Build: powershell -ExecutionPolicy Bypass -File desktop\build.ps1  (works offline: the WebView2 parts are in lib\) -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Wicked Animator</AssemblyName>
+    <RootNamespace>WickedAnimator</RootNamespace>
+    <ApplicationIcon>..\web\img\logo.ico</ApplicationIcon>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RollForward>LatestMajor</RollForward>
+    <DisableTransitiveFrameworkReferenceDownloads>true</DisableTransitiveFrameworkReferenceDownloads>
+    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Product>Novulon's Wicked Animator</Product>
+    <AssemblyTitle>Novulon's Wicked Animator</AssemblyTitle>
+    <Description>Novulon's Wicked Animator</Description>
+    <Company>Novulon</Company>
+    <Copyright>Novulon</Copyright>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Microsoft's WebView2 SDK 1.0.3179.45 (redistributable, signed by Microsoft) -->
+    <Reference Include="Microsoft.Web.WebView2.Core"><HintPath>lib\Microsoft.Web.WebView2.Core.dll</HintPath></Reference>
+    <Reference Include="Microsoft.Web.WebView2.WinForms"><HintPath>lib\Microsoft.Web.WebView2.WinForms.dll</HintPath></Reference>
+    <EmbeddedResource Include="lib\WebView2Loader.dll" LogicalName="WebView2Loader.dll" />
+    <EmbeddedResource Include="..\web\img\logo.ico" LogicalName="logo.ico" />
+    <EmbeddedResource Include="logo.png" LogicalName="logo.png" />
+  </ItemGroup>
+</Project>

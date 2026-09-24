@@ -1,0 +1,50 @@
+{
+ "wall_s": 22.536184800000004,
+ "sampler": "WatchdogSampler",
+ "samples": 497,
+ "entry_artifacts": 0,
+ "sampler_errors": 0,
+ "main_thread_in_python_pct": 35.223245924875975,
+ "game_self_pct": 37.223340040241446,
+ "ticks": 900,
+ "tick_ms_p50": 8.130999999999666,
+ "tick_ms_p95": 13.463400000000014,
+ "tick_ms_max": 52.93879999999995,
+ "ticks_over_50ms": 1,
+ "sim_debt_min_start": 0.0,
+ "sim_debt_min_end": 0.0,
+ "mods": [
+  {
+   "owner": "fake_heavy.ts4script",
+   "self_pct": 49.29577464788732,
+   "incl_pct": 49.29577464788732,
+   "alarm_ms_per_s": 175.50091264782407,
+   "alarm_calls": 900,
+   "alarm_max_ms": 32.37350000000028
+  },
+  {
+   "owner": "fake_light.ts4script",
+   "self_pct": 13.480885311871228,
+   "incl_pct": 13.480885311871228,
+   "alarm_ms_per_s": 50.35480983453732,
+   "alarm_calls": 900,
+   "alarm_max_ms": 35.09469999999837
+  }
+ ],
+ "hot_functions": [
+  {
+   "owner": "fake_heavy.ts4script",
+   "func": "burn",
+   "file": "E:\\Builds\\Heavy\\heavy\\__init__.py",
+   "line": 5,
+   "samples": 245
+  },
+  {
+   "owner": "fake_light.ts4script",
+   "func": "burn",
+   "file": "/Users/x/light.py",
+   "line": 5,
+   "samples": 67
+  }
+ ]
+}

@@ -1,0 +1,239 @@
+/* "Copy real moves" - the capture studio (web/js/capture.js). Full screen, dark glass, the sim's colour as the accent
+   (--sim). Uses the Velvet Stage tokens from motion.css with fallbacks. */
+
+.cap-backdrop { place-items: stretch !important; padding: 18px; background: rgba(6, 4, 10, .78) !important; }
+.cap-studio {
+  --sim: #ff4f9a;
+  --sim-soft: color-mix(in srgb, var(--sim) 16%, transparent);
+  --sim-line: color-mix(in srgb, var(--sim) 45%, transparent);
+  position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 0;
+  width: 100%; height: 100%; min-height: 0; overflow: hidden; outline: none;
+  border-radius: 22px; border: 1px solid var(--hair-2, rgba(255, 255, 255, .11));
+  background:
+    radial-gradient(1200px 520px at 18% -10%, color-mix(in srgb, var(--sim) 13%, transparent), transparent 60%),
+    radial-gradient(900px 500px at 110% 110%, rgba(139, 92, 246, .12), transparent 60%),
+    linear-gradient(180deg, rgba(22, 18, 30, .96), rgba(12, 10, 17, .98));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .05);
+  opacity: 0; transform: scale(.985) translateY(6px);
+  transition: opacity var(--dur-3, .3s) var(--ease-out, ease-out), transform var(--dur-3, .3s) var(--ease-out, ease-out);
+}
+.cap-studio.in { opacity: 1; transform: none; }
+.cap-backdrop.leaving .cap-studio { opacity: 0; transform: scale(.99); transition-duration: .16s; transition-timing-function: var(--ease-exit, ease-in); }
+
+/* ---------------------------------------------------------------- top bar */
+.cap-top { display: flex; align-items: center; gap: 18px; padding: 14px 16px 12px 18px; border-bottom: 1px solid var(--hair, rgba(255, 255, 255, .07)); }
+.cap-brand { display: flex; align-items: center; gap: 12px; min-width: 230px; }
+.cap-brand b { display: block; font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+.cap-brand span:not(.cap-brand-icon) { font-size: 11.5px; color: var(--muted, #a39bb2); }
+.cap-brand-icon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--sim), color-mix(in srgb, var(--sim) 45%, #8b5cf6));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--sim) 40%, transparent), inset 0 1px 0 rgba(255, 255, 255, .3); }
+.cap-brand-icon svg { width: 20px; height: 20px; }
+.cap-steps { flex: 1; display: flex; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.cap-step { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; color: var(--faint, #8b83a0); font-size: 12px; font-weight: 700;
+  transition: color var(--dur-2, .22s), background var(--dur-2, .22s); }
+.cap-step-dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: rgba(255, 255, 255, .06); border: 1px solid var(--hair-2, rgba(255, 255, 255, .11)); transition: .22s; }
+.cap-step.on { color: var(--text, #f2eef8); background: var(--sim-soft); }
+.cap-step.on .cap-step-dot { background: var(--sim); border-color: transparent; color: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--sim) 22%, transparent); }
+.cap-step.done { color: var(--muted, #a39bb2); }
+.cap-step.done .cap-step-dot { background: color-mix(in srgb, var(--sim) 35%, #221c2c); color: #fff; border-color: transparent; }
+.cap-step + .cap-step::before { content: ''; width: 18px; height: 1px; background: var(--hair-2, rgba(255, 255, 255, .11)); margin-right: 2px; }
+.cap-x { flex: none; }
+
+/* ---------------------------------------------------------------- body: stage + side */
+.cap-body { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 14px; padding: 14px; min-height: 0; }
+.cap-stage { position: relative; min-height: 0; border-radius: 16px; overflow: hidden; background: #09070d; border: 1px solid var(--hair, rgba(255, 255, 255, .07));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .4), inset 0 30px 60px rgba(0, 0, 0, .35); }
+.cap-media { position: absolute; inset: 0; display: grid; place-items: center; }
+.cap-media > video, .cap-media > img, .cap-media > canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cap-stage.mirror .cap-media, .cap-stage.mirror .cap-overlay { transform: scaleX(-1); }
+.cap-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.cap-drop { position: absolute; inset: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  border-radius: 14px; border: 1.5px dashed color-mix(in srgb, var(--sim) 40%, rgba(255, 255, 255, .15)); background: rgba(255, 255, 255, .015);
+  color: var(--muted, #a39bb2); transition: background var(--dur-2, .22s), border-color var(--dur-2, .22s), transform var(--dur-2, .22s) var(--ease-out, ease-out); }
+.cap-drop:hover, .cap-drop.over { background: var(--sim-soft); border-color: var(--sim); color: var(--text, #f2eef8); }
+.cap-drop.over { transform: scale(.99); }
+.cap-drop b { font-size: 17px; color: var(--text, #f2eef8); }
+.cap-drop-icon { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; color: var(--sim); background: var(--sim-soft); margin-bottom: 6px; }
+.cap-drop-icon svg { width: 30px; height: 30px; }
+
+/* the scan line that sweeps while reading */
+.cap-scan { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.cap-scan::before { content: ''; position: absolute; left: 0; right: 0; height: 90px; top: -90px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--sim) 12%, transparent) 70%, color-mix(in srgb, var(--sim) 70%, #fff) 99%, transparent);
+  animation: cap-scan 2.2s linear infinite; }
+@keyframes cap-scan { to { transform: translateY(calc(100vh)); } }
+
+/* progress ring */
+.cap-ring { position: absolute; right: 16px; top: 16px; width: 112px; height: 112px; display: grid; place-items: center; pointer-events: none;
+  border-radius: 50%; background: rgba(12, 9, 18, .62); backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+.cap-ring-svg { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); transform: rotate(-90deg); }
+.cap-ring-svg circle { fill: none; stroke-width: 6; }
+.cap-ring-svg .bg { stroke: rgba(255, 255, 255, .08); }
+.cap-ring-svg .fg { stroke: var(--sim); stroke-linecap: round; filter: drop-shadow(0 0 6px var(--sim)); transition: stroke-dashoffset .15s linear; }
+.cap-ring-text { position: relative; text-align: center; line-height: 1.1; }
+.cap-ring-text b { display: block; font-size: 22px; font-weight: 800; }
+.cap-ring-text span { display: block; font-size: 9.5px; color: var(--muted, #a39bb2); max-width: 78px; margin-top: 3px; }
+
+/* the 3-2-1 count-in */
+.cap-count { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; background: radial-gradient(circle, rgba(0, 0, 0, .35), transparent 60%); }
+.cap-count b { font-size: 160px; font-weight: 800; line-height: 1; color: #fff; text-shadow: 0 0 40px var(--sim), 0 10px 40px rgba(0, 0, 0, .6); }
+.cap-count b.pop { animation: cap-count .9s var(--ease-out, ease-out) both; }
+@keyframes cap-count { 0% { transform: scale(1.6); opacity: 0; } 18% { transform: scale(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: scale(.85); opacity: 0; } }
+
+/* chips: plain warnings and live checks */
+.cap-chips { position: absolute; left: 14px; bottom: 14px; right: 140px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.cap-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; pointer-events: auto;
+  background: rgba(16, 12, 22, .78); backdrop-filter: blur(8px); border: 1px solid var(--hair-2, rgba(255, 255, 255, .11)); color: var(--text, #f2eef8);
+  animation: cap-chip-in var(--dur-2, .22s) var(--ease-out, ease-out); }
+.cap-chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--muted, #a39bb2); }
+.cap-chip.ok::before { background: var(--ok, #34d399); box-shadow: 0 0 8px var(--ok, #34d399); }
+.cap-chip.warn { border-color: rgba(251, 191, 36, .4); }
+.cap-chip.warn::before { background: var(--warn, #fbbf24); }
+.cap-chip.soft::before { background: var(--sim); box-shadow: 0 0 8px var(--sim); }
+.cap-chip.leaving { opacity: 0; transform: translateY(4px); transition: .18s; }
+.cap-chip-btn { border: 0; background: var(--sim-soft); color: #fff; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.cap-chip-btn:hover { background: var(--sim); }
+@keyframes cap-chip-in { from { opacity: 0; transform: translateY(6px) scale(.97); } }
+
+/* ---------------------------------------------------------------- side: preview + panel */
+.cap-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.cap-preview { position: relative; flex: 0 0 auto; height: 40%; min-height: 200px; border-radius: 16px; overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--sim) 10%, #1b1624), #0c0a11 72%); border: 1px solid var(--hair, rgba(255, 255, 255, .07)); }
+.cap-preview-canvas { width: 100%; height: 100%; display: block; }
+.cap-preview-tag { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: rgba(10, 8, 14, .6); backdrop-filter: blur(6px); }
+.cap-preview-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sim); box-shadow: 0 0 10px var(--sim); }
+.cap-panel { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
+.cap-card { padding: 14px 15px; border-radius: 14px; background: rgba(255, 255, 255, .03); border: 1px solid var(--hair, rgba(255, 255, 255, .07)); box-shadow: var(--lift, inset 0 1px 0 rgba(255, 255, 255, .045)); }
+.cap-card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 800; letter-spacing: -.1px; }
+.cap-card p { margin: 0 0 10px; color: var(--muted, #a39bb2); font-size: 12.5px; line-height: 1.55; }
+.cap-card .btn + .btn { margin-top: 6px; }
+.cap-card .btn.small { margin-right: 6px; }
+.cap-fine { font-size: 11px !important; color: var(--faint, #8b83a0) !important; margin: 8px 0 0 !important; }
+.cap-card-icon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: var(--sim); background: var(--sim-soft); margin-bottom: 10px; }
+.cap-card-icon svg { width: 22px; height: 22px; }
+
+/* the one-time download bar */
+.cap-bar { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .06); overflow: hidden; margin: 12px 0 8px; }
+.cap-bar i { display: block; height: 100%; transform-origin: left; transform: scaleX(0); border-radius: inherit;
+  background: linear-gradient(90deg, var(--sim), #c04fe0, #8b5cf6); box-shadow: 0 0 16px var(--sim); transition: transform .45s var(--ease-out, ease-out); }
+.cap-bar.ok i { background: var(--ok, #34d399); box-shadow: 0 0 16px var(--ok, #34d399); }
+.cap-bar-text { font-size: 12px; color: var(--muted, #a39bb2); min-height: 18px; display: flex; align-items: center; gap: 6px; }
+.cap-bar-text svg { color: var(--ok, #34d399); }
+.cap-bar-text.err { color: var(--danger, #fb5471); }
+
+/* the adults-only tick box (required) */
+.cap-adult { display: flex; align-items: flex-start; gap: 11px; padding: 12px 13px; border-radius: 13px; cursor: pointer; font-size: 12.5px; line-height: 1.5;
+  background: rgba(251, 191, 36, .06); border: 1px solid rgba(251, 191, 36, .28); color: #f4e6c4; transition: background var(--dur-2, .22s), border-color var(--dur-2, .22s); }
+.cap-adult input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cap-tick { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 6px; display: grid; place-items: center; border: 1.5px solid rgba(251, 191, 36, .6); color: transparent; transition: .18s; }
+.cap-tick svg { width: 14px; height: 14px; }
+.cap-adult.on { background: rgba(52, 211, 153, .07); border-color: rgba(52, 211, 153, .35); color: #d6f5e8; }
+.cap-adult.on .cap-tick { background: var(--ok, #34d399); border-color: transparent; color: #06140d; animation: cap-pop .32s var(--spring-pop, ease-out); }
+.cap-adult:has(input:focus-visible) { outline: 2px solid var(--sim); outline-offset: 2px; }
+@keyframes cap-pop { from { transform: scale(.6); } }
+
+.cap-switches .toggle-row { margin: 5px 0; padding: 9px 12px; }
+.cap-switch.off { opacity: .55; }
+.cap-slider { padding: 4px 2px; }
+.cap-slider-ends { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700; color: var(--muted, #a39bb2); margin-bottom: 4px; }
+.cap-slider input { width: 100%; }
+.cap-ok { display: flex; align-items: center; gap: 7px; margin-top: 10px; color: var(--ok, #34d399); font-weight: 700; font-size: 12.5px; animation: cap-chip-in .3s var(--ease-out, ease-out); }
+.cap-live-stats { font-family: var(--mono, monospace); font-size: 12px; color: var(--muted, #a39bb2); }
+.cap-range-text { font-family: var(--mono, monospace); font-size: 12px; color: var(--text, #f2eef8); }
+.cap-put { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; font-weight: 700; }
+.cap-select { flex: 1; height: 34px; border-radius: 10px; padding: 0 10px; background: var(--panel-3, #211d2a); border: 1px solid var(--sim-line); color: var(--text, #f2eef8); font-weight: 700; }
+.cap-radio { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; margin: 5px 0; cursor: pointer; border: 1px solid var(--hair, rgba(255, 255, 255, .07)); font-size: 12.5px; font-weight: 600; transition: .18s; }
+.cap-radio input { accent-color: var(--sim); }
+.cap-radio.on { background: var(--sim-soft); border-color: var(--sim-line); }
+.cap-rec-time { display: flex; align-items: center; gap: 8px; font-family: var(--mono, monospace); font-size: 20px; font-weight: 700; }
+.cap-rec-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--danger, #fb5471); box-shadow: 0 0 12px var(--danger, #fb5471); }
+.cap-studio.rec .cap-rec-dot { animation: cap-blink 1s steps(2) infinite; }
+.cap-studio.rec .cap-stage { box-shadow: inset 0 0 0 2px rgba(251, 84, 113, .55), inset 0 0 40px rgba(251, 84, 113, .15); }
+@keyframes cap-blink { 50% { opacity: .25; } }
+
+/* ---------------------------------------------------------------- foot: timeline and the main button */
+.cap-foot { display: flex; align-items: center; gap: 12px; padding: 12px 16px 14px; border-top: 1px solid var(--hair, rgba(255, 255, 255, .07)); min-height: 70px; }
+.cap-foot .grow { flex: 1; }
+.cap-foot-note { font-size: 12px; color: var(--muted, #a39bb2); }
+.cap-go { min-width: 170px; justify-content: center; }
+.cap-go svg { width: 17px; height: 17px; }
+.cap-studio .btn.primary.cap-go { background: linear-gradient(135deg, var(--sim), color-mix(in srgb, var(--sim) 40%, #8b5cf6)); box-shadow: 0 10px 28px color-mix(in srgb, var(--sim) 38%, transparent), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.cap-strip, .cap-timeline { position: relative; flex: 1; height: 54px; border-radius: 11px; background: rgba(255, 255, 255, .03); border: 1px solid var(--hair, rgba(255, 255, 255, .07)); overflow: visible; touch-action: none; }
+.cap-thumbs { position: absolute; inset: 0; display: flex; overflow: hidden; border-radius: inherit; opacity: .75; }
+.cap-thumbs canvas { flex: 1; min-width: 0; height: 100%; object-fit: cover; }
+.cap-strip-sel { position: absolute; top: -1px; bottom: -1px; border: 2px solid var(--sim); border-radius: 10px; background: color-mix(in srgb, var(--sim) 10%, transparent); pointer-events: none;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--sim) 35%, transparent); }
+.cap-handle { position: absolute; top: -6px; bottom: -6px; width: 14px; margin-left: -7px; border-radius: 7px; cursor: ew-resize; z-index: 2;
+  background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .5), 0 0 0 3px var(--sim); }
+.cap-handle::after { content: ''; position: absolute; left: 5px; right: 5px; top: 35%; bottom: 35%; border-left: 1.5px solid rgba(0, 0, 0, .35); border-right: 1.5px solid rgba(0, 0, 0, .35); }
+.cap-handle.slide, .cap-strip-sel.slide { transition: left .7s var(--ease-in-out, ease-in-out), width .7s var(--ease-in-out, ease-in-out); }
+.cap-quality { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
+.cap-playhead { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 8px #fff; pointer-events: none; z-index: 3; }
+.cap-play { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--sim-soft); color: #fff; }
+.cap-ba { flex: none; }
+.cap-loop-btn { margin-top: 4px; }
+.cap-mock-video { background: #141019; }
+.cap-studio.busy .cap-go { pointer-events: none; }
+
+/* ---------------------------------------------------------------- the entry points (Pose / Face steps) */
+.cap-entry { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cap-entry button { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 13px 8px 11px; border-radius: 13px; cursor: pointer;
+  border: 1px solid var(--line-2, #352e42); background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .01)); color: var(--text, #f2eef8);
+  transition: transform var(--dur-press, .11s) var(--ease-out, ease-out), border-color var(--dur-1, .15s), background var(--dur-1, .15s); }
+.cap-entry button:hover { border-color: var(--accent-line, rgba(255, 79, 154, .45)); background: var(--accent-soft, rgba(255, 79, 154, .13)); }
+.cap-entry button:active { transform: scale(.97); }
+.cap-entry .cap-entry-icon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: var(--grad, linear-gradient(135deg, #ff4f9a, #8b5cf6)); box-shadow: 0 6px 16px rgba(255, 79, 154, .3); }
+.cap-entry .cap-entry-icon svg { width: 19px; height: 19px; }
+.cap-entry b { font-size: 12.5px; }
+.cap-entry small { font-size: 10.5px; color: var(--muted, #a39bb2); line-height: 1.3; }
+.cap-private { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 11.5px; color: var(--muted, #a39bb2); }
+.cap-private svg { width: 14px; height: 14px; color: var(--ok, #34d399); }
+.cap-face-btn { margin-top: 8px; }
+
+/* ---------------------------------------------------------------- small screens (1366 x 768) */
+@media (max-width: 1400px), (max-height: 800px) {
+  .cap-backdrop { padding: 10px; }
+  .cap-body { grid-template-columns: minmax(0, 1fr) 330px; gap: 10px; padding: 10px; }
+  .cap-top { padding: 10px 12px 9px 14px; }
+  .cap-brand { min-width: 0; }
+  .cap-brand span:not(.cap-brand-icon) { display: none; }
+  .cap-step { padding: 5px 9px 5px 5px; font-size: 11.5px; }
+  .cap-step + .cap-step::before { width: 10px; }
+  .cap-preview { min-height: 170px; height: 34%; }
+  .cap-card { padding: 11px 12px; }
+  .cap-card p { font-size: 12px; margin-bottom: 8px; }
+  .cap-foot { padding: 9px 12px 10px; min-height: 60px; }
+  .cap-count b { font-size: 120px; }
+}
+
+/* ---------------------------------------------------------------- first-time download: what it gives */
+.cap-intro { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 440px; padding: 24px; text-align: center;
+  animation: cap-intro-in var(--dur-3, .42s) var(--ease-out, ease-out) both; }
+.cap-intro-title { font-size: 22px; letter-spacing: -.01em; color: var(--text, #f2eef8); margin-bottom: 8px; }
+.cap-intro ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; width: 100%; text-align: left; }
+.cap-intro li { display: flex; gap: 12px; align-items: center; padding: 11px 13px; border-radius: 13px; background: rgba(255, 255, 255, .025);
+  border: 1px solid var(--hair, rgba(255, 255, 255, .07)); animation: cap-intro-in var(--dur-3, .42s) var(--ease-out, ease-out) both; }
+.cap-intro li:nth-child(2) { animation-delay: .06s; }
+.cap-intro li:nth-child(3) { animation-delay: .12s; }
+.cap-intro li b { display: block; font-size: 13.5px; color: var(--text, #f2eef8); }
+.cap-intro li span { font-size: 12px; color: var(--muted, #a39bb2); }
+.cap-intro-icon { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; color: var(--sim); background: var(--sim-soft); }
+.cap-intro-icon svg { width: 18px; height: 18px; }
+@keyframes cap-intro-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* ---------------------------------------------------------------- reduced motion */
+html.reduce-motion .cap-intro, html.reduce-motion .cap-intro li { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cap-intro, .cap-intro li { animation: none; }
+  .cap-studio, .cap-chip, .cap-ok, .cap-count b.pop, .cap-adult.on .cap-tick { animation: none !important; transition: opacity .12s !important; transform: none !important; }
+  .cap-scan::before { animation: none; display: none; }
+  .cap-handle.slide, .cap-strip-sel.slide { transition: none; }
+  .cap-studio.rec .cap-rec-dot { animation: none; }
+}
+html.reduce-motion .cap-studio, html.reduce-motion .cap-chip, html.reduce-motion .cap-ok, html.reduce-motion .cap-count b.pop,
+html.reduce-motion .cap-adult.on .cap-tick { animation: none !important; transition: opacity .12s !important; transform: none !important; }
+html.reduce-motion .cap-scan::before { animation: none; display: none; }
+html.reduce-motion .cap-handle.slide, html.reduce-motion .cap-strip-sel.slide { transition: none; }
+html.reduce-motion .cap-studio.rec .cap-rec-dot { animation: none; }

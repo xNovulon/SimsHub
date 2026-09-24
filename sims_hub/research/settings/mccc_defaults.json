@@ -1,0 +1,1406 @@
+{
+"DebugEnabled_Cleaner": [
+"bool",
+"False"
+],
+"DebugEnabled_Population": [
+"bool",
+"False"
+],
+"DebugEnabled_Pregnancy": [
+"bool",
+"False"
+],
+"DebugEnabled_Dresser": [
+"bool",
+"False"
+],
+"DebugEnabled_Career": [
+"bool",
+"False"
+],
+"DebugEnabled_CommandCenter": [
+"bool",
+"False"
+],
+"DebugEnabled_Woohoo": [
+"bool",
+"False"
+],
+"DebugEnabled_Tuner": [
+"bool",
+"False"
+],
+"DebugEnabled_GedCom": [
+"bool",
+"False"
+],
+"DebugEnabled_Occult": [
+"bool",
+"False"
+],
+"DebugEnabled_CAS": [
+"bool",
+"False"
+],
+"DebugEnabled_Clubs": [
+"bool",
+"False"
+],
+"DebugEnabled_StoryActions": [
+"bool",
+"False"
+],
+"DebugEnabled_Control": [
+"bool",
+"False"
+],
+"Logging_Enabled": [
+"bool",
+"True"
+],
+"Logging_Append": [
+"bool",
+"False"
+],
+"Logging_LessLENotes": [
+"bool",
+"True"
+],
+"Pause_on_Zone": [
+"bool",
+"False"
+],
+"Show_Computer_Menu_Type": [
+"str",
+"'A'"
+],
+"Show_Sim_Menu_Type": [
+"str",
+"'A'"
+],
+"Show_Cheats_Menu_Type": [
+"str",
+"'A'"
+],
+"Show_Gnome_Menu_Type": [
+"str",
+"'N'"
+],
+"Full_Edit_CAS": [
+"bool",
+"False"
+],
+"Decay_Ratio_Friendship": [
+"int",
+"100"
+],
+"Decay_Ratio_Romantic": [
+"int",
+"100"
+],
+"Friendship_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"Romance_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"Skill_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"LifeSkill_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"Fame_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"Pay_Child_Support_Type": [
+"str",
+"'N'"
+],
+"Pay_Child_Support_Percent": [
+"int",
+"1"
+],
+"Game_Time_Speed": [
+"int",
+"25"
+],
+"Bill_Amount_Percent": [
+"int",
+"0"
+],
+"Bill_AmountPercentApartment": [
+"int",
+"0"
+],
+"Bill_AutoPay": [
+"bool",
+"False"
+],
+"Testing_Cheats_Enabled": [
+"bool",
+"False"
+],
+"Debug_Cheats_Enabled": [
+"bool",
+"False"
+],
+"BB_Debug_Objects_Enabled": [
+"bool",
+"False"
+],
+"BB_Free_Build_Enabled": [
+"bool",
+"False"
+],
+"BB_Ignore_Unlocks_Enabled": [
+"bool",
+"False"
+],
+"BB_Move_Objects_Enabled": [
+"bool",
+"False"
+],
+"BB_Show_Live_Objects": [
+"bool",
+"False"
+],
+"Put_Away_Books_Fix": [
+"bool",
+"True"
+],
+"Sim_Death_Only_On_Lot": [
+"bool",
+"True"
+],
+"RelationshipCullingType": [
+"str",
+"'E'"
+],
+"Maximum_Household_Size": [
+"int",
+"8"
+],
+"Silence_Phone_Texts": [
+"str",
+"'A'"
+],
+"Headline_Effects_Enabled": [
+"bool",
+"True"
+],
+"Hover_Effects_Enabled": [
+"bool",
+"True"
+],
+"Show_Notifications": [
+"bool",
+"True"
+],
+"Adopt_Neglected_Child": [
+"bool",
+"False"
+],
+"Adopt_No_Caregiver": [
+"bool",
+"True"
+],
+"Allow_Teen_Parenting": [
+"bool",
+"False"
+],
+"Use_Random_Aging": [
+"bool",
+"True"
+],
+"Inherit_Sim_Type": [
+"str",
+"'0'"
+],
+"Maximum_Rename_Length": [
+"int",
+"14"
+],
+"Inherit_Spouse_First": [
+"bool",
+"True"
+],
+"MotiveDecay_Sims": [
+"int",
+"100"
+],
+"MotiveDecay_Vampires": [
+"int",
+"100"
+],
+"MotiveDecay_Dogs": [
+"int",
+"100"
+],
+"MotiveDecay_Cats": [
+"int",
+"100"
+],
+"MotiveDecay_Horses": [
+"int",
+"100"
+],
+"Decay_Ratio_Fame": [
+"int",
+"100"
+],
+"Decay_Ratio_Prestige": [
+"int",
+"100"
+],
+"Teleport_Sims_Overlap": [
+"bool",
+"True"
+],
+"Sims_Are_Immortal": [
+"bool",
+"False"
+],
+"Allow_NS_Deaths": [
+"bool",
+"True"
+],
+"Prestige_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"DP_UseOnly": [
+"str",
+"''"
+],
+"Relationship_BreakupPercent": [
+"int",
+"0"
+],
+"Relationship_BreakupMarriagePercent": [
+"int",
+"0"
+],
+"Relationship_BreakupMoveoutSim": [
+"int",
+"1"
+],
+"Relationship_BreakupMoveoutOffspring": [
+"int",
+"0"
+],
+"Relationship_MoveinPercent": [
+"int",
+"0"
+],
+"Relationship_MoveinHomeless": [
+"bool",
+"True"
+],
+"Relationship_MoveinRomanceAmt": [
+"int",
+"50"
+],
+"Relationship_BypassPlayedHouseholds": [
+"bool",
+"True"
+],
+"Show_RelChangeNotificationType": [
+"note_type",
+"'0'"
+],
+"Relationship_BypassAncestral": [
+"bool",
+"False"
+],
+"Menu_Order": [
+"menu_order",
+"''"
+],
+"Pregnancy_OffspringGenderPercents": [
+"gender_perc",
+"50"
+],
+"Pregnancy_MaxOffspring": [
+"int",
+"3"
+],
+"Pregnancy_AutoMarryPercent": [
+"int",
+"0"
+],
+"Pregnancy_MaxHouseholdChildren": [
+"int",
+"5"
+],
+"Pregnancy_AllowAffairsPercent": [
+"int",
+"0"
+],
+"Pregnancy_BypassPlayedHouseholds": [
+"bool",
+"True"
+],
+"Pregnancy_AllowMalePregnancy": [
+"str",
+"'N'"
+],
+"Pregnancy_AgePercentage": [
+"age_perc",
+"20"
+],
+"Pregnancy_OccupancyType": [
+"occ_type",
+"''"
+],
+"Pregnancy_RelationshipOnly": [
+"str",
+"'N'"
+],
+"Pregnancy_BypassActiveRomanticInterest": [
+"bool",
+"True"
+],
+"Pregnancy_PauseOnPlayableLabor": [
+"bool",
+"False"
+],
+"Pregnancy_AgeWhenPregnant": [
+"bool",
+"False"
+],
+"Pregnancy_UseSameAgeGroup": [
+"bool",
+"False"
+],
+"Pregnancy_AllowHomeless": [
+"bool",
+"False"
+],
+"Pregnancy_Duration": [
+"int",
+"3"
+],
+"Pregnancy_PercentWeights": [
+"preg_perc",
+"100"
+],
+"Pregnancy_UseAttractionValues": [
+"bool",
+"False"
+],
+"Pregnancy_BypassBusinessOwnerMoveouts": [
+"bool",
+"True"
+],
+"Pregnancy_SameSexAdoptionPercent": [
+"int",
+"0"
+],
+"Pregnancy_OppositeSexAdoptionPercent": [
+"int",
+"0"
+],
+"Pregnancy_AdoptionPercentMale": [
+"int",
+"50"
+],
+"Pregnancy_EnforceFamily": [
+"bool",
+"True"
+],
+"Pregnancy_BabyMotiveDecay": [
+"int",
+"100"
+],
+"Pregnancy_PetMaxOffspring": [
+"int",
+"3"
+],
+"Pregnancy_CatAgePercentage": [
+"age_perc",
+"20"
+],
+"Pregnancy_DogAgePercentage": [
+"age_perc",
+"20"
+],
+"Pregnancy_HorseAgePercentage": [
+"age_perc",
+"20"
+],
+"Pregnancy_PetMaxHouseholdChildren": [
+"int",
+"5"
+],
+"Pregnancy_PetAllowHomeless": [
+"bool",
+"False"
+],
+"Pregnancy_SyncChildSurname": [
+"bool",
+"False"
+],
+"Pregnancy_BypassDorms": [
+"bool",
+"True"
+],
+"Pregnancy_UseTraitsForPregnancy": [
+"bool",
+"False"
+],
+"Pregnancy_NameInactiveOffspring": [
+"str",
+"'A'"
+],
+"Pregnancy_NameInactiveAdoption": [
+"str",
+"'A'"
+],
+"Pregnancy_IdenticalOffspringChance": [
+"int",
+"33"
+],
+"Pregnancy_OffspringTraitsType": [
+"str",
+"'N'"
+],
+"Pregnancy_OffspringTraitsMax": [
+"int",
+"2"
+],
+"Pregnancy_SameSexPercentage": [
+"int",
+"50"
+],
+"Pregnancy_FlagGenderPreferencePercent": [
+"int",
+"0"
+],
+"Pregnancy_UseGenderPreference": [
+"bool",
+"False"
+],
+"Pregnancy_UseRandomMoods": [
+"bool",
+"False"
+],
+"Pregnancy_RandomMoodDuration": [
+"int",
+"1"
+],
+"Pregnancy_AgeUpDaysLimit": [
+"int",
+"1"
+],
+"Pregnancy_SameOccultOnly": [
+"bool",
+"False"
+],
+"Pregnancy_BypassRobots": [
+"bool",
+"True"
+],
+"Pregnancy_LimitNS": [
+"bool",
+"False"
+],
+"Pregnancy_OnlyNSPregnancy": [
+"bool",
+"False"
+],
+"Pregnancy_NSAdoptChildLimit": [
+"int",
+"-1"
+],
+"Pregnancy_NSAdoptPetLimit": [
+"int",
+"-1"
+],
+"Pregnancy_BypassRenters": [
+"bool",
+"True"
+],
+"Pregnancy_UseFrameForGender": [
+"bool",
+"False"
+],
+"Marriage_RenameSameGender": [
+"bool",
+"False"
+],
+"Marriage_MoveFamilies": [
+"bool",
+"False"
+],
+"Marriage_RenameOppositeSex": [
+"str",
+"'M'"
+],
+"Marriage_BypassActiveRomanticInterest": [
+"bool",
+"True"
+],
+"Marriage_BypassPlayedHouseholds": [
+"bool",
+"True"
+],
+"Marriage_AgePercentage": [
+"age_perc",
+"20"
+],
+"Marriage_AllowHomeless": [
+"bool",
+"False"
+],
+"Marriage_UseTraitsForMarriage": [
+"bool",
+"False"
+],
+"Marriage_OccupancyType": [
+"occ_type",
+"''"
+],
+"Marriage_UseSameAgeGroup": [
+"bool",
+"False"
+],
+"Marriage_RemoveServiceRoleLimit": [
+"bool",
+"False"
+],
+"Marriage_ManualRenameSpouses": [
+"str",
+"'A'"
+],
+"Marriage_SameSexPercentage": [
+"int",
+"50"
+],
+"Marriage_FlagGenderPreferencePercent": [
+"int",
+"0"
+],
+"Marriage_UseGenderPreference": [
+"bool",
+"False"
+],
+"Marriage_BypassDorms": [
+"bool",
+"True"
+],
+"Marriage_SameOccultOnly": [
+"bool",
+"False"
+],
+"Marriage_BypassRobots": [
+"bool",
+"True"
+],
+"Marriage_SameNeighborhood": [
+"str",
+"'N'"
+],
+"Marriage_BypassRenters": [
+"bool",
+"True"
+],
+"Marriage_RequireCASPregnancy": [
+"bool",
+"True"
+],
+"Marriage_UseFrameForGender": [
+"bool",
+"False"
+],
+"Marriage_UseAttractionValues": [
+"bool",
+"False"
+],
+"Cleaner_CleanCulled": [
+"bool",
+"False"
+],
+"Cleaner_CleanRelationships": [
+"str",
+"'N,A'"
+],
+"Cleaner_CleanPetRelationships": [
+"str",
+"'A'"
+],
+"Cleaner_LeaveRelationshipCount": [
+"int",
+"0"
+],
+"Cleaner_MatchGlasses": [
+"bool",
+"False"
+],
+"Cleaner_MatchMedicalDevices": [
+"bool",
+"False"
+],
+"Cleaner_SyncMarriedNames": [
+"bool",
+"False"
+],
+"Cleaner_BypassFamilyGhosts": [
+"bool",
+"True"
+],
+"Cleaner_SyncHouseholdNames": [
+"bool",
+"False"
+],
+"Cleaner_DetailLogging": [
+"bool",
+"False"
+],
+"Cleaner_CleanupMultiRelations": [
+"bool",
+"True"
+],
+"Autosave_CurrentSaveNumber": [
+"int",
+"0"
+],
+"Club_MonitorMembers": [
+"bool",
+"False"
+],
+"Club_BypassPlayedHouseholds": [
+"bool",
+"True"
+],
+"Club_OpenMemberSlots": [
+"int",
+"1"
+],
+"Club_ClubMemberCount": [
+"int",
+"8"
+],
+"Club_MaximumClubCount": [
+"int",
+"3"
+],
+"Dresser_RunMakeupCheck": [
+"bool",
+"False"
+],
+"Dresser_IncludeDarkFormMakeup": [
+"bool",
+"False"
+],
+"Dresser_IncludeDarkFormOutfits": [
+"bool",
+"False"
+],
+"Dresser_OnlyUseSavedOutfits": [
+"bool",
+"False"
+],
+"Dresser_PercentUseCustomSkinTone": [
+"int",
+"0"
+],
+"Dresser_MakeupOutfits": [
+"outfits",
+"'E,F,P,AT,SL,SW,C'"
+],
+"Dresser_PercentMultipleOutfits": [
+"int",
+"0"
+],
+"Dresser_MaximumMultipleOutfits": [
+"int",
+"1"
+],
+"Dresser_FacialHairPercent": [
+"age_perc",
+"0"
+],
+"Dresser_SituationUseStandardOutfits": [
+"bool",
+"False"
+],
+"Dresser_CopyPasteFacepaint": [
+"bool",
+"False"
+],
+"Dresser_CleanBathingOutfit": [
+"bool",
+"True"
+],
+"Dresser_CustomItemsOnly": [
+"bool",
+"False"
+],
+"Dresser_MakeupIncludesFacePaint": [
+"bool",
+"False"
+],
+"Appearance_MonitorPhysique": [
+"bool",
+"False"
+],
+"Population_RunDresser": [
+"bool",
+"False"
+],
+"Population_PercentMale": [
+"int",
+"50"
+],
+"Population_PercentElder": [
+"int",
+"33"
+],
+"Population_PercentAdult": [
+"int",
+"33"
+],
+"Population_PercentChild": [
+"int",
+"20"
+],
+"Population_PercentToddler": [
+"int",
+"20"
+],
+"Population_PercentInfant": [
+"int",
+"20"
+],
+"Population_PercentBaby": [
+"int",
+"20"
+],
+"Population_PercentFemaleFrame": [
+"int",
+"0"
+],
+"Population_PercentMaleFrame": [
+"int",
+"0"
+],
+"Population_MatchCasToFrame": [
+"bool",
+"False"
+],
+"Population_MaximumHomeless": [
+"int",
+"-1"
+],
+"Population_MoveOutEldersType": [
+"str",
+"''"
+],
+"Population_MaxSimsInZone": [
+"int",
+"20"
+],
+"Population_OpenHouses": [
+"int",
+"1"
+],
+"Population_BypassPlayedHouseholds": [
+"bool",
+"True"
+],
+"Population_AllowNoClowns": [
+"bool",
+"False"
+],
+"Population_ReaperStopStalking": [
+"bool",
+"False"
+],
+"Population_EnforceVampireHomes": [
+"bool",
+"False"
+],
+"Population_AllowHomelessMoveIn": [
+"bool",
+"True"
+],
+"Population_HomelessApartmentPercent": [
+"int",
+"100"
+],
+"Population_RandomUseTraySimPercent": [
+"int",
+"0"
+],
+"Population_RandomLimitHouseholdType": [
+"str",
+"'A'"
+],
+"Population_RandomUseTrayOutfits": [
+"bool",
+"False"
+],
+"Population_RandomUseTrayGenderSet": [
+"bool",
+"True"
+],
+"Population_UseTagsOnImportSims": [
+"str",
+"''"
+],
+"Population_ImportSimNameChoice": [
+"str",
+"'N'"
+],
+"Population_ImportBypassAppearance": [
+"bool",
+"False"
+],
+"Population_MovingBypassDorms": [
+"bool",
+"True"
+],
+"Population_MaximumHouseholdPets": [
+"int",
+"0"
+],
+"Population_RandomChallengeFrequency": [
+"int",
+"7"
+],
+"Population_RandomChallengeMaxNum": [
+"int",
+"0"
+],
+"Population_RandomChallengeTimeUnits": [
+"str",
+"'SD'"
+],
+"Population_RandomChallengeLotType": [
+"str",
+"'A'"
+],
+"Population_LimitNS": [
+"bool",
+"False"
+],
+"Population_BypassAncestralMoveouts": [
+"bool",
+"False"
+],
+"Population_BypassBusinessOwnerMoveouts": [
+"bool",
+"True"
+],
+"Career_FillCareerInactiveOnly": [
+"bool",
+"False"
+],
+"Career_ChildrenQuitSchool": [
+"bool",
+"False"
+],
+"Career_TeensQuitSchool": [
+"bool",
+"False"
+],
+"Career_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"Career_University_Difficulty_Adjustment": [
+"int",
+"0"
+],
+"Career_Homework_Speed": [
+"int",
+"0"
+],
+"Career_University_Homework_Speed": [
+"int",
+"0"
+],
+"Career_Decay_Ratio_SecretSociety": [
+"int",
+"100"
+],
+"Career_LimitNS": [
+"bool",
+"False"
+],
+"Population_MoveOutSingleSim": [
+"bool",
+"False"
+],
+"Population_MoveTeenDependent": [
+"bool",
+"True"
+],
+"Show_DeathNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_PetDeathNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_BirthNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_BirthNotificationDetails": [
+"bool",
+"False"
+],
+"Show_AgeUpNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_MarriageNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_PregnancyNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_PetPregnancyNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_PregnancyAffairNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_MovingNotificationType": [
+"note_type",
+"'0'"
+],
+"Show_HouseEmptyNotification": [
+"bool",
+"False"
+],
+"Show_VersionCheckNotification": [
+"str",
+"'N'"
+],
+"Show_NSAdoptionType": [
+"note_type",
+"'0'"
+],
+"Show_NSPetAdoption": [
+"bool",
+"False"
+],
+"Show_NSPregnancyType": [
+"note_type",
+"'0'"
+],
+"Show_NSPopulationType": [
+"note_type",
+"'0'"
+],
+"Show_NSCareerType": [
+"note_type",
+"'0'"
+],
+"Show_NSDeathType": [
+"note_type",
+"'0'"
+],
+"Population_RandomizeVisitingSims": [
+"bool",
+"False"
+],
+"Population_BypassCulling": [
+"bool",
+"False"
+],
+"Tuner_AutoMischief": [
+"bool",
+"True"
+],
+"Tuner_AutoMarriage": [
+"bool",
+"False"
+],
+"Tuner_AutoProposal": [
+"bool",
+"False"
+],
+"Tuner_AutoMean": [
+"bool",
+"True"
+],
+"Tuner_FriendlyStayNight": [
+"bool",
+"False"
+],
+"Tuner_FriendlyAskSingle": [
+"bool",
+"False"
+],
+"Tuner_AutoFlirty": [
+"bool",
+"True"
+],
+"Tuner_StopRandomFlirting": [
+"bool",
+"False"
+],
+"Tuner_KissesAlwaysAvailable": [
+"bool",
+"False"
+],
+"Tuner_AllowMoodDeath": [
+"bool",
+"True"
+],
+"Tuner_AutoRepair": [
+"bool",
+"False"
+],
+"Tuner_AutoClean": [
+"bool",
+"False"
+],
+"Tuner_AllowMonsterUnderBed": [
+"bool",
+"True"
+],
+"Tuner_AllowTeenAskMoveIn": [
+"bool",
+"False"
+],
+"Tuner_MaximumArchive": [
+"int",
+"50"
+],
+"Tuner_ArchiveInteractions": [
+"bool",
+"False"
+],
+"Tuner_AllowMultipleBFFs": [
+"bool",
+"False"
+],
+"Tuner_DisableWitnessDeath": [
+"bool",
+"False"
+],
+"Tuner_AutoGarden": [
+"bool",
+"False"
+],
+"Tuner_InstantUpgrade": [
+"bool",
+"False"
+],
+"Tuner_Child_Pay_Bills": [
+"bool",
+"False"
+],
+"Tuner_Child_Baby_Care": [
+"bool",
+"False"
+],
+"Woohoo_AllowFamily": [
+"bool",
+"False"
+],
+"Woohoo_AllowTeens": [
+"bool",
+"False"
+],
+"Woohoo_RiskyWoohooPercents": [
+"age_perc",
+"0"
+],
+"Woohoo_SameSexTryForBaby": [
+"bool",
+"False"
+],
+"Woohoo_UseFertileInRisky": [
+"bool",
+"False"
+],
+"Woohoo_DisableJealousy": [
+"bool",
+"False"
+],
+"Woohoo_BedSharing": [
+"bool",
+"False"
+],
+"Woohoo_UsePrivacy": [
+"bool",
+"True"
+],
+"Woohoo_AutonomousWoohoo": [
+"bool",
+"True"
+],
+"Woohoo_AutonomousTryForBaby": [
+"bool",
+"False"
+],
+"Woohoo_AutonomousMinRestTime": [
+"int",
+"6"
+],
+"Woohoo_FriendlierWoohooPartner": [
+"bool",
+"False"
+],
+"Woohoo_SameSexPregnantSim": [
+"strlist",
+"'T'"
+],
+"Woohoo_OppositeSexPregnantSim": [
+"strlist",
+"'F'"
+],
+"Woohoo_RemainNude": [
+"bool",
+"True"
+],
+"Woohoo_NudeWoohoo": [
+"bool",
+"False"
+],
+"Woohoo_NudeInHotTub": [
+"bool",
+"False"
+],
+"Woohoo_NudeInSauna": [
+"bool",
+"False"
+],
+"Woohoo_NudeSpa": [
+"bool",
+"False"
+],
+"Woohoo_NudeYoga": [
+"bool",
+"False"
+],
+"Woohoo_NudeWorkout": [
+"bool",
+"False"
+],
+"Woohoo_NudeInShower": [
+"bool",
+"False"
+],
+"Woohoo_NudeInHotSprings": [
+"bool",
+"False"
+],
+"Woohoo_SleepyWoohoo": [
+"bool",
+"False"
+],
+"Woohoo_ElderTryForBaby": [
+"bool",
+"False"
+],
+"Woohoo_TryForBabyPercent": [
+"int",
+"80"
+],
+"Woohoo_BirthControlDuration": [
+"int",
+"2"
+],
+"Woohoo_UseWoohooSkill": [
+"bool",
+"False"
+],
+"Woohoo_BirthControlAllMoods": [
+"bool",
+"False"
+],
+"Woohoo_UseBirthControl": [
+"bool",
+"True"
+],
+"Woohoo_AllowTFB": [
+"bool",
+"True"
+],
+"Woohoo_ExtremeWoohoo": [
+"bool",
+"False"
+],
+"Woohoo_AllowGhostTFB": [
+"bool",
+"False"
+],
+"Autosave_Enabled": [
+"bool",
+"False"
+],
+"Autosave_Name": [
+"str",
+"'MC Save'"
+],
+"Autosave_HexSlotNumber": [
+"hex",
+"'1111'"
+],
+"Autosave_MaxSaveNumber": [
+"int",
+"1"
+],
+"Autosave_IntervalType": [
+"str",
+"'RH'"
+],
+"Autosave_IntervalAmount": [
+"int",
+"1"
+],
+"Autosave_ShowConfirmation": [
+"bool",
+"True"
+],
+"Show_NPCBirthdayNotifications": [
+"bool",
+"False"
+],
+"Show_ClubMonitorNotifications": [
+"bool",
+"True"
+],
+"Show_AutosaveNotifications": [
+"bool",
+"True"
+],
+"Occult_ForceAlienDisguiseType": [
+"str",
+"''"
+],
+"Occult_AlienFrequency": [
+"str",
+"'N'"
+],
+"Occult_AgePercentage": [
+"age_perc",
+"30"
+],
+"Occult_TimeBetweenAbductions": [
+"int",
+"24"
+],
+"Occult_AbductionStartHour": [
+"int",
+"22"
+],
+"Occult_AbductionDuration": [
+"int",
+"6"
+],
+"Occult_AbductionAllowNPC": [
+"bool",
+"False"
+],
+"Occult_MaximumAliens": [
+"int",
+"-1"
+],
+"Occult_MaximumVampires": [
+"int",
+"-1"
+],
+"Occult_MaximumMermaids": [
+"int",
+"-1"
+],
+"Occult_MaximumSpellcasters": [
+"int",
+"-1"
+],
+"Occult_MaximumWerewolves": [
+"int",
+"-1"
+],
+"Occult_MaximumFairies": [
+"int",
+"-1"
+],
+"Occult_UseCustomPregnancy": [
+"bool",
+"False"
+],
+"Occult_ForceDarkform": [
+"bool",
+"False"
+],
+"Occult_VampireExpAdjustment": [
+"int",
+"0"
+],
+"Occult_VampireSkillOnAgeUp": [
+"bool",
+"False"
+],
+"Occult_RiskyVampNeedCreation": [
+"bool",
+"True"
+],
+"Occult_RiskyVampPercentages": [
+"strlist",
+"'0'"
+],
+"Occult_ForceMermaidForm": [
+"bool",
+"False"
+],
+"Occult_RiskyVampNotification": [
+"bool",
+"False"
+],
+"Occult_IgnoreCasOnAbduction": [
+"bool",
+"False"
+],
+"Appearance_ApplyTemplate": [
+"str",
+"''"
+],
+"Appearance_UseParentAppearance": [
+"bool",
+"False"
+],
+"Appearance_ParentAppearanceVariance": [
+"int",
+"0"
+],
+"Appearance_UseParentSkinTones": [
+"bool",
+"False"
+],
+"Appearance_AgeupChangeWalkstyle": [
+"bool",
+"False"
+],
+"Appearance_UseParentFacialDetails": [
+"bool",
+"False"
+],
+"CAS_BypassBlueBabies": [
+"bool",
+"False"
+],
+"CAS_AutoCelebrityWalkstyle": [
+"bool",
+"True"
+]
+}
