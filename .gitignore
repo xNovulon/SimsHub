@@ -36,3 +36,6 @@ desktop.ini
 
 # Logs
 *.log
+
+# Tests that write to E:\speedkit_test\... make a folder by that name inside the repo on Linux/macOS
+**/E:*
