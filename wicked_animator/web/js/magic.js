@@ -1,7 +1,8 @@
 // Magic Animation: pick a position and a place, press one button - both sims are posed on the real furniture,
-// moving, with faces, physics, opening holes, claps, wet sounds and moans - playing with sound in seconds. Hands hold
-// on to the partner by themselves (his hands on her hips in cowgirl...), heads and eyes look at the partner, legs
-// tremble at a hard finish, and a Finish can end it (cum, drool, the game's finish voices).
+// moving, with faces, physics, opening holes, claps and wet sounds - playing with sound in seconds. No voices: a few
+// lines in a short loop repeat every few seconds in the game. Hands hold on to the partner by themselves (his hands on
+// her hips in cowgirl...), heads and eyes look at the partner, legs tremble at a hard finish, and a Finish can end it
+// (cum and drool).
 import * as THREE from 'three';
 import { h, icon, modal, toast, slider, confirmBox, emitWA } from './ui.js';
 import { newProject, newSim, localStorageGet, localStorageSet } from './state.js';
@@ -15,36 +16,36 @@ import { holdNamed, limbPoint } from './holds.js';
 import { shapeQuats } from './hands.js';
 import { spell, reducedMotion } from './fx.js';
 
-// layers: [type, params] per part; faces: preset id per part; voice: random voice set per part
+// layers: [type, params] per part; faces: preset id per part
 export const RECIPES = [
   { id: 'cowgirl', label: 'Cowgirl', kind: 'VAGINAL', tags: ['COWGIRL', 'VAGINAL', 'PASSIONATE'], blurb: 'She rides him',
-    layers: { FEMALE: [['ride', {}]], MALE: [['thrust', { distance: 3 }]] }, faces: { FEMALE: 'moan', MALE: 'pleasure' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
+    layers: { FEMALE: [['ride', {}]], MALE: [['thrust', { distance: 3 }]] }, faces: { FEMALE: 'moan', MALE: 'pleasure' } },
   { id: 'missionary', label: 'Missionary', kind: 'VAGINAL', tags: ['MISSIONARY', 'VAGINAL', 'PASSIONATE'], blurb: 'Face to face, him on top',
-    layers: { MALE: [['thrust', {}]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'ecstasy', MALE: 'intense' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
+    layers: { MALE: [['thrust', {}]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'ecstasy', MALE: 'intense' } },
   { id: 'doggy', label: 'Doggy', kind: 'VAGINAL', tags: ['DOGGY', 'VAGINAL', 'ROUGH'], blurb: 'From behind, hard',
-    layers: { MALE: [['thrust', { sharp: 0.85 }]], FEMALE: [['bounce', { distance: 1.2, tilt: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'intense' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
+    layers: { MALE: [['thrust', { sharp: 0.85 }]], FEMALE: [['bounce', { distance: 1.2, tilt: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'intense' } },
   { id: 'standing', label: 'Standing', kind: 'VAGINAL', tags: ['STANDING', 'VAGINAL'], blurb: 'Up against each other',
-    layers: { MALE: [['thrust', {}]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'pleasure', MALE: 'pleasure' }, voice: { FEMALE: 'moan_soft' } },
+    layers: { MALE: [['thrust', {}]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'pleasure', MALE: 'pleasure' } },
   { id: 'spooning', label: 'Spooning', kind: 'VAGINAL', tags: ['SPOONING', 'VAGINAL', 'SLOW'], blurb: 'Slow, lying on their sides',
-    layers: { MALE: [['thrust', { distance: 3, sharp: 0.3 }]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'bite', MALE: 'relaxed' }, voice: { FEMALE: 'moan_soft' }, calm: true },
+    layers: { MALE: [['thrust', { distance: 3, sharp: 0.3 }]], FEMALE: [['breathe', {}]] }, faces: { FEMALE: 'bite', MALE: 'relaxed' }, calm: true },
   { id: 'pronebone', label: 'Prone bone', kind: 'VAGINAL', tags: ['PRONEBONE', 'VAGINAL', 'ROUGH'], blurb: 'She lies flat, him on top',
-    layers: { MALE: [['thrust', { sharp: 0.8 }]] }, faces: { FEMALE: 'ahegao', MALE: 'intense' }, voice: { FEMALE: 'moan' } },
+    layers: { MALE: [['thrust', { sharp: 0.8 }]] }, faces: { FEMALE: 'ahegao', MALE: 'intense' } },
   { id: 'sitting', label: 'Lap ride', kind: 'VAGINAL', tags: ['SITTING', 'VAGINAL'], blurb: 'She sits on his lap',
-    layers: { FEMALE: [['ride', { distance: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'pleasure' }, voice: { FEMALE: 'moan_soft' } },
+    layers: { FEMALE: [['ride', { distance: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'pleasure' } },
   { id: 'anal', label: 'Anal', kind: 'ANAL', tags: ['ANAL', 'DOGGY'], blurb: 'From behind, anal',
-    layers: { MALE: [['thrust', { distance: 3.5 }]] }, faces: { FEMALE: 'intense', MALE: 'intense' }, voice: { FEMALE: 'moan', MALE: 'woohoo' } },
+    layers: { MALE: [['thrust', { distance: 3.5 }]] }, faces: { FEMALE: 'intense', MALE: 'intense' } },
   { id: 'bj', label: 'Blowjob', kind: 'ORALJOB', tags: ['BLOWJOB', 'KNEELING'], blurb: 'She kneels, head bobbing',
-    layers: { FEMALE: [['headbob', {}]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'kiss', MALE: 'pleasure' }, voice: { MALE: 'breath' }, noOpenFace: true },
+    layers: { FEMALE: [['headbob', {}]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'kiss', MALE: 'pleasure' }, noOpenFace: true },
   { id: 'handjob', label: 'Handjob', kind: 'HANDJOB', tags: ['FOREPLAY'], blurb: 'Her hand strokes him',
-    layers: { FEMALE: [['stroke', { limb: 'R hand' }]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'seductive', MALE: 'pleasure' }, voice: { MALE: 'breath' }, calm: true },
+    layers: { FEMALE: [['stroke', { limb: 'R hand' }]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'seductive', MALE: 'pleasure' }, calm: true },
   { id: 'cunni', label: 'Cunnilingus', kind: 'ORALJOB', tags: ['CUNNILINGUS', 'LICKING'], blurb: 'He goes down on her',
-    layers: { MALE: [['headbob', { angle: 8 }]], FEMALE: [['grind', { distance: 1.5, tilt: 8 }]] }, faces: { FEMALE: 'ecstasy', MALE: 'tongue' }, voice: { FEMALE: 'moan_soft' } },
+    layers: { MALE: [['headbob', { angle: 8 }]], FEMALE: [['grind', { distance: 1.5, tilt: 8 }]] }, faces: { FEMALE: 'ecstasy', MALE: 'tongue' } },
   { id: 'titjob', label: 'Titjob', kind: 'HANDJOB', tags: ['TITJOB'], blurb: 'Between her breasts',
-    layers: { FEMALE: [['bounce', { distance: 4 }]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'seductive', MALE: 'pleasure' }, voice: { MALE: 'breath' } },
+    layers: { FEMALE: [['bounce', { distance: 4 }]], MALE: [['breathe', {}]] }, faces: { FEMALE: 'seductive', MALE: 'pleasure' } },
   { id: 'kiss', label: 'Making out', kind: 'TEASING', tags: ['KISSING', 'FOREPLAY'], blurb: 'Close, kissing, hands roaming',
-    layers: { FEMALE: [['sway', {}], ['breathe', {}]], MALE: [['sway', {}], ['breathe', {}]] }, faces: { FEMALE: 'kiss', MALE: 'kiss' }, voice: { FEMALE: 'moan_soft' }, calm: true },
+    layers: { FEMALE: [['sway', {}], ['breathe', {}]], MALE: [['sway', {}], ['breathe', {}]] }, faces: { FEMALE: 'kiss', MALE: 'kiss' }, calm: true },
   { id: 'carry', label: 'Carry', kind: 'VAGINAL', tags: ['CARRY', 'STANDING', 'FLEXIBLE'], blurb: 'He holds her up',
-    layers: { MALE: [['thrust', { axis: 'up', distance: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'intense' }, voice: { FEMALE: 'moan' } },
+    layers: { MALE: [['thrust', { axis: 'up', distance: 4 }]] }, faces: { FEMALE: 'moan', MALE: 'intense' } },
 ];
 
 export const PLACES = [
@@ -419,13 +420,11 @@ export async function makeMagic(app, { recipe, place, intensity = 0.55, seconds 
   app.store.setDirty(true);
   app.refreshAll();
   app.pipeline.simulateIfNeeded(true);
-  // 6. sounds: claps and wet strokes from the contacts, moans on top
+  // 6. sounds: claps and wet strokes from the contacts (no voices)
   app.autoSounds();
-  // each sim only gets its own body's adult voice; a kind with no lines falls back quietly to a broader one
-  for (const s of sims) { const set = r.voice[part(s)]; if (set) app.randomVoices(s.id, set, intensity > 0.6 ? 2 : 3.5, { quiet: true }); }
-  // the finish: cum, drool and the game's finish voices at 70% of the loop (when the moments are there)
+  // the finish: cum and drool at 70% of the loop (when the moments are there)
   if (climax) {
-    try { const m = await import('./moments.js'); if (typeof m.finishPreset === 'function') m.finishPreset(app, finish, Math.round(0.7 * p.length), { checkpoint: false, quiet: true }); }
+    try { const m = await import('./moments.js'); if (typeof m.finishPreset === 'function') m.finishPreset(app, finish, Math.round(0.7 * p.length), { checkpoint: false, quiet: true, voices: false }); }
     catch (err) { console.warn('Magic finish:', err); }
   }
   app.showStep('motion');
@@ -454,7 +453,7 @@ export async function makeMagic(app, { recipe, place, intensity = 0.55, seconds 
 export function openMagicDialog(app) {
   let recipe = localStorageGet('magicRecipe', 'cowgirl'), place = localStorageGet('magicPlace', 'floor');
   let intensity = localStorageGet('magicIntensity', 0.55), seconds = 3, finish = 'none';
-  // "Finish": only offered when the moments (cum, drool, finish voices) are there
+  // "Finish": only offered when the moments (cum, drool) are there
   // (it sits beside the two sliders, so the dialog does not grow on a laptop screen)
   const finishBox = h('label', { class: 'field hidden', style: { margin: 0, minWidth: 0 } }, h('span', {}, 'Finish'));
   const tuneRow = h('div', { class: 'grid-2', style: { marginTop: '10px', alignItems: 'end' } });
@@ -496,7 +495,7 @@ export function openMagicDialog(app) {
     return makeMagic(app, { recipe, place, intensity, seconds, finish });
   };
   const dlg = modal({
-    title: 'Magic Animation', wide: true,
+    title: h('span', {}, 'Magic Animation', h('span', { class: 'beta' }, 'Beta')), wide: true,
     text: 'Pick a position and a place. One click makes a complete animation - posed on the real furniture, moving, with physics, faces and sound.',
     body: h('div', {},
       grid,

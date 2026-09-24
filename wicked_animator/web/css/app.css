@@ -185,6 +185,8 @@ kbd { font-family: var(--mono); font-size: 10.5px; padding: 1px 5px; border-radi
 .chips.picked { margin-bottom: 8px; }
 .chip { padding: 1px 8px; border-radius: 999px; background: var(--panel-3); border: 1px solid var(--line-2); font-size: 10.5px; color: var(--muted); white-space: nowrap; }
 .chip.hot { background: var(--accent-soft); border-color: var(--accent-line); color: #ffd3e6; }
+/* "Beta" next to a feature that is still being tuned (Magic) */
+.beta { display: inline-block; margin-left: 7px; padding: 1px 6px; border-radius: 5px; font-size: 9.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; line-height: 1.5; vertical-align: middle; color: #ffd3e6; background: rgba(255, 79, 154, .18); border: 1px solid rgba(255, 79, 154, .45); }
 .tag-groups { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
 .tag-group > span { display: block; font-size: 11px; color: var(--faint); font-weight: 800; margin-bottom: 6px; letter-spacing: .5px; text-transform: uppercase; }
 

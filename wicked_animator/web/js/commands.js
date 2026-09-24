@@ -28,7 +28,7 @@ export function commands(app) {
   add('Actions', 'open', 'Open an animation', () => app.open(), { icon: 'open', keys: ['Ctrl', 'O'] });
   add('Actions', 'send', 'Send to game', () => app.exportDialog(), { icon: 'send', words: 'export package mods try', pinned: true });
   add('Actions', 'share', 'Export mod', click('btn-share'), { icon: 'package', words: 'bundle zip share upload' });
-  add('Actions', 'magic', 'Magic animation', () => app.openMagic(), { icon: 'wand', words: 'auto generate one click surprise', pinned: true });
+  add('Actions', 'magic', 'Magic animation (beta)', () => app.openMagic(), { icon: 'wand', words: 'auto generate one click surprise', pinned: true });
   add('Actions', 'sounds', 'Place sounds for me', () => app.autoSounds(), { icon: 'sound', words: 'auto audio claps wet' });
   add('Actions', 'record', 'Record a video', click('btn-record'), { icon: 'rec', words: 'render capture clip' });
   add('Tools', 'tool-r', 'Pose tool', () => app.setTool('rotate'), { icon: 'rotate', keys: ['R'], words: 'rotate' });

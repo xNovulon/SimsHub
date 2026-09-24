@@ -239,7 +239,7 @@ function afterMoments(app) {
 // part: inside | face | chest | belly | back | butt | feet (or a cum type). frame: where it happens (the playhead when
 // it is inside the loop, else 70% of it). Cum on the receiver (level 2), the drool of the finish at the giver's tip
 // (or dripping out, for inside), and the game's finish voices when the sims' voices have them.
-export function finishPreset(app, part = 'face', frame = null, { checkpoint = true, quiet = false } = {}) {
+export function finishPreset(app, part = 'face', frame = null, { checkpoint = true, quiet = false, voices = true } = {}) {
   const p = app.store.project, len = p.length, fps = p.fps || 30;
   const r = defaultTarget(app, 'CUM'), g = giverOf(app);
   if (!r) { if (!quiet) toast('Add a sim first.'); return null; }
@@ -273,8 +273,8 @@ export function finishPreset(app, part = 'face', frame = null, { checkpoint = tr
     s.sounds = s.sounds || [];
     s.sounds.push({ frame: Math.max(0, Math.min(len - 1, Math.round(at))), name, kind: 'voice', moment: group });
   };
-  if (g && g !== r) say(g, 'vo_expr_woohoo_big_1finish_x', F - 10);
-  say(r, 'vo_expr_woohoo_big_1finish_y', F - 5);
+  if (voices && g && g !== r) say(g, 'vo_expr_woohoo_big_1finish_x', F - 10);
+  if (voices) say(r, 'vo_expr_woohoo_big_1finish_y', F - 5);
   afterMoments(app);
   if (!quiet) {
     const where = cum === 'VAGINA' ? 'inside' : `on ${r.label}'s ${CUM_LABEL[cum].toLowerCase()}`;

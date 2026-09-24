@@ -436,21 +436,26 @@ async function installHelpers(page) {
       results.A8 = a8;
       C('A8 dragging her hips: his held hands follow at once (palm still 1.2 cm off her skin)', a8.limbs.length === 2 && Math.abs(a8.duringCm - 1.2) <= 0.8, a8);
 
-      // A9 - Magic's other defaults: look at the partner, trembling legs at a hard finish, the Finish (moments), voices
+      // A9 - Magic's other defaults: look at the partner, trembling legs at a hard finish, the Finish (moments), no voices
+      // (a few lines in a short loop repeat every few seconds in the game), one wet sound and one clap per stroke
       const a9 = await page.evaluate(async () => {
         await R.magic('cowgirl', 'double_bed', { intensity: 0.9, finish: 'face' });
         const p = app.store.project, him = R.byFrame('ym'), her = R.byFrame('yf');
         const layers = s => s.layers.map(l => l.type + (l.type === 'look' ? '@' + l.weight : ''));
         const voices = s => (s.sounds || []).filter(x => x.kind === 'voice').length;
+        const at = (s, kind) => (s.sounds || []).filter(x => x.kind === kind).map(x => x.frame).sort((a, b) => a - b);
         let moments = null;
         try { moments = await import('/js/moments.js'); } catch { moments = null; }
         return { her: layers(her), him: layers(him), category: p.category, act: p.act, loops: p.loops,
-          events: (p.events || []).map(e => e.type + (e.cum ? ':' + e.cum : '')), herVoices: voices(her), himVoices: voices(him), moments: !!(moments && moments.finishPreset) };
+          events: (p.events || []).map(e => e.type + (e.cum ? ':' + e.cum : '')), herVoices: voices(her), himVoices: voices(him), moments: !!(moments && moments.finishPreset),
+          wet: at(her, 'wet'), claps: at(her, 'clap'), strokes: Math.round(him.layers.concat(her.layers).find(l => l.type === 'ride' || l.type === 'thrust')?.params.strokes || 0) };
       });
       results.A9 = a9;
       C('A9 Magic: both look at each other (60%), her legs tremble at a hard finish', a9.her.includes('look@0.6') && a9.him.includes('look@0.6') && a9.her.includes('tremble'), a9);
       C('A9 Magic Finish "Face": a one-time Climax of the act with the cum moment', a9.moments ? (a9.category === 'CLIMAX' && a9.act === 'VAGINAL' && a9.loops === 1 && a9.events.includes('CUM:FACE')) : a9.category === 'CLIMAX', a9);
-      C('A9 Magic cowgirl gives voices to both (her moans, his woohoo)', a9.herVoices > 0 && a9.himVoices > 0, { her: a9.herVoices, him: a9.himVoices });
+      C('A9 Magic adds no voices (not even with a Finish)', a9.herVoices === 0 && a9.himVoices === 0, { her: a9.herVoices, him: a9.himVoices });
+      C('A9 Magic cowgirl: one wet sound per stroke, each with a clap on the same frame', a9.wet.length > 0 && (!a9.strokes || a9.wet.length === a9.strokes)
+        && a9.wet.join() === a9.claps.join(), { wet: a9.wet, claps: a9.claps, strokes: a9.strokes });
 
       // A10 - Magic "Lap ride" on an armchair: he sits on the seat (feet on its foot spots), she sits on his lap; nothing
       // goes into the chair; a lying-length couple is not laid on a loveseat; nothing moves after Magic is done (the

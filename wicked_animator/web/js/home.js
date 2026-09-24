@@ -42,8 +42,8 @@ export function hideHome(app, { from = null } = {}) {
 function startCards(app) {
   const blank = template => () => app.newScene(true, true, template, () => { hideHome(app); app.showStep('pose'); });
   const cards = [
-    { id: 'magic', title: 'Magic Animation', icon: 'wand', big: true, cls: 'magic-card',
-      text: 'Pick a position and a place - one click gives you a complete animation: posed on the real furniture, moving, with physics, faces, claps, wet sounds and moans. Ready to send to the game.',
+    { id: 'magic', title: 'Magic Animation', badge: 'Beta', icon: 'wand', big: true, cls: 'magic-card',
+      text: 'Pick a position and a place - one click gives you a complete animation: posed on the real furniture, moving, with physics, faces, claps and wet sounds. Ready to send to the game.',
       onClick: () => { hideHome(app); app.openMagic(); }, art: magicStrip(app) },
     { id: 'blank', title: 'Blank animation', icon: 'blank', wide: true, text: 'Start from scratch - pick who is in it:',
       pills: [['couple', 'Woman & man'], ['ff', 'Two women'], ['mm', 'Two men'], ['futa', 'Woman & futa'], ['solo', 'One sim']].map(([t, l]) => ({ label: l, onClick: blank(t) })) },
@@ -96,7 +96,7 @@ function cardEl(c, i) {
     class: 'start' + (c.cls ? ' ' + c.cls : '') + (c.big ? ' big' : '') + (c.wide ? ' wide' : '') + (c.hook ? ' hooked' : ''),
     'data-card': c.id || null, type: c.pills ? null : 'button', style: { '--i': Math.min(i, 8) },
     onclick: c.pills ? null : () => c.onClick && c.onClick() },
-  c.art || null, h('div', { class: 'ic' }, icon(c.icon || 'spark')), h('b', {}, c.title), c.text ? h('small', {}, c.text) : null, pills);
+  c.art || null, h('div', { class: 'ic' }, icon(c.icon || 'spark')), h('b', {}, c.title, c.badge ? h('span', { class: 'beta' }, c.badge) : null), c.text ? h('small', {}, c.text) : null, pills);
   return el;
 }
 
