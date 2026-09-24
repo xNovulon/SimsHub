@@ -36,7 +36,7 @@ and keeps your Mods folder tidy.
 
 ## Wicked Animator
 
-A full animation studio built for WickedWhims, designed for players rather than 3D artists.
+A full animation studio built for WickedWhims, designed for players that have no experience in blender.
 
 - **Pose by dragging.** Move a hand or foot and the body follows, with optional natural limits for every joint.
 - **Faces and hands.** Expressions, eye direction, lip-sync, and ready-made hand shapes.
