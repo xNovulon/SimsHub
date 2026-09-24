@@ -38,7 +38,7 @@ status() -> {
   'game': {'found': bool, 'exe': str|None, 'source': str, 'saved': bool, 'message': str,       # (added)
            'store': 'steam'|'ea'|'unknown'|None, 'game_dir': str|None,
            'lost_path': str|None},   # a game folder the user chose that is gone (then found False)
-      # found False -> show "Find my game" (browse / set_game_path). saved: the path is the user's own choice.
+      # found False -> show "Locate The Sims 4" (browse / set_game_path). saved: the path is the user's own choice.
       # A chosen path that has gone (drive letter changed...) gives found False, lost_path, and the message
       # "The game is no longer at <path>. ..." so the app asks again.
   'inbox': {'path': str, 'waiting': int},              # (added) downloads waiting (a cheap count; nothing is read)
@@ -126,6 +126,30 @@ set_game_path(path) -> {'ok': bool, 'message': str, 'exe': str|None, 'game_dir':
 choose_game_folder() -> {'ok': False, 'message': str, 'exe': None, 'game_dir': None}   # stub for old app builds
 
 # for tests / other folders (not for the app): configure(sims=..., db_path=..., check_game=..., ...), reset()
+
+# (added) patch day, game errors, save backups, load-time savings (speedkit/api_care.py; docs/care.md)
+patch_day() -> {'ok', 'game': {'version', 'previous', 'updated', 'first_look', 'update_time': iso, 'noticed'},
+                'older': [{'mod', 'rel', 'date', 'days_before', 'size_mb', 'goes_with': [rel]}], 'newer': int,
+                'set_aside': [{'rel', 'mod', 'since', 'why', 'date', 'state': 'aside'|'updated', 'script'}], 'message'}
+patch_seen() -> {'ok', 'message'}
+set_aside(rels, why='patch'|'error', progress=None) -> {'ok', 'message', 'moved', 'skipped', 'journal', 'steps'}
+    # rels relative to Mods; a script's companions go with it; why='patch' backs up the saves first.
+    # A kind 'aside' journal (undo_last undoes it); every mode keeps held files parked (profiles.held_keys).
+put_back(rels, progress=None) -> {'ok', 'message', 'moved', 'skipped', 'journal'}
+game_errors() -> {'ok', 'errors': [{'id', 'kind': 'script'|'ui'|'other', 'error', 'mod': {'name', 'file', 'rel',
+                  'root', 'script', 'can_set_aside'}|None, 'how': 'named'|'mentioned'|None, 'also', 'count',
+                  'first', 'last', 'files', 'details', 'where', 'source', 'new', 'set_aside'}], 'files',
+                  'unreadable', 'seen_until', 'message'}
+errors_seen() -> {'ok', 'message'}
+save_health() -> {'ok', 'saves': [{'file', 'slot', 'name', 'size_mb', 'last_played', 'history': [[date, mb]],
+                  'growth_mb', 'growth_days', 'level': 'ok'|'big'|'very_big'|'growing', 'note'}],
+                  'backups': [{'id', 'when', 'reason', 'files', 'bytes', 'saves', 'complete', 'game_version'}],
+                  'backup_folder', 'keep', 'free_gb', 'message'}
+backup_saves(progress=None) -> {'ok', 'message', 'backup', 'files', 'bytes'}
+restore_saves(backup, progress=None) -> {'ok', 'message', 'journal', 'restored', 'left'}
+    # a kind 'saves' journal records it; undo_last puts the saves back as they were before the restore
+load_savings() -> {'ok', 'modes': {mode: {'starts', 'menu_s', 'lot_s', 'total_s', 'last'}}, 'compare',
+                   'saved_s', 'saved_total_s', 'confidence': 'none'|'one_mode'|'low'|'ok', 'starts', 'message'}
 ```
 
 Launching: a Steam install ('store' == 'steam', the exe is under steamapps\common) is started through
@@ -156,11 +180,14 @@ wears CC the mode does not load (CC installed nowhere does not count - it is mis
   - `GET /api/task/<id>` -> `{"state": "running"|"done"|"failed", "progress": [...last 50 events], "result": {...}}`
   - `GET /api/task/current` -> the running task, else the newest one (or `{"task": null}`)
   - `POST /api/open` `{"what": "animator"|"mods"|"reports"|"inbox"|"saves"|"quarantine"|"report_html"}`
+  - (added) `GET /api/patchday|errors|save_health|load_savings[?refresh=1]`, `POST /api/patchday/seen|errors/seen`,
+    and the tasks `set_aside {"rels", "why"}`, `put_back {"rels"}`, `backup_saves`, `restore_saves {"backup"}`
+    (`speedkit/hub/care_routes.py`, docs/care.md)
   - Binds only to 127.0.0.1; rejects requests whose Host/Origin is not local.
 - Launcher `Start Novulon's Sims Hub.bat` in the project root, modelled on
   `C:\Users\basim\Tools\sims4_animator\Start Wicked Animator.bat` (start server once, open Chrome/Edge `--app`).
 - Desktop shortcut `C:\Users\basim\Desktop\Novulon's Sims Hub.lnk` -> `pythonw.exe -m speedkit.hub --open`
   (no console window), icon `speedkit\hub\web\img\hub.ico`.
 - Look: the same design language as Novulon's Wicked Animator (read its `web/css/app.css`): dark theme,
-  pink->violet gradient, Plus Jakarta Sans, "Novulon's" brand text + gradient product name. Mascot Novi
-  (`branding/novi.html`, inline SVG) may appear on the home screen.
+  pink->violet gradient, Plus Jakarta Sans, "Novulon's" brand text + gradient product name. No mascot, and no
+  first-person voice: the Hub describes things plainly and never talks as a character ("I'll...", "Let's...").

@@ -28,7 +28,7 @@ OUT = os.environ.get('SIMS_HUB_SCREENS') or os.path.join(os.path.dirname(os.path
 
 # (name, url, window size, what the page must show)
 PAGES = [
-    ('home', '/#home', (1440, 1000), ['Ready to play?', 'Play FAST', 'Play with ALL CC', 'Chrome is using 20 GB', '755,662',
+    ('home', '/#home', (1440, 1000), ['Start The Sims 4', 'Play FAST', 'Play with ALL CC', 'Chrome is using 20 GB', '755,662',
                                     'Loading a lot took 22 s']),
     ('home_1280x720', '/#home', (1280, 720), ['Play FAST']),
     ('saves', '/#saves', (1440, 1000), ['Wicked Nights', '12,480 CC items', 'Play this save', 'Novulon · Del Sol Valley']),
@@ -48,18 +48,18 @@ PAGES = [
 SPECIAL = {
     'home_game_running': ('/#home', (1440, 1000), ['The Sims 4 is running'], lambda s: s.update(game_running=True)),
     # the game block exactly as speedkit/api.py status() gives it when the game is missing / was moved
-    'home_game_missing': ('/#home', (1440, 1000), ["couldn't find The Sims 4", 'Find my game'],
+    'home_game_missing': ('/#home', (1440, 1000), ["wasn't found on this PC", 'Locate The Sims 4'],
                           lambda s: s.update(game={'found': False, 'exe': None, 'game_dir': None, 'store': None, 'source': None,
-                                                   'saved': False, 'message': "I can't find The Sims 4 on this PC. Click 'Find my "
-                                                                              "game' and show me its folder."})),
+                                                   'saved': False, 'message': "The Sims 4 wasn't found on this PC. Click 'Locate "
+                                                                              "The Sims 4' and select its folder."})),
     'home_game_moved': ('/#home', (1440, 1000), ['The game is no longer at', 'D:\\Games\\The Sims 4'],
                         lambda s: s.update(game={'found': False, 'exe': None, 'game_dir': None, 'store': None, 'source': 'your choice',
                                                  'saved': True, 'message': "The game is no longer at D:\\Games\\The Sims 4. Click "
-                                                                           "'Find my game' and show me its folder."})),
-    'tools_game_moved': ('/#tools', (1440, 1000), ['The game is no longer at', 'Find my game'],
+                                                                           "'Locate The Sims 4' and select its folder."})),
+    'tools_game_moved': ('/#tools', (1440, 1000), ['The game is no longer at', 'Locate The Sims 4'],
                          lambda s: s.update(game={'found': False, 'exe': None, 'game_dir': None, 'store': None, 'source': 'your choice',
                                                   'saved': True, 'message': "The game is no longer at D:\\Games\\The Sims 4. Click "
-                                                                            "'Find my game' and show me its folder."})),
+                                                                            "'Locate The Sims 4' and select its folder."})),
     'home_fresh_install': ('/#home', (1440, 1000), ['Not timed yet', 'Max Quality, lag fixed'],
                            lambda s: s.update(load_times=[], journals=[], graphics={'state': 'tuned', 'label': 'SpeedKit Max Quality - '
                                                                                     'sharp graphics without the lag',
@@ -137,7 +137,7 @@ class HubScreens(unittest.TestCase):
 
     def test_with_web_font(self):
         # the same page when the internet is there (Plus Jakarta Sans); it must look right either way
-        self.check('home_webfont', '/#home', (1440, 1000), ['Ready to play?'], online=True)
+        self.check('home_webfont', '/#home', (1440, 1000), ['Start The Sims 4'], online=True)
 
     def test_special_states(self):
         for name, (path, size, must, setup) in SPECIAL.items():

@@ -210,6 +210,33 @@ class Paths:
         return os.path.join(self.root(side), _norm_rel(rel).replace('/', os.sep))
 
 
+# ------------------------------------------------------------------ mods set aside until they are updated
+HELD = 'set_aside.json'                     # SpeedKit\\set_aside.json, written by speedkit.patchday
+
+
+def held_keys(P):
+    """Keys of the mods speedkit.patchday set aside until they are updated (SpeedKit\\set_aside.json
+    {"held": [{"rel": ...}, ...]}). Every profile keeps such a file parked while it is parked - a mode
+    switch never brings it back; once it is back in Mods (put back, or another tool restored it) the hold
+    has no effect. A missing or unreadable file holds nothing."""
+    try:
+        with open(os.path.join(P.home, HELD), encoding='utf-8') as f:
+            doc = json.load(f)
+        out = set()
+        for h in doc.get('held') or []:
+            rel = h.get('rel') if isinstance(h, dict) else h
+            if isinstance(rel, str) and rel.strip() and _check_entry(rel) is None:
+                out.add(_key(rel))
+        return out
+    except (OSError, ValueError, AttributeError, TypeError):
+        return set()
+
+
+def _held_parked(inv, held):
+    """The held keys that are parked now (and not also in Mods)."""
+    return {k for k in held or () if k in inv.items and inv.items[k].p_rel is not None and inv.items[k].m_rel is None}
+
+
 # ------------------------------------------------------------------ mods_switch.py's KEEP list
 _KEEP_CACHE = {}
 
@@ -746,9 +773,19 @@ def _closure(target, comp):
     return notes
 
 
-def compute_target(profile, inv, keep=None, park_rels=None, comp=None):
+def compute_target(profile, inv, keep=None, park_rels=None, comp=None, held=None):
     """{key: 'M' | 'P'} for every ordinary file, plus notes. SpeedKit's own files are handled apart.
-    'save' parks exactly what 'fast' parks (only the pack at the Mods root differs)."""
+    'save' parks exactly what 'fast' parks (only the pack at the Mods root differs). held: keys set aside
+    until updated (held_keys): the ones parked now stay parked in every profile."""
+    target, notes = _compute_target(profile, inv, keep, park_rels, comp)
+    for k in _held_parked(inv, held):
+        if target.get(k) != 'P':
+            target[k] = 'P'
+            notes.append('keeps %s set aside until it is updated' % _any_rel(inv.items[k]))
+    return target, notes
+
+
+def _compute_target(profile, inv, keep=None, park_rels=None, comp=None):
     notes = []
     if profile == 'save':
         profile = 'fast'
@@ -1141,7 +1178,7 @@ def _build_plan(profile, P, inv, doc, lib, fm, keep, keep_source, verdicts, comp
         park_rels = _fast_park_rels(fm, lib, v, companions_cache)
         own = _special_keys(inv)
         park_rels = [r for r in park_rels if _key(r) not in own and not ('/' not in r and _pack_family(r))]
-    target, tnotes = compute_target(profile, inv, keep, park_rels, comp)
+    target, tnotes = compute_target(profile, inv, keep, park_rels, comp, held=held_keys(P))
     notes += tnotes
     moves, conflicts = plan_moves(inv, target, P, empty_dir_side(profile, target, keep))
     special = _special_moves(inv, P, profile, slot)
@@ -1647,7 +1684,8 @@ def current(lib=None, sims=SIMS, home=None, fastpack_dir=None, fastmode=None, ke
     inv = _inv or inventory(P)
     if keep is None:
         keep, _ = load_keep(mods_switch_path)
-    parked_now = inv.parked_keys()
+    held = _held_parked(inv, held_keys(P))          # set aside until updated: the same in every profile
+    parked_now = inv.parked_keys() - held
     targets = {}
     targets['full'] = [set()]
     studio_t, _ = compute_target('studio', inv, keep)
@@ -1685,6 +1723,7 @@ def current(lib=None, sims=SIMS, home=None, fastpack_dir=None, fastmode=None, ke
             continue
         opts = []
         for t in targets[name]:
+            t = t - held
             to_park = sorted(t - parked_now - conflicts)
             to_restore = sorted(parked_now - t)
             opts.append((len(to_park) + len(to_restore), to_park, to_restore))
@@ -1722,6 +1761,8 @@ def current(lib=None, sims=SIMS, home=None, fastpack_dir=None, fastmode=None, ke
         notes.append('The packs of %d saves are in Mods at once; switch profile to tidy that up.' % len(saves_in))
     if conflicts:
         notes.append('%d path(s) exist in both Mods and Mods_parked (the Mods copy is used).' % len(conflicts))
+    if held:
+        notes.append('%d mod file(s) are set aside until they are updated; every profile keeps them parked.' % len(held))
     if not per['fast']['known']:
         notes.append("'fast' is recognised after the first SpeedKit fast switch (or when a library index is given).")
     m_n, m_b = inv.totals('M')

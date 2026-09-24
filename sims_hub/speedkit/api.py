@@ -365,7 +365,7 @@ def _plain_value(v):
 def _graphics_status(game):
     if game is None:
         return {'state': 'other', 'label': "Unknown - the game was not found", 'can_tune': False,
-                'details': ["Click 'Find my game' first."]}
+                'details': ["Click 'Locate The Sims 4' first."]}
     key = ('graphics', _graphics_signature(game))
     if not os.path.isfile(os.path.join(_game_bin(game), 'GraphicsRules.sgr')):
         return {'state': 'other', 'label': "Unknown - the game's own graphics file was not found", 'can_tune': False,
@@ -621,6 +621,9 @@ def _title(j):
     """A plain sentence for one recorded change (status()['journals'][n]['title'])."""
     kind, note = j['kind'], (j['note'] or '')
     low = note.lower()
+    if kind in ('aside', 'saves'):                  # patch day / save backups (api_care.py)
+        from . import api_care
+        return api_care.title(j)
     if kind == 'profile':
         if low.startswith('thumbnail cache'):
             return 'Set the thumbnail cache aside (the game rebuilds it)'
@@ -1052,7 +1055,7 @@ def _run_flow(target, launch, progress):
     game = _game()
     if game is None and (launch or profile in ('fast', 'save')):
         run.step('game', False, loc.get('message') or "I can't find The Sims 4.")
-        return run.result(False, loc.get('message') or "I can't find The Sims 4. Click 'Find my game'.")
+        return run.result(False, loc.get('message') or "The Sims 4 wasn't found. Click 'Locate The Sims 4'.")
     lib = None
     try:
         _housekeeping(run)
@@ -1110,12 +1113,12 @@ def _run_flow(target, launch, progress):
         if r.get('refused'):
             why = r['refused']
             if why.startswith('Game exe not found'):
-                why = ("The game's program file is missing (%s). Everything else is prepared - click 'Find my game' "
-                       "and show me where The Sims 4 is now." % game['exe'])
+                why = ("The game's program file is missing (%s). Everything else is prepared - click 'Locate The Sims 4' "
+                       "and select its folder." % game['exe'])
             run.step('launch', False, why)
             return run.result(False, why)
         run.step('launch', True, 'Starting The Sims 4%s.' % (' through Steam' if url else ''))
-        return run.result(True, 'The Sims 4 is starting. Have fun!', launched=True)
+        return run.result(True, 'The Sims 4 is starting.', launched=True)
     except Exception as e:
         _log_error('play', e)
         run.step('error', False, _plain(e))
@@ -1161,7 +1164,7 @@ def _undoable(j):
     return not any((j['note'] or '').startswith(n) for n in HELPER_NOTES)
 
 
-INDEPENDENT_KINDS = ('settings', 'caches')        # changes outside Mods / Mods_parked
+INDEPENDENT_KINDS = ('settings', 'caches', 'saves')   # changes outside Mods / Mods_parked ('saves': a restore)
 
 
 def _moved_between_roots(jid, home):
@@ -1191,6 +1194,9 @@ def _undo_journal(j, dry_run):
     """Undo one change with the tool that made it (dry_run: only check it could be undone now)."""
     jid, kind, home = j['id'], j['kind'], j['_home']
     check = _cfg['check_game'] and not dry_run
+    if kind in ('aside', 'saves'):                  # patch day / save backups (api_care.py)
+        from . import api_care
+        return api_care.undo(j, dry_run, check)
     if kind not in ('profile', 'merge', 'inbox') + INDEPENDENT_KINDS:
         moved = _moved_between_roots(jid, home)
         if moved:
@@ -1485,7 +1491,7 @@ def graphics_tune(apply=False, progress=None):
     'table': [{'setting', 'stock', 'before', 'after'}]}."""
     game = _game()
     if game is None:
-        return {'ok': False, 'message': "I can't find The Sims 4. Click 'Find my game' first.", 'table': []}
+        return {'ok': False, 'message': "The Sims 4 wasn't found. Click 'Locate The Sims 4' first.", 'table': []}
     if apply and _game_running():
         return {'ok': False, 'message': 'The Sims 4 is running. Close it first.', 'table': []}
     p = ST.graphics_use_tuned(dry_run=not apply, sims=_sims(), home=_home(), check_game=_cfg['check_game'] and apply,
@@ -1734,3 +1740,9 @@ def choose_game_folder():
     """Kept for older app builds: the Hub now draws its own folder browser (browse / set_game_path)."""
     return {'ok': False, 'message': "Use the folder browser: browse() and set_game_path().", 'exe': None,
             'game_dir': None}
+
+
+# ------------------------------------------------------------------------------------------ patch day, game errors,
+# save backups, load-time savings: speedkit/api_care.py (docs\care.md) - imported last, it uses the helpers above
+from .api_care import (patch_day, patch_seen, set_aside, put_back, game_errors, errors_seen,  # noqa: E402,F401
+                       save_health, backup_saves, restore_saves, load_savings)

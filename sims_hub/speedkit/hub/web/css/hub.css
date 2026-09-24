@@ -147,8 +147,6 @@ code.cheat { font-family: var(--mono); font-size: 13px; padding: 2px 8px; border
 
 /* ---------------------------------------------------------------- home */
 .hello { display: flex; align-items: center; gap: 20px; }
-.novi { width: 92px; height: 118px; flex: none; border-radius: 22px; overflow: hidden; background: radial-gradient(120% 90% at 50% 30%, #3b1c50, #18111f 70%); border: 1px solid rgba(255, 79, 154, .3); box-shadow: 0 10px 30px rgba(255, 79, 154, .18); }
-.novi img { width: 100%; height: 100%; display: block; }
 .hello h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.7px; line-height: 1.15; }
 .hello h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .hello p { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
@@ -429,5 +427,4 @@ details.more summary:hover { color: var(--text); }
 @media (max-height: 760px) {
   .page { padding-top: 22px; }
   .play { min-height: 150px; }
-  .novi { width: 78px; height: 100px; }
 }

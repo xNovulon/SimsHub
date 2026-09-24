@@ -182,7 +182,7 @@ def _prepare(target, progress, launch):
     if err:
         return {'ok': False, 'message': err, 'launched': False, 'steps': []}
     if not STATE['game']['found']:
-        return {'ok': False, 'message': "The Sims 4 wasn't found on this PC. Use \"Find my game\" first.",
+        return {'ok': False, 'message': "The Sims 4 wasn't found on this PC. Use \"Locate The Sims 4\" first.",
                 'launched': False, 'steps': []}
     steps = [('check', 'Making sure the game is closed'),
              ('scan', 'Looking for new or changed CC'),
@@ -239,6 +239,7 @@ def undo_last(progress=None):
             STATE['graphics'].update(state='sgr_full', label="Simp4Sims 'SGR Full' - looks great but causes lag", can_tune=True)
         if last['kind'] == 'profile':
             STATE['profile'] = {'name': 'full', 'save_slot': None, 'label': 'All CC - every mod is loaded'}
+    on_undo(last)                    # patch day / save backups (stub_care.py)
     return {'ok': True, 'message': 'Undid the change from %s.' % last['when'].replace('T', ' '), 'journal': last['id']}
 
 
@@ -249,7 +250,7 @@ def inbox(apply=False, progress=None):
     if not apply:
         _run(progress, [('look', 'Looking in your Inbox folder')] if progress else [])
         n = len(items)
-        msg = ("%d downloads are waiting. Press 'Add them to my game' to add them." % n) if n else \
+        msg = ("%d downloads are waiting. Press 'Add to game' to add them." % n) if n else \
             'Your Inbox is empty. Drop downloads into it, then press this again.'
         return {'ok': True, 'message': msg, 'items': items, 'inbox_path': path}
     bad = _busy()
@@ -459,3 +460,8 @@ def open_folder(which):
 def open_path(path):
     """Used by the server for the report page; the preview has no real report to show."""
     return {'ok': True, 'message': 'Preview: the library report would open now.'}
+
+
+# ------------------------------------------------------------------ patch day, game errors, save backups, load times
+from speedkit.hub.stub_care import (patch_day, patch_seen, game_errors, errors_seen, save_health,  # noqa: E402,F401
+                                   load_savings, set_aside, put_back, backup_saves, restore_saves, on_undo)

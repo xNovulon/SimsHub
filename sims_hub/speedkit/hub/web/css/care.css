@@ -1,0 +1,74 @@
+/* Novulon's Sims Hub - patch day, game errors, save backups, load-time savings (js/care.js). Same tokens as hub.css. */
+
+/* ---------------------------------------------------------------- Home: notices */
+.care-banner { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 0 0 16px; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, .1), rgba(255, 79, 154, .06)), var(--panel); border: 1px solid rgba(251, 191, 36, .38); }
+.care-banner.soft { background: linear-gradient(135deg, rgba(255, 79, 154, .08), rgba(168, 85, 247, .06)), var(--panel); border-color: rgba(255, 79, 154, .3); }
+.care-banner .ic { width: 40px; height: 40px; border-radius: 12px; }
+.care-banner .ic svg { width: 20px; height: 20px; }
+.care-banner .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.care-banner b { font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+.care-banner span { color: var(--muted); font-size: 13px; }
+.care-banner + .play-row, .care-banner + .state-card { margin-top: 0; }
+
+/* ---------------------------------------------------------------- Home: loading times */
+.care-load { margin-top: 0; }
+.care-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.care-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr) 78px 70px; align-items: center; gap: 12px; }
+.care-bar .lbl { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+.care-bar .track { height: 12px; border-radius: 99px; background: var(--panel-3); overflow: hidden; }
+.care-bar .track i { display: block; height: 100%; border-radius: 99px; background: var(--fast); min-width: 4px; }
+.care-bar .track i.full { background: var(--full); }
+.care-bar .track i.studio { background: var(--accent-2); }
+.care-bar b { font-size: 16px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+.care-bar small { color: var(--faint); font-size: 12px; }
+.care-saved { display: flex; gap: 12px; align-items: center; margin-top: 16px; padding: 13px 15px; border-radius: 13px;
+  background: linear-gradient(135deg, rgba(255, 79, 154, .12), rgba(168, 85, 247, .1)); border: 1px solid var(--accent-line); }
+.care-saved svg { width: 22px; height: 22px; color: #ff8cbd; }
+.care-saved b { display: block; font-size: 15px; font-weight: 800; }
+.care-saved span { color: var(--muted); font-size: 13px; }
+
+/* ---------------------------------------------------------------- lists */
+.care-status { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 12px 14px; border-radius: 13px;
+  background: rgba(52, 211, 153, .06); border: 1px solid rgba(52, 211, 153, .3); }
+.care-status > svg { width: 20px; height: 20px; color: var(--ok); margin-top: 1px; }
+.care-status.hot { background: rgba(251, 191, 36, .07); border-color: rgba(251, 191, 36, .35); }
+.care-status.hot > svg { color: var(--warn); }
+.care-status b { display: block; font-weight: 800; }
+.care-status span { color: var(--muted); font-size: 13px; }
+.care-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.care-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+.care-row.pick { cursor: pointer; }
+.care-row.pick:hover { border-color: var(--line-2); }
+.care-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); flex: none; margin: 0; }
+.care-row .ci, .care-error .ci { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--panel-3); color: var(--muted); flex: none; }
+.care-row .grow, .care-error .grow { flex: 1; min-width: 0; }
+.care-row b, .care-error b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.care-row span, .care-error .top span { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.care-more { margin-top: 12px; }
+.care-tools { margin-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+.care-tools .card + .card { margin-top: 0; }
+
+/* ---------------------------------------------------------------- errors */
+.care-errors { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.care-error { padding: 12px 14px; border-radius: 13px; background: var(--panel-2); border: 1px solid var(--line); }
+.care-error.new { border-color: rgba(255, 79, 154, .32); }
+.care-error .top { display: flex; align-items: center; gap: 12px; }
+.care-error .what { margin: 10px 0 0; font-family: var(--mono); font-size: 12.5px; color: #f5d7e4; overflow-wrap: anywhere; }
+.care-error .meta { margin-top: 6px; color: var(--faint); font-size: 12.5px; }
+.care-error details.more { margin-top: 8px; }
+.care-raw { margin: 8px 0 0; padding: 10px 12px; max-height: 260px; overflow: auto; border-radius: 10px; background: var(--bg);
+  border: 1px solid var(--line); font: 12px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------- saves */
+.care-size { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; min-width: 0; }
+.care-size svg { width: 14px; height: 14px; }
+.care-size.warn { color: #fde9b5; }
+.care-size.warn svg { color: var(--warn); }
+.care-size .chip { font-size: 11px; padding: 1px 8px; }
+
+@media (max-width: 860px) {
+  .care-bar { grid-template-columns: 90px minmax(0, 1fr) 64px; }
+  .care-bar small { display: none; }
+  .care-banner { flex-wrap: wrap; }
+}

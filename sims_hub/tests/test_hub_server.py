@@ -364,7 +364,7 @@ class Static(Base):
         self.assertIn("frame-ancestors 'none'", h['content-security-policy'])
         self.assertEqual(h['x-content-type-options'], 'nosniff')
         for path, ctype in [('/css/hub.css', 'text/css'), ('/js/hub.js', 'text/javascript'), ('/img/logo.svg', 'image/svg+xml'),
-                            ('/img/novi.svg', 'image/svg+xml'), ('/img/animator.svg', 'image/svg+xml'), ('/index.html', 'text/html')]:
+                            ('/img/animator.svg', 'image/svg+xml'), ('/index.html', 'text/html')]:
             with self.subTest(path):
                 code, h, body = self.get(path)
                 self.assertEqual(code, 200)

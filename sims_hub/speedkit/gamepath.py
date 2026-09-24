@@ -328,7 +328,7 @@ def set_game_path(path, sims=SIMS, home=None):
 
 
 def forget_game_path(sims=SIMS, home=None):
-    """Drop the remembered paths (tests / 'Find my game' again)."""
+    """Drop the remembered paths (tests / 'Locate The Sims 4' again)."""
     doc = read_settings(sims, home)
     if doc.pop('game_exe', None) or doc.pop('auto_exe', None):
         _write_settings(doc, sims, home)
@@ -391,14 +391,14 @@ def locate_game(sims=SIMS, home=None, clues=None, remember=True, use_cache=True)
     doc = read_settings(sims, home)
     out = {'found': False, 'exe': None, 'game_dir': None, 'store': None, 'source': None, 'saved': False,
            'lost_path': None,
-           'message': "I can't find The Sims 4 on this PC. Click 'Find my game' and show me its folder."}
+           'message': "The Sims 4 wasn't found on this PC. Click 'Locate The Sims 4' and select its folder."}
     chosen = doc.get('game_exe')
     if chosen:
         exe = normalise(chosen)
         if exe:
             out.update(_result(exe, 'your choice'), found=True, saved=True, message='The Sims 4 is at %s.' % game_dir_of(exe))
         else:
-            out.update(message='The game is no longer at %s. Click \'Find my game\' and show me its folder.'
+            out.update(message='The game is no longer at %s. Click \'Locate The Sims 4\' and select its folder.'
                        % game_dir_of(chosen), saved=True, exe=None, source='your choice',
                        lost_path=game_dir_of(chosen))
         _CACHE[ck] = (_t.time(), dict(out))

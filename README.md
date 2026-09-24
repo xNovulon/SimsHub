@@ -2,12 +2,6 @@
   <img src=".github/assets/banner.png" alt="Novulon's Sims 4 Tools: Wicked Animator and Sims Hub" width="100%">
 </p>
 
-<p align="center">
-  <a href="https://github.com/xNovulon/SimsHub/releases/tag/apps"><img src="https://img.shields.io/github/release-date/xNovulon/SimsHub?label=latest%20build&style=flat-square&color=8b5cf6" alt="Latest build"></a>
-  <a href="https://github.com/xNovulon/SimsHub/actions/workflows/build-apps.yml"><img src="https://img.shields.io/github/actions/workflow/status/xNovulon/SimsHub/build-apps.yml?label=build&style=flat-square" alt="Build status"></a>
-  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-3b82f6?style=flat-square" alt="Windows 10 and 11">
-  <img src="https://img.shields.io/badge/The%20Sims%204-PC-ff4f9a?style=flat-square" alt="The Sims 4 on PC">
-</p>
 
 <br>
 

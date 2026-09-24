@@ -1035,7 +1035,7 @@ class Story(unittest.TestCase):
         self.assertEqual(st['inbox'], {'path': os.path.join(self.home, 'Inbox'), 'waiting': 0})
         self.assertEqual(st['animator'], {'installed': True, 'path': self.w['animator']})
         self.check_all('1 status', 'studio')
-        self.screens('01_start', must={'home': ['Ready to play?', 'Play FAST', 'Play with ALL CC', 'Studio mode',
+        self.screens('01_start', must={'home': ['Start The Sims 4', 'Play FAST', 'Play with ALL CC', 'Studio mode',
                                                 CC_SENTENCE['studio']],
                                        'tools': ['Recent changes', "Open Novulon's Wicked Animator", REAL_GAME]})
 
@@ -1374,7 +1374,7 @@ class Story(unittest.TestCase):
             st = self.status()
             self.assertFalse(st['game']['found'])
             self.assert_plain([st['game']['message']], 'game not found')
-            self.screens('13_no_game', ('home',), must={'home': ["We couldn't find The Sims 4", 'Find my game']})
+            self.screens('13_no_game', ('home',), must={'home': ["The Sims 4 wasn't found on this PC", 'Locate The Sims 4']})
             b = self.hub.get('/api/browse')
             self.assertTrue(b['ok'], b)
             b = self.hub.get('/api/browse?path=' + urllib.request.quote(WORK))

@@ -20,6 +20,10 @@ API
   GET  /api/task/<id>                {"state": "running"|"done"|"failed", "progress": [...], "result": {...}}
   GET  /api/task/current             the running task, else the newest one (or {"task": null})
   POST /api/open {"what"}            animator | mods | reports | inbox | saves | quarantine | report_html
+  Patch day, game errors, save backups, load-time savings (speedkit/hub/care_routes.py, docs/care.md):
+  GET  /api/patchday | /api/errors | /api/save_health | /api/load_savings  [?refresh=1]
+  POST /api/patchday/seen | /api/errors/seen
+  tasks: set_aside {"rels", "why"} | put_back {"rels"} | backup_saves | restore_saves {"backup"}
 
 A finished task is 'done' when its result says ok, and 'failed' when it says not ok or raised.
 """
@@ -37,6 +41,8 @@ import traceback
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+
+from speedkit.hub import care_routes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, 'web')
@@ -68,6 +74,9 @@ ACTIONS = {
 # the engine functions the contract gives a progress callback (its @_safe wrappers hide their signatures, so the
 # contract decides; graphics_tune/graphics_restore take none)
 TAKES_PROGRESS = {'list_saves', 'play', 'prepare', 'undo_last', 'inbox', 'cleanup_plan', 'cleanup_apply', 'report'}
+# patch day, game errors, save backups (care_routes.py)
+ACTIONS.update(care_routes.ACTIONS)
+TAKES_PROGRESS |= care_routes.TAKES_PROGRESS
 OPEN_FOLDERS = ('mods', 'reports', 'inbox', 'saves', 'quarantine')
 SLOT_RE = re.compile(r'^[A-Za-z0-9_.\- ]{1,80}$')
 NOT_READY = "This part of the Hub isn't ready yet. Please update SpeedKit."
@@ -234,6 +243,11 @@ class Hub:
             raise BadRequest("I don't know how to do that.")
         if not isinstance(args, dict):
             raise BadRequest('The task needs its details as an object.')
+        if action in care_routes.ACTIONS:
+            try:
+                return care_routes.check_args(action, args)
+            except care_routes.BadArgs as ex:
+                raise BadRequest(str(ex))
         allowed = {'play': {'target'}, 'prepare': {'target'}, 'inbox': {'apply'}, 'graphics_tune': {'apply'},
                    'graphics_restore': {'apply'}}.get(action, set())
         extra = set(args) - allowed
@@ -280,6 +294,7 @@ class Hub:
             task.finished = time.time()
             self.current = None
             self.forget('status', 'saves', 'graphics', 'inbox') if changes else self.forget('status')
+            care_routes.forget(self)
 
     def task_view(self, task_id):
         with self.lock:
@@ -444,6 +459,9 @@ class Handler(BaseHTTPRequestHandler):
             if path is not None and (len(path) > 1024 or '\x00' in path):
                 raise BadRequest('That folder name is too long.')
             return self._ok(hub.call('browse', path))
+        care = care_routes.get(hub, route, refresh)
+        if care is not None:
+            return self._ok(care)
         if route == 'task' or route == 'task/':
             route = 'task/current'
         if route.startswith('task/'):
@@ -475,6 +493,9 @@ class Handler(BaseHTTPRequestHandler):
             result = hub.call('set_game_path', path)
             hub.forget()
             return self._ok(result)
+        care = care_routes.post(hub, route, body)
+        if care is not None:
+            return self._ok(care)
         return self._error(404, 'Unknown request.')
 
     # ---------------------------------------------------------------- files

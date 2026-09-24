@@ -1,4 +1,5 @@
 // Novulon's Sims Hub - the app. A plain ES module with no libraries; it talks to speedkit/hub/server.py.
+import * as care from './care.js';          // patch day, game errors, save backups, load-time savings
 
 // ------------------------------------------------------------------------------------------ small helpers
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -147,6 +148,7 @@ function loadForPage() {
   if (S.page === 'saves' || (S.page === 'home' && st().profile && st().profile.name === 'save')) ensureSaves();
   if (S.page === 'library') ensureInbox();
   if (S.page === 'performance') ensureGraphics();
+  care.load(S.page);
 }
 
 function render(fresh = false) {
@@ -195,15 +197,15 @@ function renderHome() {
   let top = '';
   if (gameRunning()) {
     top = `<div class="play-row"><div class="state-card running"><div class="big-dot"><i></i></div><div class="grow">
-      <h2>The Sims 4 is running</h2><p>Have fun! When you close the game, you can pick a different way to play here.</p></div></div></div>`;
+      <h2>The Sims 4 is running</h2><p>When the game closes, you can choose a different way to start it here.</p></div></div></div>`;
   } else {
     if (!gameFound()) {
       const moved = gameMoved(g), where = gamePath(g);
       top += `<div class="state-card find"><svg class="bob" viewBox="0 0 24 36" aria-hidden="true"><use href="#i-bob"/></svg><div class="grow">
-        <h2>${moved ? "The game isn't where it used to be" : "We couldn't find The Sims 4 on this PC"}</h2>
+        <h2>${moved ? "The game isn't where it used to be" : "The Sims 4 wasn't found on this PC"}</h2>
         <p>${moved ? (where ? `The game is no longer at <span class="path">${esc(where)}</span>. Show the Hub where it is now.` : esc(g.message || 'Show the Hub where it is now.'))
           : 'Show the Hub where the game is installed. You only have to do this once.'}</p></div>
-        <button class="btn primary big" data-act="find-game">${ic('search')}Find my game</button></div>`;
+        <button class="btn primary big" data-act="find-game">${ic('search')}Locate The Sims 4</button></div>`;
     }
     const fastMeta = [];
     if (isNum(lib.cas_fast) && isNum(lib.cas_full)) fastMeta.push(`<span class="pill">${num(lib.cas_fast)} of ${num(lib.cas_full)} CC items</span>`);
@@ -227,18 +229,17 @@ function renderHome() {
       </button></div>`;
   }
 
-  const hour = new Date().getHours();
-  const hi = hour < 5 ? 'Up late?' : hour < 12 ? 'Good morning!' : hour < 18 ? 'Hi there!' : 'Good evening!';
-  const [h1, line] = gameRunning() ? ['Have fun!', "The Sims 4 is running. I'll be right here when you're done."]
-    : !gameFound() ? ["Let's find your game", "I'm Novi. Show me where The Sims 4 is, and then you can play."]
-    : ['Ready to play?', "I'm Novi. Pick how you want to start The Sims 4, and I'll get everything ready for you."];
+  const [h1, line] = gameRunning() ? ['The Sims 4 is running', 'Changes are paused until the game is closed.']
+    : !gameFound() ? ['Game not found', 'Locate The Sims 4 to start playing.']
+    : ['Start The Sims 4', 'Choose how the game loads your custom content.'];
   return `<div class="hello">
-      <div class="novi"><img src="img/novi.svg" alt="Novi, the Sims Hub mascot"></div>
-      <div><h1>${hi} <span>${esc(h1)}</span></h1><p>${esc(line)}</p></div>
+      <div><h1>${esc(h1)}</h1><p>${esc(line)}</p></div>
     </div>
+    ${care.homeBanner()}
     ${top}
     <h3 class="sec">Right now</h3>
-    <div class="stats">${statCards().join('')}</div>`;
+    <div class="stats">${statCards().join('')}</div>
+    ${care.homeSavings()}`;
 }
 
 // what the "CC items loaded" card says, by the way the game starts right now
@@ -334,10 +335,11 @@ function renderSaves() {
         ${isNum(s.cc_parts) ? `<span class="chip hot">${ic('shirt')}${num(s.cc_parts)} CC items</span>` : ''}
         ${isNum(s.cc_missing) && s.cc_missing > 0 ? `<span class="chip warn" title="CC this save uses that isn't in your Mods folder any more">${ic('warn')}${num(s.cc_missing)} missing</span>` : ''}</div>
       <div class="extra">${s.problem ? `${ic('warn')}${esc(s.problem)}` : extra}</div>
+      ${care.saveLine(s)}
       <button class="btn primary block" data-act="play" data-target="save:${esc(s.slot)}"${canPlay() ? '' : ' disabled'}>
         ${ic('play')}${why ? esc(why) : 'Play this save'}</button>
     </div>`;
-  }).join('')}</div>`;
+  }).join('')}</div>${care.savesSection()}`;
 }
 
 // -------------------------------------------------------------------------------- Library
@@ -363,11 +365,11 @@ function renderLibrary() {
       <p>${isNum(lib.packages) ? `${num(lib.packages)} CC and mod files, ${gb(lib.gb)} in total.` : 'Add new downloads, free up space, and see what you have.'}</p></div></div>
 
     <div class="card"><div class="card-head"><div class="ic">${ic('download')}</div><div class="grow"><h2>Add new downloads</h2>
-      <p>Put the CC and mods you download into this folder. Press <b>Add them to my game</b>, and the Hub puts them in the right place, the safe way.</p></div></div>
+      <p>Put the CC and mods you download into this folder. Press <b>Add to game</b>, and the Hub puts them in the right place, the safe way.</p></div></div>
       <div class="path-box">${ic('folder', 'fold')}<span class="path">${esc((ib && ib.inbox_path) || 'Finding your Inbox folder...')}</span>
         <button class="btn small" data-act="open" data-what="inbox">${ic('folder')}Open folder</button></div>
       ${inboxBody}
-      <div class="actions"><button class="btn primary" data-act="inbox-apply"${addable.length && !noChange ? '' : ' disabled'}>${ic('check')}Add them to my game${addable.length ? ` (${num(addable.length)})` : ''}</button>
+      <div class="actions"><button class="btn primary" data-act="inbox-apply"${addable.length && !noChange ? '' : ' disabled'}>${ic('check')}Add to game${addable.length ? ` (${num(addable.length)})` : ''}</button>
         <button class="btn ghost" data-act="inbox-refresh"${S.inboxLoading ? ' disabled' : ''}>${ic('refresh')}Look again</button></div>
     </div>
 
@@ -375,7 +377,7 @@ function renderLibrary() {
       <p>Some CC is stored more than once. The Hub can remove the extra copies. Your game looks exactly the same, and you can undo it on the Tools page.</p></div></div>
       ${plan && plan.ok ? `<div class="plan"><div><b>${planSize(plan)}</b><span>can be freed</span></div><div><b>${num(plan.copies)}</b><span>extra copies</span></div>
         <div><b>${num((plan.rewritten || 0) + (plan.removed || 0))}</b><span>files made smaller or removed</span></div></div>` : ''}
-      <div class="actions"><button class="btn primary" data-act="cleanup-plan"${noChange ? ' disabled' : ''}>${ic('search')}${plan ? 'Check again' : 'Check how much I can free'}</button>
+      <div class="actions"><button class="btn primary" data-act="cleanup-plan"${noChange ? ' disabled' : ''}>${ic('search')}${plan ? 'Check again' : 'Check how much space can be freed'}</button>
         ${plan && plan.ok && plan.copies > 0 ? `<button class="btn soft" data-act="cleanup-confirm"${noChange ? ' disabled' : ''}>${ic('broom')}Free up ${planSize(plan)}</button>` : ''}</div>
     </div>
 
@@ -428,7 +430,7 @@ function renderPerformance() {
   }
   let gActions = '';
   if (gfx.can_tune) gActions = `<button class="btn primary" data-act="gfx-fix"${noChange ? ' disabled' : ''}>${ic('spark')}Fix the lag, keep max quality</button>`;
-  else if (tuned) gActions = `<button class="btn ghost" data-act="gfx-restore"${noChange ? ' disabled' : ''}>${ic('undo')}Put my old graphics back</button>`;
+  else if (tuned) gActions = `<button class="btn ghost" data-act="gfx-restore"${noChange ? ' disabled' : ''}>${ic('undo')}Restore previous graphics</button>`;
 
   return `<div class="page-head"><div class="grow"><h1><span>Performance</span></h1>
       <p>Faster loading and less lag, with the same max graphics.</p></div></div>
@@ -530,7 +532,7 @@ function drawChart() {
 const KIND = {
   profile: ['Changed how the game starts', 'swap'], inbox: ['Added new downloads', 'download'], dedup: ['Removed extra copies of CC', 'broom'],
   merge: ['Tidied your CC into fewer files', 'layers'], settings: ['Changed the graphics', 'image'], caches: ["Cleared the game's caches", 'broom'],
-  fastpack: ['Got Play FAST ready', 'bolt'], savepack: ['Got a save ready to play', 'bolt'], usedpack: ["Got your saves' CC ready", 'bolt'],
+  fastpack: ['Prepared Play FAST', 'bolt'], savepack: ['Prepared a save to play', 'bolt'], usedpack: ["Prepared your saves' CC", 'bolt'],
   install: ['Updated the SpeedKit Monitor', 'gauge'], monitor: ['Updated the SpeedKit Monitor', 'gauge'], cleanup: ['Removed extra copies of CC', 'broom'],
 };
 const kindOf = k => KIND[k] || ['A change', 'spark'];
@@ -553,6 +555,7 @@ function describeChange(j) {
   else if (j.kind === 'settings' && /restore|put back/i.test(note)) title = 'Graphics: old file put back';
   else if (j.kind === 'install' && /^uninstall/i.test(note)) title = 'Removed the SpeedKit Monitor';
   else if (j.kind === 'install') title = 'Installed the SpeedKit Monitor';
+  else if (j.kind === 'aside') title = /^put back/i.test(note) ? 'Put mods back' : "Set mods aside until they're updated";
   return { title, label, icon };
 }
 
@@ -592,7 +595,7 @@ function renderTools() {
           : gameFound() ? `<div class="game-where"><div class="grow muted">Found automatically.</div><button class="btn small" data-act="find-game">Change</button></div>`
           : `<div class="note warn">${ic('warn')}<span>${gameMoved(g) ? (where ? `The game is no longer at <span class="path">${esc(where)}</span>.` : esc(g.message || "The game isn't where it used to be."))
               : "The Hub couldn't find the game yet."}</span></div>
-            <div class="actions"><button class="btn primary" data-act="find-game">${ic('search')}Find my game</button></div>`}
+            <div class="actions"><button class="btn primary" data-act="find-game">${ic('search')}Locate The Sims 4</button></div>`}
         <h3 class="sec" style="margin:20px 0 0">Open a folder</h3>
         <div class="folders">
           <button class="btn small" data-act="open" data-what="mods" title="Your Mods folder">${ic('folder')}<span>Mods</span></button>
@@ -603,6 +606,7 @@ function renderTools() {
         </div>
       </div>
     </div>
+    ${care.toolsSections()}
     <div class="card" style="margin-top:16px"><div class="card-head"><div class="ic pink">${ic('undo')}</div><div class="grow"><h2>Recent changes</h2>
       <p>Everything the Hub changed in your game folders, newest first. You can undo the newest change.</p></div>
       <button class="btn" data-act="undo"${next && !noChange ? '' : ' disabled'}>${ic('undo')}Undo last change</button></div>
@@ -717,6 +721,7 @@ async function watchTask(id, opts) {
   // what changed: forget what the pages show, then ask again
   if (opts.action !== 'cleanup_plan' && opts.action !== 'report') { S.saves = null; S.graphics = null; S.inbox = null; }
   S.savesLoading = S.graphicsLoading = S.inboxLoading = false;
+  if (opts.action !== 'cleanup_plan' && opts.action !== 'report') care.afterTask();
   if (opts.action === 'cleanup_apply' && res.ok) S.plan = null;
   refreshStatus(true).then(loadForPage);
   if (opts.action === 'cleanup_plan' && res.ok) {
@@ -1026,6 +1031,7 @@ const ACTS = {
     if (S.page === 'saves') await ensureSaves(true);
     if (S.page === 'library') await ensureInbox(true);
     if (S.page === 'performance') await ensureGraphics(true);
+    await care.load(S.page, true);
     btn.classList.remove('spin');
   },
   play: btn => runTask('play', { target: btn.dataset.target }),
@@ -1073,6 +1079,14 @@ async function previewHooks() {
   if (what === 'restore') confirmRestore();
   if (what === 'cleanup') { S.plan = { ok: true, copies: 4210, gb: 18.2, rewritten: 57, removed: 12 }; render(); confirmCleanup(); }
 }
+
+// patch day, game errors, save backups, load-time savings (care.js): its helpers, buttons, titles and change kinds
+care.init({ call, esc, ic, render: () => render(), runTask, confirmBox, toast, busy, gameRunning, isNum, plural, ago, dayTime,
+  page: () => S.page });
+Object.assign(ACTS, care.ACTS);
+Object.assign(TITLES, care.TITLES);
+Object.assign(DONE, care.DONE);
+Object.assign(KIND, care.KIND);
 
 (async function start() {
   route();

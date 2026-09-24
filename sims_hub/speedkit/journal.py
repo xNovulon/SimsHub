@@ -25,7 +25,7 @@ from .library import SIMS, game_running
 HOME = os.path.join(SIMS, 'SpeedKit')
 JOURNALS = os.path.join(HOME, 'journal')
 QUARANTINE = os.path.join(HOME, 'quarantine')
-SCRIPT_KINDS = ('profile', 'inbox', 'install')
+SCRIPT_KINDS = ('profile', 'inbox', 'install', 'aside')     # 'aside': mods set aside until updated (patchday)
 
 
 class JournalError(Exception):

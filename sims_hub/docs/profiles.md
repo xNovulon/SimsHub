@@ -139,6 +139,18 @@ work:
 
 `ok` means none of `unlisted`, `blocked` or `nested`.
 
+## Mods set aside until they are updated (`SpeedKit\set_aside.json`)
+
+`speedkit.patchday` (the Hub's patch-day helper and "set this mod aside" button, docs/care.md) parks single
+mod files through its own kind `aside` journal, rebuilding the manifest with `rebuild_manifest`, and lists
+them in `SpeedKit\set_aside.json` `{"version": 1, "held": [{"rel", "since", "why", ...}]}`:
+
+* `held_keys(P)` reads that list (a missing or unreadable file holds nothing).
+* `compute_target(profile, inv, ..., held=...)` keeps every held file that is parked now on the parked side,
+  in every profile, so a switch - even to `full` - never brings it back. `switch` passes `held_keys(P)`.
+* `current()` leaves held files out of the comparison, so held files never make the folders look `custom`.
+* Once a held file is back in Mods (put back, or mods_switch.py's `full` restored it), the hold has no effect.
+
 ## current() and status()
 
 `current()` compares what is parked now with each profile's parked set and the fast pack's place:
