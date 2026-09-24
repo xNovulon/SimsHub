@@ -16,7 +16,8 @@ import datetime, glob, math, os, re, struct, threading, time, zipfile
 import gamedata as G
 import projects as P
 import wwpackage as W
-from clipfmt import encode_channel, write_clip, fnv32, fnv64
+from clipfmt import (encode_channel, write_clip, fnv32, fnv64, constant_channel, IK_CHAINS, ik_weight_sub,
+                     ik_translation_sub, ik_rotation_sub)
 from dbpf import read_index, read_resource
 
 T_CLIP, T_CLIP_HEADER = 0x6B20C4F3, 0xBC4A5044
@@ -72,6 +73,103 @@ def actor_channels(actor, frames, rig_key='au', hold=0):
                     keys.append((len(vals) - 1 + hold, list(vals[-1])))
             chans.append(encode_channel(b['hash'], sub, keys, quat))
     return chans
+
+
+# ------------------------------------------------------------------ fit hands to each body (experimental, opt-in)
+# project['fitBodies'] and per actor 'ik': [{'limb': 'L hand' | 'R hand' | 'L foot' | 'R foot', ...}] (the holds that
+# last the whole loop - features/bodyfit.js). Each held limb gets one IK target (clipfmt.IK_CHAINS): slot 0 of its
+# chain points at the sim's OWN b__ROOT__ (namespace 'x', the one every clip here plays as), with weight 1 for the
+# whole clip, and the limb's end bone keyed in root space every frame. In the game the arm or leg is then solved so
+# the hand or foot reaches that spot whatever the sim's own proportions. It does not follow the partner's body:
+# WickedWhims plays each sim's clip as actor 'x' on its own, so a clip can't name the partner's bones (the default
+# clips stay exactly as they are). Untested in the game - the export dialog says so.
+LIMB_END = {'L hand': 'b__L_Hand__', 'R hand': 'b__R_Hand__', 'L foot': 'b__L_Foot__', 'R foot': 'b__R_Foot__'}
+IK_ROOT, IK_NAMESPACE = 'b__ROOT__', 'x'
+
+
+def _qmul(a, b):
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return (aw * bx + ax * bw + ay * bz - az * by, aw * by - ax * bz + ay * bw + az * bx,
+            aw * bz + ax * by - ay * bx + az * bw, aw * bw - ax * bx - ay * by - az * bz)
+
+
+def _qrot(q, v):
+    x, y, z, w = q
+    r = _qmul(_qmul(q, (v[0], v[1], v[2], 0.0)), (-x, -y, -z, w))
+    return (r[0], r[1], r[2])
+
+
+def _qn(q):
+    n = math.sqrt(sum(c * c for c in q)) or 1.0
+    return tuple(c / n for c in q)
+
+
+def _local(tracks, b, key, k):
+    vals = (tracks.get(b['name']) or {}).get(key)
+    if vals:
+        return vals[min(k, len(vals) - 1)]
+    return b['pos'] if key == 't' else b['rot']
+
+
+def limb_in_root_space(actor, frames, end, rig_key='au'):
+    """[(position, rotation)] per frame of bone `end` in the sim's b__ROOT__ space, from the clip's own tracks (the rig
+    for bones without one), or None when `end` is not below b__ROOT__."""
+    bones = G.rig(rig_key)['bones']
+    by_name = {b['name']: i for i, b in enumerate(bones)}
+    if end not in by_name or IK_ROOT not in by_name:
+        return None
+    path, i = [], by_name[end]
+    while i >= 0 and bones[i]['name'] != IK_ROOT:
+        path.append(bones[i])
+        i = bones[i]['parent']
+    if i < 0:
+        return None
+    path.reverse()
+    tracks = actor.get('tracks') or {}
+    out = []
+    for k in range(frames):
+        q, t = (0.0, 0.0, 0.0, 1.0), (0.0, 0.0, 0.0)
+        for b in path:
+            o = _qrot(q, _local(tracks, b, 't', k))
+            t = (t[0] + o[0], t[1] + o[1], t[2] + o[2])
+            q = _qn(_qmul(q, _qn(_local(tracks, b, 'r', k))))
+        out.append((list(t), list(q)))
+    return out
+
+
+def ik_parts(actor, frames, hold=0, rig_key='au'):
+    """(IK targets for write_clip, their channels, [limbs done]) for the actor's held limbs."""
+    slots, chans, done = [], [], []
+    bones = {b['name']: b for b in G.rig(rig_key)['bones']}
+    for item in actor.get('ik') or []:
+        limb = item.get('limb') if isinstance(item, dict) else None
+        end = LIMB_END.get(limb)
+        if not end or end not in bones or limb in done:
+            continue
+        frames_rs = limb_in_root_space(actor, max(1, int(frames)), end, rig_key)
+        if not frames_rs:
+            continue
+        target = bones[end]['hash']
+        slots.append((IK_CHAINS[end], 0, IK_NAMESPACE, IK_ROOT))
+        chans.append(constant_channel(target, ik_weight_sub(0), 1.0))
+        t = [p for p, _ in frames_rs]
+        r = _continuous([q for _, q in frames_rs])
+        for sub, vals, quat in ((ik_translation_sub(0), t, False), (ik_rotation_sub(0), r, True)):
+            if _constant(vals):
+                keys = [(0, list(vals[0]))]
+            else:
+                keys = [(k, list(v)) for k, v in enumerate(vals)]
+                if hold:
+                    keys.append((len(vals) - 1 + hold, list(vals[-1])))
+            chans.append(encode_channel(target, sub, keys, quat))
+        done.append(limb)
+    return slots, chans, done
+
+
+FIT_TEST = ('HOW TO TEST "Fit hands to each sim\'s body" (experimental): play each animation with sims of clearly '
+            'different heights and builds. The held hands and feet should stay on the spot they hold instead of '
+            'reaching short or sinking in. If a limb looks wrong, export again with the switch off.')
 
 
 def sound_events(actor, fps):
@@ -360,12 +458,24 @@ def animation_resources(project, metas=None, present=None):
     voices = False
     checks = []
     mine_res, mine_names = _own_sounds(project['actors'], checks)
+    fit = bool(project.get('fitBodies'))
+    fitted = []
     for k, actor in enumerate(project['actors']):
         actor = _check_voices(actor, checks)
         actor = _drop_missing_own(actor, mine_names)
         clip_name = '%s_%df_%d' % (base, ticks, k + 1)
-        clip, header = write_clip(clip_name, 'x', ticks, actor_channels(actor, frames, hold=hold),
-                                  source="Novulon's Wicked Animator", events=sound_events(actor, fps), tick_length=1.0 / fps)
+        channels, slots = actor_channels(actor, frames, hold=hold), ()
+        if fit:
+            slots, ik_chans, done = ik_parts(actor, frames, hold)
+            channels += ik_chans
+            fitted += ['%d:%s' % (k, limb) for limb in done]
+            for limb in actor.get('ikSkipped') or []:
+                msg = ('Sim %d\u2019s %s holds for part of the loop only, so it is not fitted to the body '
+                       '(only holds that last the whole loop are).' % (k + 1, str(limb).replace('L ', 'left ').replace('R ', 'right ')))
+                if msg not in checks:
+                    checks.append(msg)
+        clip, header = write_clip(clip_name, 'x', ticks, channels, source="Novulon's Wicked Animator",
+                                  events=sound_events(actor, fps), tick_length=1.0 / fps, slots=slots)
         inst = fnv64(clip_name)
         resources.append((T_CLIP, 0, inst, clip))
         resources.append((T_CLIP_HEADER, 0, inst, header))
@@ -410,7 +520,8 @@ def animation_resources(project, metas=None, present=None):
                        'next': nxt, 'next_names': next_names, 'random': random_ok, 'name': name, 'author': author,
                        'category': category, 'locations': anim['locations'], 'genders': [a['gender'] for a in actors_xml],
                        'warnings': warnings, 'events': n_events, 'props': props_info,
-                       'prop_clips': [p['clip'] for p in props_xml], 'own_sounds': sorted(mine_names)}
+                       'prop_clips': [p['clip'] for p in props_xml], 'own_sounds': sorted(mine_names),
+                       'fit_bodies': fitted}
 
 
 def _in_use(ex):
@@ -667,7 +778,8 @@ def export(project, present=None):
         warnings.append('The sounds from parked mods could not be copied: %s' % (str(ex) or repr(ex)))
     return {'path': path, 'package': info['base'] + '.package', 'clips': info['clips'], 'bytes': size,
             'next': info['next'], 'next_names': info['next_names'], 'random': info['random'], 'sound_kit': kit,
-            'replaced': moved, 'warnings': warnings, 'own_sounds': len(info['own_sounds'])}
+            'replaced': moved, 'warnings': warnings, 'own_sounds': len(info['own_sounds']),
+            'fit_bodies': len(info['fit_bodies'])}
 
 
 # ------------------------------------------------------------------ a mod to share
@@ -749,6 +861,7 @@ def bundle(req):
             'progressions': [g['name'] for g in progs], 'sounds_packed': len({n for v in credits.values() for n in v}),
             'credits': credits, 'missing_sounds': missing, 'sounds_need_pack': needs, 'installed': installed,
             'own_sounds': len({n for i in infos for n in i.get('own_sounds') or []}),
+            'fit_bodies': sum(len(i.get('fit_bodies') or []) for i in infos),
             'warnings': warnings}
 
 
@@ -797,6 +910,9 @@ def _readme(title, author, fname, infos, progs, metas, credits, missing, needs=N
         lines += ['', 'SOUNDS THAT NEED A GAME PACK: ' + ', '.join(f'{n} ({p})' for n, p in sorted(needs.items()))]
     if missing:
         lines += ['', 'SOUNDS THAT NEED THEIR OWN MOD: ' + ', '.join(sorted(missing))]
+    fit = [i['name'] for i in infos if i.get('fit_bodies')]
+    if fit:
+        lines += ['', 'EXPERIMENTAL: HANDS AND FEET FITTED TO EACH BODY in ' + ', '.join(fit) + '.', FIT_TEST]
     lines += ['', 'Updating: replace the old .package with the new one. No cheat is needed afterwards.',
               '', 'Made on %s.' % datetime.date.today().isoformat()]
     return '\n'.join(lines) + '\n'

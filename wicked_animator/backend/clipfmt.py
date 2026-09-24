@@ -181,9 +181,48 @@ def fnv64(s):
     return h
 
 
+# ------------------------------------------------------------------ IK targets (slot assignments)
+# The layout as thepancake1's s4animtools writes it (github.com/thepancake1/_s4animtools, HEAD 05a378c:
+# slot_assignments.py, clip_processing/clip_header.py, __init__.py, animation_exporter/animation.py):
+#  - in the header, after the explicit namespaces: u32 count, then per IK target
+#      u16 chain, u16 slot, str32 target namespace (the actor it points at), str32 target joint
+#    (parse_clip reads the same layout into c['slots']);
+#  - chains: b__L_Hand__ 0, b__R_Hand__ 1, b__L_Foot__ 2, b__R_Foot__ 3, b__ROOT_bind__ 4; slot = the target's number
+#    on its chain (0, 1, ...);
+#  - in the codec, on the chain's end bone (target = fnv32 of its name): the weight of slot i (sub 14 + i, a one-value
+#    channel), and the bone's position and rotation in the target joint's space (sub 25 + 2i and 26 + 2i).
+IK_CHAINS = {'b__L_Hand__': 0, 'b__R_Hand__': 1, 'b__L_Foot__': 2, 'b__R_Foot__': 3, 'b__ROOT_bind__': 4}
+
+
+def ik_weight_sub(slot):
+    return 14 + slot
+
+
+def ik_translation_sub(slot):
+    return 25 + 2 * slot
+
+
+def ik_rotation_sub(slot):
+    return 26 + 2 * slot
+
+
+def constant_channel(target, sub, value, ctype=9):
+    """A channel with no frames whose value is its offset (F1_Zero, type 9: how EA's clips store a weight that never
+    changes - see CONSTANT_COMPONENTS)."""
+    return dict(target=target, offset=float(value), scale=0.0, type=ctype, sub=sub, frames=[])
+
+
 # ------------------------------------------------------------------ writing
 def _s32(b):
     return struct.pack('<i', len(b)) + b
+
+
+def _slot_bytes(slots):
+    """[(chain, slot, namespace, joint)] -> the header's IK target list (u32 count first)."""
+    out = struct.pack('<i', len(slots))
+    for chain, slot, ns, joint in slots:
+        out += struct.pack('<HH', chain, slot) + _s32(ns.encode('ascii')) + _s32(joint.encode('ascii'))
+    return out
 
 
 def write_codec(name, source, num_ticks, channels, tick_length=1.0 / 30.0, version=2):
@@ -200,7 +239,7 @@ def write_codec(name, source, num_ticks, channels, tick_length=1.0 / 30.0, versi
     data_start = pal_off + len(palette)
     blobs, table, pos = [], [], data_start
     for ch in channels:
-        w = WIDTH[ch['type']]
+        w = WIDTH.get(ch['type'], 0)            # constant channels (no frames) have no width
         buf = bytearray()
         for tick, flags, ix in ch['frames']:
             buf += struct.pack('<HH', tick, flags)
@@ -218,8 +257,9 @@ def write_codec(name, source, num_ticks, channels, tick_length=1.0 / 30.0, versi
     return head + b''.join(table) + name_b + src_b + palette + b''.join(blobs)
 
 
-def write_clip(name, rig_ns, num_ticks, channels, source='FitStudio', events=(), tick_length=1.0 / 30.0):
-    """(clip bytes, clip header bytes) for a version-14 CLIP resource.
+def write_clip(name, rig_ns, num_ticks, channels, source='FitStudio', events=(), tick_length=1.0 / 30.0, slots=()):
+    """(clip bytes, clip header bytes) for a version-14 CLIP resource. slots: IK targets [(chain, slot, namespace,
+    joint)] (see IK_CHAINS); none gives exactly the bytes of a clip without them.
 
     The duration covers every tick (num_ticks * tick_length), like most creator clips: in a loop the step from the
     last tick back to tick 0 then takes one tick too, instead of no time at all (a visible hitch every loop)."""
@@ -228,7 +268,7 @@ def write_clip(name, rig_ns, num_ticks, channels, source='FitStudio', events=(),
     head = struct.pack('<IIf', 14, 0, duration) + struct.pack('<4f', 0, 0, 0, 1) + struct.pack('<3f', 0, 0, 0)
     head += struct.pack('<IIII', 0, empty, empty, empty)
     head += _s32(name.encode('ascii')) + _s32(rig_ns.encode('ascii'))
-    head += struct.pack('<i', 0) + struct.pack('<i', 0)          # explicit namespaces, slot assignments
+    head += struct.pack('<i', 0) + _slot_bytes(slots)             # explicit namespaces, slot assignments
     head += struct.pack('<I', len(events)) + b''.join(struct.pack('<II', t, len(d)) + d for t, d in events)
     codec = write_codec(name, source, num_ticks, channels, tick_length)
     stub = write_codec(name, source, num_ticks, [], tick_length)

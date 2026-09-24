@@ -1,9 +1,10 @@
 // Send to game: what WickedWhims needs is checked first, then the package goes into the Mods folder.
-import { h, icon, modal, toast } from '../ui.js';
+import { h, icon, modal, toast, toggleRow } from '../ui.js';
 import { api } from '../api.js';
 import { localStorageSet, localStorageGet } from '../state.js';
 import { tagLabel, nakedFor, NAKED_CHOICES, KINDS } from '../tags.js';
 import { namedField } from './name.js';
+import { FIT_TITLE, FIT_TEXT, fitHolds } from '../features/bodyfit.js';
 const NAKED_LABEL = Object.fromEntries(NAKED_CHOICES);
 const nice = s => s.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
@@ -86,6 +87,22 @@ export function openExportDialog(app) {
   // typing clears a box's red mark (namedField), and a box left empty again is marked again
   nameIn.addEventListener('input', () => { if (badName()) nameF.set('Give the animation a name.'); draw(); });
   authorIn.addEventListener('input', () => { if (badAuthor()) authorF.set('Add a creator name - WickedWhims shows "by ..."'); draw(); });
+  // experimental, off by default, kept in the animation (features/bodyfit.js)
+  const fitNote = h('div', { class: 'hint fit-note' });
+  const drawFit = () => {
+    const { fit, partial } = fitHolds(p);
+    fitNote.textContent = !p.fitBodies ? '' : fit.length
+      ? `${fit.length} hold${fit.length === 1 ? '' : 's'} will be fitted${partial.length ? `; ${partial.length} that hold${partial.length === 1 ? 's' : ''} for part of the loop only will not` : ''}.`
+      : '';
+  };
+  const fitRow = () => {
+    drawFit();
+    return h('div', { class: 'fit-bodies' }, toggleRow(FIT_TITLE, FIT_TEXT, !!p.fitBodies, on => {
+      if (on) p.fitBodies = true; else delete p.fitBodies;
+      app.store.setDirty(true);
+      drawFit(); draw();
+    }), fitNote);
+  };
   const body = h('div', {},
     preview, inline,
     h('div', { class: 'grid-2', style: { marginTop: '10px' } },
@@ -95,6 +112,7 @@ export function openExportDialog(app) {
       h('div', { class: 'card' }, h('div', { class: 'section-title' }, 'The animation'),
         h('div', {}, `${(p.length / p.fps).toFixed(1)} s loop · plays ${p.loops || 10}×`),
         h('div', { class: 'hint' }, p.sims.map(s => `${s.label}: ${(NAKED_LABEL[nakedFor(p.category, s)] || '').toLowerCase()}`).join(' · ')))),
+    fitRow(),
     listBox,
     h('p', { class: 'hint' }, 'Writes it into your Mods folder. Restart The Sims 4 to see it. Motions, physics, faces, opening holes and sounds are all baked in.'));
   dlg = modal({
@@ -157,6 +175,7 @@ export function showExported(app, res, p) {
       res.replaced && res.replaced.length ? h('p', { class: 'hint' }, 'The older copy was taken out of your Mods folder, so it never shows twice.') : null,
       res.sound_kit ? h('p', { class: 'hint' }, `${res.sound_kit.sounds} sounds from parked packs were copied into your Mods so they play.`) : null,
       res.own_sounds ? h('p', { class: 'hint' }, `${res.own_sounds === 1 ? 'Your own sound is' : res.own_sounds + ' of your own sounds are'} packed inside it.`) : null,
+      res.fit_bodies ? h('div', { class: 'warn-box fit-test' }, `Experimental: ${res.fit_bodies === 1 ? '1 held hand or foot is' : res.fit_bodies + ' held hands and feet are'} fitted to each body. How to test: play it with sims of clearly different heights and builds - held hands and feet should stay on the spot they hold. If a limb looks wrong, send it again with the switch off.`) : null,
       h('p', { class: 'hint' }, `${((res.bytes || 0) / 1024).toFixed(0)} KB. Sending again replaces it.`),
       extraSlot),
     buttons: [{ label: 'Done', kind: 'primary' }],

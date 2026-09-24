@@ -311,6 +311,7 @@ function showBundle(res, app = window.app) {
         h('div', { class: 'path' }, res.package))),
       res.sounds_packed ? h('p', { class: 'hint' }, `${res.sounds_packed} sounds from other mods were packed in - their creators are credited in the README: `, Object.keys(res.credits || {}).join(', ')) : null,
       res.own_sounds ? h('p', { class: 'hint' }, `${res.own_sounds === 1 ? 'Your own sound is' : res.own_sounds + ' of your own sounds are'} packed in too.`) : null,
+      res.fit_bodies ? h('p', { class: 'hint' }, 'Experimental: some held hands and feet are fitted to each body. The README says how to test it in the game.') : null,
       (res.missing_sounds || []).length ? h('div', { class: 'warn-box' }, 'Not found, so not packed: ' + res.missing_sounds.join(', ')) : null,
       // sounds that come from a game pack: people without that pack play the animation silently there
       needs.length ? h('div', { class: 'warn-box' }, 'Sounds that need a game pack (the README says so too): ', needs.map(([snd, pack]) => `${snd} needs ${pack}`).join(', ')) : null,
