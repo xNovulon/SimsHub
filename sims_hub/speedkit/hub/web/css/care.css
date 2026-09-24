@@ -1,71 +1,84 @@
 /* Novulon's Sims Hub - patch day, game errors, save backups, load-time savings (js/care.js). Same tokens as hub.css. */
 
-/* ---------------------------------------------------------------- Home: notices */
-.care-banner { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 0 0 16px; border-radius: 16px;
-  background: linear-gradient(135deg, rgba(251, 191, 36, .1), rgba(255, 79, 154, .06)), var(--panel); border: 1px solid rgba(251, 191, 36, .38); }
-.care-banner.soft { background: linear-gradient(135deg, rgba(255, 79, 154, .08), rgba(168, 85, 247, .06)), var(--panel); border-color: rgba(255, 79, 154, .3); }
-.care-banner .ic { width: 40px; height: 40px; border-radius: 12px; }
-.care-banner .ic svg { width: 20px; height: 20px; }
-.care-banner .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.care-banner b { font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+/* ---------------------------------------------------------------- Home: notices (slim, so the start cards stay the hero) */
+.care-banner { position: relative; display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 12px; border-radius: var(--r-lg); overflow: hidden;
+  background: linear-gradient(100deg, rgba(251, 191, 36, .12), rgba(251, 191, 36, .02) 55%), var(--panel); border: 1px solid rgba(251, 191, 36, .34); box-shadow: var(--hl), var(--e-1); }
+.care-banner::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--warn); box-shadow: 0 0 12px var(--warn); }
+.care-banner.soft { background: linear-gradient(100deg, rgba(255, 79, 154, .12), rgba(168, 85, 247, .03) 55%), var(--panel); border-color: rgba(255, 79, 154, .3); }
+.care-banner.soft::before { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.care-banner .ic { width: 38px; height: 38px; border-radius: 11px; margin-left: 4px; }
+.care-banner .ic svg { width: 19px; height: 19px; }
+.care-banner .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.care-banner b { font-size: var(--fs-md); font-weight: 800; letter-spacing: -.2px; }
 .care-banner span { color: var(--muted); font-size: 13px; }
-.care-banner + .play-row, .care-banner + .state-card { margin-top: 0; }
+.care-banner .btn.primary { background: var(--glass-strong), var(--panel-3); border-color: rgba(251, 191, 36, .45); color: #feecb9; box-shadow: none; text-shadow: none; }
+.care-banner .btn.primary svg { color: var(--warn); }
+.care-banner .btn.primary:hover { background: rgba(251, 191, 36, .16); border-color: rgba(251, 191, 36, .7); filter: none; }
+.care-banner .btn.primary::after { display: none; }
 
 /* ---------------------------------------------------------------- Home: loading times */
 .care-load { margin-top: 0; }
-.care-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
-.care-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr) 78px 70px; align-items: center; gap: 12px; }
-.care-bar .lbl { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
-.care-bar .track { height: 12px; border-radius: 99px; background: var(--panel-3); overflow: hidden; }
-.care-bar .track i { display: block; height: 100%; border-radius: 99px; background: var(--fast); min-width: 4px; }
-.care-bar .track i.full { background: var(--full); }
-.care-bar .track i.studio { background: var(--accent-2); }
-.care-bar b { font-size: 16px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+.care-bars { display: flex; flex-direction: column; gap: 14px; margin-top: var(--s-5); }
+.care-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr) 78px 70px; align-items: center; gap: 14px; }
+.care-bar .lbl { font-weight: 700; font-size: var(--fs-sm); white-space: nowrap; }
+.care-bar .track { height: 14px; border-radius: 99px; background: rgba(255, 255, 255, .06); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4); }
+.care-bar .track i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #d93c80, var(--fast) 60%, #ff7ab4); min-width: 4px; box-shadow: 0 0 14px rgba(240, 71, 143, .45); }
+.care-bar .track i.full { background: linear-gradient(90deg, #3f6fd6, var(--full) 60%, #8fb3ff); box-shadow: 0 0 14px rgba(91, 141, 239, .4); }
+.care-bar .track i.studio { background: linear-gradient(90deg, #8b3fe0, var(--accent-2), #c79bff); box-shadow: 0 0 14px rgba(168, 85, 247, .4); }
+.care-bar b { font-size: 17px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -.3px; }
 .care-bar small { color: var(--faint); font-size: 12px; }
-.care-saved { display: flex; gap: 12px; align-items: center; margin-top: 16px; padding: 13px 15px; border-radius: 13px;
-  background: linear-gradient(135deg, rgba(255, 79, 154, .12), rgba(168, 85, 247, .1)); border: 1px solid var(--accent-line); }
-.care-saved svg { width: 22px; height: 22px; color: #ff8cbd; }
-.care-saved b { display: block; font-size: 15px; font-weight: 800; }
+.care-saved { display: flex; gap: 14px; align-items: center; margin-top: var(--s-5); padding: 14px 16px; border-radius: var(--r-lg);
+  background: radial-gradient(60% 160% at 0% 50%, rgba(255, 79, 154, .2), transparent 70%), linear-gradient(135deg, rgba(255, 79, 154, .08), rgba(168, 85, 247, .1)); border: 1px solid var(--accent-line); }
+.care-saved > svg { width: 38px; height: 38px; padding: 9px; border-radius: 11px; color: #fff; background: var(--grad); box-shadow: 0 6px 18px rgba(255, 79, 154, .35); }
+.care-saved b { display: block; font-size: var(--fs-md); font-weight: 800; }
 .care-saved span { color: var(--muted); font-size: 13px; }
 
 /* ---------------------------------------------------------------- lists */
-.care-status { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 12px 14px; border-radius: 13px;
-  background: rgba(52, 211, 153, .06); border: 1px solid rgba(52, 211, 153, .3); }
+.care-status { display: flex; gap: 12px; align-items: flex-start; margin-top: var(--s-4); padding: 13px 15px; border-radius: var(--r-md);
+  background: linear-gradient(135deg, rgba(52, 211, 153, .1), rgba(52, 211, 153, .02)); border: 1px solid rgba(52, 211, 153, .3); }
 .care-status > svg { width: 20px; height: 20px; color: var(--ok); margin-top: 1px; }
-.care-status.hot { background: rgba(251, 191, 36, .07); border-color: rgba(251, 191, 36, .35); }
+.care-status.hot { background: linear-gradient(135deg, rgba(251, 191, 36, .11), rgba(251, 191, 36, .02)); border-color: rgba(251, 191, 36, .36); }
 .care-status.hot > svg { color: var(--warn); }
 .care-status b { display: block; font-weight: 800; }
 .care-status span { color: var(--muted); font-size: 13px; }
 .care-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.care-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+.care-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-md); background: rgba(255, 255, 255, .025); border: 1px solid var(--line); transition: background var(--t-fast), border-color var(--t-fast); }
+.care-row:hover { background: rgba(255, 255, 255, .045); border-color: var(--line-2); }
 .care-row.pick { cursor: pointer; }
-.care-row.pick:hover { border-color: var(--line-2); }
-.care-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); flex: none; margin: 0; }
-.care-row .ci, .care-error .ci { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--panel-3); color: var(--muted); flex: none; }
+.care-row.pick:has(input:checked) { border-color: rgba(255, 79, 154, .35); background: linear-gradient(135deg, rgba(255, 79, 154, .07), rgba(168, 85, 247, .03)); }
+.care-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); flex: none; margin: 0; cursor: pointer; }
+.care-row .ci, .care-error .ci { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(255, 255, 255, .05); color: var(--muted); flex: none; box-shadow: inset 0 0 0 1px var(--line); }
 .care-row .grow, .care-error .grow { flex: 1; min-width: 0; }
 .care-row b, .care-error b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.care-row span, .care-error .top span { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.care-row span, .care-error .top span { display: block; color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .care-more { margin-top: 12px; }
-.care-tools { margin-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+.care-tools { margin-top: var(--s-4); display: flex; flex-direction: column; gap: var(--s-4); }
 .care-tools .card + .card { margin-top: 0; }
 
 /* ---------------------------------------------------------------- errors */
 .care-errors { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.care-error { padding: 12px 14px; border-radius: 13px; background: var(--panel-2); border: 1px solid var(--line); }
-.care-error.new { border-color: rgba(255, 79, 154, .32); }
+.care-error { padding: 13px 15px; border-radius: var(--r-md); background: rgba(255, 255, 255, .025); border: 1px solid var(--line); }
+.care-error.new { border-color: rgba(255, 79, 154, .34); background: linear-gradient(135deg, rgba(255, 79, 154, .06), transparent 60%); }
+.care-error.new .ci { color: var(--accent-ink); background: rgba(255, 79, 154, .1); box-shadow: inset 0 0 0 1px rgba(255, 79, 154, .22); }
 .care-error .top { display: flex; align-items: center; gap: 12px; }
-.care-error .what { margin: 10px 0 0; font-family: var(--mono); font-size: 12.5px; color: #f5d7e4; overflow-wrap: anywhere; }
-.care-error .meta { margin-top: 6px; color: var(--faint); font-size: 12.5px; }
-.care-error details.more { margin-top: 8px; }
+.care-error .what { margin: 10px 0 0; padding: 9px 12px; border-radius: 9px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; color: #f7dbe8; overflow-wrap: anywhere; }
+.care-error .meta { margin-top: 8px; color: var(--faint); font-size: var(--fs-xs); }
+.care-error details.more { margin-top: 6px; }
 .care-raw { margin: 8px 0 0; padding: 10px 12px; max-height: 260px; overflow: auto; border-radius: 10px; background: var(--bg);
   border: 1px solid var(--line); font: 12px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---------------------------------------------------------------- saves */
-.care-size { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; min-width: 0; }
+.care-size { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: var(--fs-xs); min-width: 0; }
 .care-size svg { width: 14px; height: 14px; }
-.care-size.warn { color: #fde9b5; }
+.care-size.warn { color: #feecb9; }
 .care-size.warn svg { color: var(--warn); }
 .care-size .chip { font-size: 11px; padding: 1px 8px; }
+/* Saves: backing up is a helper, the save cards' Play buttons are the main thing */
+.care-backups .card-head .btn.primary { background: var(--glass-strong), var(--panel-3); border-color: rgba(52, 211, 153, .45); color: #c4f8e3; box-shadow: none; text-shadow: none; }
+.care-backups .card-head .btn.primary svg { color: var(--ok); }
+.care-backups .card-head .btn.primary:hover { background: rgba(52, 211, 153, .14); border-color: rgba(52, 211, 153, .7); filter: none; }
+.care-backups .card-head .btn.primary::after { display: none; }
+.care-backups .care-row .ci { color: var(--ok); background: rgba(52, 211, 153, .09); box-shadow: inset 0 0 0 1px rgba(52, 211, 153, .2); }
 
 /* ---------------------------------------------------------------- Tools: CC that may need a Sims 4 Studio fix (js/batchfix.js) */
 .bf-fixes { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }

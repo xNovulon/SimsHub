@@ -137,7 +137,10 @@ function pageName() {
 
 function route() {
   S.page = pageName();
-  $$('#rail a').forEach(a => a.classList.toggle('active', a.dataset.page === S.page));
+  $$('#rail a').forEach(a => {
+    a.classList.toggle('active', a.dataset.page === S.page);
+    if (a.dataset.page === S.page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
   document.title = S.page === 'home' ? "Novulon's Sims Hub" : `${$(`#rail a[data-page="${S.page}"] span`).textContent} - Novulon's Sims Hub`;
   render(true);
   loadForPage();
@@ -159,12 +162,22 @@ function render(fresh = false) {
   const act = document.activeElement;
   const keep = act && act.id && page.contains(act) ? { id: act.id, a: act.selectionStart, b: act.selectionEnd } : null;
   const open = !fresh && $$('details', page).map(d => d.open);      // a re-draw keeps opened sections open
+  page.dataset.page = S.page;
   page.innerHTML = PAGES[S.page]();
   if (open) $$('details', page).forEach((d, i) => { if (open[i]) d.open = true; });
-  if (fresh) {
-    $('#main').scrollTop = 0;
-    page.style.animation = 'none'; void page.offsetWidth; page.style.animation = '';
-  }
+  if (fresh) $('#main').scrollTop = 0;
+  // the page's entrance (staggered cards, growing bars) plays when a page opens or its content first arrives; a
+  // re-draw while it plays carries on where it was (--el), and later quiet re-draws don't move anything
+  const loading = !!page.querySelector(':scope > .page-loading, .skel-grid');
+  const now = performance.now();
+  if (fresh || (render.wasLoading && !loading)) {
+    render.t0 = now;
+    page.style.setProperty('--el', '0s');
+    page.classList.remove('enter'); void page.offsetWidth; page.classList.add('enter');
+    clearTimeout(render.enterT);
+    render.enterT = setTimeout(() => page.classList.remove('enter'), 1400);
+  } else if (page.classList.contains('enter')) page.style.setProperty('--el', ((now - render.t0) / 1000).toFixed(3) + 's');
+  render.wasLoading = loading;
   if (S.page === 'performance') drawChart();
   AFTER_RENDER.forEach(fn => fn(fresh));
   const back = keep && document.getElementById(keep.id);
@@ -184,7 +197,8 @@ function renderTop() {
 }
 
 function loadingBlock(text) {
-  return `<div class="page-loading"><div class="spinner"></div><span>${esc(text)}</span></div>`;
+  return `<div class="page-loading"><div class="spinner"></div><span>${esc(text)}</span></div>
+    <div class="skel-page" aria-hidden="true"><div class="skel wide"></div><div class="skel tall"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>`;
 }
 
 function errorBlock(text) {
@@ -243,8 +257,8 @@ function renderHome() {
   return `<div class="hello">
       <div><h1>${esc(h1)}</h1><p>${esc(line)}</p></div>
     </div>
-    ${care.homeBanner()}
     ${top}
+    <div class="notices">${care.homeBanner()}</div>
     <h3 class="sec">Right now</h3>
     <div class="stats">${statCards().join('')}</div>
     ${care.homeSavings()}`;
@@ -299,6 +313,8 @@ function statCards() {
   const warns = mem.warnings || [];
   cards.push(`<div class="stat${warns.length ? ' warn' : ' good'}"><div class="lbl">${ic('chip')}Memory</div>
     <div class="v">${gb(mem.free_gb)} free <small>of ${gb(mem.total_gb)}</small></div>
+    ${isNum(mem.free_gb) && isNum(mem.total_gb) && mem.total_gb > 0
+      ? `<div class="meter mem"><i class="${warns.length ? 'warn' : 'ok'}" style="width:${Math.max(2, Math.min(100, (1 - mem.free_gb / mem.total_gb) * 100)).toFixed(1)}%"></i></div>` : ''}
     ${warns.length ? warns.slice(0, 2).map(w => `<div class="warn-line">${ic('warn')}<span>${esc(w)}</span></div>`).join('')
       : `<div class="ok-line">${ic('check')}Enough for a smooth start</div>`}</div>`);
 
@@ -318,7 +334,8 @@ function renderSaves() {
     <button class="btn" data-act="saves-refresh"${S.savesLoading ? ' disabled' : ''}>${ic('refresh')}Look again</button></div>`;
   if (!S.saves) {
     return head + (S.savesLoading || !S.status ? `<div class="saves-loading"><div class="spinner"></div><div><b>Looking at your saves...</b>
-      <div class="muted">The first time can take a minute.</div></div></div>` : '');
+      <div class="muted">The first time can take a minute.</div></div></div>
+      <div class="saves skel-grid" aria-hidden="true"><div class="save skel"></div><div class="save skel"></div><div class="save skel"></div></div>` : '');
   }
   if (!S.saves.ok) return head + `<div class="note err">${ic('warn')}<span>${esc(S.saves.message || "Your saves couldn't be read right now.")}</span></div>`;
   const saves = [...(S.saves.saves || [])].sort((a, b) => (Date.parse(b.last_played) || 0) - (Date.parse(a.last_played) || 0));
@@ -374,6 +391,7 @@ function renderLibrary() {
       <p>${isNum(lib.packages) ? `${num(lib.packages)} CC and mod files, ${gb(lib.gb)} in total.` : 'Add new downloads, free up space, and see what you have.'}</p></div></div>
     ${ccSlot()}
 
+    <div class="lib-more">
     <div class="card"><div class="card-head"><div class="ic">${ic('download')}</div><div class="grow"><h2>Add new downloads</h2>
       <p>Put the CC and mods you download into this folder. Press <b>Add to game</b>, and the Hub puts them in the right place, the safe way.</p></div></div>
       <div class="path-box">${ic('folder', 'fold')}<span class="path">${esc((ib && ib.inbox_path) || 'Finding your Inbox folder...')}</span>
@@ -387,13 +405,14 @@ function renderLibrary() {
       <p>Some CC is stored more than once. The Hub can remove the extra copies. Your game looks exactly the same, and you can undo it on the Tools page.</p></div></div>
       ${plan && plan.ok ? `<div class="plan"><div><b>${planSize(plan)}</b><span>can be freed</span></div><div><b>${num(plan.copies)}</b><span>extra copies</span></div>
         <div><b>${num((plan.rewritten || 0) + (plan.removed || 0))}</b><span>files made smaller or removed</span></div></div>` : ''}
-      <div class="actions"><button class="btn primary" data-act="cleanup-plan"${noChange ? ' disabled' : ''}>${ic('search')}${plan ? 'Check again' : 'Check how much space can be freed'}</button>
+      <div class="actions"><button class="btn" data-act="cleanup-plan"${noChange ? ' disabled' : ''}>${ic('search')}${plan ? 'Check again' : 'Check how much space can be freed'}</button>
         ${plan && plan.ok && plan.copies > 0 ? `<button class="btn soft" data-act="cleanup-confirm"${noChange ? ' disabled' : ''}>${ic('broom')}Free up ${planSize(plan)}</button>` : ''}</div>
     </div>
 
     <div class="card"><div class="card-head"><div class="ic violet">${ic('doc')}</div><div class="grow"><h2>Library report</h2>
       <p>One page with an overview of your CC, your saves and the CC they use, your graphics settings, memory and how fast the game starts.</p></div></div>
       <div class="actions"><button class="btn" data-act="report"${busy() ? ' disabled' : ''}>${ic('doc')}Open library report</button></div>
+    </div>
     </div>`;
 }
 
@@ -447,7 +466,7 @@ function renderPerformance() {
 
     <div class="card"><div class="card-head"><div class="ic">${ic('image')}</div><div class="grow"><h2>Graphics</h2>
       <p>Your graphics settings file decides how good the game looks, and how much it lags.</p></div></div>
-      ${gState}${details}${tableHtml}${gActions ? `<div class="actions">${gActions}</div>` : ''}</div>
+      ${gState}${details}${gActions ? `<div class="actions">${gActions}</div>` : ''}${tableHtml}</div>
 
     <div class="card"><div class="card-head"><div class="ic blue">${ic('clock')}</div><div class="grow"><h2>How long the game takes to start</h2>
       <p>Timed by the SpeedKit Monitor every time you play: from pressing Play to the main menu.</p></div></div>
@@ -500,17 +519,17 @@ function drawChart() {
   const step = [0.5, 1, 2, 5, 10, 15, 30, 60].find(x => maxM / x <= 4.5) || 60;
   const top = Math.ceil(maxM / step) * step * 60;
   const y = v => T + ph - (v / top) * ph;
-  const slot = pw / rows.length, bw = Math.min(24, slot * 0.62);
+  const slot = pw / rows.length, bw = Math.min(34, slot * 0.56);
   let g = '';
   for (let v = 0; v <= top + 1e-6; v += step * 60) {
-    g += `<line class="grid-line" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>
+    g += `<line class="grid-line${v === 0 ? ' base' : ''}" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>
       <text class="axis-t" x="${L - 10}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${v === 0 ? '0' : `${+(v / 60).toFixed(1)} min`}</text>`;
   }
   const every = Math.max(1, Math.ceil(rows.length / Math.max(1, Math.floor(pw / 74))));
   rows.forEach((r, i) => {
     const v = Number(r.launch_to_menu_s), x = L + i * slot + (slot - bw) / 2, y0 = T + ph, h = Math.max(2, y0 - y(v)), yt = y0 - h;
     const rad = Math.min(4, bw / 2, h);
-    const color = FASTISH.has(r.profile) ? 'var(--fast)' : 'var(--full)';
+    const color = FASTISH.has(r.profile) ? 'url(#bar-fast)' : 'url(#bar-full)';
     g += `<path class="bar" data-i="${i}" fill="${color}" d="M${x.toFixed(1)},${y0} V${(yt + rad).toFixed(1)} Q${x.toFixed(1)},${yt.toFixed(1)} ${(x + rad).toFixed(1)},${yt.toFixed(1)}
       H${(x + bw - rad).toFixed(1)} Q${(x + bw).toFixed(1)},${yt.toFixed(1)} ${(x + bw).toFixed(1)},${(yt + rad).toFixed(1)} V${y0} Z"/>`;
     if (i === rows.length - 1) g += `<text class="val-t" x="${(x + bw / 2).toFixed(1)}" y="${(yt - 7).toFixed(1)}" text-anchor="middle">${dur(v, true)}</text>`;
@@ -520,7 +539,9 @@ function drawChart() {
     }
     g += `<rect class="hit" data-i="${i}" x="${(L + i * slot).toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${ph}"/>`;
   });
-  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg>`;
+  const defs = `<defs><linearGradient id="bar-fast" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7ab4"/><stop offset="1" stop-color="#d93c80"/></linearGradient>
+    <linearGradient id="bar-full" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb3ff"/><stop offset="1" stop-color="#3f6fd6"/></linearGradient></defs>`;
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${defs}${g}</svg>`;
   const tip = $('#tooltip');
   host.onmousemove = e => {
     const hit = e.target.closest('.hit');
@@ -1270,7 +1291,7 @@ function ccDraw() {
   const grid = $('.cc-grid', el), pager = $('.cc-pager', el), count = $('.cc-count', el);
   if (!d) {
     grid.innerHTML = CCB.err ? `<div class="note err">${ic('warn')}<span>${esc(CCB.err)}</span></div>`
-      : `<div class="saves-loading" style="padding:30px 4px"><div class="spinner sm"></div>Loading CC files...</div>`;
+      : `<div class="saves-loading" style="padding:14px 4px 4px"><div class="spinner sm"></div>Loading CC files...</div>${'<div class="skel" aria-hidden="true"></div>'.repeat(12)}`;
     pager.innerHTML = count.innerHTML = '';
     return;
   }
@@ -1292,6 +1313,10 @@ function ccDraw() {
   grid.innerHTML = items.length ? items.map(ccCard).join('')
     : `<div class="cc-none">${ic('search')}<div><b>No CC files match these filters.</b><span>Change the search words or the category.</span></div>
        ${filtered ? `<button class="btn small" data-cc="clear">Clear filters</button>` : ''}</div>`;
+  ccShowLoaded(grid);
+  grid.classList.add('anim');                          // new cards come in once; re-mounting the browser doesn't replay it
+  clearTimeout(CCB.animT);
+  CCB.animT = setTimeout(() => grid.classList.remove('anim'), 900);
   const pages = Math.max(1, Math.ceil(d.total / CC_PER)), pg = CCB.page;
   pager.innerHTML = pages < 2 ? '' : `<button class="btn small" data-cc="page" data-page="0"${pg ? '' : ' disabled'} title="First page">«</button>
     <button class="btn small" data-cc="page" data-page="${pg - 1}"${pg ? '' : ' disabled'}>${ic('back')}Back</button>
@@ -1514,6 +1539,15 @@ function ccSaveModal(slot) {
   })();
 }
 
+// pictures fade in once they have arrived (a soft sheen shows until then)
+document.addEventListener('load', e => {
+  const img = e.target;
+  if (img instanceof HTMLImageElement && img.closest('.cc-pic')) img.classList.add('in');
+}, true);
+function ccShowLoaded(root) {
+  $$('.cc-pic img', root).forEach(i => { if (i.complete && i.naturalWidth) i.classList.add('in'); });
+}
+
 // pictures that fail: try the file's own picture, then show the category's icon
 document.addEventListener('error', e => {
   const img = e.target;
@@ -1525,6 +1559,48 @@ document.addEventListener('error', e => {
   ph.innerHTML = ccIc(img.dataset.cat || 'other');
   img.replaceWith(ph);
 }, true);
+
+// ------------------------------------------------------------------------------------------ tooltips
+// icons, chips and badges explain themselves in a styled tip (their title text, shown on hover and keyboard focus)
+const TIP_ON = '.icon-btn, .btn, .chip, .cc-badge, .preview-chip, .mode-chip, .cc-check, .care-size, .cc-tools select, [data-tip]';
+const tipEl = document.createElement('div');
+tipEl.className = 'tooltip tip hidden';
+tipEl.setAttribute('role', 'tooltip');
+tipEl.id = 'tip';
+document.body.appendChild(tipEl);
+let tipFor = null, tipT = 0;
+function tipTarget(node) {
+  const el = node && node.closest ? node.closest(TIP_ON) : null;
+  if (!el) return null;
+  if (el.title) {                                  // the native tip would show twice: keep the text here instead
+    el.dataset.tip = el.title;
+    if (!el.getAttribute('aria-label') && !/\p{L}/u.test(el.textContent)) el.setAttribute('aria-label', el.title);
+    el.removeAttribute('title');
+  }
+  return el.dataset.tip ? el : null;
+}
+function tipShow(el) {
+  tipFor = el;
+  tipEl.textContent = el.dataset.tip;
+  tipEl.classList.remove('hidden');
+  const r = el.getBoundingClientRect(), tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+  const above = r.top - th - 8 > 8;
+  tipEl.style.left = Math.max(8, Math.min(window.innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)) + 'px';
+  tipEl.style.top = (above ? r.top - th - 8 : r.bottom + 8) + 'px';
+}
+function tipHide() { clearTimeout(tipT); tipFor = null; tipEl.classList.add('hidden'); }
+document.addEventListener('pointerover', e => {
+  const el = tipTarget(e.target);
+  if (el === tipFor) return;
+  tipHide();
+  if (el) tipT = setTimeout(() => { if (document.body.contains(el)) tipShow(el); }, 380);
+});
+document.addEventListener('focusin', e => {
+  const el = tipTarget(e.target);
+  tipHide();
+  if (el && e.target.matches(':focus-visible')) tipShow(el);
+});
+['pointerdown', 'focusout', 'scroll', 'keydown'].forEach(t => document.addEventListener(t, tipHide, true));
 
 // ------------------------------------------------------------------------------------------ start
 window.addEventListener('hashchange', route);

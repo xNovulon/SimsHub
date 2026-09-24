@@ -50,3 +50,6 @@ sims_hub/Sims Hub.exe
 
 # helpers' scratch copies
 .claude/worktrees/
+
+# redesign screenshots (made by the screenshot script, not kept in the repository)
+sims_hub/tests/_hub_screens_redesign/
