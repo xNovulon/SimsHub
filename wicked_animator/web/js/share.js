@@ -310,6 +310,7 @@ function showBundle(res, app = window.app) {
         h('b', {}, `${res.animations} animation${res.animations > 1 ? 's' : ''}${res.progressions.length ? ' · ' + res.progressions.length + ' progression' + (res.progressions.length > 1 ? 's' : '') : ''} · ${(res.bytes / 1048576).toFixed(1)} MB`),
         h('div', { class: 'path' }, res.package))),
       res.sounds_packed ? h('p', { class: 'hint' }, `${res.sounds_packed} sounds from other mods were packed in - their creators are credited in the README: `, Object.keys(res.credits || {}).join(', ')) : null,
+      res.own_sounds ? h('p', { class: 'hint' }, `${res.own_sounds === 1 ? 'Your own sound is' : res.own_sounds + ' of your own sounds are'} packed in too.`) : null,
       (res.missing_sounds || []).length ? h('div', { class: 'warn-box' }, 'Not found, so not packed: ' + res.missing_sounds.join(', ')) : null,
       // sounds that come from a game pack: people without that pack play the animation silently there
       needs.length ? h('div', { class: 'warn-box' }, 'Sounds that need a game pack (the README says so too): ', needs.map(([snd, pack]) => `${snd} needs ${pack}`).join(', ')) : null,

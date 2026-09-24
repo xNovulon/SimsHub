@@ -2,6 +2,7 @@
 // or drop your own sound file (WAV, MP3, OGG). The work itself is in lipsync.js.
 import { h, icon, slider, toggleRow, section, toast } from './ui.js';
 import { lipSync, lipSyncVoices, decodeSound, voiceOf, voiceLineUrl } from './lipsync.js';
+import { uploadMySound } from './mysounds.js';
 
 const TAGS = [['moan', 'Moans'], ['woohoo', 'WooHoo'], ['climax', 'Climax'], ['breath', 'Breathing'], ['kiss', 'Kisses'], ['flirt', 'Flirty'], ['laugh', 'Laughs'], ['pain', 'Pain'], ['', 'All']];
 
@@ -36,6 +37,24 @@ function listen(url) {
   _audio = new Audio(url);
   _audio.play().catch(() => toast('That sound could not be played.'));
 }
+// The lip-synced file as one of your own sounds, placed where the lip-sync starts (packed into every export).
+async function fileToGame(app, sim, btn) {
+  const f = app._lipFile;
+  if (!f || !f.file) return;
+  if (btn) btn.disabled = true;
+  try {
+    const s = await uploadMySound(f.file, 'voice');
+    const target = app.store.sim(f.simId) || sim;
+    app.store.checkpoint();
+    target.sounds = target.sounds || [];
+    if (!target.sounds.some(x => x.name === s.name && x.frame === f.frame)) target.sounds.push({ frame: f.frame, name: s.name, kind: 'voice' });
+    app.afterEdit();
+    toast(`"${s.label}" plays in the game at frame ${f.frame}.`, 'ok');
+  } catch (err) {
+    toast(err.message || String(err), 'err');
+  } finally { if (btn && btn.isConnected) btn.disabled = false; }
+}
+
 // Your own file, played along the animation from where it was lip-synced (a preview: it is not part of the export).
 export function playFileAlong(app) {
   const f = app._lipFile;
@@ -135,7 +154,7 @@ export function lipSyncPanel(app, sim) {
   if (lineBox.open) fillLines();
   sec.append(lineBox);
 
-  // 3. your own sound file: the face follows it (WickedWhims plays game sounds, so the file itself stays out of the game)
+  // 3. your own sound file: the face follows it; "Play it in the game too" packs the file itself (mysounds.js)
   const input = h('input', { type: 'file', accept: 'audio/*,.wav,.mp3,.ogg', hidden: true });
   const useFile = async file => {
     if (!file) return;
@@ -143,7 +162,7 @@ export function lipSyncPanel(app, sim) {
     await run(app, sim, async () => {
       const buffer = await decodeSound(file);
       const r = await lipSync(app, sim.id, { buffer, file }, { ...opts(), frame: at });
-      app._lipFile = { name: file.name, buffer, frame: at, simId: sim.id };
+      app._lipFile = { name: file.name, buffer, frame: at, simId: sim.id, file };
       return r;
     }, file.name);
   };
@@ -157,7 +176,8 @@ export function lipSyncPanel(app, sim) {
     h('summary', {}, icon('folder'), 'Your own sound file', h('span', { class: 'fm-sub' }, `at ${secOf(frame, fps)}`)),
     drop, input,
     app._lipFile && app._lipFile.simId === sim.id ? h('button', { class: 'btn small block', onclick: () => playFileAlong(app) }, icon('play'), `Hear "${app._lipFile.name}" with the animation`) : null,
-    h('div', { class: 'hint' }, 'Only the face is kept: WickedWhims plays the game\'s own sounds, so add a game voice line for the sound itself.'));
+    app._lipFile && app._lipFile.simId === sim.id && app._lipFile.file ? h('button', { class: 'btn small block ls-to-game', onclick: e => fileToGame(app, sim, e.currentTarget) }, icon('wave'), 'Play this sound in the game too') : null,
+    h('div', { class: 'hint' }, 'The face follows the file. To hear the file itself in the game, add it as a sound too - it is packed into the animation.'));
   sec.append(fileBox);
 
   // how strong

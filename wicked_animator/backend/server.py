@@ -307,6 +307,10 @@ class Handler(BaseHTTPRequestHandler):
         if route == 'my_poses':
             return self._send(200, _json(P.my_poses()))
         if route == 'sound':
+            import mysounds
+            if mysounds.is_mine(q.get('name')):             # one of your own sounds: what the game will play
+                data = mysounds.preview(q['name'])
+                return self._send(200, data, 'audio/wav', cache=True) if data else self._error(404, 'sound not found')
             try:
                 import eaaudio
             except ImportError:
