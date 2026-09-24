@@ -3,6 +3,7 @@
 // (wa:sent), and one quiet look at WickedWhims' log when the window comes back after a send. Everything registers through app.hooks (plan 2.4), so main.js, index.html and app.css
 // stay untouched.
 import { openDoctor, openDidItPlay, onSent, checkPending, ensureIcons, ensureStyles } from '../doctor.js';
+import { $t } from '../i18n.js';
 
 export function install(app) {
   if (!app || app.__doctor) return;
@@ -13,28 +14,28 @@ export function install(app) {
   const add = (name, fn) => { if (Array.isArray(hooks[name])) hooks[name].push(fn); };
 
   add('homeCards', () => [{
-    id: 'doctor', icon: 'doctor', title: 'Check my game',
-    text: "Why don't my animations show up? A safe check of your Mods and WickedWhims' settings.",
+    id: 'doctor', icon: 'doctor', title: $t('features.doctor.check_my_game'),
+    text: $t('features.doctor.why_don_t_my_animations'),
     onClick: () => openDoctor(app),
   }]);
 
   add('commands', a => [
-    { group: 'Game', id: 'doctor', label: 'Doctor', icon: 'doctor', sub: "Check my game - why don't my animations show up?",
+    { group: $t('features.doctor.game'), id: 'doctor', label: $t('features.doctor.doctor'), icon: 'doctor', sub: $t('features.doctor.check_my_game_why_don'),
       words: 'check game mods why animations not showing missing broken fix scan conflict clash rig body folder disabled',
       run: () => openDoctor(a) },
-    { group: 'Game', id: 'doctor-browse', label: 'Browse my WickedWhims animations', icon: 'doc-star',
-      sub: 'favorites and "Turn off", for every animation you have',
+    { group: $t('features.doctor.game'), id: 'doctor-browse', label: $t('features.doctor.browse_my_wickedwhims_animations'), icon: 'doc-star',
+      sub: $t('features.doctor.favorites_and_turn_off_for'),
       words: 'browse favorites favourite star turn off disable hide animations list installed mods wickedwhims identifier',
       run: () => openDoctor(a, { tab: 'browse' }) },
-    { group: 'Game', id: 'did-it-play', label: 'Did it play in the game?', icon: 'doc-game',
-      sub: "read WickedWhims' log for this animation", words: 'played test log worked game result wickedwhims',
+    { group: $t('features.doctor.game'), id: 'did-it-play', label: $t('features.doctor.did_it_play_in_game'), icon: 'doc-game',
+      sub: $t('features.doctor.read_wickedwhims_log_for_this'), words: 'played test log worked game result wickedwhims',
       run: () => openDidItPlay(a) },
   ]);
 
   add('helpRows', () => [
-    { group: 'The game', keys: ['Ctrl', 'K'], text: "Type \"Doctor\" to check why animations don't show up in the game" },
-    { group: 'The game', keys: ['Ctrl', 'K'], text: 'Type "Did it play" to see if WickedWhims played your animation' },
-    { group: 'The game', keys: ['Ctrl', 'K'], text: 'Type "Browse" to star favorites or turn off animations for WickedWhims' },
+    { group: $t('features.doctor.game_2'), keys: ['Ctrl', 'K'], text: $t('features.doctor.type_doctor_to_check_why') },
+    { group: $t('features.doctor.game_2'), keys: ['Ctrl', 'K'], text: $t('features.doctor.type_did_it_play_to') },
+    { group: $t('features.doctor.game_2'), keys: ['Ctrl', 'K'], text: $t('features.doctor.type_browse_to_star_favorites') },
   ]);
 
   // the Send result's bottom slot

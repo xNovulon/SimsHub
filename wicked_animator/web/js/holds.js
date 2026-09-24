@@ -10,6 +10,7 @@ import { nearestSkin, anchorFor } from './skin.js';
 import { shapeQuats } from './hands.js';
 import { evaluate, keyFramesFor, sortKeys } from './animation.js';
 import { toast } from './ui.js';
+import { $t } from './i18n.js';
 
 const LIMB_SIDE = limb => limb[0];
 export const isHandLimb = limb => !!PALM[limb];
@@ -35,7 +36,7 @@ const entryOf = (app, id) => { const s = app.store.sim(id), v = app.simViews.get
 // A short description of a hold, for chips and the view's hover line: "holding Female 1's hip".
 export function holdText(app, pin) {
   const o = app.store.sim(pin.sim);
-  return `holding ${o ? o.label : 'the partner'}'s ${pin.label || 'body'}`;
+  return $t('holds.holding', { who: o ? o.label : $t('holds.partner'), part: pin.label || $t('holds.body') });
 }
 
 // ---------------------------------------------------------------- taking hold
@@ -45,7 +46,7 @@ export function holdText(app, pin) {
 export function makeHold(app, simId, limb, other, hit, { checkpoint = true, quiet = false, label = null, shape = true, keep = null } = {}) {
   const sim = app.store.sim(simId), v = app.simViews.get(simId), ov = other && other.v;
   if (!sim || !v || !ov || !hit || !LIMBS[limb]) return null;
-  if (checkpoint) app.store.checkpoint('Hold on');
+  if (checkpoint) app.store.checkpoint($t('holds.hold_on'));
   const anchor = anchorFor(ov, hit.boneIndex), ab = ov.bone(anchor);
   ab.updateWorldMatrix(true, false);
   const aQ = ab.getWorldQuaternion(new THREE.Quaternion()), aQi = aQ.clone().invert();
@@ -71,7 +72,7 @@ export function makeHold(app, simId, limb, other, hit, { checkpoint = true, quie
   app.applyPoses(false);
   app.interact && app.interact.refreshHandles();
   app.afterEdit();
-  if (!quiet) toast(`${LIMB_LABEL[limb]} is holding ${other.sim.label}'s ${sim.pins[limb].label} - it follows the body now. Drag it away to let go.`, 'ok');
+  if (!quiet) toast($t('holds.is_holding_s_it_follows', { v: LIMB_LABEL[limb], simLabel: other.sim.label, vLabel: sim.pins[limb].label }), 'ok');
   return sim.pins[limb];
 }
 
@@ -116,10 +117,10 @@ export function tryHold(app, simId, limb, { maxDist = 0.04, fromDrag = false, qu
       delete sim.pins[limb];
       app.applyPoses(false);
       app.interact && app.interact.refreshHandles();
-      if (!quiet) toast(`${LIMB_LABEL[limb]} let go.`);
-      return 'let go';
+      if (!quiet) toast($t('holds.let_go', { v: LIMB_LABEL[limb] }));
+      return $t('holds.let_go_2');
     }
-    if (!fromDrag && !quiet) toast(`No partner within ${Math.round(maxDist * 100)} cm of the ${LIMB_LABEL[limb].toLowerCase()} - move it closer first.`);
+    if (!fromDrag && !quiet) toast($t('holds.no_partner_within_cm_of', { maxDist: Math.round(maxDist * 100), v: LIMB_LABEL[limb].toLowerCase() }));
     return null;
   }
   return makeHold(app, simId, limb, best.o, best.hit, { checkpoint: !fromDrag, quiet });
@@ -182,7 +183,7 @@ export function holdNamed(app, simId, limb, otherId, grabKey, { slot = null, che
   for (const s of slots) { const d = o.v.worldPos(s).distanceTo(at); if (d < bd) { bd = d; best = s; } }
   const sw = o.v.worldPos(best);
   const hit = nearestSkin(o.v, sw, 0.06) || nearestSkin(o.v, sw, 0.15);
-  if (!hit) { if (!quiet) toast(`Couldn't find ${o.sim.label}'s ${grabKey}.`, 'err'); return null; }
+  if (!hit) { if (!quiet) toast($t('holds.couldn_t_find_s', { simLabel: o.sim.label, grabKey }), 'err'); return null; }
   return makeHold(app, simId, limb, o, hit, { checkpoint, quiet, label: grabKey });
 }
 
@@ -208,13 +209,13 @@ export function reachableGrabs(app, simId, limb, otherId) {
 export function letGo(app, simId, limb, { checkpoint = true, quiet = false } = {}) {
   const sim = app.store.sim(simId);
   if (!sim || !sim.pins || !sim.pins[limb]) return false;
-  if (checkpoint) app.store.checkpoint('Let go');
+  if (checkpoint) app.store.checkpoint($t('holds.let_go_3'));
   const was = sim.pins[limb];
   delete sim.pins[limb];
   app.applyPoses(false);
   app.interact && app.interact.refreshHandles();
   app.afterEdit();
-  if (!quiet) toast(isHold(was) ? `${LIMB_LABEL[limb]} let go.` : `${LIMB_LABEL[limb]} is free.`);
+  if (!quiet) toast(isHold(was) ? $t('holds.let_go', { v: LIMB_LABEL[limb] }) : $t('holds.is_free', { v: LIMB_LABEL[limb] }));
   return true;
 }
 
@@ -262,7 +263,7 @@ export function cleanHolds(project, goneId = null) {
 export function setPin(app, simId, limb, { from, to, fade } = {}) {
   const sim = app.store.sim(simId), v = app.simViews.get(simId);
   if (!sim || !v || !LIMBS[limb]) return null;
-  app.store.checkpoint('Pin for part of the loop');
+  app.store.checkpoint($t('holds.pin_for_part_of_loop'));
   sim.pins = sim.pins || {};
   const old = sim.pins[limb];
   const ranged = from !== undefined && to !== undefined;
@@ -279,8 +280,8 @@ export function setPin(app, simId, limb, { from, to, fade } = {}) {
   app.interact && app.interact.refreshHandles();
   app.afterEdit();
   const L = app.store.project.length;
-  toast(!ranged ? `${LIMB_LABEL[limb]} ${isHold(pin) ? 'holds on' : 'pinned'} for the whole loop.`
-    : `${LIMB_LABEL[limb]} ${isHold(pin) ? 'holds on' : 'pinned'} from ${(from / 30).toFixed(2)} s to ${(Math.min(to, L - 1) / 30).toFixed(2)} s - it eases in and out over ${pin.fade} frames.`, 'ok');
+  toast(!ranged ? $t(isHold(pin) ? 'holds.holds_whole_loop' : 'holds.pinned_whole_loop', { limb: LIMB_LABEL[limb] })
+    : $t(isHold(pin) ? 'holds.holds_range' : 'holds.pinned_range', { limb: LIMB_LABEL[limb], from: (from / 30).toFixed(2), to: (Math.min(to, L - 1) / 30).toFixed(2), fade: pin.fade }), 'ok');
   return pin;
 }
 export const setPinRange = (app, simId, limb, from, to, fade) => setPin(app, simId, limb, { from, to, fade });
@@ -321,7 +322,7 @@ export function bakePin(app, simId, limb) {
   if (!sim || !v || !pin || !LIMBS[limb]) return 0;
   const p = app.store.project, L = p.length, pl = app.pipeline;
   if (app.playing) app.setPlaying(false);
-  app.store.checkpoint('Let go, keep the look');
+  app.store.checkpoint($t('holds.let_go_keep_look'));
   const chain = LIMBS[limb];
   const saved = pl.editing;
   pl.editing = null;
@@ -363,7 +364,7 @@ export function bakePin(app, simId, limb) {
   if (app.refreshAll) app.refreshAll();
   app.interact && app.interact.refreshHandles();
   app.physicsChanged && app.physicsChanged();
-  toast(`The ${LIMB_LABEL[limb]} is free now and keeps the same motion${added ? ` (added ${added} in-between key${added > 1 ? 's' : ''})` : ''}.`, 'ok');
+  toast(added ? $t('holds.free_now_added', { limb: LIMB_LABEL[limb], added }) : $t('holds.free_now', { limb: LIMB_LABEL[limb] }), 'ok');
   return added;
 }
 

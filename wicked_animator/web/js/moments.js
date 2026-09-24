@@ -11,46 +11,50 @@ import { nakedFor } from './tags.js';
 import { simVoice } from './audio.js';
 import { activeCum } from './cumskin.js';
 import { effectKind, drawPreview, rememberEffectGroups } from './effects.js';
+import { $t, inSentence } from './i18n.js';
 
 export { activeCum };
 
 // ---------------------------------------------------------------- words
-export const CUM_PARTS = [['FACE', 'Face'], ['CHEST', 'Chest'], ['BELLY', 'Belly'], ['UPPER_BACK', 'Upper back'],
-  ['LOWER_BACK', 'Lower back'], ['VAGINA', 'Vagina'], ['BUTT', 'Butt'], ['FEET', 'Feet']];
+export const CUM_PARTS = [['FACE', $t('moments.face')], ['CHEST', $t('moments.chest')], ['BELLY', $t('moments.belly')], ['UPPER_BACK', $t('moments.upper_back')],
+  ['LOWER_BACK', $t('moments.lower_back')], ['VAGINA', $t('moments.vagina')], ['BUTT', $t('moments.butt')], ['FEET', $t('moments.feet')]];
 export const CUM_LABEL = Object.fromEntries(CUM_PARTS);
-export const LEVELS = [[1, 'A little'], [2, 'More'], [3, 'A lot']];
-export const NAKED_PARTS = [['TOP', 'Top'], ['BOTTOM', 'Bottom'], ['TOP_UNDERWEAR', 'Top to underwear'],
-  ['BOTTOM_UNDERWEAR', 'Bottom to underwear'], ['SHOES', 'Shoes'], ['ALL', 'Everything']];
-const NAKED_LABEL = { ...Object.fromEntries(NAKED_PARTS), FORCE_ALL: 'Everything' };
-export const TYPES = [['CUM', 'Cum', 'drop'], ['UNDRESS', 'Undress', 'shirt'], ['REMOVE_CONDOM', 'Condom off', 'ring'],
-  ['EFFECT', 'Effect', 'fx'], ['NOTE', 'Note', 'pin']];
+export const LEVELS = [[1, $t('moments.little')], [2, $t('moments.more')], [3, $t('moments.lot')]];
+export const NAKED_PARTS = [['TOP', $t('moments.top')], ['BOTTOM', $t('moments.bottom')], ['TOP_UNDERWEAR', $t('moments.top_to_underwear')],
+  ['BOTTOM_UNDERWEAR', $t('moments.bottom_to_underwear')], ['SHOES', $t('moments.shoes')], ['ALL', $t('moments.everything')]];
+const NAKED_LABEL = { ...Object.fromEntries(NAKED_PARTS), FORCE_ALL: $t('moments.everything') };
+export const TYPES = [['CUM', $t('moments.cum'), 'drop'], ['UNDRESS', $t('moments.undress_2'), 'shirt'], ['REMOVE_CONDOM', $t('moments.condom_off'), 'ring'],
+  ['EFFECT', $t('moments.effect'), 'fx'], ['NOTE', $t('moments.note_2'), 'pin']];
 export const TYPE_LABEL = Object.fromEntries(TYPES.map(([k, t]) => [k, t]));
 // the Finish buttons (the Sounds & moments step, Magic's Finish select): part -> where the cum goes
-export const FINISH_PARTS = [['inside', 'Inside'], ['face', 'Face'], ['chest', 'Chest'], ['belly', 'Belly'], ['back', 'Back'],
-  ['butt', 'Butt'], ['feet', 'Feet']];
+export const FINISH_PARTS = [['inside', $t('moments.inside')], ['face', $t('moments.face')], ['chest', $t('moments.chest')], ['belly', $t('moments.belly')], ['back', $t('moments.back')],
+  ['butt', $t('moments.butt')], ['feet', $t('moments.feet')]];
 const PART_OF = { inside: 'INSIDE', face: 'FACE', chest: 'CHEST', belly: 'BELLY', back: 'UPPER_BACK', upper_back: 'UPPER_BACK',
   lower_back: 'LOWER_BACK', butt: 'BUTT', feet: 'FEET', vagina: 'VAGINA', mouth: 'FACE' };
 // the body parts effects play at (checked rig bones; the server's /api/effects gives the same list)
 export const JOINTS = [
-  { id: 'penis_tip', label: 'Tip of the penis', bone: 'b__Penis_Tip', needs: 'penis' },
-  { id: 'penis_mid', label: 'Middle of the penis', bone: 'b__Penis_Mid', needs: 'penis' },
-  { id: 'penis_base', label: 'Base of the penis', bone: 'b__Penis_Base', needs: 'penis' },
-  { id: 'balls', label: 'Balls', bone: 'b__Penis_Testicles', needs: 'penis' },
-  { id: 'mouth', label: 'Mouth (lower lip)', bone: 'b__LoLip__', needs: null },
-  { id: 'tongue', label: 'Tongue', bone: 'b__Tounge__3', needs: null },
-  { id: 'chin', label: 'Chin', bone: 'b__CAS_Chin__', needs: null },
-  { id: 'l_palm', label: 'Left palm', bone: 'b__L_Stigmata', needs: null },
-  { id: 'r_palm', label: 'Right palm', bone: 'b__R_Stigmata', needs: null },
-  { id: 'anus', label: 'Anus', bone: 'b__Low_Anus', needs: null },
-  { id: 'vagina', label: 'Vagina', bone: 'b__Low_Vagina__', needs: 'vagina' },
-  { id: 'forehead', label: 'Forehead (sweat)', bone: 'b__L_MidBrow__', needs: null },
-  { id: 'eyes', label: 'Eyes (tears)', bone: 'b__Head__', needs: null },
-  { id: 'l_breast', label: 'Left breast', bone: 'b__CAS_L_Breast__', needs: null },
-  { id: 'r_breast', label: 'Right breast', bone: 'b__CAS_R_Breast__', needs: null },
-  { id: 'chest', label: 'Chest', bone: 'b__Spine2__', needs: null },
-  { id: 'hips', label: 'Hips', bone: 'b__Pelvis__', needs: null },
+  { id: 'penis_tip', label: $t('moments.tip_of_penis'), bone: 'b__Penis_Tip', needs: 'penis' },
+  { id: 'penis_mid', label: $t('moments.middle_of_penis'), bone: 'b__Penis_Mid', needs: 'penis' },
+  { id: 'penis_base', label: $t('moments.base_of_penis'), bone: 'b__Penis_Base', needs: 'penis' },
+  { id: 'balls', label: $t('moments.balls'), bone: 'b__Penis_Testicles', needs: 'penis' },
+  { id: 'mouth', label: $t('moments.mouth_lower_lip'), bone: 'b__LoLip__', needs: null },
+  { id: 'tongue', label: $t('moments.tongue'), bone: 'b__Tounge__3', needs: null },
+  { id: 'chin', label: $t('moments.chin'), bone: 'b__CAS_Chin__', needs: null },
+  { id: 'l_palm', label: $t('moments.left_palm'), bone: 'b__L_Stigmata', needs: null },
+  { id: 'r_palm', label: $t('moments.right_palm'), bone: 'b__R_Stigmata', needs: null },
+  { id: 'anus', label: $t('moments.anus'), bone: 'b__Low_Anus', needs: null },
+  { id: 'vagina', label: $t('moments.vagina'), bone: 'b__Low_Vagina__', needs: 'vagina' },
+  { id: 'forehead', label: $t('moments.forehead_sweat'), bone: 'b__L_MidBrow__', needs: null },
+  { id: 'eyes', label: $t('moments.eyes_tears'), bone: 'b__Head__', needs: null },
+  { id: 'l_breast', label: $t('moments.left_breast'), bone: 'b__CAS_L_Breast__', needs: null },
+  { id: 'r_breast', label: $t('moments.right_breast'), bone: 'b__CAS_R_Breast__', needs: null },
+  { id: 'chest', label: $t('moments.chest'), bone: 'b__Spine2__', needs: null },
+  { id: 'hips', label: $t('moments.hips'), bone: 'b__Pelvis__', needs: null },
 ];
+// the groups the server sorts effects into (its own names), and how they read in the app
 export const EFFECT_GROUPS = ['Cum & splashes', 'Drool & strands', 'Drips & sweat', 'Streams', 'Tears', 'Steam & breath', 'Sparkles & flash'];
+const EFFECT_GROUP_LABEL = { 'Cum & splashes': $t('moments.cum_splashes'), 'Drool & strands': $t('moments.drool_strands'), 'Drips & sweat': $t('moments.drips_sweat'),
+  Streams: $t('moments.streams'), Tears: $t('moments.tears'), 'Steam & breath': $t('moments.steam_breath'), 'Sparkles & flash': $t('moments.sparkles_flash') };
 const nice = s => String(s || '').replace(/^b__|__$/g, '').replace(/_/g, ' ').trim();
 export const secs = (frame, fps = 30) => (frame / fps).toFixed(1).replace(/\.0$/, '') + ' s';
 
@@ -60,7 +64,7 @@ export const penisSims = app => app.store.project.sims.filter(s => hasPenis(app,
 export const giverOf = app => penisSims(app)[0] || null;
 const roleOf = (app, s) => (typeof app.roleOf === 'function' ? app.roleOf(s) : hasPenis(app, s) ? 'giver' : 'receiver');
 const simById = (app, id) => app.store.project.sims.find(s => s.id === id) || null;
-const nameOf = (app, id) => (simById(app, id) || { label: 'a sim that is gone' }).label;
+const nameOf = (app, id) => (simById(app, id) || { label: $t('moments.sim_that_is_gone') }).label;
 
 // Who a new moment happens to: cum on the selected sim unless it only gives (then the first who receives); the
 // condom comes off the first sim with a penis; undressing and effects: the selected sim.
@@ -139,18 +143,18 @@ export function momentLabel(ev, app) {
   const who = ev.sim ? nameOf(app, ev.sim) : '';
   let s;
   switch (ev.type) {
-    case 'CUM': s = `Cum on ${who}'s ${(CUM_LABEL[ev.cum] || 'body').toLowerCase()}, level ${ev.level || 1}`; break;
-    case 'UNDRESS': s = `Undress ${who}: ${(NAKED_LABEL[ev.naked] || 'clothes').toLowerCase()}`; break;
-    case 'REMOVE_CONDOM': s = `${who}'s condom comes off`; break;
+    case 'CUM': s = $t('moments.cum_on_level', { who, part: inSentence(CUM_LABEL[ev.cum] || $t('moments.body')), level: ev.level || 1 }); break;
+    case 'UNDRESS': s = $t('moments.undress_what', { who, what: inSentence(NAKED_LABEL[ev.naked] || $t('moments.clothes')) }); break;
+    case 'REMOVE_CONDOM': s = $t('moments.s_condom_comes_off', { who }); break;
     case 'EFFECT': {
       const endF = ev.end !== undefined ? ev.end : ev.frame + fps;
       s = `${effectLabel(ev.effect)} at ${who}'s ${jointLabel(ev.joint)}`;
-      return `${s} · ${secs(ev.frame, fps).replace(' s', '')}-${secs(endF, fps)}${ev.skipWithCondom ? ' · not with a condom' : ''}`;
+      return `${s} · ${secs(ev.frame, fps).replace(' s', '')}-${secs(endF, fps)}${ev.skipWithCondom ? $t('moments.not_with_condom') : ''}`;
     }
     case 'NOTE': return `Note: ${ev.text || '(empty)'} · ${at}`;
     default: s = ev.type;
   }
-  return `${s} · ${at}${ev.skipWithCondom ? ' · not with a condom' : ''}`;
+  return `${s} · ${at}${ev.skipWithCondom ? $t('moments.not_with_condom') : ''}`;
 }
 
 // ---------------------------------------------------------------- condoms (preview only)
@@ -195,7 +199,7 @@ function dressFirst(app, ev) {
   const s = simById(app, ev.sim);
   if (!s || !nakedFromStart(app, s)) return false;
   s.naked = 'NONE';
-  toast(`${s.label} now starts dressed, so there is something to take off.`);
+  toast($t('moments.now_starts_dressed_so_there', { sLabel: s.label }));
   return true;
 }
 
@@ -242,7 +246,7 @@ function afterMoments(app) {
 export function finishPreset(app, part = 'face', frame = null, { checkpoint = true, quiet = false } = {}) {
   const p = app.store.project, len = p.length, fps = p.fps || 30;
   const r = defaultTarget(app, 'CUM'), g = giverOf(app);
-  if (!r) { if (!quiet) toast('Add a sim first.'); return null; }
+  if (!r) { if (!quiet) toast($t('moments.add_sim_first')); return null; }
   let F = Math.round(frame === null || frame === undefined ? app.store.frame : frame);
   if (!(F > 0 && F < len - 8)) F = Math.round(0.7 * len);
   const key = PART_OF[String(part || '').toLowerCase()] || (CUM_LABEL[String(part || '').toUpperCase()] ? String(part).toUpperCase() : 'FACE');
@@ -278,9 +282,9 @@ export function finishPreset(app, part = 'face', frame = null, { checkpoint = tr
   afterMoments(app);
   if (!quiet) {
     const where = cum === 'VAGINA' ? 'inside' : `on ${r.label}'s ${CUM_LABEL[cum].toLowerCase()}`;
-    if (!penisSims(app).length) toast(`Finish ${where} at ${secs(F, fps)} - but WickedWhims only shows cum when someone in the act has a penis.`);
+    if (!penisSims(app).length) toast($t('moments.finish_at_but_wickedwhims_only', { where, secs: secs(F, fps) }));
     else if (p.category !== 'CLIMAX' && (p.loops || 10) > 1) climaxBar(app);
-    else toast(`Finish ${where} at ${secs(F, fps)}.`, 'ok');
+    else toast($t('moments.finish_at', { where, secs: secs(F, fps) }), 'ok');
   }
   return made;
 }
@@ -294,8 +298,8 @@ export function finishGroups(list) {
 
 // "In the game cum adds up every loop" - with the one-click fix.
 export function climaxBar(app) {
-  return choiceBar('In the game cum adds up every loop. For a one-time finish, make it a Climax.', [
-    { label: 'Make it a climax', primary: true, onClick: () => makeClimax(app) }]);
+  return choiceBar($t('moments.in_game_cum_adds_up'), [
+    { label: $t('moments.make_it_climax'), primary: true, onClick: () => makeClimax(app) }]);
 }
 export function makeClimax(app) {
   const p = app.store.project;
@@ -306,7 +310,7 @@ export function makeClimax(app) {
   p.loops = 1;
   if (typeof app.refreshTitle === 'function') app.refreshTitle();
   afterMoments(app);
-  toast('It is a climax now: it plays once, and the cum shows once.', 'ok');
+  toast($t('moments.it_is_climax_now_it'), 'ok');
 }
 
 // ---------------------------------------------------------------- the right-click menu of the Moments row
@@ -317,36 +321,36 @@ export function momentMenuItems(app, ev, frame) {
     const s = simById(app, ev.sim);
     return [
       { heading: momentLabel(ev, app) },
-      { label: 'Change…', icon: 'pose', onClick: () => app.editMoment(ev.id) },
-      { label: 'Move to the playhead', icon: 'arrow', onClick: () => {
+      { label: $t('moments.change'), icon: 'pose', onClick: () => app.editMoment(ev.id) },
+      { label: $t('moments.move_to_playhead'), icon: 'arrow', onClick: () => {
         const d = Math.round(app.store.frame) - ev.frame;
         app.store.checkpoint();
         for (const e of p.events.filter(x => x === ev || (ev.group && x.group === ev.group))) { e.frame += d; if (e.end !== undefined) e.end += d; clampMoment(app, e); }
         afterMoments(app);
       } },
-      ev.type !== 'NOTE' && s ? { label: ev.skipWithCondom ? `Also when ${s.label} wears a condom` : `Skip when ${s.label} wears a condom`, icon: 'ring',
+      ev.type !== 'NOTE' && s ? { label: ev.skipWithCondom ? $t('moments.also_when_wears_condom', { sLabel: s.label }) : $t('moments.skip_when_wears_condom', { sLabel: s.label }), icon: 'ring',
         onClick: () => app.updateMoment(ev.id, { skipWithCondom: !ev.skipWithCondom }) } : null,
       '-',
-      inGroup ? { label: 'Delete this one', danger: true, icon: 'trash', onClick: () => app.removeMoment(ev.id, { group: false }) } : null,
-      { label: inGroup ? 'Delete the whole finish' : 'Delete', danger: true, icon: 'trash', onClick: () => app.removeMoment(ev.id) },
+      inGroup ? { label: $t('moments.delete_this_one'), danger: true, icon: 'trash', onClick: () => app.removeMoment(ev.id, { group: false }) } : null,
+      { label: inGroup ? $t('moments.delete_whole_finish') : 'Delete', danger: true, icon: 'trash', onClick: () => app.removeMoment(ev.id) },
     ].filter(Boolean);
   }
   const r = defaultTarget(app, 'CUM'), u = defaultTarget(app, 'UNDRESS'), g = giverOf(app);
-  const items = [{ heading: `Finish here · ${secs(frame, p.fps || 30)}` }];
+  const items = [{ heading: $t('moments.finish_here', { secs: secs(frame, p.fps || 30) }) }];
   if (r) {
     for (const [t, label] of CUM_PARTS) {
       if (t === 'VAGINA' && hasPenis(app, r)) continue;
-      items.push({ label: `Cum on ${r.label}'s ${label.toLowerCase()}`, icon: 'drop', onClick: () => app.addMoment({ type: 'CUM', frame, sim: r.id, cum: t, level: 2 }) });
+      items.push({ label: $t('moments.cum_on_s', { rLabel: r.label, label: label.toLowerCase() }), icon: 'drop', onClick: () => app.addMoment({ type: 'CUM', frame, sim: r.id, cum: t, level: 2 }) });
     }
   }
   if (u) {
-    items.push('-', { heading: 'Clothes' });
-    for (const [n, label] of [['TOP', 'top'], ['BOTTOM', 'bottom'], ['ALL', 'everything']]) items.push({ label: `Undress ${u.label}: ${label}`, icon: 'shirt', onClick: () => app.addMoment({ type: 'UNDRESS', frame, sim: u.id, naked: n }) });
+    items.push('-', { heading: $t('moments.clothes') });
+    for (const [n, label] of [['TOP', 'top'], ['BOTTOM', 'bottom'], ['ALL', 'everything']]) items.push({ label: $t('moments.undress', { uLabel: u.label, label }), icon: 'shirt', onClick: () => app.addMoment({ type: 'UNDRESS', frame, sim: u.id, naked: n }) });
   }
   items.push('-');
-  if (g) items.push({ label: `Remove ${g.label}'s condom`, icon: 'ring', onClick: () => app.addMoment({ type: 'REMOVE_CONDOM', frame, sim: g.id }) });
-  items.push({ label: 'Effect at a body part…', icon: 'fx', onClick: () => app.editMoment(null, frame, { type: 'EFFECT' }) });
-  items.push({ label: 'Note…', icon: 'pin', onClick: () => app.editMoment(null, frame, { type: 'NOTE' }) });
+  if (g) items.push({ label: $t('moments.remove_s_condom', { gLabel: g.label }), icon: 'ring', onClick: () => app.addMoment({ type: 'REMOVE_CONDOM', frame, sim: g.id }) });
+  items.push({ label: $t('moments.effect_at_body_part'), icon: 'fx', onClick: () => app.editMoment(null, frame, { type: 'EFFECT' }) });
+  items.push({ label: $t('moments.note'), icon: 'pin', onClick: () => app.editMoment(null, frame, { type: 'NOTE' }) });
   return items;
 }
 
@@ -407,7 +411,7 @@ export function openMomentDialog(app, ev = null, frame = null, opts = {}) {
       } }, icon(ic), h('span', {}, label)))));
     // to whom
     if (v.type !== 'NOTE' || p.sims.length > 1) {
-      body.append(h('div', { class: 'field' }, h('span', {}, v.type === 'NOTE' ? 'About' : 'Happens to'),
+      body.append(h('div', { class: 'field' }, h('span', {}, v.type === 'NOTE' ? $t('moments.about') : $t('moments.happens_to')),
         h('div', { class: 'chips' }, p.sims.map(s => h('button', {
           class: 'chipbtn' + (v.sim === s.id ? ' on' : ''), type: 'button', style: { '--sim': s.color },
           onclick: () => { v.sim = s.id; if (v.type === 'EFFECT' && !jointsFor(app, s).some(j => j.bone === v.joint)) v.joint = ''; draw(); },
@@ -421,25 +425,25 @@ export function openMomentDialog(app, ev = null, frame = null, opts = {}) {
       body.append(h('div', { class: 'cum-pick' },
         silhouette(v.cum, t => { if (t === 'VAGINA' && penisHere) return; v.cum = t; draw(); }),
         h('div', { class: 'cum-fields' },
-          h('div', { class: 'field' }, h('span', {}, 'Where'), h('div', { class: 'chips' }, parts.map(([t, label]) => h('button', {
+          h('div', { class: 'field' }, h('span', {}, $t('moments.where')), h('div', { class: 'chips' }, parts.map(([t, label]) => h('button', {
             class: 'chipbtn' + (v.cum === t ? ' on' : ''), type: 'button', onclick: () => { v.cum = t; draw(); } }, label)))),
-          h('div', { class: 'field' }, h('span', {}, 'How much'), h('div', { class: 'seg-inline' }, LEVELS.map(([lv, label]) => h('button', {
+          h('div', { class: 'field' }, h('span', {}, $t('moments.how_much')), h('div', { class: 'seg-inline' }, LEVELS.map(([lv, label]) => h('button', {
             class: v.level === lv ? 'on' : '', type: 'button', onclick: () => { v.level = lv; draw(); } }, label)))),
-          penisSims(app).length ? null : h('div', { class: 'warn-box' }, "WickedWhims won't show it: nobody here has a penis."),
-          p.category !== 'CLIMAX' && (p.loops || 10) > 1 ? h('div', { class: 'hint' }, 'In the game cum adds up every time the animation loops (up to "a lot"). A Climax plays once.') : null)));
+          penisSims(app).length ? null : h('div', { class: 'warn-box' }, $t('moments.wickedwhims_won_t_show_it')),
+          p.category !== 'CLIMAX' && (p.loops || 10) > 1 ? h('div', { class: 'hint' }, $t('moments.in_game_cum_adds_up_2')) : null)));
     } else if (v.type === 'UNDRESS') {
-      body.append(h('div', { class: 'field' }, h('span', {}, 'What comes off'), h('div', { class: 'chips' }, NAKED_PARTS.map(([n, label]) => h('button', {
+      body.append(h('div', { class: 'field' }, h('span', {}, $t('moments.what_comes_off')), h('div', { class: 'chips' }, NAKED_PARTS.map(([n, label]) => h('button', {
         class: 'chipbtn' + (v.naked === n ? ' on' : ''), type: 'button', onclick: () => { v.naked = n; draw(); } }, label)))));
-      if (s && nakedFor(p.category, s) === 'ALL') body.append(h('div', { class: 'hint' }, `${s.label} is naked from the start now - adding this makes ${s.label} start dressed.`));
+      if (s && nakedFor(p.category, s) === 'ALL') body.append(h('div', { class: 'hint' }, $t('moments.is_naked_from_start_now', { sLabel: s.label })));
     } else if (v.type === 'REMOVE_CONDOM') {
-      body.append(h('div', { class: 'hint' }, `WickedWhims takes ${s ? s.label : 'the sim'}'s condom off here, if they wear one.`));
-      if (s && !hasPenis(app, s)) body.append(h('div', { class: 'warn-box' }, `${s.label} has no penis - a condom only comes off a sim with one.`));
+      body.append(h('div', { class: 'hint' }, (s ? $t('moments.condom_off_named', { sim: s.label }) : $t('moments.condom_off_sim'))));
+      if (s && !hasPenis(app, s)) body.append(h('div', { class: 'warn-box' }, $t('moments.has_no_penis_condom_only', { sLabel: s.label })));
     } else if (v.type === 'EFFECT') {
       body.append(effectPicker(app, v, s, previews, () => draw()));
     } else if (v.type === 'NOTE') {
-      const t = h('input', { class: 'text', value: v.text, placeholder: 'e.g. she looks at him here', maxlength: 200 });
+      const t = h('input', { class: 'text', value: v.text, placeholder: $t('moments.e_g_she_looks_at'), maxlength: 200 });
       t.addEventListener('input', () => { v.text = t.value; });
-      body.append(h('label', { class: 'field' }, h('span', {}, 'Note (only for you - never sent to the game)'), t));
+      body.append(h('label', { class: 'field' }, h('span', {}, $t('moments.note_only_for_you_never')), t));
     }
     // when
     const at = h('input', { class: 'text small-num', type: 'number', min: 0, max: ((len - 1) / fps).toFixed(2), step: 0.1, value: (v.frame / fps).toFixed(2) });
@@ -449,23 +453,23 @@ export function openMomentDialog(app, ev = null, frame = null, opts = {}) {
       if (v.type === 'EFFECT') v.end = Math.max(f, Math.min(len, v.end + d));
       draw();
     });
-    const when = h('div', { class: 'moment-when' }, h('label', { class: 'field row' }, h('span', {}, 'At'), at, h('span', { class: 'muted' }, `s · frame ${v.frame} of ${len}`)));
+    const when = h('div', { class: 'moment-when' }, h('label', { class: 'field row' }, h('span', {}, $t('moments.at')), at, h('span', { class: 'muted' }, $t('moments.s_frame_of', { frame: v.frame, len }))));
     if (v.type === 'EFFECT') {
       const toEnd = v.end >= len;
       const dur = h('input', { type: 'range', min: 0.2, max: Math.max(0.5, (len - v.frame) / fps).toFixed(2), step: 0.1, value: ((Math.min(v.end, len) - v.frame) / fps).toFixed(2), disabled: toEnd });
-      const out = h('output', {}, toEnd ? 'until the loop ends' : ((v.end - v.frame) / fps).toFixed(1) + ' s');
+      const out = h('output', {}, toEnd ? $t('moments.until_loop_ends') : ((v.end - v.frame) / fps).toFixed(1) + ' s');
       dur.addEventListener('input', () => { v.end = Math.min(len, v.frame + Math.round(+dur.value * fps)); out.textContent = ((v.end - v.frame) / fps).toFixed(1) + ' s'; });
       const loopEnd = h('input', { type: 'checkbox', checked: toEnd });
       loopEnd.addEventListener('change', () => { v.end = loopEnd.checked ? len : Math.min(len, v.frame + fps); draw(); });
-      when.append(h('div', { class: 'slider moment-dur' }, h('label', {}, 'Lasts'), out, dur),
-        h('label', { class: 'check' }, loopEnd, 'Until the loop ends'));
+      when.append(h('div', { class: 'slider moment-dur' }, h('label', {}, $t('moments.lasts')), out, dur),
+        h('label', { class: 'check' }, loopEnd, $t('moments.until_loop_ends_2')));
     }
     body.append(when);
     if (v.type !== 'NOTE') {
       const skip = h('input', { type: 'checkbox', checked: v.skipWithCondom === null ? skipDefault() : v.skipWithCondom });
       skip.addEventListener('change', () => { v.skipWithCondom = skip.checked; });
-      body.append(h('label', { class: 'check' }, skip, `Skip when ${s ? s.label : 'this sim'} wears a condom`,
-        h('span', { class: 'muted small' }, ' (WickedWhims checks it in the game)')));
+      body.append(h('label', { class: 'check' }, skip, (s ? $t('moments.skip_when_named', { sim: s.label }) : $t('moments.skip_when_sim')),
+        h('span', { class: 'muted small' }, $t('moments.wickedwhims_checks_it_in_game'))));
     }
     body.querySelectorAll('input[type=range]').forEach(fillRange);
     animate();
@@ -487,8 +491,8 @@ export function openMomentDialog(app, ev = null, frame = null, opts = {}) {
     anim = requestAnimationFrame(loop);
   };
   const save = () => {
-    if (v.type === 'EFFECT' && (!v.effect || !v.joint)) { toast(!v.joint ? 'Pick a body part first.' : 'Pick an effect first.', 'err'); return false; }
-    if (v.type !== 'NOTE' && !simById(app, v.sim)) { toast('Pick a sim first.', 'err'); return false; }
+    if (v.type === 'EFFECT' && (!v.effect || !v.joint)) { toast(!v.joint ? $t('moments.pick_body_part_first') : $t('moments.pick_effect_first'), 'err'); return false; }
+    if (v.type !== 'NOTE' && !simById(app, v.sim)) { toast($t('moments.pick_sim_first'), 'err'); return false; }
     const out = { type: v.type, frame: v.frame, sim: v.sim };
     if (v.type === 'CUM') Object.assign(out, { cum: v.cum, level: v.level });
     if (v.type === 'UNDRESS') out.naked = v.naked;
@@ -510,20 +514,20 @@ export function openMomentDialog(app, ev = null, frame = null, opts = {}) {
     } else {
       const m = addMomentTo(app, out);
       app.selectedEvent = m.id;
-      toast(`${momentLabel(m, app)} - on the Moments row.`, 'ok');
+      toast($t('moments.on_moments_row', { momentLabel: momentLabel(m, app) }), 'ok');
     }
     return true;
   };
   draw();
   dlg = modal({
-    title: editing ? 'Change the moment' : 'Add a moment', wide: true,
-    text: 'What WickedWhims does at this time in the loop: cum, undressing, a condom coming off, or an effect at a body part.',
+    title: editing ? $t('moments.change_moment') : $t('moments.add_moment'), wide: true,
+    text: $t('moments.what_wickedwhims_does_at_this'),
     body,
     onClose: () => cancelAnimationFrame(anim),
     buttons: [
-      ...(editing ? [{ label: 'Delete', kind: 'ghost danger-text', onClick: () => { app.removeMoment(ev.id, { group: false }); return true; } }] : []),
-      { label: 'Cancel', kind: 'ghost' },
-      { label: editing ? 'Save' : 'Add moment', kind: 'primary', onClick: save },
+      ...(editing ? [{ label: $t('moments.delete'), kind: 'ghost danger-text', onClick: () => { app.removeMoment(ev.id, { group: false }); return true; } }] : []),
+      { label: $t('moments.cancel'), kind: 'ghost' },
+      { label: editing ? $t('moments.save') : $t('moments.add_moment_2'), kind: 'primary', onClick: save },
     ],
   });
   return dlg;
@@ -534,11 +538,11 @@ function effectPicker(app, v, s, previews, redraw) {
   const joints = jointsFor(app, s);
   if (v.joint && !joints.some(j => j.bone === v.joint)) v.joint = '';
   if (!v.joint) v.joint = (joints.find(j => j.id === 'penis_tip') || joints.find(j => j.id === 'mouth') || joints[0]).bone;
-  const left = h('div', { class: 'fx-joints' }, h('div', { class: 'fx-col-title' }, 'Body part'),
+  const left = h('div', { class: 'fx-joints' }, h('div', { class: 'fx-col-title' }, $t('moments.body_part')),
     joints.map(j => h('button', { class: 'fx-joint' + (v.joint === j.bone ? ' on' : ''), type: 'button', title: j.bone,
       onclick: () => { v.joint = j.bone; redraw(); } }, j.label)));
-  const search = h('input', { class: 'text', placeholder: 'Search every game effect (drool, splash, sweat, steam...)', value: v._q || '', spellcheck: 'false' });
-  const list = h('div', { class: 'fx-list' }, h('div', { class: 'hint' }, 'Loading the effects...'));
+  const search = h('input', { class: 'text', placeholder: $t('moments.search_every_game_effect_drool'), value: v._q || '', spellcheck: 'false' });
+  const list = h('div', { class: 'fx-list' }, h('div', { class: 'hint' }, $t('moments.loading_effects')));
   const seen = new IntersectionObserver(es => { for (const e of es) e.target._visible = e.isIntersecting; }, { root: list });
   const tile = x => {
     const kind = effectKind(x.name, x.group);
@@ -556,18 +560,18 @@ function effectPicker(app, v, s, previews, redraw) {
         pickedLine.textContent = `${x.label || effectLabel(x.name)} · ${x.name}`;
       } },
     c, h('b', {}, x.label || effectLabel(x.name)),
-    h('small', {}, x.uses ? `used in ${Number(x.uses).toLocaleString('en-US')} creator animations` : 'a game effect'));
+    h('small', {}, x.uses ? $t('moments.used_in_n', { n: Number(x.uses) }) : $t('moments.game_effect')));
   };
   const makeTile = x => tile(x);
-  const pickedLine = h('div', { class: 'fx-picked' }, v.effect ? `${effectLabel(v.effect)} · ${v.effect}` : 'Pick an effect');
+  const pickedLine = h('div', { class: 'fx-picked' }, v.effect ? `${effectLabel(v.effect)} · ${v.effect}` : $t('moments.pick_effect'));
   const fill = (items, grouped) => {
     list.innerHTML = '';
-    if (!items.length) { list.append(h('div', { class: 'empty' }, 'No game effect matches.')); return; }
+    if (!items.length) { list.append(h('div', { class: 'empty' }, $t('moments.no_game_effect_matches'))); return; }
     if (!grouped) { list.append(h('div', { class: 'fx-grid' }, items.map(x => makeTile(x)))); return; }
     for (const gname of EFFECT_GROUPS) {
       const g = items.filter(x => x.group === gname);
       if (!g.length) continue;
-      list.append(h('div', { class: 'fx-group' }, gname), h('div', { class: 'fx-grid' }, g.map(x => makeTile(x))));
+      list.append(h('div', { class: 'fx-group' }, EFFECT_GROUP_LABEL[gname] || gname), h('div', { class: 'fx-grid' }, g.map(x => makeTile(x))));
     }
     // the effect this moment has now is shown (scrolled to)
     const on = list.querySelector('.fx-tile.on');
@@ -585,7 +589,7 @@ function effectPicker(app, v, s, previews, redraw) {
     }, 250);
   });
   if (search.value.trim()) searchEffects(search.value.trim()).then(items => fill(items, false)); else loadPopular();
-  const right = h('div', { class: 'fx-effects' }, h('div', { class: 'fx-col-title' }, 'Effect',
-    h('span', { class: 'muted small' }, ' · the ones creators use most at this part first')), search, list, pickedLine);
+  const right = h('div', { class: 'fx-effects' }, h('div', { class: 'fx-col-title' }, $t('moments.effect'),
+    h('span', { class: 'muted small' }, $t('moments.ones_creators_use_most_at'))), search, list, pickedLine);
   return h('div', { class: 'fx-picker' }, left, right);
 }

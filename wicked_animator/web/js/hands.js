@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { LIMITS } from './bones.js';
 import { rvToQuat, quatToRv } from './posemath.js';
+import { $t } from './i18n.js';
 
 export const FINGERS = ['Thumb', 'Index', 'Mid', 'Ring', 'Pinky'];
 const CURLED = ['Index', 'Mid', 'Ring', 'Pinky'];
@@ -34,16 +35,16 @@ const SPREAD = { Thumb: 0, Index: 12, Mid: 4, Ring: -4, Pinky: -12 };
 const withSpread = (rv, s) => Object.fromEntries(FINGERS.map(f => [f, rv[f].map((j, k) => (k === 0 ? [j[0], j[1] + SPREAD[f] * s, j[2]] : j))]));
 
 export const HAND_SHAPES = {
-  relaxed: { label: 'Relaxed', rv: M.relaxed, tip: 'Loose and natural - most poses' },
-  soft: { label: 'Soft', rv: M.soft, tip: 'Gently bent' },
-  grip: { label: 'Grip', rv: M.grip, tip: 'Holding on to something' },
-  fist: { label: 'Fist', rv: M.fist, tip: 'Closed hand' },
-  flat: { label: 'Flat on skin', short: 'Flat', rv: M.flat, tip: 'Straight fingers - a palm laid on the body' },
-  point: { label: 'Point', rv: { ...M.fist, Index: M.flat.Index }, tip: 'Index finger out' },
-  two: { label: 'Two fingers', short: 'Two', rv: { ...M.fist, Index: M.flat.Index, Mid: M.flat.Mid }, tip: 'Index and middle finger out (fingering)' },
-  spread: { label: 'Spread', rv: withSpread(M.flat, 1), spread: 1, tip: 'Fingers wide apart' },
-  pinch: { label: 'Pinch', rv: M.pinch, tip: 'Thumb and fingers together' },
-  stroke: { label: 'Stroke grip', short: 'Stroke', rv: M.stroke, tip: 'Fingers round a shaft (handjob)' },
+  relaxed: { label: $t('hands.relaxed'), rv: M.relaxed, tip: $t('hands.loose_and_natural_most_poses') },
+  soft: { label: $t('hands.soft'), rv: M.soft, tip: $t('hands.gently_bent') },
+  grip: { label: $t('hands.grip'), rv: M.grip, tip: $t('hands.holding_on_to_something') },
+  fist: { label: $t('hands.fist'), rv: M.fist, tip: $t('hands.closed_hand') },
+  flat: { label: $t('hands.flat_on_skin'), short: $t('hands.flat'), rv: M.flat, tip: $t('hands.straight_fingers_palm_laid_on') },
+  point: { label: $t('hands.point'), rv: { ...M.fist, Index: M.flat.Index }, tip: $t('hands.index_finger_out') },
+  two: { label: $t('hands.two_fingers'), short: $t('hands.two'), rv: { ...M.fist, Index: M.flat.Index, Mid: M.flat.Mid }, tip: $t('hands.index_and_middle_finger_out') },
+  spread: { label: $t('hands.spread'), rv: withSpread(M.flat, 1), spread: 1, tip: $t('hands.fingers_wide_apart') },
+  pinch: { label: $t('hands.pinch'), rv: M.pinch, tip: $t('hands.thumb_and_fingers_together') },
+  stroke: { label: $t('hands.stroke_grip'), short: $t('hands.stroke'), rv: M.stroke, tip: $t('hands.fingers_round_shaft_handjob') },
 };
 export const SHAPE_ORDER = ['relaxed', 'soft', 'grip', 'fist', 'flat', 'point', 'two', 'spread', 'pinch', 'stroke'];
 export const MINED = ['flat', 'relaxed', 'soft', 'grip', 'pinch', 'stroke', 'fist'];

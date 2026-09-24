@@ -35,6 +35,7 @@ import { openHelp, maybeTour } from './tour.js';
 import { SoundPlayer, VOICE_SETS, VOICE_FALLBACK, voiceCode, simVoiceCode, soundFitsSim } from './audio.js';
 import { openMagicDialog } from './magic.js';
 import { recordVideo } from './record.js';
+import { $t, fmtDateTime, inSentence, hasText } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 const UP = new THREE.Vector3(0, 1, 0);
@@ -46,15 +47,15 @@ const clone = x => JSON.parse(JSON.stringify(x));
 const dialogOpen = () => !!document.querySelector('.backdrop:not(.leaving)');
 
 const STEPS = {
-  scene: { title: 'Scene', sub: 'Who is in it and where it happens', render: renderScene, next: 'pose' },
-  pose: { title: 'Pose', sub: 'Start from a ready pose, then adjust it', render: renderPose, next: 'motion' },
-  motion: { title: 'Motion', sub: 'Make it move - one-click motions or your own keys', render: renderMotion, next: 'body' },
-  body: { title: 'Body', sub: 'Erection, holes that open by themselves, physics', render: renderBody, next: 'face' },
-  face: { title: 'Face', sub: 'Expressions, blinking and talking', render: renderFace, next: 'sounds' },
-  sounds: { title: 'Sounds & moments', short: 'Sounds', sub: 'Voices, claps, cum and effects', render: renderSounds, next: 'details' },
-  details: { title: 'Details', sub: 'Name, kind, tags and places WickedWhims shows', render: (app, root) => renderDetails(app, root), next: 'share' },
-  share: { title: 'Share', sub: 'Try it in your game, chain animations, export a mod', render: renderShare, next: null },
-  library: { title: 'Library', sub: 'Every WickedWhims animation you have: preview, copy poses, import' },
+  scene: { title: $t('main.scene'), sub: $t('main.who_is_in_it_and'), render: renderScene, next: 'pose' },
+  pose: { title: $t('main.pose'), sub: $t('main.start_from_ready_pose_then'), render: renderPose, next: 'motion' },
+  motion: { title: $t('main.motion'), sub: $t('main.make_it_move_one_click'), render: renderMotion, next: 'body' },
+  body: { title: $t('main.body'), sub: $t('main.erection_holes_that_open_by'), render: renderBody, next: 'face' },
+  face: { title: $t('main.face'), sub: $t('main.expressions_blinking_and_talking'), render: renderFace, next: 'sounds' },
+  sounds: { title: $t('main.sounds_moments'), short: $t('main.sounds'), sub: $t('main.voices_claps_cum_and_effects'), render: renderSounds, next: 'details' },
+  details: { title: $t('main.details'), sub: $t('main.name_kind_tags_and_places'), render: (app, root) => renderDetails(app, root), next: 'share' },
+  share: { title: $t('main.share'), sub: $t('main.try_it_in_your_game'), render: renderShare, next: null },
+  library: { title: $t('main.library'), sub: $t('main.every_wickedwhims_animation_you_have') },
 };
 
 const BED_OR_SOFA = /BED|SOFA|LOVESEAT/;
@@ -101,29 +102,29 @@ class App {
     };
     // the face tools and Blender-habit keys in Help (?) and in the command palette (Ctrl+K)
     this.hooks.helpRows.push(() => [
-      ['Shift', 'F', 'Face tool: click a dot on the face, drag the arrows or rings'],
-      ['T', null, 'A face or extra part: switch arrows (move) / rings (turn)'],
-      ['X', null, 'Symmetry on / off: pose both sides at once'],
-      ['Hold Alt while dragging', null, "Go past a face part's safe range"],
-      ['Alt + click', null, 'Pick the exact bone (twist and helper bones too)'],
-      ['/', null, 'Find a bone (the All bones list)'],
-      ['I', null, "Key the selected sim here (like K, Blender's key)"],
-      ['Alt', 'R', "Reset the selected part's turn"],
-      ['Alt', 'G', 'Put the selected part back in its place'],
-      ['Numpad 1 / 3 / 7 / 5', null, 'Front / side / top / free 3D view'],
-      ['Numpad .', null, 'Frame the selection'],
-    ].map(([a, b, text]) => ({ group: 'Face and every bone', keys: b ? [a, b] : /^[A-Z/]$/.test(a) ? [a] : a, text })));
+      ['Shift', 'F', $t('main.face_tool_click_dot_on')],
+      ['T', null, $t('main.face_or_extra_part_switch')],
+      ['X', null, $t('main.symmetry_on_off_pose_both')],
+      [$t('main.hold_alt_while_dragging'), null, $t('main.go_past_face_part_s')],
+      [$t('main.alt_click'), null, $t('main.pick_exact_bone_twist_and')],
+      ['/', null, $t('main.find_bone_all_bones_list')],
+      ['I', null, $t('main.key_selected_sim_here_like')],
+      ['Alt', 'R', $t('main.reset_selected_part_s_turn')],
+      ['Alt', 'G', $t('main.put_selected_part_back_in')],
+      ['Numpad 1 / 3 / 7 / 5', null, $t('main.front_side_top_free_3d')],
+      ['Numpad .', null, $t('main.frame_selection')],
+    ].map(([a, b, text]) => ({ group: $t('main.face_and_every_bone'), keys: b ? [a, b] : /^[A-Z/]$/.test(a) ? [a] : a, text })));
     this.hooks.commands.push(app => {
       const sim = app.store.sim(), when = () => !!app.store.sim(), id = sim && sim.id;
       const face = sim ? sim.keys.some(k => k.face && Object.keys(k.face).length) : false;
       return [
-        { group: 'Tools', id: 'symmetry', label: app.mirrorEdit ? 'Symmetry off' : 'Symmetry on', run: () => app.setMirrorEdit(!app.mirrorEdit), icon: 'mirror', keys: ['X'], sub: 'pose both sides at once', words: 'mirror x-axis both sides' },
-        { group: 'Tools', id: 'find-bone', label: 'Find a bone', run: () => setTimeout(() => focusBoneSearch() || toast('Select a sim to see its bones.'), 60), icon: 'search', keys: ['/'], sub: "every bone, like Blender's outliner", words: 'outliner bone list all bones search', when },
-        { group: 'Faces', id: 'face-editable-all', label: 'Make every expression editable', run: () => app.bakeFace(id, { all: true }), icon: 'face', sub: 'turn the expressions into face dots', words: 'bake expression face bones', when: () => when() && face },
-        { group: 'Faces', id: 'face-copy', label: 'Copy face', run: () => app.copyFace(id), icon: 'copy', words: 'expression clipboard', when },
-        { group: 'Faces', id: 'face-paste', label: 'Paste face', run: () => app.pasteFace(id), icon: 'paste', words: 'expression clipboard', when: () => when() && !!app.faceClipboard },
-        { group: 'Faces', id: 'face-mirror', label: 'Mirror face', run: () => app.mirrorFace(id), icon: 'mirror', sub: 'left and right swap', words: 'flip expression', when },
-        { group: 'Faces', id: 'face-reset', label: 'Reset face here', run: () => app.resetFace(id), icon: 'reset', words: 'clear expression rest', when },
+        { group: $t('main.tools'), id: 'symmetry', label: app.mirrorEdit ? $t('main.symmetry_off') : $t('main.symmetry_on'), run: () => app.setMirrorEdit(!app.mirrorEdit), icon: 'mirror', keys: ['X'], sub: $t('main.pose_both_sides_at_once'), words: 'mirror x-axis both sides' },
+        { group: $t('main.tools'), id: 'find-bone', label: $t('main.find_bone'), run: () => setTimeout(() => focusBoneSearch() || toast($t('main.select_sim_to_see_its')), 60), icon: 'search', keys: ['/'], sub: $t('main.every_bone_like_blender_s'), words: 'outliner bone list all bones search', when },
+        { group: $t('main.faces'), id: 'face-editable-all', label: $t('main.make_every_expression_editable'), run: () => app.bakeFace(id, { all: true }), icon: 'face', sub: $t('main.turn_expressions_into_face_dots'), words: 'bake expression face bones', when: () => when() && face },
+        { group: $t('main.faces'), id: 'face-copy', label: $t('main.copy_face'), run: () => app.copyFace(id), icon: 'copy', words: 'expression clipboard', when },
+        { group: $t('main.faces'), id: 'face-paste', label: $t('main.paste_face'), run: () => app.pasteFace(id), icon: 'paste', words: 'expression clipboard', when: () => when() && !!app.faceClipboard },
+        { group: $t('main.faces'), id: 'face-mirror', label: $t('main.mirror_face'), run: () => app.mirrorFace(id), icon: 'mirror', sub: $t('main.left_and_right_swap'), words: 'flip expression', when },
+        { group: $t('main.faces'), id: 'face-reset', label: $t('main.reset_face_here'), run: () => app.resetFace(id), icon: 'reset', words: 'clear expression rest', when },
       ];
     });
     // the editing tools (spec_editing 7.11) in the command palette
@@ -136,12 +137,12 @@ class App {
     if (!sim || !bone || !this.simViews.get(sim.id)?.bone(bone)) return;
     const n = this.timeline.selKeysOf(sim.id).filter(k => !k.faceOnly).length;
     const name = label(bone, sim.frame);
-    root.append(h('div', { class: 'section' }, h('div', { class: 'section-title' }, 'Over time', h('span', { class: 'count' }, name)),
+    root.append(h('div', { class: 'section' }, h('div', { class: 'section-title' }, $t('main.over_time'), h('span', { class: 'count' }, name)),
       h('div', { class: 'btn-grid' },
-        h('button', { class: 'btn small', title: `${name}: the turn it has at the key before`, onclick: () => this.matchPart(sim.id, bone, -1) }, icon('prev'), 'Same as previous key'),
-        h('button', { class: 'btn small', title: `${name}: the turn it has at the key after`, onclick: () => this.matchPart(sim.id, bone, 1) }, icon('next'), 'Same as next key'),
-        n ? h('button', { class: 'btn small', title: `${name} as it is here, on the ${n} selected key${n > 1 ? 's' : ''}`, onclick: () => this.putPartOnSelectedKeys(sim.id, bone) }, icon('key'), `Put this on ${n} selected key${n > 1 ? 's' : ''}`) : null,
-        this.curves ? h('button', { class: 'btn small', title: 'How this part turns over the whole loop (Tab over the timeline)', onclick: () => { this.curves.part = null; this.setTimelineView('curves'); } }, icon('curve'), 'Show its curves') : null)));
+        h('button', { class: 'btn small', title: $t('main.turn_it_has_at_key', { name }), onclick: () => this.matchPart(sim.id, bone, -1) }, icon('prev'), $t('main.same_as_previous_key')),
+        h('button', { class: 'btn small', title: $t('main.turn_it_has_at_key_2', { name }), onclick: () => this.matchPart(sim.id, bone, 1) }, icon('next'), $t('main.same_as_next_key')),
+        n ? h('button', { class: 'btn small', title: $t('main.as_it_is_here_on', { name, n }), onclick: () => this.putPartOnSelectedKeys(sim.id, bone) }, icon('key'), $t('main.put_this_on_selected_keys', { n })) : null,
+        this.curves ? h('button', { class: 'btn small', title: $t('main.how_this_part_turns_over'), onclick: () => { this.curves.part = null; this.setTimelineView('curves'); } }, icon('curve'), $t('main.show_its_curves')) : null)));
   }
 
   // One part's turn (and place) at the key here, copied from the key before or after (the key is made if needed).
@@ -152,8 +153,8 @@ class App {
     const has = k => (face ? !!k.faceBones : !k.faceOnly);
     const others = sim.keys.filter(k => k.frame !== f && has(k));
     const nb = dir < 0 ? [...others].reverse().find(k => k.frame < f) : others.find(k => k.frame > f);
-    if (!nb) return toast(dir < 0 ? 'There is no key before this one.' : 'There is no key after this one.');
-    this.store.checkpoint(dir < 0 ? 'Match previous key' : 'Match next key');
+    if (!nb) return toast(dir < 0 ? $t('main.there_is_no_key_before') : $t('main.there_is_no_key_after'));
+    this.store.checkpoint(dir < 0 ? $t('main.match_previous_key') : $t('main.match_next_key'));
     if (this.playing) this.setPlaying(false);
     let key = sim.keys.find(k => k.frame === f);
     if (!key || (!face && key.faceOnly)) key = this._keyOne(sim, v, f, { face });
@@ -165,7 +166,7 @@ class App {
     if (!HIPS.includes(bone)) { if (src.pos && src.pos[bone]) dst.pos[bone] = src.pos[bone].slice(); else delete dst.pos[bone]; }
     this.pipeline.overrides.clear();
     this.keysChanged(); this.afterEdit();
-    toast(`${label(bone, sim.frame)} now matches the ${dir < 0 ? 'previous' : 'next'} key.`, 'ok');
+    toast($t(dir < 0 ? 'main.matches_previous_key' : 'main.matches_next_key', { part: label(bone, sim.frame) }), 'ok');
   }
 
   _editCommands() {
@@ -173,24 +174,24 @@ class App {
     const n = this.timeline ? this.timeline.sel.size : 0;
     const G = 'Keys';
     return [
-      { group: G, id: 'keys-select-all', label: 'Select every key', run: () => this.selectAllKeys(), icon: 'key', keys: ['Ctrl', 'A'], sub: 'over the timeline', words: 'select all keyframes dope sheet' },
-      { group: G, id: 'keys-copy', label: `Copy ${n > 1 ? n + ' keys' : 'the selected keys'}`, run: () => this.copySelectedKeys(), icon: 'copy', keys: ['Ctrl', 'C'], words: 'copy keyframes clipboard', when: sel },
-      { group: G, id: 'keys-paste', label: 'Paste keys at the playhead', run: () => this.pasteKeys(), icon: 'paste', keys: ['Ctrl', 'V'], words: 'paste keyframes clipboard', when: () => !!this.keyClip },
-      { group: G, id: 'keys-paste-mirrored', label: 'Paste keys mirrored', run: () => this.pasteKeys({ flipped: true }), icon: 'mirror', keys: ['Ctrl', 'Shift', 'V'], words: 'paste flipped x-flip keyframes', when: () => !!this.keyClip },
-      { group: G, id: 'keys-duplicate', label: 'Duplicate keys to the playhead', run: () => this.duplicateSelectedKeys(), icon: 'copy', keys: ['Ctrl', 'D'], words: 'duplicate keyframes', when: sel },
-      { group: G, id: 'keys-reverse', label: 'Play the selected keys backwards', run: () => this.reverseSelectedKeys(), icon: 'turn', words: 'reverse keyframes time flip', when: sel },
-      { group: G, id: 'keys-mirror', label: 'Mirror the selected keys', run: () => this.mirrorSelectedKeys(), icon: 'mirror', words: 'flip keyframes left right', when: sel },
-      { group: G, id: 'keys-smooth', label: 'Smooth the keys', run: () => this.smoothSelection(0.5), icon: 'motion', sub: 'takes out small shakes', words: 'smooth jitter filter butterworth gaussian', when: sim },
-      { group: G, id: 'keys-simplify', label: 'Simplify (fewer keys)', run: () => this.simplifySelection(1.5), icon: 'key', sub: 'keeps the motion within 1.5°', words: 'decimate reduce clean keyframes', when: sim },
-      { group: G, id: 'keys-cleanup', label: 'Clean up the keys', run: () => this.cleanUpSelection(), icon: 'spark', sub: 'smooth a little, then fewer keys', words: 'clean decimate smooth imported mocap', when: sim },
-      { group: G, id: 'inbetween', label: 'In-between key here', run: () => this.insertInBetween(), icon: 'key', keys: ['Shift', 'E'], sub: 'halfway between the keys around it', words: 'breakdown tween breakdowner', when: sim },
-      { group: 'Loop', id: 'loop-check', label: 'Loop check', run: () => this.loopMenu(innerWidth / 2 - 150, innerHeight / 2 - 120), icon: 'loop', sub: 'does the end flow back into the start?', words: 'cycle seam seamless', when: sim },
-      { group: 'Loop', id: 'loop-start-here', label: 'Start the loop here', run: () => this.startLoopHere(), icon: 'loop', sub: 'the loop begins at the playhead', words: 'cycle offset shift', when: () => !!this.store.project.loop },
-      { group: 'Loop', id: 'mirror-animation', label: 'Mirror the whole animation', run: () => this.mirrorAnimation(), icon: 'mirror', sub: 'left and right swap - a new animation', words: 'flip whole x-mirror', when: sim },
-      { group: 'View', id: 'view-curves', label: this.tlView === 'curves' ? 'Show the keys' : 'Show the curves', run: () => this.setTimelineView(this.tlView === 'curves' ? 'keys' : 'curves'), icon: 'curve', keys: ['Tab'], sub: 'how the selected part turns over time', words: 'graph editor f-curves fcurve' },
-      { group: 'View', id: 'play-range', label: this.playRange ? 'Play the whole loop' : 'Play only the selected part', run: () => this.togglePlayRange(), icon: 'play', keys: ['P'], words: 'preview range loop region' },
-      { group: 'View', id: 'ref-add', label: 'Add a reference picture or video', run: () => this.pickReference(), icon: 'image', sub: 'trace real motion', words: 'reference image video rotoscope trace background' },
-      { group: 'View', id: 'onion-options', label: 'Ghost options', run: () => this.onionMenu(innerWidth / 2 - 120, innerHeight / 2 - 80), icon: 'ghost', words: 'ghost every 3 frames partner' },
+      { group: G, id: 'keys-select-all', label: $t('main.select_every_key'), run: () => this.selectAllKeys(), icon: 'key', keys: ['Ctrl', 'A'], sub: $t('main.over_timeline'), words: 'select all keyframes dope sheet' },
+      { group: G, id: 'keys-copy', label: n > 1 ? $t('main.copy_n_keys', { n }) : $t('main.copy_selected_keys'), run: () => this.copySelectedKeys(), icon: 'copy', keys: ['Ctrl', 'C'], words: 'copy keyframes clipboard', when: sel },
+      { group: G, id: 'keys-paste', label: $t('main.paste_keys_at_playhead'), run: () => this.pasteKeys(), icon: 'paste', keys: ['Ctrl', 'V'], words: 'paste keyframes clipboard', when: () => !!this.keyClip },
+      { group: G, id: 'keys-paste-mirrored', label: $t('main.paste_keys_mirrored'), run: () => this.pasteKeys({ flipped: true }), icon: 'mirror', keys: ['Ctrl', 'Shift', 'V'], words: 'paste flipped x-flip keyframes', when: () => !!this.keyClip },
+      { group: G, id: 'keys-duplicate', label: $t('main.duplicate_keys_to_playhead'), run: () => this.duplicateSelectedKeys(), icon: 'copy', keys: ['Ctrl', 'D'], words: 'duplicate keyframes', when: sel },
+      { group: G, id: 'keys-reverse', label: $t('main.play_selected_keys_backwards'), run: () => this.reverseSelectedKeys(), icon: 'turn', words: 'reverse keyframes time flip', when: sel },
+      { group: G, id: 'keys-mirror', label: $t('main.mirror_selected_keys'), run: () => this.mirrorSelectedKeys(), icon: 'mirror', words: 'flip keyframes left right', when: sel },
+      { group: G, id: 'keys-smooth', label: $t('main.smooth_keys'), run: () => this.smoothSelection(0.5), icon: 'motion', sub: $t('main.takes_out_small_shakes'), words: 'smooth jitter filter butterworth gaussian', when: sim },
+      { group: G, id: 'keys-simplify', label: $t('main.simplify_fewer_keys'), run: () => this.simplifySelection(1.5), icon: 'key', sub: $t('main.keeps_motion_within_1_5'), words: 'decimate reduce clean keyframes', when: sim },
+      { group: G, id: 'keys-cleanup', label: $t('main.clean_up_keys'), run: () => this.cleanUpSelection(), icon: 'spark', sub: $t('main.smooth_little_then_fewer_keys'), words: 'clean decimate smooth imported mocap', when: sim },
+      { group: G, id: 'inbetween', label: $t('main.in_between_key_here'), run: () => this.insertInBetween(), icon: 'key', keys: ['Shift', 'E'], sub: $t('main.halfway_between_keys_around_it'), words: 'breakdown tween breakdowner', when: sim },
+      { group: $t('main.loop'), id: 'loop-check', label: $t('main.loop_check'), run: () => this.loopMenu(innerWidth / 2 - 150, innerHeight / 2 - 120), icon: 'loop', sub: $t('main.does_end_flow_back_into'), words: 'cycle seam seamless', when: sim },
+      { group: $t('main.loop'), id: 'loop-start-here', label: $t('main.start_loop_here'), run: () => this.startLoopHere(), icon: 'loop', sub: $t('main.loop_begins_at_playhead'), words: 'cycle offset shift', when: () => !!this.store.project.loop },
+      { group: $t('main.loop'), id: 'mirror-animation', label: $t('main.mirror_whole_animation'), run: () => this.mirrorAnimation(), icon: 'mirror', sub: $t('main.left_and_right_swap_new'), words: 'flip whole x-mirror', when: sim },
+      { group: $t('main.view'), id: 'view-curves', label: this.tlView === 'curves' ? $t('main.show_keys') : $t('main.show_curves'), run: () => this.setTimelineView(this.tlView === 'curves' ? 'keys' : 'curves'), icon: 'curve', keys: ['Tab'], sub: $t('main.how_selected_part_turns_over'), words: 'graph editor f-curves fcurve' },
+      { group: $t('main.view'), id: 'play-range', label: this.playRange ? $t('main.play_whole_loop') : $t('main.play_only_selected_part'), run: () => this.togglePlayRange(), icon: 'play', keys: ['P'], words: 'preview range loop region' },
+      { group: $t('main.view'), id: 'ref-add', label: $t('main.add_reference_picture_or_video'), run: () => this.pickReference(), icon: 'image', sub: $t('main.trace_real_motion'), words: 'reference image video rotoscope trace background' },
+      { group: $t('main.view'), id: 'onion-options', label: $t('main.ghost_options'), run: () => this.onionMenu(innerWidth / 2 - 120, innerHeight / 2 - 80), icon: 'ghost', words: 'ghost every 3 frames partner' },
     ];
   }
 
@@ -259,18 +260,19 @@ class App {
     const steps = 5;
     let done = 0;
     const tick = text => x => { done++; this._progress = done / steps; this._setLoading(text); return x; };
-    this._setLoading('Reading the game\'s skeleton and WickedWhims bodies...');
+    this._setLoading($t('main.reading_game_s_skeleton_and'));
     const [rig, yf, ym, futa, furniture] = await Promise.all([
-      api.rig('au').then(tick('Bones ready - loading bodies...')),
-      api.body('yf').then(tick('Loading bodies...')),
-      api.body('ym').then(tick('Loading bodies...')),
-      api.body('yf_futa').catch(() => null).then(tick('Loading furniture...')),
-      api.furniture().then(tick('Setting up the stage...'))]);
+      api.rig('au').then(tick($t('main.bones_ready_loading_bodies'))),
+      api.body('yf').then(tick($t('main.loading_bodies'))),
+      api.body('ym').then(tick($t('main.loading_bodies'))),
+      api.body('yf_futa').catch(() => null).then(tick($t('main.loading_furniture'))),
+      api.furniture().then(tick($t('main.setting_up_stage')))]);
     this.assets.rig = rig;
     setRig(rig);
     K.setRig(rig);
     this.assets.bodies = { yf, ym, yf_futa: futa || yf };
-    this.furniture = furniture;
+    // the places' names in the app's language (the server names them in English; ids stay as they are)
+    this.furniture = (furniture || []).map(f => (hasText('furniture.' + f.id) ? { ...f, label: $t('furniture.' + f.id) } : f));
     this.interact = new Interaction(this);
     this.timeline = new Timeline($('tl-canvas'), this);
     // the Curves view (Keys | Curves) and reference pictures / videos
@@ -385,16 +387,16 @@ class App {
 
   _offerRecovery(r) {
     const p = r.project;
-    const when = new Date(((r.state && r.state.time) || r.written * 1000 || Date.now())).toLocaleString();
+    const when = fmtDateTime(new Date(((r.state && r.state.time) || r.written * 1000 || Date.now())));
     this._recovering = true;
     modal({
-      title: 'Some work was not saved',
-      text: `"${p.name || 'Untitled animation'}"${p.author ? ' by ' + p.author : ''} was being worked on (${when}) when the app closed without saving.`,
-      body: h('div', { class: 'tip' }, icon('spark'), h('div', {}, 'Open puts everything back exactly as it was - the animation, the frame you were on, the step, the selected sim and the camera.')),
+      title: $t('main.some_work_was_not_saved'),
+      text: $t(p.author ? 'main.recovery_text_by' : 'main.recovery_text', { name: p.name || $t('main.untitled_animation'), author: p.author, when }),
+      body: h('div', { class: 'tip' }, icon('spark'), h('div', {}, $t('main.open_puts_everything_back_exactly'))),
       onClose: () => { this._recovering = false; },
       buttons: [
-        { label: 'Ignore', kind: 'ghost', onClick: () => this._clearRecovery() },
-        { label: 'Open', kind: 'primary', onClick: () => this.restoreRecovery(r) },
+        { label: $t('main.ignore'), kind: 'ghost', onClick: () => this._clearRecovery() },
+        { label: $t('main.open'), kind: 'primary', onClick: () => this.restoreRecovery(r) },
       ],
     });
   }
@@ -427,7 +429,7 @@ class App {
     this.pipeline.simulateIfNeeded(true);
     this.applyPoses();
     this._projectLoaded();
-    toast(`"${this.store.project.name}" is back where you left it. Save with Ctrl+S to keep it.`, 'ok');
+    toast($t('main.is_back_where_you_left', { projectName: this.store.project.name }), 'ok');
   }
 
   // Loading text under the spinner, and the splash's progress (wa:loading).
@@ -472,7 +474,7 @@ class App {
       done && done();
     };
     if (!confirmFirst || !this.store.dirty) return go();
-    confirmBox('Start a new animation?', 'Unsaved changes to this one will be lost.', 'Start new', true).then(ok => ok && go());
+    confirmBox($t('main.start_new_animation'), $t('main.unsaved_changes_to_this_one'), $t('main.start_new'), true).then(ok => ok && go());
   }
 
   _placeDefault() {
@@ -570,13 +572,13 @@ class App {
       if (!s.tone && r.tone) s.tone = r.tone;
       this.syncViews();
       this.applyPoses();
-    } catch (e) { toast(`Could not load ${s.tray.name}'s body: ${e.message}`, 'err'); }
+    } catch (e) { toast($t('main.could_not_load_s_body', { trayName: s.tray.name, message: e.message }), 'err'); }
     delete s._loading;
   }
 
   async addTraySim(trayId, index, name) {
     const r = await api.traySim(trayId, index);
-    this.store.checkpoint('Add a Tray sim');
+    this.store.checkpoint($t('main.add_tray_sim'));
     const p = this.store.project;
     const s = newSim(p, r.frame);
     s.label = (name || '').split(' ')[0].replace(/^./, c => c.toUpperCase()) || s.label;
@@ -591,7 +593,7 @@ class App {
     this.interact.moveHips(v, new THREE.Vector3((p.sims.length - 1) * 0.8 - 0.4, 0, 0));
     s.keys.push({ frame: Math.round(this.store.frame), ease: 'auto', pose: this._bodyPose(v) });
     this.refreshAll();
-    toast(`${name} joined with their own body shape and skin. Swap them into a pose in step 2.`, 'ok');
+    toast($t('main.joined_with_their_own_body', { name }), 'ok');
   }
 
   setTone(id, tone) { this.store.checkpoint(); this.store.sim(id).tone = tone; this.syncViews(); this.applyPoses(); this.refreshPanels(); }
@@ -936,7 +938,7 @@ class App {
     const nf = Math.max(0, Math.min(this.store.project.length - 1, Math.round(f)));
     if (nf !== Math.round(this.store.frame) && this.pipeline.overrides.size) {
       this.pipeline.overrides.clear();
-      toast('Unkeyed changes were dropped - turn on Auto key or press K to keep a pose.');
+      toast($t('main.unkeyed_changes_were_dropped_turn'));
     }
     this.store.frame = nf;
     $('tl-frame').textContent = nf;
@@ -957,7 +959,7 @@ class App {
       // a pose that was never keyed would play only on its own frame - it is not part of the animation
       if (this.pipeline.overrides.size) {
         this.pipeline.overrides.clear();
-        toast('Unkeyed changes were dropped - turn on Auto key or press K to keep a pose.');
+        toast($t('main.unkeyed_changes_were_dropped_turn'));
       }
       this.vp.gizmo.detach(); this.interact.active = null; this.pipeline.simulateIfNeeded();
       this.audio.ensure();
@@ -1000,7 +1002,7 @@ class App {
       // a face-only edit keeps the body as it is (a snapshot, so the body never jumps)
       if (!o.pose) { o.pose = this._bodyPose(v); o.poseSnapshot = true; }
       this.pipeline.overrides.set(simId, o);
-      this.hud(`${sim.label}: not keyed yet - press K to keep this ${doBody ? 'pose' : 'face'}`);
+      this.hud($t(doBody ? 'main.not_keyed_pose' : 'main.not_keyed_face', { sim: sim.label }));
     } else {
       let key = sim.keys.find(k => k.frame === frame);
       if (!key) {
@@ -1079,17 +1081,17 @@ class App {
 
   keyPose(simId = this.store.selected.sim, { body = false } = {}) {
     const sim = this.store.sim(simId), v = this.simViews.get(simId);
-    if (!sim || !v) return toast('Select a sim first.');
-    this.store.checkpoint(body || this.interact.tool !== 'face' ? 'Key pose' : 'Face key');
+    if (!sim || !v) return toast($t('main.select_sim_first'));
+    this.store.checkpoint(body || this.interact.tool !== 'face' ? $t('main.key_pose') : $t('main.face_key'));
     const frame = Math.round(this.store.frame);
     const face = !body && this.interact.tool === 'face';
     this._keyOne(sim, v, frame, { face });
     this.afterEdit();
-    toast(face ? `Face key set for ${sim.label} at ${(frame / 30).toFixed(2)} s.` : `Key set for ${sim.label} at ${(frame / 30).toFixed(2)} s.`, 'ok');
+    toast(face ? $t('main.face_key_set_for_at', { simLabel: sim.label, frame: (frame / 30).toFixed(2) }) : $t('main.key_set_for_at_s', { simLabel: sim.label, frame: (frame / 30).toFixed(2) }), 'ok');
   }
 
   keyAll() {
-    this.store.checkpoint('Key every sim');
+    this.store.checkpoint($t('main.key_every_sim'));
     const frame = Math.round(this.store.frame), face = this.interact.tool === 'face';
     for (const s of this.store.project.sims) {
       const v = this.simViews.get(s.id);
@@ -1097,16 +1099,16 @@ class App {
     }
     this.pipeline.overrides.clear();
     this.afterEdit();
-    toast(`${face ? 'Face keys' : 'Keyed every sim'} at ${(frame / 30).toFixed(2)} s.`, 'ok');
+    toast($t(face ? 'main.face_keys_at' : 'main.keyed_every_sim_at', { secs: (frame / 30).toFixed(2) }), 'ok');
   }
 
   deleteKey(simId = this.store.selected.sim) {
     const sim = this.store.sim(simId);
     const key = this.currentKey(sim);
-    if (!key) return toast('No key on this frame for the selected sim.');
+    if (!key) return toast($t('main.no_key_on_this_frame'));
     // a sim always keeps one body key (face keys can all go)
-    if (!key.faceOnly && sim.keys.filter(k => !k.faceOnly).length === 1) return toast('That is its only key - a sim needs at least one pose.');
-    this.store.checkpoint('Delete key');
+    if (!key.faceOnly && sim.keys.filter(k => !k.faceOnly).length === 1) return toast($t('main.that_is_its_only_key'));
+    this.store.checkpoint($t('main.delete_key'));
     sim.keys.splice(sim.keys.indexOf(key), 1);
     this.timeline.flash(sim.id, key.frame, 'del');
     this.emit('keyed', { simId: sim.id, frame: key.frame, kind: 'del' });
@@ -1127,7 +1129,7 @@ class App {
   setEase(simId, frame, ease, curve = null) {
     const sim = this.store.sim(simId), key = sim && sim.keys.find(k => k.frame === frame);
     if (!key) return;
-    this.store.checkpoint('Change timing');
+    this.store.checkpoint($t('main.change_timing'));
     this._setKeyEase(key, ease, curve);
     if (ease !== 'custom') localStorageSet('ease', ease);
     this.keysChanged();
@@ -1184,7 +1186,7 @@ class App {
   // Every timing with its colour dot, in EASE_INFO order; "Custom curve..." opens the timing editor.
   _easeItems(current, onPick, onCustom) {
     return Object.entries(EASE_INFO).map(([k, [t, , c]]) => (k === 'custom'
-      ? { label: 'Custom curve…', dot: c, checked: current === 'custom', onClick: onCustom }
+      ? { label: $t('main.custom_curve'), dot: c, checked: current === 'custom', onClick: onCustom }
       : { label: t, dot: c, checked: current === k, onClick: () => onPick(k) }));
   }
 
@@ -1192,36 +1194,36 @@ class App {
   timingEditor(simId, frame, x = innerWidth / 2 - 110, y = innerHeight / 2 - 150) {
     const sim = this.store.sim(simId), key = sim && sim.keys.find(k => k.frame === frame);
     if (!key) return;
-    try { openTimingEditor(this, sim, key, x, y); } catch (err) { console.error(err); toast('The timing editor could not open.', 'err'); }
+    try { openTimingEditor(this, sim, key, x, y); } catch (err) { console.error(err); toast($t('main.timing_editor_could_not_open'), 'err'); }
   }
 
   keyMenu(x, y, sim, key) {
     const setEase = ease => this.setEase(sim.id, key.frame, ease);
     const eases = this._easeItems(key.ease || 'auto', setEase, () => this.timingEditor(sim.id, key.frame, x, y));
     const del = () => {
-      if (!key.faceOnly && sim.keys.filter(k => !k.faceOnly).length < 2) return toast('A sim needs at least one key.');
-      this.store.checkpoint(key.faceOnly ? 'Delete face key' : 'Delete key'); sim.keys.splice(sim.keys.indexOf(key), 1);
+      if (!key.faceOnly && sim.keys.filter(k => !k.faceOnly).length < 2) return toast($t('main.sim_needs_at_least_one'));
+      this.store.checkpoint(key.faceOnly ? $t('main.delete_face_key') : $t('main.delete_key')); sim.keys.splice(sim.keys.indexOf(key), 1);
       this.timeline.flash(sim.id, key.frame, 'del');
       this.emit('keyed', { simId: sim.id, frame: key.frame, kind: 'del' });
       this.keysChanged(); this.afterEdit();
     };
     const copyFace = () => {
       this.faceClipboard = { face: key.face ? { ...key.face } : null, faceBones: key.faceBones ? clone(key.faceBones) : null };
-      toast('Face copied.'); this.refreshPanels();
+      toast($t('main.face_copied')); this.refreshPanels();
     };
     const ctx = { sim, key, frame: key.frame };
     if (key.faceOnly) {
       this._menu(x, y, [
-        { label: 'Delete face key', danger: true, icon: 'trash', onClick: del },
-        { label: 'Copy face', icon: 'copy', onClick: copyFace },
+        { label: $t('main.delete_face_key'), danger: true, icon: 'trash', onClick: del },
+        { label: $t('main.copy_face'), icon: 'copy', onClick: copyFace },
         '-',
-        { heading: 'Into the next face key' },
+        { heading: $t('main.into_next_face_key') },
         ...eases,
       ], 'menus.key', ctx);
       return;
     }
     const dup = f => {
-      this.store.checkpoint('Duplicate key');
+      this.store.checkpoint($t('main.duplicate_key'));
       sim.keys = sim.keys.filter(k => k.frame !== f);
       sim.keys.push(this._copyKey(key, f)); sortKeys(sim.keys);
       this.timeline.flash(sim.id, f, 'add');
@@ -1230,21 +1232,21 @@ class App {
     const id = KO.kid(sim.id, key.frame);
     const holdLabel = { 0.25: 'Hold ¼ s', 0.5: 'Hold ½ s', 1: 'Hold 1 s' };
     this._menu(x, y, [
-      { heading: 'Into the next key' },
+      { heading: $t('main.into_next_key') },
       ...eases,
       '-',
-      { label: 'Copy key', icon: 'copy', onClick: () => { this.timeline.selectOnly([id]); this.copySelectedKeys(); } },
-      { label: 'Copy pose', icon: 'copy', onClick: () => { this.clipboard = clone(key.pose); toast('Pose copied.'); this.refreshPanels(); } },
-      (key.face || key.faceBones) ? { label: 'Copy face', icon: 'copy', onClick: copyFace } : null,
-      { label: 'Duplicate to the playhead', icon: 'key', onClick: () => dup(Math.round(this.store.frame)) },
+      { label: $t('main.copy_key'), icon: 'copy', onClick: () => { this.timeline.selectOnly([id]); this.copySelectedKeys(); } },
+      { label: $t('main.copy_pose'), icon: 'copy', onClick: () => { this.clipboard = clone(key.pose); toast($t('main.pose_copied')); this.refreshPanels(); } },
+      (key.face || key.faceBones) ? { label: $t('main.copy_face'), icon: 'copy', onClick: copyFace } : null,
+      { label: $t('main.duplicate_to_playhead'), icon: 'key', onClick: () => dup(Math.round(this.store.frame)) },
       ...[0.25, 0.5, 1].map(sec => ({ label: holdLabel[sec], icon: 'pause', onClick: () => this.holdPose(sim.id, key.frame, sec) })),
-      { label: 'Save as a pose…', icon: 'save', onClick: () => this.saveMyPose(sim.id, { pose: key.pose, faceBones: key.faceBones }) },
+      { label: $t('main.save_as_pose'), icon: 'save', onClick: () => this.saveMyPose(sim.id, { pose: key.pose, faceBones: key.faceBones }) },
       key.type === 'breakdown'
-        ? { label: 'Make it a main key', icon: 'key', onClick: () => this.setKeyType(null, [id]) }
-        : { label: 'Make it an in-between key', icon: 'key', onClick: () => this.setKeyType('breakdown', [id]) },
-      !this.store.project.loop ? { label: 'Make the end match the start', icon: 'loop', onClick: () => this.makeEndMatchStart([sim.id]) } : null,
+        ? { label: $t('main.make_it_main_key'), icon: 'key', onClick: () => this.setKeyType(null, [id]) }
+        : { label: $t('main.make_it_in_between_key'), icon: 'key', onClick: () => this.setKeyType('breakdown', [id]) },
+      !this.store.project.loop ? { label: $t('main.make_end_match_start'), icon: 'loop', onClick: () => this.makeEndMatchStart([sim.id]) } : null,
       '-',
-      { label: 'Delete key', danger: true, icon: 'trash', onClick: del },
+      { label: $t('main.delete_key'), danger: true, icon: 'trash', onClick: del },
     ].filter(Boolean), 'menus.key', ctx);
   }
 
@@ -1253,22 +1255,22 @@ class App {
     const nb = KO.neighbours(p, sim, frame);
     const between = nb.prev && nb.next && !sim.keys.some(k => k.frame === frame && !k.faceOnly);
     this._menu(x, y, [
-      { label: `Key ${sim.label} here`, icon: 'key', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.keyPose(sim.id); } },
-      between ? { label: 'In-between key here', icon: 'key', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.insertInBetween([sim.id]); } } : null,
-      this.keyClip ? { label: 'Paste keys here', icon: 'paste', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.pasteKeys({ target: sim.id }); } } : null,
-      { label: 'Paste pose here', icon: 'paste', onClick: () => { if (!this.clipboard) return toast('Copy a pose first.'); this.selectSim(sim.id); this.setFrame(frame); this.pastePose(sim.id); } },
-      { label: 'Add a sound here', icon: 'sound', onClick: () => { this.setFrame(frame); this.addSoundDialog(sim.id); } },
+      { label: $t('main.key_here', { simLabel: sim.label }), icon: 'key', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.keyPose(sim.id); } },
+      between ? { label: $t('main.in_between_key_here'), icon: 'key', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.insertInBetween([sim.id]); } } : null,
+      this.keyClip ? { label: $t('main.paste_keys_here'), icon: 'paste', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.pasteKeys({ target: sim.id }); } } : null,
+      { label: $t('main.paste_pose_here'), icon: 'paste', onClick: () => { if (!this.clipboard) return toast($t('main.copy_pose_first')); this.selectSim(sim.id); this.setFrame(frame); this.pastePose(sim.id); } },
+      { label: $t('main.add_sound_here'), icon: 'sound', onClick: () => { this.setFrame(frame); this.addSoundDialog(sim.id); } },
       '-',
-      { label: `Select all of ${sim.label}'s keys`, icon: 'select', onClick: () => this.timeline.selectAll([sim.id]) },
-      p.loop ? { label: `Move ${sim.label}'s whole animation 1 frame later`, icon: 'next', onClick: () => this.shiftSim(sim.id, 1) } : null,
-      p.loop ? { label: `Move ${sim.label}'s whole animation 1 frame earlier`, icon: 'prev', onClick: () => this.shiftSim(sim.id, -1) } : null,
+      { label: $t('main.select_all_of_s_keys', { simLabel: sim.label }), icon: 'select', onClick: () => this.timeline.selectAll([sim.id]) },
+      p.loop ? { label: $t('main.move_s_whole_animation_1', { simLabel: sim.label }), icon: 'next', onClick: () => this.shiftSim(sim.id, 1) } : null,
+      p.loop ? { label: $t('main.move_s_whole_animation_1_2', { simLabel: sim.label }), icon: 'prev', onClick: () => this.shiftSim(sim.id, -1) } : null,
     ].filter(Boolean), 'menus.lane', { sim, frame });
   }
 
   soundMenu(x, y, sim, snd) {
     this._menu(x, y, [
       { heading: snd.name },
-      { label: 'Remove sound', danger: true, icon: 'trash', onClick: () => this.removeSound(sim.id, snd) },
+      { label: $t('main.remove_sound'), danger: true, icon: 'trash', onClick: () => this.removeSound(sim.id, snd) },
     ], 'menus.sound', { sim, snd });
   }
 
@@ -1278,11 +1280,11 @@ class App {
     const later = [...new Set(p.sims.flatMap(s => s.keys.map(k => k.frame)))].filter(f => f > frame).sort((a, b) => a - b);
     const next = later.length ? later[0] : p.length - 1;
     this._menu(x, y, [
-      { label: `Select every key at frame ${frame}`, icon: 'select', onClick: () => { this.timeline.selectColumn(frame); this.setFrame(frame); } },
-      next > frame ? { label: 'Play only from here to the next key', icon: 'play', onClick: () => this.setPlayRange([frame, next]) } : null,
-      this.playRange ? { label: 'Play the whole loop', icon: 'loop', onClick: () => this.setPlayRange(null) } : null,
-      p.loop ? { label: 'Start the loop here', icon: 'loop', onClick: () => this.startLoopHere(frame) } : null,
-      { label: 'Loop check…', icon: 'check', onClick: () => this.loopMenu(x, y) },
+      { label: $t('main.select_every_key_at_frame', { frame }), icon: 'select', onClick: () => { this.timeline.selectColumn(frame); this.setFrame(frame); } },
+      next > frame ? { label: $t('main.play_only_from_here_to'), icon: 'play', onClick: () => this.setPlayRange([frame, next]) } : null,
+      this.playRange ? { label: $t('main.play_whole_loop'), icon: 'loop', onClick: () => this.setPlayRange(null) } : null,
+      p.loop ? { label: $t('main.start_loop_here'), icon: 'loop', onClick: () => this.startLoopHere(frame) } : null,
+      { label: $t('main.loop_check_2'), icon: 'check', onClick: () => this.loopMenu(x, y) },
     ].filter(Boolean), 'menus.ruler', { frame });
   }
 
@@ -1304,7 +1306,7 @@ class App {
   }
   _needSel() {
     if (this.timeline.sel.size) return true;
-    toast('Select some keys first: click a key, Ctrl+click for more, or Ctrl+drag a box on the timeline.');
+    toast($t('main.select_some_keys_first_click'));
     return false;
   }
   // One command on the selection: stop playing, one undo step, the change, then everything shows it.
@@ -1322,11 +1324,14 @@ class App {
     this.selectionChanged();
     return r;
   }
-  _plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+  _plural(n, word) {
+    const COUNT = { key: 'main.count_key', item: 'main.count_item', sound: 'main.count_sound', moment: 'main.count_moment', sim: 'main.count_sim', frame: 'main.count_frame', pose: 'main.count_pose' };
+    return $t(COUNT[word] || 'main.count_item', { n });
+  }
 
   selectAllKeys() {
     this.timeline.selectAll();
-    toast(`${this._plural(this.timeline.sel.size, 'key')} selected - drag one to move them all, or right-click for more.`);
+    toast($t('main.keys_selected', { keys: this._plural(this.timeline.sel.size, 'key') }));
   }
   clearKeySelection() { this.timeline.clearSel(); }
 
@@ -1334,9 +1339,9 @@ class App {
     const r = this.timeline.selRange();
     if (!r) return this._needSel();
     const L = this.store.project.length;
-    if ((df > 0 && r.max >= L - 1) || (df < 0 && r.min <= 0)) { toast(df > 0 ? 'The keys are at the end of the loop.' : 'The keys are at the start of the loop.'); return; }
-    const rep = this._selOp('Move keys', (p, sel) => KO.moveSel(p, sel, df));
-    if (rep && rep.replaced.length) toast(`${this._plural(rep.replaced.length, 'key')} replaced - Ctrl+Z brings ${rep.replaced.length > 1 ? 'them' : 'it'} back.`);
+    if ((df > 0 && r.max >= L - 1) || (df < 0 && r.min <= 0)) { toast(df > 0 ? $t('main.keys_are_at_end_of') : $t('main.keys_are_at_start_of')); return; }
+    const rep = this._selOp($t('main.move_keys'), (p, sel) => KO.moveSel(p, sel, df));
+    if (rep && rep.replaced.length) toast($t('main.keys_replaced', { n: rep.replaced.length }));
   }
 
   deleteSelectedKeys() {
@@ -1344,7 +1349,7 @@ class App {
     const n = info.count + info.sounds.length + info.events.length;
     if (!n) return this.deleteKey();
     const gone = info.keys.map(x => [x.sim.id, x.key.frame]);
-    const rep = this._selOp(`Delete ${this._plural(n, info.count ? 'key' : 'item')}`, (p, sel) => KO.deleteSel(p, sel));
+    const rep = this._selOp($t('main.delete_what', { what: this._plural(n, info.count ? 'key' : 'item') }), (p, sel) => KO.deleteSel(p, sel));
     if (!rep) return;
     for (const [id, f] of gone.slice(0, 40)) if (!this.store.sim(id)?.keys.some(k => k.frame === f)) this.timeline.flash(id, f, 'del');
     this.timeline.clearSel();
@@ -1352,19 +1357,19 @@ class App {
     if (rep.deleted) parts.push(this._plural(rep.deleted, 'key'));
     if (rep.sounds) parts.push(this._plural(rep.sounds, 'sound'));
     if (rep.events) parts.push(this._plural(rep.events, 'moment'));
-    toast(`Deleted ${parts.join(', ') || 'nothing'}.${rep.kept.length ? ` Kept one key for ${rep.kept.join(', ')} - a sim needs a pose.` : ''}`, 'ok');
+    toast((parts.length ? $t('main.deleted_what', { what: parts.join(', ') }) : $t('main.deleted_nothing')) + (rep.kept.length ? $t('main.kept_one_key_for_sim', { kept: rep.kept.join(', ') }) : ''), 'ok');
   }
 
   reverseSelectedKeys() {
-    if (this._selOp('Reverse keys', (p, sel) => KO.reverseSel(p, sel))) toast('Played backwards.', 'ok');
+    if (this._selOp($t('main.reverse_keys'), (p, sel) => KO.reverseSel(p, sel))) toast($t('main.played_backwards'), 'ok');
   }
 
   setEaseForSelection(ease, curve = null) {
     const info = this._selInfo();
     if (!info.count) return this._needSel();
-    this._selOp('Change timing', () => { for (const { key } of info.keys) this._setKeyEase(key, ease, curve); return null; });
+    this._selOp($t('main.change_timing'), () => { for (const { key } of info.keys) this._setKeyEase(key, ease, curve); return null; });
     if (ease !== 'custom') localStorageSet('ease', ease);
-    toast(`${EASE_INFO[ease] ? EASE_INFO[ease][0] : 'Timing'} on ${this._plural(info.count, 'key')}.`, 'ok');
+    toast($t('main.timing_on_keys', { timing: EASE_INFO[ease] ? EASE_INFO[ease][0] : $t('main.timing'), keys: this._plural(info.count, 'key') }), 'ok');
   }
 
   // Each selected key mirrored left <-> right where it is (it keeps its place and the way it faces).
@@ -1372,7 +1377,7 @@ class App {
     const info = this._selInfo();
     if (!info.count) return this._needSel();
     const rig = this.assets.rig;
-    this._selOp('Mirror keys', () => {
+    this._selOp($t('main.mirror_keys'), () => {
       for (const { sim, key } of info.keys) {
         const m = KO.mirrorKeyInPlace(key, rig);
         const i = sim.keys.indexOf(key);
@@ -1380,7 +1385,7 @@ class App {
       }
       return null;
     });
-    toast(`Mirrored ${this._plural(info.count, 'key')}.`, 'ok');
+    toast($t('main.mirrored_keys', { keys: this._plural(info.count, 'key') }), 'ok');
   }
 
   // type: 'breakdown' (an in-between key) or null (a main key). ids: key ids (default: the selection)
@@ -1388,10 +1393,10 @@ class App {
     const sel = ids ? new Set(ids) : this.timeline.sel;
     const r = KO.readSel(this.store.project, sel);
     if (!r.keys.length) return this._needSel();
-    this.store.checkpoint(type ? 'In-between key' : 'Main key');
+    this.store.checkpoint(type ? $t('main.in_between_key') : $t('main.main_key'));
     for (const { key } of r.keys) { if (type === 'breakdown') key.type = 'breakdown'; else delete key.type; }
     this.keysChanged(); this.afterEdit();
-    toast(type ? `${this._plural(r.keys.length, 'key')} made in-between keys (drawn smaller).` : `${this._plural(r.keys.length, 'key')} made main keys.`);
+    toast(type ? $t('main.made_in_between', { n: r.keys.length }) : $t('main.made_main', { n: r.keys.length }));
   }
 
   // The keys the smooth / simplify tools work on: the selected keys, or every key of the selected sim.
@@ -1407,16 +1412,16 @@ class App {
   }
 
   // Smooth: small shakes between keys are taken out. bones: null = the whole body, or a Set (one part)
-  smoothSelection(strength = 0.5, bones = null, { label = 'Smooth', quiet = false } = {}) {
+  smoothSelection(strength = 0.5, bones = null, { label = $t('main.smooth'), quiet = false } = {}) {
     const scope = this._toolScope();
-    if (!scope.length) return toast('Select a sim first.');
+    if (!scope.length) return toast($t('main.select_sim_first'));
     const p = this.store.project;
     this.store.checkpoint(label);
     let n = 0;
     for (const { sim, frames } of scope) n += KO.smoothKeys(sim.keys, { frames, bones, strength, length: p.length, loop: p.loop }).changed;
     this.pipeline.overrides.clear();
     this.keysChanged(); this.afterEdit();
-    if (!quiet) toast(n ? `Smoothed ${this._plural(n, 'key')}.` : 'Nothing to smooth - it needs at least 3 keys.', n ? 'ok' : '');
+    if (!quiet) toast(n ? $t('main.smoothed_keys', { keys: this._plural(n, 'key') }) : $t('main.nothing_to_smooth_it_needs'), n ? 'ok' : '');
     return n;
   }
   // The Smooth slider: live while dragging, one undo step. phase: 'start' | 'input' | 'end'
@@ -1443,14 +1448,14 @@ class App {
     if (phase === 'end') {
       this._smoothSnap = null;
       this.afterEdit();
-      toast(n ? `Smoothed ${this._plural(n, 'key')}.` : 'Nothing to smooth - it needs at least 3 keys.', n ? 'ok' : '');
+      toast(n ? $t('main.smoothed_keys', { keys: this._plural(n, 'key') }) : $t('main.nothing_to_smooth_it_needs'), n ? 'ok' : '');
     }
   }
 
   // Simplify (fewer keys): keys go wherever the motion stays within `tol` degrees of what it was.
-  simplifySelection(tol = 1.5, { label = 'Simplify', quiet = false } = {}) {
+  simplifySelection(tol = 1.5, { label = $t('main.simplify'), quiet = false } = {}) {
     const scope = this._toolScope();
-    if (!scope.length) return toast('Select a sim first.');
+    if (!scope.length) return toast($t('main.select_sim_first'));
     const p = this.store.project;
     if (!quiet) this.store.checkpoint(label);
     let before = 0, after = 0, maxDeg = 0;
@@ -1465,8 +1470,8 @@ class App {
     this.timeline.pruneSel();
     this.pipeline.overrides.clear();
     this.keysChanged(); this.afterEdit();
-    const msg = before === after ? `Nothing to take out - every key is needed for this motion (within ${tol}°).`
-      : `${before} keys → ${after} keys. It moves at most ${maxDeg.toFixed(1)}° from before.`;
+    const msg = before === after ? $t('main.nothing_to_take_out_every', { tol })
+      : $t('main.keys_keys_it_moves_at', { before, after, maxDeg: maxDeg.toFixed(1) });
     if (!quiet) toast(msg, before === after ? '' : 'ok');
     return { before, after, maxDeg, msg };
   }
@@ -1474,12 +1479,12 @@ class App {
   // Clean up = Smooth 35% then Simplify 1.5°, as one undo step.
   cleanUpSelection() {
     const scope = this._toolScope();
-    if (!scope.length) return toast('Select a sim first.');
-    this.store.checkpoint('Clean up');
+    if (!scope.length) return toast($t('main.select_sim_first'));
+    this.store.checkpoint($t('main.clean_up'));
     const p = this.store.project;
     for (const { sim, frames } of scope) KO.smoothKeys(sim.keys, { frames, strength: 0.35, length: p.length, loop: p.loop });
     const r = this.simplifySelection(1.5, { quiet: true });
-    toast(`Cleaned up: ${r.msg}`, 'ok');
+    toast($t('main.cleaned_up', { msg: r.msg }), 'ok');
   }
 
   // "Put this on selected keys": one part (a bone, or 'upper' / 'hands'...) of the pose here goes onto the selected keys.
@@ -1487,25 +1492,25 @@ class App {
     const sim = this.store.sim(simId), v = this.simViews.get(simId);
     if (!sim || !v) return;
     const keys = this.timeline.selKeysOf(simId).filter(k => !k.faceOnly);
-    if (!keys.length) return toast(`Select some of ${sim.label}'s keys first.`);
+    if (!keys.length) return toast($t('main.select_some_of_s_keys', { simLabel: sim.label }));
     this._base({ sim, v }, this.store.frame);
     const src = this._bodyPose(v);
     const name = KO.PART_LABEL[part] || label(part, sim.frame);
-    this.store.checkpoint(`Copy ${name} to ${this._plural(keys.length, 'key')}`);
+    this.store.checkpoint($t('main.copy_part_to_keys', { part: name, keys: this._plural(keys.length, 'key') }));
     const n = KO.putPart(keys, src, part);
     this.pipeline.overrides.clear();
     this.keysChanged(); this.afterEdit();
-    toast(`${name} copied to ${this._plural(n, 'key')}.`, 'ok');
+    toast($t('main.part_copied_to_keys', { part: name, keys: this._plural(n, 'key') }), 'ok');
   }
 
   // ---------------------------------------------------------------- copy / paste keys (spec_editing 7.3)
   copySelectedKeys() {
     if (!this._needSel()) return;
     const clip = KO.copySel(this.store.project, this.timeline.sel);
-    if (!clip.count && !clip.sounds) return toast('Select some keys first.');
+    if (!clip.count && !clip.sounds) return toast($t('main.select_some_keys_first'));
     this.keyClip = clip;
     try { if (JSON.stringify(clip).length < 4e6) localStorageSet('keyClip', clip); else localStorageRemove('keyClip'); } catch { /* the in-memory copy stays */ }
-    toast(`Copied ${this._plural(clip.count, 'key')}${clip.sounds ? ` and ${this._plural(clip.sounds, 'sound')}` : ''} from ${this._plural(clip.rows.length, 'sim')}. Ctrl+V pastes them at the playhead - also in another animation.`, 'ok');
+    toast($t(clip.sounds ? 'main.copied_keys_sounds' : 'main.copied_keys', { keys: this._plural(clip.count, 'key'), sounds: this._plural(clip.sounds || 0, 'sound'), sims: this._plural(clip.rows.length, 'sim') }), 'ok');
     this.refreshPanels();
   }
 
@@ -1532,7 +1537,7 @@ class App {
 
   pasteKeys({ flipped = false, at = null, target = null, label: lbl = null } = {}) {
     const clip = this.keyClip;
-    if (!clip || !(clip.rows || []).length) return toast('Copy some keys first (select them, then Ctrl+C).');
+    if (!clip || !(clip.rows || []).length) return toast($t('main.copy_some_keys_first_select'));
     const p = this.store.project, rig = this.assets.rig;
     if (this.playing) this.setPlaying(false);
     const frame = at !== null ? at : Math.round(this.store.frame);
@@ -1556,7 +1561,7 @@ class App {
         }
       }
     });
-    this.store.checkpoint(lbl || (flipped ? 'Paste mirrored' : 'Paste keys'));
+    this.store.checkpoint(lbl || (flipped ? $t('main.paste_mirrored') : $t('main.paste_keys')));
     const rep = KO.pasteClip(p, work, frame, { targets });
     this.pipeline.overrides.clear();
     this.timeline.sel = rep.sel;
@@ -1564,7 +1569,7 @@ class App {
     this.timeline.pop([...rep.sel]);
     this.selectionChanged();
     const secs = (frame / (p.fps || 30)).toFixed(2);
-    toast(`Pasted ${this._plural(rep.pasted, 'key')}${flipped ? ' mirrored' : ''} at ${secs} s.${rep.dropped ? ` ${rep.dropped} didn't fit before the end.` : ''}${lost > 0 ? ` ${this._plural(lost, 'sim')} in the copied keys had no sim to go to.` : ''}`, 'ok');
+    toast($t(flipped ? 'main.pasted_keys_mirrored' : 'main.pasted_keys', { keys: this._plural(rep.pasted, 'key'), secs }) + (rep.dropped ? $t('main.didn_t_fit_before_end', { dropped: rep.dropped }) : '') + (lost > 0 ? $t('main.sims_had_no_sim', { n: lost }) : ''), 'ok');
     return rep;
   }
 
@@ -1574,7 +1579,7 @@ class App {
     if (!clip.count && !clip.sounds) return;
     const keep = this.keyClip;
     this.keyClip = clip;
-    try { this.pasteKeys({ label: 'Duplicate keys' }); } finally { this.keyClip = keep; }
+    try { this.pasteKeys({ label: $t('main.duplicate_keys') }); } finally { this.keyClip = keep; }
   }
 
   // ---------------------------------------------------------------- in-between, exaggerate, holds (spec_editing 7.4)
@@ -1583,13 +1588,13 @@ class App {
     const p = this.store.project, f = Math.round(this.store.frame);
     const ids = (simIds || [this.store.selected.sim]).filter(Boolean);
     const ok = ids.map(id => this.store.sim(id)).filter(s => { if (!s) return false; const nb = KO.neighbours(p, s, f, { exclude: s.keys.find(k => k.frame === f) }); return nb.prev && nb.next; });
-    if (!ok.length) return toast('An in-between key needs a key before and after the playhead.');
+    if (!ok.length) return toast($t('main.in_between_key_needs_key'));
     if (this.playing) this.setPlaying(false);
-    this.store.checkpoint('In-between key');
+    this.store.checkpoint($t('main.in_between_key'));
     for (const s of ok) { KO.inBetween(p, s, f, t); this.timeline.flash(s.id, f, 'add'); this.emit('keyed', { simId: s.id, frame: f, kind: 'add' }); }
     this.pipeline.overrides.clear();
     this.keysChanged(); this.afterEdit();
-    toast(`In-between key at ${(f / (p.fps || 30)).toFixed(2)} s${ok.length > 1 ? ` for ${this._plural(ok.length, 'sim')}` : ''} - ${Math.round(t * 100)}% of the way to the next key.`, 'ok');
+    toast($t(ok.length > 1 ? 'main.in_between_at_sims' : 'main.in_between_at', { secs: (f / (p.fps || 30)).toFixed(2), sims: this._plural(ok.length, 'sim'), pct: Math.round(t * 100) }), 'ok');
   }
 
   // Soften (-) or exaggerate (+) the selected keys, or the key here. Live like the in-between slider: the first call
@@ -1599,7 +1604,7 @@ class App {
     if (!this._push) {
       let list = this._selInfo().keys.filter(x => !x.key.faceOnly);
       if (!list.length) { const s = this.store.sim(), k = this.currentKey(s); if (k && !k.faceOnly) list = [{ sim: s, key: k }]; }
-      if (!list.length) return toast('Select a key first.');
+      if (!list.length) return toast($t('main.select_key_first'));
       this.store.checkpoint(amount >= 0 ? 'Exaggerate' : 'Soften');
       this._push = list.map(({ sim, key }) => ({ id: sim.id, frame: key.frame, pose: clone(key.pose), face: key.face ? { ...key.face } : null }));
     }
@@ -1622,13 +1627,13 @@ class App {
     const sim = this.store.sim(simId), key = sim && sim.keys.find(k => k.frame === frame && !k.faceOnly);
     if (!key) return;
     const p = this.store.project;
-    this.store.checkpoint('Hold pose');
+    this.store.checkpoint($t('main.hold_pose'));
     const k = KO.movingHold(p, sim, key, Math.round(seconds * (p.fps || 30)));
-    if (!k) { this.store.undoStep(); return toast('There is no room for a hold before the next key.'); }
+    if (!k) { this.store.undoStep(); return toast($t('main.there_is_no_room_for')); }
     this.timeline.flash(simId, k.frame, 'add');
     this.pipeline.overrides.clear();
     this.keysChanged(); this.afterEdit();
-    toast(`${sim.label} holds the pose until ${(k.frame / (p.fps || 30)).toFixed(2)} s (it drifts a little, so it never looks frozen).`, 'ok');
+    toast($t('main.holds_pose_until_s_it', { simLabel: sim.label, frame: (k.frame / (p.fps || 30)).toFixed(2) }), 'ok');
   }
 
   // ---------------------------------------------------------------- loop tools (spec_editing 7.5)
@@ -1644,7 +1649,7 @@ class App {
   loopMenu(x, y) {
     const p = this.store.project, st = this.loopStatus();
     const bad = st.filter(r => ['pause', 'snap', 'pop'].includes(r.kind));
-    const items = [{ heading: p.loop ? 'Loop check' : 'The loop is off' }];
+    const items = [{ heading: p.loop ? $t('main.loop_check') : $t('main.loop_is_off') }];
     for (const r of st) {
       const s = this.store.sim(r.simId);
       if (!s) continue;
@@ -1652,64 +1657,64 @@ class App {
         onClick: () => { this.selectSim(s.id); const last = s.keys.filter(k => !k.faceOnly).pop(); this.setFrame(last ? last.frame : p.length - 1); } });
     }
     items.push('-');
-    if (bad.length) items.push({ label: bad.length > 1 ? `Fix it for all ${bad.length} sims` : 'Fix it', icon: 'spark', onClick: () => this.fixLoops() });
-    if (p.loop) items.push({ label: 'Start the loop here', icon: 'loop', onClick: () => this.startLoopHere() });
-    else items.push({ label: 'Make the end match the start', icon: 'loop', onClick: () => this.makeEndMatchStart() });
-    items.push({ label: p.loop ? 'Loop is on - turn it off' : 'Loop is off - turn it on', icon: 'loop', onClick: () => this.toggleLoop() });
+    if (bad.length) items.push({ label: bad.length > 1 ? $t('main.fix_it_for_all_sims', { badCount: bad.length }) : $t('main.fix_it'), icon: 'spark', onClick: () => this.fixLoops() });
+    if (p.loop) items.push({ label: $t('main.start_loop_here'), icon: 'loop', onClick: () => this.startLoopHere() });
+    else items.push({ label: $t('main.make_end_match_start'), icon: 'loop', onClick: () => this.makeEndMatchStart() });
+    items.push({ label: p.loop ? $t('main.loop_is_on_turn_it') : $t('main.loop_is_off_turn_it'), icon: 'loop', onClick: () => this.toggleLoop() });
     this._menu(x, y, items, 'menus.loop', { frame: Math.round(this.store.frame), loop: true });
   }
 
   fixLoops() {
     const p = this.store.project, bad = this.loopStatus().filter(r => ['pause', 'snap', 'pop'].includes(r.kind));
-    if (!bad.length) return toast('The loop already flows smoothly.', 'ok');
-    this.store.checkpoint('Fix the loop');
+    if (!bad.length) return toast($t('main.loop_already_flows_smoothly'), 'ok');
+    this.store.checkpoint($t('main.fix_loop'));
     for (const r of bad) { const s = this.store.sim(r.simId); if (s) KO.fixLoop(p, s, r.kind); }
     this.pipeline.overrides.clear();
     this.timeline.pruneSel();
     this.keysChanged(); this.afterEdit();
-    toast(`Loop fixed for ${bad.map(r => this.store.sim(r.simId)?.label).filter(Boolean).join(', ')} - it flows back into the start now.`, 'ok');
+    toast($t('main.loop_fixed_for_it_flows', { filter: bad.map(r => this.store.sim(r.simId)?.label).filter(Boolean).join(', ') }), 'ok');
   }
 
   // Rotate the whole loop so it begins at `frame` (the same animation, starting somewhere else).
   startLoopHere(frame = Math.round(this.store.frame)) {
     const p = this.store.project;
-    if (!p.loop) return toast('Turn the loop on first.');
-    if (!frame) return toast('The loop already starts here.');
+    if (!p.loop) return toast($t('main.turn_loop_on_first'));
+    if (!frame) return toast($t('main.loop_already_starts_here'));
     if (this.playing) this.setPlaying(false);
-    this.store.checkpoint('Start the loop here');
+    this.store.checkpoint($t('main.start_loop_here'));
     KO.offsetCycle(p, null, -frame);
     this.pipeline.overrides.clear();
     this.timeline.clearSel();
     this.keysChanged(); this.afterEdit(); this.updateTrail();
     this.setFrame(0);
-    toast(`The loop now starts at what was ${(frame / (p.fps || 30)).toFixed(2)} s.`, 'ok');
+    toast($t('main.loop_now_starts_at_what', { frame: (frame / (p.fps || 30)).toFixed(2) }), 'ok');
   }
 
   // One sim's whole animation a frame later or earlier (natural overlap between partners).
   shiftSim(simId, n) {
     const p = this.store.project, s = this.store.sim(simId);
     if (!s || !p.loop) return;
-    this.store.checkpoint(`Move ${s.label}'s animation`);
+    this.store.checkpoint($t('main.move_sims_animation', { sim: s.label }));
     KO.offsetCycle(p, [simId], n);
     this.pipeline.overrides.clear();
     this.timeline.pruneSel();
     this.keysChanged(); this.afterEdit();
-    toast(`${s.label}'s whole animation moved ${this._plural(Math.abs(n), 'frame')} ${n > 0 ? 'later' : 'earlier'}.`, 'ok');
+    toast($t(n > 0 ? 'main.moved_later' : 'main.moved_earlier', { sim: s.label, frames: this._plural(Math.abs(n), 'frame') }), 'ok');
   }
 
   // Loop off: the last frame gets a copy of the first pose.
   makeEndMatchStart(simIds = null) {
     const p = this.store.project;
     const sims = simIds ? simIds.map(id => this.store.sim(id)).filter(Boolean) : p.sims;
-    this.store.checkpoint('Make the end match the start');
+    this.store.checkpoint($t('main.make_end_match_start'));
     let n = 0;
     for (const s of sims) if (KO.makeEndMatchStart(p, s)) { n++; this.timeline.flash(s.id, p.length - 1, 'add'); }
     this.keysChanged(); this.afterEdit();
-    toast(n ? 'The last frame now matches the first.' : 'Nothing to change.', n ? 'ok' : '');
+    toast(n ? $t('main.last_frame_now_matches_first') : $t('main.nothing_to_change'), n ? 'ok' : '');
   }
 
   toggleLoop() {
-    this.store.checkpoint(this.store.project.loop ? 'Loop off' : 'Loop on');
+    this.store.checkpoint(this.store.project.loop ? $t('main.loop_off') : $t('main.loop_on'));
     this.store.project.loop = !this.store.project.loop;
     $('btn-loop').classList.toggle('on', this.store.project.loop);
     this._edited();
@@ -1721,7 +1726,7 @@ class App {
     const p = this.store.project;
     if (!p.sims.length) return;
     if (this.playing) this.setPlaying(false);
-    this.store.checkpoint('Mirror the whole animation');
+    this.store.checkpoint($t('main.mirror_whole_animation'));
     const { holdsToRebind } = KO.mirrorProject(p, this.assets.rig, uid('a'));
     this._file = null;
     this.shareData = null;
@@ -1731,8 +1736,8 @@ class App {
     this.physicsChanged();
     for (const hd of holdsToRebind) { try { this.interact.rebindHold?.(hd.simId, hd.limb); } catch (err) { console.error(err); } }
     this._edited();
-    choiceBar(`Mirrored - it is a new animation "${p.name}"; your original file is unchanged. Save to keep it.`,
-      [{ label: 'Save now', primary: true, onClick: () => { this.save(); } }, { label: 'Undo', onClick: () => { this.undo(); } }], { timeout: 14000 });
+    choiceBar($t('main.mirrored_it_is_new_animation', { pName: p.name }),
+      [{ label: $t('main.save_now'), primary: true, onClick: () => { this.save(); } }, { label: $t('main.undo'), onClick: () => { this.undo(); } }], { timeout: 14000 });
   }
 
   // ---------------------------------------------------------------- play range (spec_editing 7.7)
@@ -1747,8 +1752,8 @@ class App {
     if (this.curves && this.curves.shown) this.curves.draw();
     if (quiet) return;
     const fps = this.store.project.fps || 30;
-    if (this.playRange) toast(`Playing only ${(this.playRange[0] / fps).toFixed(2)}-${(this.playRange[1] / fps).toFixed(2)} s. Press P (or the x in the ruler) to play the whole loop.`);
-    else toast('Playing the whole loop.');
+    if (this.playRange) toast($t('main.playing_only_s_press_p', { v: (this.playRange[0] / fps).toFixed(2), v2: (this.playRange[1] / fps).toFixed(2) }));
+    else toast($t('main.playing_whole_loop'));
   }
   togglePlayRange() {
     if (this.playRange) return this.setPlayRange(null);
@@ -1756,7 +1761,7 @@ class App {
   }
   playSelection() {
     const r = this.timeline.selRange();
-    if (!r || r.max <= r.min) return toast('Select keys across a stretch of time first (their part plays), or Ctrl+drag in the ruler.');
+    if (!r || r.max <= r.min) return toast($t('main.select_keys_across_stretch_of'));
     this.setPlayRange([r.min, r.max]);
     if (!this.playing) this.setPlaying(true);
   }
@@ -1764,32 +1769,32 @@ class App {
   // ---------------------------------------------------------------- undo history (spec_editing 7.9)
   undoHistoryMenu(x, y) {
     const list = this.store.history(15);
-    if (!list.length) return toast('Nothing to undo yet.');
-    const ago = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? `${s} s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`; };
-    contextMenu(x, y, [{ heading: 'Undo back to before…' }, ...list.map((e, i) => ({ label: `${e.label} · ${ago(e.t)}`, icon: 'undo', onClick: () => this.undoTo(i) }))]);
+    if (!list.length) return toast($t('main.nothing_to_undo_yet'));
+    const ago = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? $t('main.secs_ago', { s }) : s < 3600 ? $t('main.min_ago', { s: Math.round(s / 60) }) : $t('main.hours_ago', { h: Math.round(s / 3600) }); };
+    contextMenu(x, y, [{ heading: $t('main.undo_back_to_before') }, ...list.map((e, i) => ({ label: `${e.label} · ${ago(e.t)}`, icon: 'undo', onClick: () => this.undoTo(i) }))]);
   }
   undoTo(i) {
     const before = this.store.project;
     const r = this.store.undoTo(i);
     if (!r) return;
     this._afterHistory(before, false);
-    toast(i ? `Undone ${i + 1} steps (back to before "${this.store.redo[this.store.redo.length - 1]?.label || r}").` : `Undone: ${typeof r === 'string' ? r : 'the last change'}.`);
+    toast(i ? $t('main.undone_steps_back_to_before', { i: i + 1, vLabel: this.store.redo[this.store.redo.length - 1]?.label || r }) : `Undone: ${typeof r === 'string' ? r : $t('main.last_change')}.`);
   }
   _historyToast(r, redo) {
-    if (!r) return toast(redo ? 'Nothing to redo.' : 'Nothing to undo.');
-    toast(typeof r === 'string' && r ? `${redo ? 'Redone' : 'Undone'}: ${r}.` : (redo ? 'Redone.' : 'Undone.'));
+    if (!r) return toast(redo ? $t('main.nothing_to_redo') : $t('main.nothing_to_undo'));
+    toast(typeof r === 'string' && r ? `${redo ? $t('main.redone') : $t('main.undone')}: ${r}.` : (redo ? $t('main.redone_2') : $t('main.undone_2')));
   }
 
   // ---------------------------------------------------------------- ghosts options (spec_editing F1)
   onionMenu(x, y) {
     const pick = m => { this.onionMode = m; localStorageSet('onionMode', m); this.onion = true; $('btn-onion').classList.add('on'); this._ghostKey = ''; this.updateGhosts(); };
     contextMenu(x, y, [
-      { heading: 'Ghosts show' },
-      { label: 'The keys before and after', icon: 'ghost', checked: this.onionMode === 'keys', onClick: () => pick('keys') },
-      { label: 'Every 3 frames, 2 before and 2 after', icon: 'ghost', checked: this.onionMode === 'frames', onClick: () => pick('frames') },
-      { label: 'The keys before and after, and the partner', icon: 'couple', checked: this.onionMode === 'partner', onClick: () => pick('partner') },
+      { heading: $t('main.ghosts_show') },
+      { label: $t('main.keys_before_and_after'), icon: 'ghost', checked: this.onionMode === 'keys', onClick: () => pick('keys') },
+      { label: $t('main.every_3_frames_2_before'), icon: 'ghost', checked: this.onionMode === 'frames', onClick: () => pick('frames') },
+      { label: $t('main.keys_before_and_after_and'), icon: 'couple', checked: this.onionMode === 'partner', onClick: () => pick('partner') },
       '-',
-      { label: this.onion ? 'Ghosts off' : 'Ghosts on', icon: 'eye', onClick: () => $('btn-onion').click() },
+      { label: this.onion ? $t('main.ghosts_off') : $t('main.ghosts_on'), icon: 'eye', onClick: () => $('btn-onion').click() },
     ]);
   }
 
@@ -1806,7 +1811,7 @@ class App {
     if (v === 'keys') requestAnimationFrame(() => this.timeline.draw());
     if (!quiet && v === 'curves' && !localStorageGet('curvesSeen', false)) {
       localStorageSet('curvesSeen', true);
-      toast('Curves: how the selected part turns over time. Drag a dot up or down to change that key; click a line for its timing.');
+      toast($t('main.curves_how_selected_part_turns'));
     }
   }
 
@@ -1842,7 +1847,7 @@ class App {
   }
 
   addSim(frame = 'yf') {
-    this.store.checkpoint('Add a sim');
+    this.store.checkpoint($t('main.add_a_sim'));
     const p = this.store.project;
     const s = newSim(p, frame);
     p.sims.push(s);
@@ -1854,13 +1859,13 @@ class App {
     this._relaxArms(v);
     s.keys.push({ frame: Math.round(this.store.frame), ease: 'auto', pose: this._bodyPose(v) });
     this.refreshAll();
-    toast(`${s.label} added. Put it in a pose in step 2.`, 'ok');
+    toast($t('main.added_put_it_in_pose', { sLabel: s.label }), 'ok');
   }
 
   removeSim(id) {
     const p = this.store.project;
-    if (p.sims.length === 1) return toast('Keep at least one sim.');
-    this.store.checkpoint('Remove a sim');
+    if (p.sims.length === 1) return toast($t('main.keep_at_least_one_sim'));
+    this.store.checkpoint($t('main.remove_a_sim'));
     p.sims = p.sims.filter(s => s.id !== id);
     if (this.store.selected.sim === id) this.store.selected = { sim: p.sims[0] ? p.sims[0].id : null, bone: null };
     this.vp.gizmo.detach();
@@ -1870,7 +1875,7 @@ class App {
   }
 
   duplicateSim(id) {
-    this.store.checkpoint('Duplicate a sim');
+    this.store.checkpoint($t('main.duplicate_a_sim'));
     const src = this.store.sim(id);
     const copy = JSON.parse(JSON.stringify(src));
     const p = this.store.project;
@@ -1880,7 +1885,7 @@ class App {
   }
 
   setSimBody(id, frame) {
-    this.store.checkpoint('Change body');
+    this.store.checkpoint($t('main.change_body'));
     const s = this.store.sim(id);
     s.frame = frame;
     s.gender = BODY_TYPES[frame]?.gender || s.gender;
@@ -1893,7 +1898,7 @@ class App {
   }
 
   clearKeys(id) {
-    this.store.checkpoint('Clear keys');
+    this.store.checkpoint($t('main.clear_keys'));
     const s = this.store.sim(id);
     const v = this.simViews.get(id);
     this._base({ sim: s, v }, this.store.frame);
@@ -1906,7 +1911,7 @@ class App {
   setColor(id, c) { this.store.checkpoint(); this.store.sim(id).color = c; this.syncViews(); this.refreshAll(); }
 
   setFurniture(id) {
-    this.store.checkpoint('Change the place');
+    this.store.checkpoint($t('main.change_place'));
     const f = this.furniture.find(x => x.id === id);
     this.store.project.furniture = id;
     this.store.project.locations = [...f.locations];
@@ -1917,7 +1922,7 @@ class App {
   setBody(simId, fn) {
     const s = this.store.sim(simId);
     if (!s) return;
-    this.store.checkpoint('Body setting');
+    this.store.checkpoint($t('main.body_setting'));
     fn(simBody(s));
     this._edited();
     this.applyPoses(false);
@@ -1931,7 +1936,7 @@ class App {
   resetBone(simId, name, { turn = true, move = true } = {}) {
     const v = this.simViews.get(simId);
     if (!v || !v.bone(name)) return;
-    this.store.checkpoint('Reset part');
+    this.store.checkpoint($t('main.reset_part'));
     this.beginEdit(simId);
     const r = v.restByName[name];
     const face = K.isFace(name);
@@ -1987,7 +1992,7 @@ class App {
   unkeyTwist(simId, bone) {
     const sim = this.store.sim(simId);
     if (!sim) return;
-    this.store.checkpoint('Let the twist follow');
+    this.store.checkpoint($t('main.let_twist_follow'));
     for (const k of sim.keys) {
       if (k.pose && k.pose.rot) delete k.pose.rot[bone];
       if (k.pose && k.pose.pos) delete k.pose.pos[bone];
@@ -1996,7 +2001,7 @@ class App {
     if (ov && ov.pose && ov.pose.rot) delete ov.pose.rot[bone];
     this.applyPoses();
     this.afterEdit();
-    toast(`${label(bone, sim.frame)} follows by itself again.`, 'ok');
+    toast($t('main.follows_by_itself_again', { label: label(bone, sim.frame) }), 'ok');
   }
 
   // Which way the sim faces, as a turn about the vertical. Taken from the hips: where they point, or - for a sim
@@ -2034,12 +2039,12 @@ class App {
   mirrorBone(simId, name) {
     const v = this.simViews.get(simId);
     if (!v) return;
-    this.store.checkpoint('Mirror part');
+    this.store.checkpoint($t('main.mirror_part'));
     this.beginEdit(simId);
     this._mirrorBoneIn(v, name);
     const sim = this.store.sim(simId);
     this.poseEdited(simId, false, K.isFace(name) ? 'face' : 'body');
-    toast(`${label(name, sim && sim.frame)} copied to ${label(mirrorName(name), sim && sim.frame)}.`);
+    toast($t('main.copied_to', { label: label(name, sim && sim.frame), label2: label(mirrorName(name), sim && sim.frame) }));
   }
 
   // One bone onto its other side: face bones with the face mirror rule (a middle face bone keeps to the middle),
@@ -2067,7 +2072,7 @@ class App {
     if (!K.isFace(name) && !/_(L|R)_/.test(name)) return;
     this._mirrorBoneIn(v, name);
   }
-  setMirrorEdit(on) { this.mirrorEdit = on; toast(on ? 'Symmetry on: posing one side poses the other (X).' : 'Symmetry off.'); this.refreshPanels(); }
+  setMirrorEdit(on) { this.mirrorEdit = on; toast(on ? $t('main.symmetry_on_posing_one_side') : $t('main.symmetry_off_2')); this.refreshPanels(); }
 
   // One bone's turn (from standing) copied to its mirror bone, mirrored across the sim's own middle.
   _mirrorInto(v, from, to) {
@@ -2080,7 +2085,7 @@ class App {
   mirrorPose(simId) {
     const v = this.simViews.get(simId);
     if (!v) return;
-    this.store.checkpoint('Mirror pose');
+    this.store.checkpoint($t('main.mirror_pose'));
     this.beginEdit(simId);
     const rs = this._restSpace(v);
     const T = this._facing(v), Ti = T.clone().invert();
@@ -2106,7 +2111,7 @@ class App {
     spine.position.copy(hips.add(d).sub(spacePos(v, parent)).applyQuaternion(spaceQuat(v, parent).invert()));
     this._mirrorFaceIn(v);
     this.poseEdited(simId, false, 'both');
-    toast('Pose mirrored.');
+    toast($t('main.pose_mirrored'));
   }
 
   // The face swapped left <-> right (the middle of the mouth and the tongue kept in the middle).
@@ -2122,7 +2127,7 @@ class App {
 
   resetPose(simId) {
     const v = this.simViews.get(simId);
-    this.store.checkpoint('Stand straight');
+    this.store.checkpoint($t('main.stand_straight'));
     this.beginEdit(simId);
     const hips = HIPS.map(n => v.bone(n).position.clone());
     const pelvisQ = spaceQuat(v, v.bone('b__Pelvis__'));
@@ -2142,17 +2147,17 @@ class App {
     const s = this.store.sim(simId), v = this.simViews.get(simId);
     this._base({ sim: s, v }, this.store.frame);
     this.clipboard = this._bodyPose(v);
-    toast('Pose copied.');
+    toast($t('main.pose_copied'));
     this.refreshPanels();
   }
 
   // mask: only one part ('upper', 'lower', 'hands', 'face'...) is pasted; flipped: the pose mirrored left <-> right.
   pastePose(simId, { mask = null, flipped = false } = {}) {
-    if (mask === 'face') return this.faceClipboard ? this.pasteFace(simId) : toast('Copy a face first (right-click a key, or Copy face in the Face step).');
+    if (mask === 'face') return this.faceClipboard ? this.pasteFace(simId) : toast($t('main.copy_face_first_right_click'));
     if (!this.clipboard) return;
     const v = this.simViews.get(simId);
     if (!v) return;
-    this.store.checkpoint(flipped ? 'Paste pose mirrored' : mask ? `Paste ${(KO.PART_LABEL[mask] || mask).toLowerCase()}` : 'Paste pose');
+    this.store.checkpoint(flipped ? $t('main.paste_pose_mirrored') : mask ? $t('main.paste_part', { part: inSentence(KO.PART_LABEL[mask] || mask) }) : $t('main.paste_pose'));
     this.beginEdit(simId);
     const rig = this.assets.rig;
     let src = clone(this.clipboard);
@@ -2172,7 +2177,7 @@ class App {
       v.setPose({ rot: src.rot, pos });
     }
     this.poseEdited(simId, false);
-    toast(mask ? `${KO.PART_LABEL[mask] || 'Part'} pasted (the rest of the pose stays).` : flipped ? 'Pose pasted mirrored (the sim stays where it is).' : 'Pose pasted (the sim stays where it is).');
+    toast(mask ? $t('main.part_pasted', { part: KO.PART_LABEL[mask] || $t('main.part') }) : flipped ? $t('main.pose_pasted_mirrored_sim_stays') : $t('main.pose_pasted_sim_stays_where'));
   }
 
   // Move and/or turn a whole sim through the whole animation: every key (and a pose not keyed yet) and its pins.
@@ -2212,7 +2217,7 @@ class App {
   turnSim(simId, degrees) {
     const s = this.store.sim(simId), v = this.simViews.get(simId);
     if (!s || !v) return;
-    this.store.checkpoint('Turn sim');
+    this.store.checkpoint($t('main.turn_sim'));
     if (this.playing) this.setPlaying(false);
     this._base({ sim: s, v }, this.store.frame);
     const pivot = spacePos(v, v.bone('b__Pelvis__')).setY(0);
@@ -2276,23 +2281,23 @@ class App {
 
   async deleteMyPose(id) {
     const pr = (this.posePresets || []).find(x => x.mine && x.id === id);
-    if (!pr || !(await confirmBox('Delete this pose?', `"${pr.label}" leaves My poses. Animations that used it stay as they are.`, 'Delete', true))) return;
+    if (!pr || !(await confirmBox($t('main.delete_this_pose'), $t('main.leaves_my_poses_animations_that', { prLabel: pr.label }), $t('main.delete'), true))) return;
     try { this._setMyPoses(await this._changeMyPoses(list => list.filter(x => x.id !== id))); }
-    catch (err) { toast('Could not delete the pose: ' + err.message, 'err'); return; }
+    catch (err) { toast($t('main.could_not_delete_pose', { message: err.message }), 'err'); return; }
     if (this._lastPreset === id) this._lastPreset = null;
     this.refreshPanels();
-    toast(`"${pr.label}" deleted from My poses.`, 'ok');
+    toast($t('main.deleted_from_my_poses', { prLabel: pr.label }), 'ok');
   }
 
   renameMyPose(id) {
     const pr = (this.posePresets || []).find(x => x.mine && x.id === id);
     if (!pr) return;
     const name = h('input', { class: 'text', value: pr.label });
-    modal({ title: 'Rename pose', body: h('label', { class: 'field' }, h('span', {}, 'Name'), name),
-      buttons: [{ label: 'Cancel', kind: 'ghost' }, { label: 'Rename', kind: 'primary', onClick: async () => {
+    modal({ title: $t('main.rename_pose'), body: h('label', { class: 'field' }, h('span', {}, $t('main.name')), name),
+      buttons: [{ label: $t('main.cancel'), kind: 'ghost' }, { label: $t('main.rename'), kind: 'primary', onClick: async () => {
         const label = name.value.trim() || pr.label;
         try { this._setMyPoses(await this._changeMyPoses(list => list.map(x => (x.id === id ? { ...x, label } : x)))); }
-        catch (err) { toast('Could not rename the pose: ' + err.message, 'err'); return false; }
+        catch (err) { toast($t('main.could_not_rename_pose', { message: err.message }), 'err'); return false; }
         this.refreshPanels();
       } }] });
     setTimeout(() => { name.focus(); name.select(); }, 30);
@@ -2310,7 +2315,7 @@ class App {
     if (mask || toSelected || amount !== 1) return this._applyPresetOver(pr, { flipped, amount, mask, toSelected, quiet, checkpoint });
     const p = this.store.project;
     const frame = Math.round(this.store.frame);
-    if (checkpoint) this.store.checkpoint(`Use pose "${pr.label}"${flipped ? ' mirrored' : ''}`);
+    if (checkpoint) this.store.checkpoint($t(flipped ? 'main.use_pose_mirrored' : 'main.use_pose', { pose: pr.label }));
     if (this.playing) this.setPlaying(false);
     const defaultPlace = (p.locations || []).join() === 'FLOOR' && (!p.furniture || p.furniture === 'floor');
     const takePlaces = places === 'always' || (places === 'ifDefault' && defaultPlace);
@@ -2362,7 +2367,7 @@ class App {
     this._lifting = this._liftOntoFurniture(posed, frame);
     this.frameSims();
     const nice = s => s.toLowerCase().replace(/_/g, ' ');
-    if (!quiet) toast(`${pr.label} pose${flipped ? ' (mirrored)' : ''} set at ${(frame / 30).toFixed(1)} s.${kept ? ` Your places (${(p.locations || []).map(nice).join(', ')}) were kept.` : ' Adjust it, then add motion in step 3.'}`, 'ok');
+    if (!quiet) toast($t(flipped ? 'main.pose_set_at_mirrored' : 'main.pose_set_at', { pose: pr.label, secs: (frame / 30).toFixed(1) }) + (kept ? $t('main.your_places_were_kept', { map: (p.locations || []).map(nice).join(', ') }) : $t('main.adjust_it_then_add_motion')), 'ok');
     return posed;
   }
 
@@ -2400,9 +2405,9 @@ class App {
     const list = pr.sims.map(ps => (flipped ? this._flipPresetSim(ps, couple) : ps));
     const cast = couple ? this._castPreset(pr, { add: false }) : [this.store.sim() || p.sims[0]];
     const bones = KO.partBones(mask);
-    if (toSelected && !cast.some(s => s && this.timeline.selKeysOf(s.id).some(k => !k.faceOnly))) { toast('Select some keys of these sims first.'); return false; }
+    if (toSelected && !cast.some(s => s && this.timeline.selKeysOf(s.id).some(k => !k.faceOnly))) { toast($t('main.select_some_keys_of_these')); return false; }
     const part = mask ? (KO.PART_LABEL[mask] || mask).toLowerCase() : '';
-    if (checkpoint) this.store.checkpoint(toSelected ? 'Pose on selected keys' : mask ? `Use the ${part} of "${pr.label}"` : `Blend in "${pr.label}"`);
+    if (checkpoint) this.store.checkpoint(toSelected ? $t('main.pose_on_selected_keys') : mask ? $t('main.use_of', { part, prLabel: pr.label }) : $t('main.blend_in', { prLabel: pr.label }));
     if (this.playing) this.setPlaying(false);
     let n = 0;
     const posed = [];
@@ -2433,7 +2438,7 @@ class App {
     this.pipeline.overrides.clear();
     this.keysChanged();
     this.afterEdit();
-    if (!quiet) toast(toSelected ? `${pr.label}${mask ? ` (${part})` : ''} put on ${this._plural(n, 'key')}.` : mask ? `${pr.label}: the ${part} is set at ${(frame / 30).toFixed(1)} s.` : `${pr.label} blended in at ${Math.round(amount * 100)}%.`, 'ok');
+    if (!quiet) toast(toSelected ? $t(mask ? 'main.pose_part_put_on_keys' : 'main.pose_put_on_keys', { pose: pr.label, part, keys: this._plural(n, 'key') }) : mask ? $t('main.is_set_at_s', { prLabel: pr.label, part, frame: (frame / 30).toFixed(1) }) : $t('main.blended_in_at', { prLabel: pr.label, amount: Math.round(amount * 100) }), 'ok');
     return posed;
   }
 
@@ -2459,7 +2464,7 @@ class App {
     if (this.playing) this.setPlaying(false);
     const p = this.store.project, frame = Math.round(this.store.frame);
     const couple = pr.group === 'couple' || pr.sims.length > 1;
-    this.store.checkpoint(`Blend in "${pr.label}"`);
+    this.store.checkpoint($t('main.blend_in', { prLabel: pr.label }));
     const snap = JSON.parse(JSON.stringify(p));
     const beforeOf = id => {
       const s = snap.sims.find(x => x.id === id);
@@ -2499,8 +2504,8 @@ class App {
     return {
       get amount() { return amount; },
       update: a => { amount = Math.max(0, Math.min(1.5, a)); apply(); },
-      end: () => { ended = true; return wait.then(() => { apply(); this._lastPreset = pr.id; this.afterEdit(); toast(`${pr.label} blended in at ${Math.round(amount * 100)}%.`, 'ok'); }); },
-      cancel: () => { ended = 'cancel'; return wait.then(() => { this.undo(); toast('Blend taken back.'); }); },
+      end: () => { ended = true; return wait.then(() => { apply(); this._lastPreset = pr.id; this.afterEdit(); toast($t('main.blended_in_at', { prLabel: pr.label, amount: Math.round(amount * 100) }), 'ok'); }); },
+      cancel: () => { ended = 'cancel'; return wait.then(() => { this.undo(); toast($t('main.blend_taken_back')); }); },
     };
   }
 
@@ -2577,21 +2582,21 @@ class App {
   // Save to My poses (spec_editing 2.6): the whole body or one part, in a folder. from: {pose, faceBones} of a key
   // (the key menu's "Save as a pose..."); otherwise the pose shown now.
   saveMyPose(simId, from = null) {
-    const parts = [['all', 'Whole body'], ['upper', 'Upper body'], ['lower', 'Lower body'], ['hands', 'Both hands'], ['L hand', 'Left hand'], ['R hand', 'Right hand'], ['face', 'Face']];
+    const parts = [['all', $t('main.whole_body')], ['upper', $t('main.upper_body')], ['lower', $t('main.lower_body')], ['hands', $t('main.both_hands')], [$t('main.l_hand'), $t('main.left_hand')], [$t('main.r_hand'), $t('main.right_hand')], ['face', $t('main.face')]];
     const multi = this.store.project.sims.length > 1 && !from;
     const all = h('input', { type: 'checkbox', checked: multi });
-    const name = h('input', { class: 'text', placeholder: 'e.g. Kneeling, legs apart' });
+    const name = h('input', { class: 'text', placeholder: $t('main.e_g_kneeling_legs_apart') });
     const part = h('select', {}, parts.map(([v, t]) => h('option', { value: v }, t)));
     const folders = [...new Set((this.posePresets || []).filter(x => x.mine && x.folder).map(x => x.folder))];
     const listId = 'mp-folders-' + Date.now().toString(36);
-    const folder = h('input', { class: 'text', placeholder: 'e.g. Hands, Faces, Kneeling (optional)', list: listId });
+    const folder = h('input', { class: 'text', placeholder: $t('main.e_g_hands_faces_kneeling'), list: listId });
     const dl = h('datalist', { id: listId }, folders.map(f => h('option', { value: f })));
-    const allRow = h('label', { class: 'check' }, all, 'Save all sims together (a couple pose)');
-    part.onchange = () => { if (part.value === 'face' && !folder.value) folder.placeholder = 'e.g. Faces'; else if (/hand/i.test(part.value) && !folder.value) folder.placeholder = 'e.g. Hands'; };
-    modal({ title: 'Save to My poses', body: h('div', {}, h('label', { class: 'field' }, h('span', {}, 'Name'), name),
-      h('div', { class: 'grid-2' }, h('label', { class: 'field' }, h('span', {}, 'What to save'), part), h('label', { class: 'field' }, h('span', {}, 'Folder'), folder, dl)),
+    const allRow = h('label', { class: 'check' }, all, $t('main.save_all_sims_together_couple'));
+    part.onchange = () => { if (part.value === 'face' && !folder.value) folder.placeholder = $t('main.e_g_faces'); else if (/hand/i.test(part.value) && !folder.value) folder.placeholder = $t('main.e_g_hands'); };
+    modal({ title: $t('main.save_to_my_poses'), body: h('div', {}, h('label', { class: 'field' }, h('span', {}, $t('main.name')), name),
+      h('div', { class: 'grid-2' }, h('label', { class: 'field' }, h('span', {}, $t('main.what_to_save')), part), h('label', { class: 'field' }, h('span', {}, $t('main.folder')), folder, dl)),
       multi ? allRow : null),
-    buttons: [{ label: 'Cancel', kind: 'ghost' }, { label: 'Save', kind: 'primary', onClick: async () => {
+    buttons: [{ label: $t('main.cancel'), kind: 'ghost' }, { label: $t('main.save'), kind: 'primary', onClick: async () => {
       const which = part.value, bones = KO.partBones(which);
       const src = multi && all.checked ? this.store.project.sims : [this.store.sim(simId)];
       const sims = src.filter(Boolean).map(s => {
@@ -2612,16 +2617,16 @@ class App {
       });
       this.applyPoses();
       const now = Date.now();
-      const pr = { id: uid('mp'), label: name.value.trim() || (which === 'all' ? 'My pose' : `My ${parts.find(x => x[0] === which)[1].toLowerCase()}`), group: sims.length > 1 ? 'couple' : 'solo', sims, created: now, updated: now };
+      const pr = { id: uid('mp'), label: name.value.trim() || (which === 'all' ? $t('main.my_pose') : $t('main.my', { v: parts.find(x => x[0] === which)[1].toLowerCase() })), group: sims.length > 1 ? 'couple' : 'solo', sims, created: now, updated: now };
       if (which !== 'all') pr.part = which;
       const fo = folder.value.trim();
       if (fo) pr.folder = fo.slice(0, 40);
       try { this._setMyPoses(await this._changeMyPoses(list => [...list, pr])); }
-      catch (err) { toast('Could not save the pose: ' + err.message, 'err'); return false; }
+      catch (err) { toast($t('main.could_not_save_pose', { message: err.message }), 'err'); return false; }
       this.thumbs.queue(this.posePresets.filter(x => x.id === pr.id), () => this.renderStep());
       this._poseMode = 'mine';
       this.refreshPanels();
-      toast(`Saved to My poses${pr.folder ? ` (${pr.folder})` : ''}.`, 'ok');
+      toast($t('main.saved_to_my_poses', { v: pr.folder ? ` (${pr.folder})` : '' }), 'ok');
     } }] });
     setTimeout(() => name.focus(), 30);
   }
@@ -2629,7 +2634,7 @@ class App {
   // Change one of My poses (rename, folder, favourite) - the server list is read, changed and written back.
   async updateMyPose(id, patch, doneText = '') {
     try { this._setMyPoses(await this._changeMyPoses(list => list.map(x => (x.id === id ? { ...x, ...patch, updated: Date.now() } : x)))); }
-    catch (err) { toast('Could not change the pose: ' + err.message, 'err'); return false; }
+    catch (err) { toast($t('main.could_not_change_pose', { message: err.message }), 'err'); return false; }
     const pr = (this.posePresets || []).find(x => x.id === id);
     if (pr) this.thumbs.queue([pr], () => { if (this.step === 'pose') this.renderStep(); });
     this.refreshPanels();
@@ -2642,9 +2647,9 @@ class App {
     if (!pr) return;
     const folders = [...new Set((this.posePresets || []).filter(x => x.mine && x.folder).map(x => x.folder))];
     const listId = 'mp-folders-' + Date.now().toString(36);
-    const inp = h('input', { class: 'text', value: pr.folder || '', placeholder: 'No folder', list: listId });
-    modal({ title: 'Put it in a folder', body: h('label', { class: 'field' }, h('span', {}, 'Folder'), inp, h('datalist', { id: listId }, folders.map(f => h('option', { value: f })))),
-      buttons: [{ label: 'Cancel', kind: 'ghost' }, { label: 'OK', kind: 'primary', onClick: () => this.updateMyPose(id, { folder: inp.value.trim().slice(0, 40) || undefined }, inp.value.trim() ? `"${pr.label}" is in ${inp.value.trim()} now.` : `"${pr.label}" is in no folder now.`) }] });
+    const inp = h('input', { class: 'text', value: pr.folder || '', placeholder: $t('main.no_folder'), list: listId });
+    modal({ title: $t('main.put_it_in_folder'), body: h('label', { class: 'field' }, h('span', {}, $t('main.folder')), inp, h('datalist', { id: listId }, folders.map(f => h('option', { value: f })))),
+      buttons: [{ label: $t('main.cancel'), kind: 'ghost' }, { label: 'OK', kind: 'primary', onClick: () => this.updateMyPose(id, { folder: inp.value.trim().slice(0, 40) || undefined }, inp.value.trim() ? $t('main.is_in_now', { prLabel: pr.label, value: inp.value.trim() }) : $t('main.is_in_no_folder_now', { prLabel: pr.label })) }] });
     setTimeout(() => { inp.focus(); inp.select(); }, 30);
   }
 
@@ -2654,32 +2659,32 @@ class App {
     const copy = { id: uid('mp'), label: pr.label, group: pr.group || (pr.sims.length > 1 ? 'couple' : 'solo'), sims: clone(pr.sims).map(s => ({ gender: s.gender, pose: s.pose, ...(s.face ? { face: s.face } : {}), ...(s.faceBones ? { faceBones: s.faceBones } : {}) })), created: now, updated: now };
     if (pr.part) copy.part = pr.part;
     try { this._setMyPoses(await this._changeMyPoses(list => [...list, copy])); }
-    catch (err) { toast('Could not save the pose: ' + err.message, 'err'); return; }
+    catch (err) { toast($t('main.could_not_save_pose', { message: err.message }), 'err'); return; }
     this.thumbs.queue(this.posePresets.filter(x => x.id === copy.id), () => this.renderStep());
     this.refreshPanels();
-    toast(`"${pr.label}" copied to My poses.`, 'ok');
+    toast($t('main.copied_to_my_poses', { prLabel: pr.label }), 'ok');
   }
 
   // Right-click a pose tile (spec_editing 11.1).
   poseMenu(pr, x, y) {
     const n = this.timeline.sel.size;
-    const partItems = [['upper', 'Upper body'], ['lower', 'Lower body'], ['hands', 'Hands'], ['face', 'Face']]
-      .map(([m, t]) => ({ label: `Use only: ${t}`, icon: m === 'face' ? 'face' : 'pose', onClick: () => this.applyPosePreset(pr, { mask: m }) }));
+    const partItems = [['upper', $t('main.upper_body')], ['lower', $t('main.lower_body')], ['hands', $t('main.hands')], ['face', $t('main.face')]]
+      .map(([m, t]) => ({ label: $t('main.use_only', { t }), icon: m === 'face' ? 'face' : 'pose', onClick: () => this.applyPosePreset(pr, { mask: m }) }));
     contextMenu(x, y, [
       { heading: pr.label },
-      { label: 'Use this pose', icon: 'pose', onClick: () => this.applyPosePreset(pr) },
-      { label: 'Use it mirrored', icon: 'mirror', onClick: () => this.applyPosePreset(pr, { flipped: true }) },
+      { label: $t('main.use_this_pose'), icon: 'pose', onClick: () => this.applyPosePreset(pr) },
+      { label: $t('main.use_it_mirrored'), icon: 'mirror', onClick: () => this.applyPosePreset(pr, { flipped: true }) },
       ...(pr.part && pr.part !== 'all' ? [] : partItems),
-      n ? { label: `Put it on the ${n} selected key${n > 1 ? 's' : ''}`, icon: 'key', onClick: () => this.applyPosePreset(pr, { toSelected: true }) } : null,
+      n ? { label: $t('main.put_it_on_selected_keys', { n }), icon: 'key', onClick: () => this.applyPosePreset(pr, { toSelected: true }) } : null,
       '-',
       ...(pr.mine ? [
-        { label: 'Rename…', icon: 'tag', onClick: () => this.renameMyPose(pr.id) },
-        { label: 'Folder…', icon: 'folder', onClick: () => this.setMyPoseFolder(pr.id) },
-        { label: pr.fav ? '★ Not a favourite any more' : '★ Favourite', icon: 'spark', onClick: () => this.updateMyPose(pr.id, { fav: pr.fav ? undefined : true }, pr.fav ? '' : `"${pr.label}" is a favourite (★).`) },
+        { label: $t('main.rename_2'), icon: 'tag', onClick: () => this.renameMyPose(pr.id) },
+        { label: $t('main.folder_2'), icon: 'folder', onClick: () => this.setMyPoseFolder(pr.id) },
+        { label: pr.fav ? $t('main.not_favourite_any_more') : $t('main.favourite'), icon: 'spark', onClick: () => this.updateMyPose(pr.id, { fav: pr.fav ? undefined : true }, pr.fav ? '' : $t('main.is_favourite', { pose: pr.label })) },
         '-',
-        { label: 'Delete', danger: true, icon: 'trash', onClick: () => this.deleteMyPose(pr.id) },
+        { label: $t('main.delete'), danger: true, icon: 'trash', onClick: () => this.deleteMyPose(pr.id) },
       ] : [
-        { label: 'Save a copy to My poses', icon: 'save', onClick: () => this.copyPoseToMine(pr) },
+        { label: $t('main.save_copy_to_my_poses'), icon: 'save', onClick: () => this.copyPoseToMine(pr) },
       ]),
     ].filter(Boolean));
   }
@@ -2687,13 +2692,13 @@ class App {
   // "Share my poses": My poses as a file (My poses.json) to give to a friend.
   exportPoses() {
     const mine = (this.posePresets || []).filter(x => x.mine).map(({ mine, ...rest }) => rest);
-    if (!mine.length) return toast('Save a pose to My poses first.');
+    if (!mine.length) return toast($t('main.save_pose_to_my_poses'));
     const blob = new Blob([JSON.stringify({ kind: 'Wicked Animator poses', version: 1, poses: mine }, null, 1)], { type: 'application/json' });
     const a = h('a', { href: URL.createObjectURL(blob), download: 'My poses.json', style: { display: 'none' } });
     document.body.append(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-    toast(`${this._plural(mine.length, 'pose')} saved as "My poses.json" (in your Downloads). Anyone can add them with "Add poses from a file".`, 'ok');
+    toast($t('main.poses_saved_file', { poses: this._plural(mine.length, 'pose') }), 'ok');
   }
 
   // "Add poses from a file": poses someone shared (My poses.json) join My poses, with new ids.
@@ -2705,11 +2710,11 @@ class App {
   }
   async importPoses(file) {
     let data;
-    try { data = JSON.parse(await file.text()); } catch { return toast('That file is not a poses file.', 'err'); }
+    try { data = JSON.parse(await file.text()); } catch { return toast($t('main.that_file_is_not_poses'), 'err'); }
     const list = Array.isArray(data) ? data : data && Array.isArray(data.poses) ? data.poses : [];
     const okPose = x => x && typeof x === 'object' && x.rot && typeof x.rot === 'object' && Object.values(x.rot).every(q => Array.isArray(q) && q.length === 4 && q.every(Number.isFinite));
     const valid = list.filter(x => x && Array.isArray(x.sims) && x.sims.length && x.sims.length <= 6 && x.sims.every(s => s && okPose(s.pose)));
-    if (!valid.length) return toast('No poses found in that file.', 'err');
+    if (!valid.length) return toast($t('main.no_poses_found_in_that'), 'err');
     const now = Date.now();
     const parts = new Set(['all', 'upper', 'lower', 'hands', 'L hand', 'R hand', 'face']);
     const add = valid.map(x => {
@@ -2722,17 +2727,17 @@ class App {
       return o;
     });
     try { this._setMyPoses(await this._changeMyPoses(l => [...l, ...add])); }
-    catch (err) { return toast('Could not add the poses: ' + err.message, 'err'); }
+    catch (err) { return toast($t('main.could_not_add_poses', { message: err.message }), 'err'); }
     this.thumbs.queue(add.map(a => this.posePresets.find(x => x.id === a.id)).filter(Boolean), () => this.renderStep());
     this._poseMode = 'mine';
     this.refreshPanels();
-    toast(`${this._plural(add.length, 'pose')} added to My poses.`, 'ok');
+    toast($t('main.poses_added', { poses: this._plural(add.length, 'pose') }), 'ok');
   }
 
   // ---------------------------------------------------------------- motion layers
   addLayer(simId, type) {
     const s = this.store.sim(simId);
-    this.store.checkpoint('Add motion');
+    this.store.checkpoint($t('main.add_motion'));
     const l = newLayer(type);
     if (!s.layers) s.layers = [];
     // match the partner's rhythm straight away
@@ -2758,12 +2763,12 @@ class App {
       if (card) body.scrollTo({ top: body.scrollTop + card.getBoundingClientRect().top - body.getBoundingClientRect().top - 6, behavior: 'smooth' });
     });
     if (!this.playing) this.setPlaying(true);
-    toast(`${MOTIONS[type].label} added to ${s.label}. It's playing - tune it with the sliders.`, 'ok');
+    toast($t('main.added_to_it_s_playing', { vLabel: MOTIONS[type].label, sLabel: s.label }), 'ok');
   }
 
   removeLayer(simId, id) {
     const s = this.store.sim(simId);
-    this.store.checkpoint('Remove motion');
+    this.store.checkpoint($t('main.remove_motion'));
     s.layers = s.layers.filter(l => l.id !== id);
     this.layersChanged(true);
     this.refreshPanels();
@@ -2774,12 +2779,12 @@ class App {
     const partner = this.store.project.sims.find(x => x.id !== simId && (x.layers || []).some(y => y.on));
     if (!partner) return;
     const pl = partner.layers.find(y => y.on);
-    this.store.checkpoint('Match the partner');
+    this.store.checkpoint($t('main.match_partner'));
     l.params.strokes = pl.params.strokes ?? l.params.strokes;
     l.phase = pl.phase || 0;
     this.layersChanged(true);
     this.refreshPanels();
-    toast(`${s.label} now meets ${partner.label} on every stroke.`, 'ok');
+    toast($t('main.now_meets_on_every_stroke', { sLabel: s.label, partnerLabel: partner.label }), 'ok');
   }
 
   // Turn a motion into ordinary keys (to fine-tune stroke by stroke). Faces and other motions are kept.
@@ -2792,7 +2797,7 @@ class App {
     if (!s || !l || !v) return;
     const p = this.store.project, L = p.length;
     if (this.playing) this.setPlaying(false);
-    this.store.checkpoint('Motion to keys');
+    this.store.checkpoint($t('main.motion_to_keys'));
     const hand = MOTIONS[l.type]?.group === 'Hands';
     const limb = hand ? (l.params.limb || MOTIONS[l.type].params.limb) : null;
     const chain = hand ? (LIMBS[limb] || []) : [];
@@ -2842,7 +2847,7 @@ class App {
     this.refreshAll();
     this.interact.refreshHandles();
     this.physicsChanged();
-    toast(`${MOTIONS[l.type].label} turned into ${frames.length} keys you can edit.`, 'ok');
+    toast($t('main.turned_into_keys_you_can', { vLabel: MOTIONS[l.type].label, frameCount: frames.length }), 'ok');
   }
 
   // ---------------------------------------------------------------- face
@@ -2850,7 +2855,7 @@ class App {
   setFace(simId, patch, labelText, merge = false, done = true, pickId = null) {
     const s = this.store.sim(simId);
     const frame = Math.round(this.store.frame);
-    if (labelText) this.store.checkpoint(`${labelText} face`);
+    if (labelText) this.store.checkpoint($t('main.face_change', { face: labelText }));
     let key = s.keys.find(k => k.frame === frame);
     if (!key) {
       const v = this.simViews.get(simId);
@@ -2867,7 +2872,7 @@ class App {
     this.timeline.draw();
     this.store.setDirty(true);
     if (done) { this.renderStep(); renderInspector(this); }
-    if (labelText) toast(`${labelText} face on ${s.label} at ${(frame / 30).toFixed(2)} s.`, 'ok');
+    if (labelText) toast($t('main.face_on_at_s', { labelText, sLabel: s.label, frame: (frame / 30).toFixed(2) }), 'ok');
   }
 
   // The face key at this frame for a sim (made as a face key when there is none). -> the key
@@ -2908,7 +2913,7 @@ class App {
   aimEyes(simId, at = 'partner') {
     const sim = this.store.sim(simId), v = this.simViews.get(simId);
     if (!sim || !v) return;
-    this.store.checkpoint('Aim the eyes');
+    this.store.checkpoint($t('main.aim_eyes'));
     this.beginEdit(simId);
     v.group.updateMatrixWorld(true);
     const eyes = ['b__L_Eye__', 'b__R_Eye__'].filter(n => v.bone(n));
@@ -2928,13 +2933,13 @@ class App {
           const d = hp.distanceTo(me);
           if (d < best) { best = d; target = hp.add(new THREE.Vector3(0, 1, 0).applyQuaternion(hd.getWorldQuaternion(new THREE.Quaternion())).multiplyScalar(0.08)); }
         }
-        if (!target) { toast('There is no partner to look at.'); return; }
+        if (!target) { toast($t('main.there_is_no_partner_to')); return; }
       }
       for (const n of eyes) K.aimEye(v, n, target);
     }
     this.poseEdited(simId, false, 'face');
     this.afterEdit();
-    toast(at === 'ahead' ? `${sim.label} looks ahead.` : `${sim.label} looks at the ${at === 'camera' ? 'camera' : 'partner'}.`, 'ok');
+    toast(at === 'ahead' ? $t('main.looks_ahead', { simLabel: sim.label }) : $t(at === 'camera' ? 'main.looks_at_camera' : 'main.looks_at_partner', { sim: sim.label }), 'ok');
   }
 
   // "Make this expression editable": the slider expression at a key becomes face bones (dots you can move one by
@@ -2944,8 +2949,8 @@ class App {
     if (!sim || !v) return;
     const p = this.store.project, f = Math.round(this.store.frame);
     const targets = all ? sim.keys.filter(k => k.face || k.faceBones) : sim.keys.filter(k => k.frame === f && k.face && Object.keys(k.face).length);
-    if (!targets.length) { toast('There is no expression here to turn into face dots.'); return; }
-    this.store.checkpoint('Make the expression editable');
+    if (!targets.length) { toast($t('main.there_is_no_expression_here')); return; }
+    this.store.checkpoint($t('main.make_expression_editable'));
     const results = [];
     const saved = this.pipeline.editing;
     try {
@@ -2965,7 +2970,7 @@ class App {
     this.applyPoses();
     this.afterEdit();
     this.renderStep();
-    toast('Expression turned into face bones - click the dots to adjust it.', 'ok');
+    toast($t('main.expression_turned_into_face_bones'), 'ok');
   }
 
   copyFace(simId) {
@@ -2976,27 +2981,27 @@ class App {
     const face = (key && key.face) || evaluateFace(sim.keys, f, p.length, p.loop);
     const fb = K.keyedFace(this, sim, f);
     this.faceClipboard = { face: face ? { ...face } : null, faceBones: fb ? clone(fb) : null };
-    toast('Face copied.');
+    toast($t('main.face_copied'));
     this.refreshPanels();
   }
 
   pasteFace(simId) {
     const sim = this.store.sim(simId), c = this.faceClipboard;
-    if (!sim || !c) return toast('Copy a face first.');
-    this.store.checkpoint('Paste face');
+    if (!sim || !c) return toast($t('main.copy_face_first'));
+    this.store.checkpoint($t('main.paste_face'));
     const key = this._faceKeyAt(sim, Math.round(this.store.frame));
     if (c.face) key.face = { ...c.face }; else delete key.face;
     key.faceBones = c.faceBones ? clone(c.faceBones) : { rot: {}, pos: {} };
     this.applyPoses();
     this.afterEdit();
-    toast(`Face pasted on ${sim.label}.`, 'ok');
+    toast($t('main.face_pasted_on', { simLabel: sim.label }), 'ok');
   }
 
   // The face at this frame, left <-> right (the middle of the mouth stays in the middle).
   mirrorFace(simId) {
     const sim = this.store.sim(simId), v = this.simViews.get(simId);
     if (!sim || !v) return;
-    this.store.checkpoint('Mirror face');
+    this.store.checkpoint($t('main.mirror_face'));
     this.beginEdit(simId);
     this._mirrorFaceIn(v);
     const key = this._faceKeyAt(sim, Math.round(this.store.frame));
@@ -3005,21 +3010,21 @@ class App {
     if (key.face) for (const c of ['wink', 'smileSide', 'browSide', 'jawSide', 'lookSide']) if (typeof key.face[c] === 'number') key.face[c] = -key.face[c];
     this.applyPoses();
     this.afterEdit();
-    toast('Face mirrored.', 'ok');
+    toast($t('main.face_mirrored'), 'ok');
   }
 
   // Every face part back to rest at this frame (the sliders stay).
   resetFace(simId) {
     const sim = this.store.sim(simId);
     if (!sim) return;
-    this.store.checkpoint('Reset face');
+    this.store.checkpoint($t('main.reset_face'));
     const key = this._faceKeyAt(sim, Math.round(this.store.frame));
     key.faceBones = { rot: {}, pos: {} };
     const ov = this.pipeline.overrides.get(simId);
     if (ov) delete ov.faceBones;
     this.applyPoses();
     this.afterEdit();
-    toast('Face parts back to rest here.', 'ok');
+    toast($t('main.face_parts_back_to_rest'), 'ok');
   }
 
   // A row in the bone list was clicked: face bones open the Face tool, other bones the Pose tool.
@@ -3049,13 +3054,13 @@ class App {
   autoSounds() {
     const n = autoSounds(this);
     this.afterEdit();
-    toast(n ? `Placed ${n} sounds from the bodies' contacts - they're on the timeline.` : 'No hits or strokes found - animate some contact first.', n ? 'ok' : '');
+    toast(n ? $t('main.placed_sounds_from_bodies_contacts', { n }) : $t('main.no_hits_or_strokes_found'), n ? 'ok' : '');
   }
 
   addSoundDialog(simId) { openAddSoundDialog(this, simId); }
 
   removeSound(simId, snd) {
-    this.store.checkpoint('Remove sound');
+    this.store.checkpoint($t('main.remove_sound'));
     const s = this.store.sim(simId);
     s.sounds = s.sounds.filter(x => x !== snd);
     this.afterEdit();
@@ -3079,7 +3084,7 @@ class App {
     let used = null, pool = [];
     for (const k of VOICE_FALLBACK[set] || ['any']) { pool = this.voicePool(s, k); if (pool.length) { used = k; break; } }
     if (!pool.length) {
-      if (!quiet) toast(`No ${s.frame === 'ym' ? 'male' : 'female'} voice lines in your sound list.`);
+      if (!quiet) toast($t(s.frame === 'ym' ? 'main.no_male_voice_lines' : 'main.no_female_voice_lines'));
       return 0;
     }
     this.store.checkpoint();
@@ -3095,7 +3100,7 @@ class App {
     this.afterEdit();
     if (!quiet) {
       const setName = (VOICE_SETS.find(x => x[0] === used) || [])[1] || '';
-      toast(`${n} voice sound${n > 1 ? 's' : ''} added to ${s.label}${used !== set ? ` (${setName.toLowerCase()} - there were none of the kind you picked)` : ''} - the mouth moves with them.`, 'ok');
+      toast(used !== set ? $t('main.voice_sounds_added_other', { n, sim: s.label, setName: inSentence(setName) }) : $t('main.voice_sounds_added', { n, sim: s.label }), 'ok');
     }
     return n;
   }
@@ -3193,7 +3198,7 @@ class App {
   // A name no other saved animation uses ("Cowgirl 1" -> "Cowgirl 2", "Kiss" -> "Kiss 2").
   _freeName(name, list) {
     const taken = new Set(list.map(m => (m.file || '').toLowerCase()));
-    const m = /^(.*?)(?:\s+(\d+))?$/.exec((name || 'Untitled animation').trim());
+    const m = /^(.*?)(?:\s+(\d+))?$/.exec((name || $t('main.untitled_animation')).trim());
     const base = m[1] || 'Animation';
     for (let n = m[2] ? +m[2] + 1 : 2; n < 1000; n++) {
       const c = `${base} ${n}`;
@@ -3205,9 +3210,9 @@ class App {
   // Another animation (not this one) is saved under the same file name: replace it, or keep both.
   async _askNameClash(p, clash, list) {
     const free = this._freeName(p.name, list);
-    const pick = await choiceBox('That name is already used',
-      `"${clash.name || p.name}"${clash.author ? ' by ' + clash.author : ''} is a different animation saved under the same name. Keep both by saving this one as "${free}", or replace the other one? (A replaced animation is kept in a backup folder, never deleted.)`,
-      [{ label: 'Cancel', kind: 'ghost', value: null }, { label: 'Replace it', kind: 'danger', value: 'replace' }, { label: `Save as "${free}"`, kind: 'primary', value: 'rename' }]);
+    const pick = await choiceBox($t('main.that_name_is_already_used'),
+      $t(clash.author ? 'main.name_clash_by' : 'main.name_clash', { name: clash.name || p.name, author: clash.author, free }),
+      [{ label: $t('main.cancel'), kind: 'ghost', value: null }, { label: $t('main.replace_it'), kind: 'danger', value: 'replace' }, { label: $t('main.save_as', { free }), kind: 'primary', value: 'rename' }]);
     if (pick === 'rename') { p.name = free; this.refreshTitle(); if (this.step === 'details') this.renderStep(); }
     return pick;
   }
@@ -3227,7 +3232,7 @@ class App {
         if (pick === 'replace') {
           // the other animation leaves your list (moved to animator_replaced), then this one takes its name
           try { await api.removeProject(clash.file); }
-          catch (err) { toast('Could not replace it: ' + err.message, 'err'); return false; }
+          catch (err) { toast($t('main.could_not_replace_it', { message: err.message }), 'err'); return false; }
         }
       }
     }
@@ -3243,11 +3248,11 @@ class App {
       this._clearRecovery();
       this.shareData = null;             // the Share step reads the list again
       // another animation took the name after the check above: the server kept both, this one as "Name (2)"
-      if (res && res.renamed) toast(`Saved as "${this._file}" - another animation already has this name.`, 'ok');
-      else toast(`Saved "${p.name}".`, 'ok');
+      if (res && res.renamed) toast($t('main.saved_as_another_animation_already', { _file: this._file }), 'ok');
+      else toast($t('main.saved', { pName: p.name }), 'ok');
       this.emit('saved', { file: this._file, name: p.name });
       return true;
-    } catch (err) { toast('Could not save: ' + err.message, 'err'); return false; }
+    } catch (err) { toast($t('main.could_not_save', { message: err.message }), 'err'); return false; }
   }
 
   open() { openProjectDialog(this); }
@@ -3256,7 +3261,7 @@ class App {
   async loadProject(name, { from = null } = {}) {
     let p;
     try { p = await api.project(name); }
-    catch (err) { toast('Could not open it: ' + err.message, 'err'); return false; }
+    catch (err) { toast($t('main.could_not_open_it', { message: err.message }), 'err'); return false; }
     this.store.load(p);
     this._file = name;
     this.playRange = null;
@@ -3270,7 +3275,7 @@ class App {
     hideHome(this, { from });
     this.frameSims({ fromFront: true });
     this._projectLoaded();
-    toast(`Opened "${p.name}".`, 'ok');
+    toast($t('main.opened', { pName: p.name }), 'ok');
     return true;
   }
 
@@ -3441,7 +3446,7 @@ class App {
     newLen = Math.max(12, Math.min(3000, Math.round(newLen)));
     if (newLen === oldLen) { this._showLength(); return; }
     const busy = p.sims.some(s => s.keys.length > 1 || (s.sounds || []).length || (s.layers || []).length) || (Array.isArray(p.events) && p.events.length);
-    this.store.checkpoint(newLen > oldLen ? 'Longer loop' : 'Shorter loop');
+    this.store.checkpoint(newLen > oldLen ? $t('main.longer_loop') : $t('main.shorter_loop'));
     const before = this.store.peekUndo();
     const depth = this.store.undo.length;
     this.setPlayRange(null, { quiet: true });
@@ -3460,11 +3465,11 @@ class App {
     const longer = newLen > oldLen, secs = (newLen / p.fps).toFixed(1);
     const still = () => this.store.undo.length === depth && this.store.peekUndo() === before && !this.store.redo.length;
     const text = (m, i) => m === 'stretch'
-      ? `Loop is ${secs} s now - keys and sounds moved with it, so everything plays ${longer ? 'slower' : 'faster'}.`
-      : `Loop is ${secs} s now - same speed: ${longer ? 'time was added at the end' : 'the end was cut off'}${i.moved ? ' and the last pose moved to the new end' : ''}${i.lostSounds ? `, ${i.lostSounds} sound${i.lostSounds > 1 ? 's' : ''} past the end removed` : ''}. Motions repeat ${longer ? 'more' : 'less'} often.`;
+      ? $t(longer ? 'main.loop_stretched_slower' : 'main.loop_stretched_faster', { secs })
+      : $t(longer ? 'main.loop_longer_same_speed' : 'main.loop_shorter_same_speed', { secs }) + (i.moved ? $t('main.and_last_pose_moved_to') : '') + (i.lostSounds ? $t('main.sounds_past_end_removed', { lostSounds: i.lostSounds }) : '') + $t(longer ? 'main.motions_repeat_more' : 'main.motions_repeat_less');
     const actions = m => [
-      { label: m === 'stretch' ? 'Keep the speed instead' : (longer ? 'Slow it all down instead' : 'Speed it all up instead'), primary: true, onClick: () => {
-        if (!still()) { toast('Something changed since - use Undo (Ctrl+Z) instead.'); return true; }
+      { label: m === 'stretch' ? $t('main.keep_speed_instead') : (longer ? $t('main.slow_it_all_down_instead') : $t('main.speed_it_all_up_instead')), primary: true, onClick: () => {
+        if (!still()) { toast($t('main.something_changed_since_use_undo')); return true; }
         const other = m === 'stretch' ? 'keep' : 'stretch';
         this.store.project = JSON.parse(before);
         const i = apply(other);
@@ -3472,10 +3477,10 @@ class App {
         bar.update(text(other, i), actions(other));
         return false;
       } },
-      { label: 'Undo', onClick: () => {
-        if (!still()) { toast('Something changed since - use Undo (Ctrl+Z) instead.'); return true; }
+      { label: $t('main.undo'), onClick: () => {
+        if (!still()) { toast($t('main.something_changed_since_use_undo')); return true; }
         this.undo();
-        toast('Loop length put back.');
+        toast($t('main.loop_length_put_back'));
         return true;
       } },
     ];
@@ -3485,7 +3490,7 @@ class App {
   _showLength() {
     const p = this.store.project;
     $('tl-seconds-in').value = (p.length / p.fps).toFixed(1);
-    $('tl-frames-note').textContent = `${p.length} frames`;
+    $('tl-frames-note').textContent = $t('main.n_frames', { n: p.length });
   }
 
   // ---------------------------------------------------------------- UI
@@ -3539,9 +3544,9 @@ class App {
     foot.innerHTML = '';
     const order = Object.keys(STEPS).filter(k => k !== 'library');
     const i = order.indexOf(this.step);
-    if (i > 0) foot.append(h('button', { class: 'btn ghost', onclick: () => this.showStep(order[i - 1]) }, 'Back'));
+    if (i > 0) foot.append(h('button', { class: 'btn ghost', onclick: () => this.showStep(order[i - 1]) }, $t('main.back')));
     if (info.next) foot.append(h('button', { class: 'btn primary', onclick: () => this.showStep(info.next) }, `Next: ${STEPS[info.next].short || STEPS[info.next].title}`, icon('arrow')));
-    else foot.append(h('button', { class: 'btn primary', onclick: () => this.exportDialog() }, 'Send to game'));
+    else foot.append(h('button', { class: 'btn primary', onclick: () => this.exportDialog() }, $t('main.send_to_game')));
     body.querySelectorAll('input[type=range]').forEach(fillRange);
     // the tile just picked pops once: the marker lives for this render only
     if (this._justPicked) requestAnimationFrame(() => { this._justPicked = null; });
@@ -3555,8 +3560,8 @@ class App {
     if (hold) this._hudHold = now + hold;
     else if (this._hudHold > now) return;
     const sim = this.store.sim();
-    const tool = { rotate: 'Click a body part, then turn the rings', ik: 'Drag the dots: hands, feet, hips - drop a hand on the partner to hold on · Alt+click pins them', move: 'Drag to move the whole sim · T switches to turning',
-      face: 'Click a dot on the face · T move/turn · X both sides · Alt goes past the safe range' }[this.interact.tool];
+    const tool = { rotate: $t('main.click_body_part_then_turn'), ik: $t('main.drag_dots_hands_feet_hips'), move: $t('main.drag_to_move_whole_sim'),
+      face: $t('main.click_dot_on_face_t') }[this.interact.tool];
     el.innerHTML = '';
     el.append(text ? h('span', {}, h('b', {}, text)) : h('span', {}, sim ? h('b', {}, sim.label + ' · ') : '', tool));
   }
@@ -3576,10 +3581,10 @@ class App {
 
   refreshTitle() {
     const p = this.store.project;
-    $('pc-name').textContent = p.name || 'Untitled animation';
-    $('pc-by').textContent = p.author ? 'by ' + p.author : 'add a creator';
+    $('pc-name').textContent = !p.name || /^untitled animation$/i.test(p.name) ? $t('main.untitled_animation') : p.name;
+    $('pc-by').textContent = p.author ? 'by ' + p.author : $t('main.add_creator');
     $('pc-kind').textContent = (KINDS.find(k => k[0] === p.category) || ['', 'Animation'])[1];
-    document.title = `${p.name}${p.author ? ' by ' + p.author : ''} · Novulon's Wicked Animator`;
+    document.title = (p.author ? $t('main.name_by_author', { name: p.name, author: p.author }) : p.name) + " · Novulon's Wicked Animator";
   }
 
   // The timeline is as tall as its lanes need (1 sim: short; 3+ sims: full), so the step panel keeps the rest.
@@ -3713,7 +3718,7 @@ class App {
   _ensureFaceToolButton() {
     const seg = $('tool-seg');
     if (!seg || seg.querySelector('button[data-tool="face"]')) return;
-    const b = h('button', { 'data-tool': 'face', title: 'Pose the face: brows, eyes, lids, cheeks, lips, jaw and tongue (Shift+F)' }, icon('face'), h('span', {}, 'Face'));
+    const b = h('button', { 'data-tool': 'face', title: $t('main.pose_face_brows_eyes_lids') }, icon('face'), h('span', {}, $t('main.face')));
     const pose = seg.querySelector('button[data-tool="rotate"]');
     if (pose && pose.nextSibling) seg.insertBefore(b, pose.nextSibling); else seg.append(b);
   }
@@ -3725,7 +3730,7 @@ class App {
     $('btn-redo').onclick = () => this._historyToast(this.redo(), true);
     // right-click Undo: the last steps by name, to go back several at once
     $('btn-undo').addEventListener('contextmenu', e => { e.preventDefault(); this.undoHistoryMenu(e.clientX, e.clientY + 8); });
-    $('btn-undo').title = 'Undo (Ctrl+Z) · right-click for the list of steps';
+    $('btn-undo').title = $t('main.undo_ctrl_z_right_click');
     // where the last click was (keys like Ctrl+A act on the timeline or the view)
     window.addEventListener('pointerdown', e => {
       const t = e.target instanceof Element ? e.target : null;
@@ -3761,7 +3766,7 @@ class App {
     });
     $('btn-onion').onclick = () => { this.onion = !this.onion; $('btn-onion').classList.toggle('on', this.onion); this._ghostKey = ''; this.updateGhosts(); };
     $('btn-onion').addEventListener('contextmenu', e => { e.preventDefault(); this.onionMenu(e.clientX - 200, e.clientY + 14); });
-    $('btn-onion').title = 'Ghosts: see the keys before and after this one · right-click for more ghost options';
+    $('btn-onion').title = $t('main.ghosts_see_keys_before_and');
     $('btn-trail').onclick = () => { this.trail = !this.trail; $('btn-trail').classList.toggle('on', this.trail); this.updateTrail(); };
     $('btn-play').onclick = () => this.setPlaying(!this.playing);
     $('btn-first').onclick = () => this.setFrame(0);
@@ -3783,7 +3788,7 @@ class App {
       e.preventDefault();
       zone && zone.classList.add('hidden');
       const files = [...e.dataTransfer.files].filter(f => /^(image|video)\//.test(f.type));
-      if (!files.length) return toast('Drop a picture (PNG, JPG, WEBP, GIF) or a video (MP4, WEBM).');
+      if (!files.length) return toast($t('main.drop_picture_png_jpg_webp'));
       if (this.refs) this.refs.addFiles(files);
     });
     $('btn-key').onclick = () => this.keyPose();
@@ -3793,7 +3798,7 @@ class App {
     $('btn-autokey').onclick = () => {
       this.autoKey = !this.autoKey; localStorageSet('autoKey', this.autoKey);
       $('btn-autokey').classList.toggle('on', this.autoKey);
-      toast(this.autoKey ? 'Auto key on: every change is kept at this frame.' : 'Auto key off: press K to keep a pose.');
+      toast(this.autoKey ? $t('main.auto_key_on_every_change') : $t('main.auto_key_off_press_k'));
     };
     // lists and number boxes let go of the keyboard once used, so arrows, K and Space work on the animation again
     const settle = el => el.blur();
@@ -3803,7 +3808,7 @@ class App {
       settle(easeSel);
       if (easeSel.value === 'custom') {
         // a custom curve belongs to one key: it opens the timing editor for the key here
-        if (!key) { toast('Go to a key first - a custom curve is set on one key.'); this._syncEaseBox(); return; }
+        if (!key) { toast($t('main.go_to_key_first_custom')); this._syncEaseBox(); return; }
         this.setEase(sim.id, key.frame, 'custom');
         const r = easeSel.getBoundingClientRect();
         this.timingEditor(sim.id, key.frame, r.left, r.top - 330);
@@ -3811,13 +3816,13 @@ class App {
       }
       localStorageSet('ease', easeSel.value);
       if (key) this.setEase(sim.id, key.frame, easeSel.value);
-      else toast(`New keys will use "${EASE_INFO[easeSel.value][0]}".`);
+      else toast($t('main.new_keys_will_use', { v: EASE_INFO[easeSel.value][0] }));
     };
     $('ease-pick').append(easeSel);
     $('tl-speed').onchange = e => { this.speed = +e.target.value; settle(e.target); };
     const soundBtn = $('btn-sound');
     const showSound = () => { soundBtn.classList.toggle('on', !this.audio.muted); soundBtn.innerHTML = `<svg><use href="#i-${this.audio.muted ? 'mute' : 'sound'}"/></svg>`; };
-    soundBtn.onclick = () => { this.audio.ensure(); this.audio.setMuted(!this.audio.muted); showSound(); toast(this.audio.muted ? 'Sound off.' : 'Sound on - you hear the sounds as the animation plays.'); };
+    soundBtn.onclick = () => { this.audio.ensure(); this.audio.setMuted(!this.audio.muted); showSound(); toast(this.audio.muted ? $t('main.sound_off') : $t('main.sound_on_you_hear_sounds')); };
     showSound();
     $('tl-seconds-in').onchange = e => {
       const p = this.store.project;
@@ -3909,15 +3914,15 @@ class App {
     if (e.altKey && (code === 'KeyR' || code === 'KeyG')) {
       e.preventDefault();
       const sel = this.store.selected;
-      if (!sel.sim || !sel.bone) { toast('Click a body part first.'); return; }
-      if (code === 'KeyG' && HIPS.includes(sel.bone)) { toast('The hips carry the sim\'s place - use Place (M) to move the whole sim.'); return; }
+      if (!sel.sim || !sel.bone) { toast($t('main.click_body_part_first')); return; }
+      if (code === 'KeyG' && HIPS.includes(sel.bone)) { toast($t('main.hips_carry_sim_s_place')); return; }
       this.resetBone(sel.sim, sel.bone, code === 'KeyR' ? { turn: true, move: false } : { turn: false, move: true });
-      toast(code === 'KeyR' ? `${label(sel.bone)}: turn reset.` : `${label(sel.bone)}: back in its place.`);
+      toast(code === 'KeyR' ? $t('main.turn_reset', { bone: label(sel.bone) }) : $t('main.back_in_its_place', { bone: label(sel.bone) }));
       return;
     }
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE'].includes(code)) return;     // the fly camera
     if (code === 'Space') { e.preventDefault(); if (!e.repeat) this.setPlaying(!this.playing); return; }
-    if (e.key === '/') { e.preventDefault(); if (!focusBoneSearch()) toast('Select a sim to see its bones.'); return; }
+    if (e.key === '/') { e.preventDefault(); if (!focusBoneSearch()) toast($t('main.select_sim_to_see_its')); return; }
     switch (e.key) {
       case 'k': case 'K': e.shiftKey ? this.keyAll() : this.keyPose(); break;
       case 'i': case 'I': this.keyPose(); break;                    // Blender's "insert keyframe"
@@ -3972,7 +3977,7 @@ app.init().catch(err => {
   console.error(err);
   // the start-up safety net in index.html shows the message with a Reload button
   const msg = /Failed to fetch|NetworkError/i.test(err.message || '')
-    ? 'The app\'s server is not answering - close this window and start Wicked Animator again.' : 'Error: ' + err.message;
+    ? $t('main.app_s_server_is_not') : 'Error: ' + err.message;
   if (window.__startFailed) window.__startFailed(msg);
-  else $('loading-text').textContent = 'Could not start: ' + err.message;
+  else $('loading-text').textContent = $t('main.could_not_start', { message: err.message });
 });

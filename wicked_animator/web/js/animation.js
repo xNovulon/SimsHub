@@ -1,6 +1,7 @@
 // Sampling game clips, and the keyframe model the editor animates with.
 import * as THREE from 'three';
 import { POSABLE, HIPS, HIPS_SET, KEYABLE, EXTRA, FACE_CHANNEL, FACE_SET, mirrorName } from './bones.js';
+import { $t } from './i18n.js';
 
 const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qc = new THREE.Quaternion();
 const _X = new THREE.Vector3(1, 0, 0);
@@ -80,17 +81,17 @@ export const EASES = {
   custom: t => t,                                 // placeholder: a custom key's own curve goes through easeFn(key)
 };
 export const EASE_INFO = {
-  auto: ['Auto smooth', 'Flows through the keys around it, like Blender - best for most motion', '#7c8cff'],
-  smooth: ['Ease in & out', 'Starts and stops gently at each key', '#57b8ff'],
-  linear: ['Linear', 'Constant speed', '#9aa3b5'],
-  easeIn: ['Ease in', 'Starts slow, arrives fast', '#3ddc97'],
-  easeOut: ['Ease out', 'Leaves fast, arrives slow', '#2fc5b8'],
-  impact: ['Impact', 'Speeds up and hits hard - thrusts, slaps, slams', '#ff4f6a'],
-  back: ['Overshoot', 'Goes a little past the pose and settles back', '#ffb547'],
-  bounce: ['Bounce', 'Bounces into the pose', '#ff8a5b'],
-  elastic: ['Elastic', 'Wobbles into the pose', '#e879f9'],
-  custom: ['Custom curve', 'Your own timing - drag the two handles', '#f4f1fa'],
-  hold: ['Hold', 'Stays still, then jumps to the next key', '#6b7280'],
+  auto: [$t('animation.auto_smooth'), $t('animation.flows_through_keys_around_it'), '#7c8cff'],
+  smooth: [$t('animation.ease_in_out'), $t('animation.starts_and_stops_gently_at'), '#57b8ff'],
+  linear: [$t('animation.linear'), $t('animation.constant_speed'), '#9aa3b5'],
+  easeIn: [$t('animation.ease_in'), $t('animation.starts_slow_arrives_fast'), '#3ddc97'],
+  easeOut: [$t('animation.ease_out'), $t('animation.leaves_fast_arrives_slow'), '#2fc5b8'],
+  impact: [$t('animation.impact'), $t('animation.speeds_up_and_hits_hard'), '#ff4f6a'],
+  back: [$t('animation.overshoot'), $t('animation.goes_little_past_pose_and'), '#ffb547'],
+  bounce: [$t('animation.bounce'), $t('animation.bounces_into_pose'), '#ff8a5b'],
+  elastic: [$t('animation.elastic'), $t('animation.wobbles_into_pose'), '#e879f9'],
+  custom: [$t('animation.custom_curve'), $t('animation.your_own_timing_drag_two'), '#f4f1fa'],
+  hold: [$t('animation.hold'), $t('animation.stays_still_then_jumps_to'), '#6b7280'],
 };
 
 // ---------------------------------------------------------------- custom timing (spec_editing 3.1)

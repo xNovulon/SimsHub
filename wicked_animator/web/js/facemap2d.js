@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { h } from './ui.js';
 import * as K from './facekit.js';
+import { $t } from './i18n.js';
 
 export const W = 260, H = 300;
 export const PX_PER_MM = 1.2;              // a move drag: 1.2 px = 1 mm
@@ -127,13 +128,13 @@ function kindOf(n) {
   const lim = K.faceLimits(n);
   return lim && lim.mode === 'turn' ? 'turn' : 'move';
 }
-const HOW = { move: 'drag to move it', turn: 'drag up or down', look: 'drag to look around (both eyes)', tongue: 'drag down to stick it out' };
+const HOW = { move: $t('facemap2d.drag_to_move_it'), turn: $t('facemap2d.drag_up_or_down'), look: $t('facemap2d.drag_to_look_around_both'), tongue: $t('facemap2d.drag_down_to_stick_it') };
 
 // The face map card for this sim (null when the sim has no face bones).
 export function faceMap(app, sim, view) {
   if (!sim || !view || !view.bone('b__Head__')) return null;
   const L = layoutOf(view);
-  const svg = s('svg', { class: 'fm-svg', width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Face map: drag a dot to pose that part of the face' });
+  const svg = s('svg', { class: 'fm-svg', width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': $t('facemap2d.face_map_drag_dot_to') });
   const defs = s('defs');
   const grad = s('radialGradient', { id: 'fm-skin', cx: '50%', cy: '42%', r: '62%' });
   grad.append(s('stop', { offset: '0%', 'stop-color': 'var(--fm-skin-1, #3a2c3c)' }), s('stop', { offset: '100%', 'stop-color': 'var(--fm-skin-2, #1f1926)' }));
@@ -182,7 +183,7 @@ export function faceMap(app, sim, view) {
     dots[n] = g;
   }
   svg.append(dotLayer);
-  const caption = h('div', { class: 'fm-caption' }, 'Drag a dot. Up/down closes lids and opens the jaw. Double-click puts a part back.');
+  const caption = h('div', { class: 'fm-caption' }, $t('facemap2d.drag_dot_up_down_closes'));
   const wrap = h('div', { class: 'face-map', 'data-sim': sim.id }, svg, caption);
   live = { app, simId: sim.id, wrap, svg, dots, eyes, mouth, brow, lip, caption, sig: '' };
   wire(live);
@@ -308,7 +309,7 @@ function hoverPart(m, n) {
     if (n) { const k = v.index(n); if (k >= 0) { v._listHover = true; K.setPickMode(v, 'face'); v.hover(k); } }
     else { v._listHover = false; v.hover(-1); }
   }
-  if (m.caption && m.caption.isConnected) m.caption.textContent = n ? `${plain(sim, n)} · ${HOW[kindOf(n)]} · double-click puts it back` : 'Drag a dot. Up/down closes lids and opens the jaw. Double-click puts a part back.';
+  if (m.caption && m.caption.isConnected) m.caption.textContent = n ? $t('facemap2d.double_click_puts_it_back', { plain: plain(sim, n), v: HOW[kindOf(n)] }) : $t('facemap2d.drag_dot_up_down_closes');
 }
 
 function startDrag(app, simId, n, e) {
@@ -426,7 +427,7 @@ function flash(d) {
   const g = live && live.dots[d.name];
   if (g) { g.classList.add('limit'); clearTimeout(g._lt); g._lt = setTimeout(() => g.classList.remove('limit'), 320); }
   const now = performance.now();
-  if (!d._hud || now - d._hud > 900) { d._hud = now; d.app.hud('Safe range reached - hold Alt to go further', { hold: 1600 }); }
+  if (!d._hud || now - d._hud > 900) { d._hud = now; d.app.hud($t('facemap2d.safe_range_reached_hold_alt'), { hold: 1600 }); }
 }
 
 // Double-click: the part back to rest at this frame (the other side too with Symmetry; both eyes for an eye).
@@ -445,7 +446,7 @@ function resetPart(app, simId, n) {
   app.store.selected = { sim: simId, bone: n };
   app.poseEdited(simId, false, 'face');
   app.afterEdit();
-  app.hud(`${plain(sim, n)} back to rest`, { hold: 1200 });
+  app.hud($t('facemap2d.back_to_rest', { plain: plain(sim, n) }), { hold: 1200 });
 }
 
 // For checks: the map on screen and a drag done in code (dx, dy in screen px).

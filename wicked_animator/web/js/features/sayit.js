@@ -14,6 +14,7 @@ import { makeMagic, RECIPES } from '../magic.js';
 import { newLayer, MOTIONS } from '../motion.js';
 import { FACE_PRESETS } from '../face.js';
 import { hideHome } from '../home.js';
+import { $t, inSentence, getLanguage } from '../i18n.js';
 
 const ICONS = {
   'say-it': '<path d="M4.5 5.5h15a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V16.5h-1A1.5 1.5 0 0 1 3 15V7a1.5 1.5 0 0 1 1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 9.5h9M7.5 12.5h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
@@ -21,6 +22,95 @@ const ICONS = {
 const part = s => (s.frame === 'ym' || s.frame === 'yf_futa' ? 'MALE' : 'FEMALE');
 const RECEIVER_MALE = new Set(['bj', 'handjob', 'titjob']);
 const clamp01 = x => Math.min(1, Math.max(0, x));
+
+// ---------------------------------------------------------------- what was understood, in the app's language
+// The sentence itself is read in English (web/js/sayit.js keeps its English words); the chips, notes and choices
+// are shown in the app's language.
+const sayAct = id => (S.ACTS[id] ? $t('features.sayit.act_' + id) : String(id || ''));
+const sayPlace = (id, env) => { const p = ((env && env.places) || []).find(x => x.id === id); return p ? p.label : S.PLACES[id] ? $t('features.sayit.place_' + id) : String(id || '').replace(/_/g, ' '); };
+const sayPair = id => (S.PAIRS[id] ? $t('features.sayit.pair_' + id) : String(id || ''));
+const sayMood = id => (S.MOODS[id] ? $t('features.sayit.mood_' + id) : String(id || ''));
+const sayFinish = id => (S.FINISHES[id] ? $t('features.sayit.finish_' + id) : String(id || ''));
+const sayExtra = id => (S.EXTRAS[id] ? $t('features.sayit.extra_' + id) : String(id || ''));
+const SPEEDS = [[0.12, 'very_slow'], [0.35, 'slow'], [0.65, 'steady'], [0.9, 'fast'], [Infinity, 'very_fast']];
+const FORCES = [[0.3, 'gentle'], [0.7, 'firm'], [Infinity, 'hard']];
+const saySpeed = v => $t('features.sayit.speed_' + SPEEDS.find(([m]) => v <= m)[1]);
+const sayForce = v => $t('features.sayit.force_' + FORCES.find(([m]) => v <= m)[1]);
+// an English name from sayit.js (a position, place, mood...) -> the app's language
+function sayName(en, env) {
+  const low = String(en || '').toLowerCase();
+  for (const [id, a] of Object.entries(S.ACTS)) if (a.label.toLowerCase() === low) return sayAct(id);
+  for (const [id, l] of Object.entries(S.PLACES)) if (l.toLowerCase() === low) return sayPlace(id, env);
+  for (const [id, m] of Object.entries(S.MOODS)) if (m.label.toLowerCase() === low) return sayMood(id);
+  return en;
+}
+// the notes sayit.js writes (English) -> the app's language
+function sayNote(text, env) {
+  const t = String(text || '');
+  let m;
+  if ((m = /^(.+) is not there - used the (.+)$/.exec(t))) return $t('features.sayit.note_place_missing', { place: sayName(m[1], env), used: inSentence(sayName(m[2], env)) });
+  if ((m = /^(.+) is not in your library - made another position$/.exec(t))) return $t('features.sayit.note_act_missing', { act: sayName(m[1], env) });
+  if ((m = /^Left out: not the (.+)$/.exec(t))) return $t('features.sayit.note_left_out', { what: inSentence(sayName(m[1], env)) });
+  if ((m = /^Left out: not (.+)$/.exec(t))) return $t('features.sayit.note_left_out', { what: inSentence(sayName(m[1], env)) });
+  if ((m = /^No (.+) to put them in yet - pick another place$/.exec(t))) return $t('features.sayit.note_no_place', { what: m[1] });
+  const fixed = { 'Say it makes scenes for two sims': 'features.sayit.note_two_sims', 'Dances are not part of Say it': 'features.sayit.note_no_dances',
+    'Toys are not part of Say it yet': 'features.sayit.note_no_toys' };
+  return fixed[t] ? $t(fixed[t]) : t;
+}
+// S.chipsFor, with every label and value in the app's language
+function chipsUI(spec, env) {
+  const r = S.resolve(spec, env);
+  return S.chipsFor(spec, env).map(c => {
+    const k = c.slot;
+    const label = c.label ? $t('features.sayit.slot_' + k) : '';
+    let text = c.text;
+    if (k === 'act') text = r.reverse ? $t('features.sayit.act_reverse', { act: sayAct(r.act) }) : sayAct(r.act);
+    else if (k === 'place') text = sayPlace(r.place, env);
+    else if (k === 'pair') text = sayPair(r.pair);
+    else if (k === 'mood') text = S.MOODS[r.mood] && S.MOODS[r.mood].teaser ? $t(r.moodBy === 'MALE' ? 'features.sayit.mood_by_him' : 'features.sayit.mood_by_her', { mood: sayMood(r.mood) }) : sayMood(r.mood);
+    else if (k === 'speed') text = saySpeed(r.speed);
+    else if (k === 'force') text = sayForce(r.force);
+    else if (k === 'seconds') text = $t('features.sayit.seconds', { n: r.seconds });
+    else if (k === 'finish') text = sayFinish(r.finishPart);
+    else if (k === 'build') text = $t('features.sayit.build');
+    else if (k.startsWith('extra:')) text = c.warn ? $t('features.sayit.extra_too_far', { extra: sayExtra(k.slice(6)), act: inSentence(sayAct(r.act)) }) : sayExtra(k.slice(6));
+    else if (k === 'note') text = sayNote(c.text, env);
+    return { ...c, label, text };
+  });
+}
+// S.choicesFor, in the app's language
+function choicesUI(slot, env) {
+  return S.choicesFor(slot, env).map(x => {
+    let label = x.label;
+    if (slot === 'act') label = sayAct(x.value);
+    else if (slot === 'place') label = sayPlace(x.value, env);
+    else if (slot === 'pair') label = sayPair(x.value);
+    else if (slot === 'mood') label = x.value ? sayMood(x.value) : $t('features.sayit.no_mood');
+    else if (slot === 'speed') label = saySpeed(x.value);
+    else if (slot === 'force') label = sayForce(x.value);
+    else if (slot === 'seconds') label = $t('features.sayit.seconds', { n: x.value });
+    else if (slot === 'finish') label = sayFinish(x.value);
+    return { ...x, label };
+  });
+}
+// S.describeChanges ("rougher and longer"), in the app's language
+function changesUI(before, after, env) {
+  if (!before) return '';
+  const a = S.resolve(before, env), b = S.resolve(after, env), out = [];
+  if (a.act !== b.act) out.push(inSentence(sayAct(b.act)));
+  if (a.place !== b.place) out.push($t('features.sayit.change_place', { place: inSentence(sayPlace(b.place, env)) }));
+  if (a.pair !== b.pair) out.push(inSentence(sayPair(b.pair)));
+  if (a.mood !== b.mood) out.push(b.mood ? inSentence(sayMood(b.mood)) : $t('features.sayit.change_no_mood'));
+  if (Math.abs(a.force - b.force) > 0.01) out.push(b.force > a.force ? $t('features.sayit.change_harder') : $t('features.sayit.change_gentler'));
+  if (Math.abs(a.speed - b.speed) > 0.01) out.push(b.speed > a.speed ? $t('features.sayit.change_faster') : $t('features.sayit.change_slower'));
+  if (a.seconds !== b.seconds) out.push($t('features.sayit.change_loop', { n: b.seconds }));
+  if (a.finishPart !== b.finishPart) out.push(b.finishPart === 'none' ? $t('features.sayit.change_no_finish') : $t('features.sayit.change_finish', { finish: inSentence(sayFinish(b.finishPart)) }));
+  if (a.build !== b.build) out.push(b.build ? $t('features.sayit.change_edge') : $t('features.sayit.change_not_edge'));
+  for (const k of new Set([...Object.keys(a.extras || {}), ...Object.keys(b.extras || {})])) {
+    if (!!a.extras[k] !== !!b.extras[k] && S.EXTRAS[k]) out.push((b.extras[k] ? '+ ' : '- ') + inSentence(sayExtra(k)));
+  }
+  return out.join(', ');
+}
 
 // What Magic can make here: the positions it has a ready pose for, and the places that are in the app.
 export function envOf(app) {
@@ -118,14 +208,14 @@ export function applyPlan(app, plan) {
 // Make (or remake) the scene for a spec. -> true when made
 export async function makeFromSpec(app, spec, { text = '', before = null, ask = true } = {}) {
   const env = envOf(app);
-  if (!env.acts.length) { toast('The positions are still loading - try again in a moment.'); return false; }
+  if (!env.acts.length) { toast($t('features.sayit.positions_are_still_loading_try')); return false; }
   const plan = S.toMagic(spec, env);
   // a Say it change remakes the animation that is open; anything else is new work, never replaced without asking
   const sameScene = before && openSayit(app);
   // (a change to a Say it animation nobody touched since is simply made again)
   const untouched = sameScene && app._sayitRev !== undefined && app._sayitRev === app.editRev && app._sayitUid === app.store.project.uid;
   if (ask && app.store.dirty && !untouched
-    && !(await confirmBox('Make a new animation?', `Unsaved changes to "${app.store.project.name}" will be lost. Save first (Ctrl+S) to keep them.`, 'Make it', true))) return false;
+    && !(await confirmBox($t('features.sayit.make_new_animation'), $t('features.sayit.unsaved_changes_to_will_be', { projectName: app.store.project.name }), $t('features.sayit.make_it'), true))) return false;
   const keepName = sameScene ? app.store.project.name : null;
   const keepUid = sameScene ? app.store.project.uid : null;
   const ok = await makeMagic(app, { recipe: plan.recipe, place: plan.place, intensity: plan.intensity, seconds: plan.seconds,
@@ -144,7 +234,7 @@ export async function makeFromSpec(app, spec, { text = '', before = null, ask = 
   app._sayitUid = p.uid;
   const changed = before ? S.describeChanges(before, spec, env) : '';
   const chips = S.chipsFor(spec, env).filter(c => !c.auto && c.slot !== 'note').map(c => c.text).join(' · ');
-  toast(changed ? `${changed} - made again.` : `${plan.name}${chips ? ': ' + chips : ''}. Tune anything, or say what to change.`, 'ok');
+  toast(changed ? $t('features.sayit.made_again', { changed }) : $t('features.sayit.tune_anything_or_say_what', { planName: plan.name, v: chips ? ': ' + chips : '' }), 'ok');
   app.emit && app.emit('sayit', { spec, plan, text });
   return true;
 }
@@ -157,8 +247,8 @@ export function openSayIt(app, { text: startText = '' } = {}) {
   let res = null, spec = null;
   const env = envOf(app);
   const input = h('input', { class: 'sayit-input', type: 'text', spellcheck: 'false', autocomplete: 'off', maxlength: '300', value: startText,
-    'aria-label': 'What should happen',
-    placeholder: current ? 'Say what to change: rougher, longer, add kissing, on the bed instead...' : 'e.g. slow cowgirl on the sofa, she\'s teasing him, 5 seconds' });
+    'aria-label': $t('features.sayit.what_should_happen'),
+    placeholder: current ? $t('features.sayit.say_what_to_change_rougher') : $t('features.sayit.e_g_slow_cowgirl_on') });
   const chips = h('div', { class: 'chips sayit-chips', 'aria-live': 'polite' });
   const notes = h('div', { class: 'sayit-notes' });
   const ideas = h('div', { class: 'sayit-ideas' });
@@ -174,23 +264,23 @@ export function openSayIt(app, { text: startText = '' } = {}) {
     const text = input.value;
     res = S.parse(text, { current });
     refusal.classList.toggle('hidden', !res.refused);
-    refusal.textContent = res.refused ? res.message : '';
+    refusal.textContent = res.refused ? (S.REFUSALS[res.refused] ? $t('features.sayit.refuse_' + res.refused) : res.message) : '';
     chips.innerHTML = ''; notes.innerHTML = '';
     if (res.refused) { spec = null; setButton(); return; }
     spec = res.spec;
     for (const [slot, value] of edits) spec = S.setField(spec, slot, value);
-    for (const c of S.chipsFor(spec, env)) chips.append(chipEl(c));
+    for (const c of chipsUI(spec, env)) chips.append(chipEl(c));
     const lines = [];
-    if (res.fixes.length) lines.push({ text: 'Read ' + res.fixes.map(([a, b]) => `"${a}" as "${b}"`).join(', ') });
-    for (const n of res.notes) lines.push(n);
-    if (res.unknown.length) lines.push({ text: `Not understood: ${res.unknown.slice(0, 8).join(', ')}` });
-    if (res.surprise) lines.push({ text: 'A surprise: the position and the place are picked for you' });
+    if (res.fixes.length) lines.push({ text: $t('features.sayit.read_as', { fixes: res.fixes.map(([a, b]) => $t('features.sayit.read_pair', { a, b })).join(', ') }) });
+    for (const n of res.notes) lines.push({ ...n, text: sayNote(n.text, env) });
+    if (res.unknown.length) lines.push({ text: $t('features.sayit.not_understood', { unknown: res.unknown.slice(0, 8).join(', ') }) });
+    if (res.surprise) lines.push({ text: $t('features.sayit.surprise_position_and_place_are') });
     if (current && !res.empty && !res.fresh) {
-      const d = S.describeChanges(current, spec, env);
-      if (d) lines.push({ text: `Changes the open animation: ${d.toLowerCase()}` });
-    } else if (current && res.fresh && !res.empty) lines.push({ text: 'Makes a new animation' });
+      const d = changesUI(current, spec, env);
+      if (d) lines.push({ text: $t('features.sayit.changes_open_animation', { d }) });
+    } else if (current && res.fresh && !res.empty) lines.push({ text: $t('features.sayit.makes_new_animation') });
     for (const n of lines) notes.append(h('div', { class: 'sayit-note' + (n.warn ? ' warn' : '') }, icon(n.warn ? 'x' : 'spark'), h('span', {}, n.text)));
-    if (!text.trim()) suggest(current ? 'Change it:' : 'Try:', current ? S.FOLLOW_UPS : S.EXAMPLES);
+    if (!text.trim()) suggest(current ? $t('features.sayit.change_it') : $t('features.sayit.try'), current ? S.FOLLOW_UPS : S.EXAMPLES);
     else ideas.innerHTML = '';
     setButton();
   }
@@ -199,13 +289,13 @@ export function openSayIt(app, { text: startText = '' } = {}) {
   function chipEl(c) {
     if (c.slot === 'note') return h('span', { class: 'sayit-chip warn' }, icon('x'), c.text);
     const el = h('button', { class: 'sayit-chip' + (c.auto ? ' auto' : '') + (c.warn ? ' warn' : ''), type: 'button', 'data-slot': c.slot,
-      title: c.auto ? 'Picked for you - click to choose' : 'Click to change' },
+      title: c.auto ? $t('features.sayit.picked_for_you_click_to') : $t('features.sayit.click_to_change') },
     c.label ? h('small', {}, c.label) : null, h('b', {}, c.text));
-    const choices = S.choicesFor(c.slot, env);
+    const choices = choicesUI(c.slot, env);
     el.onclick = e => {
       const r = el.getBoundingClientRect();
       const items = choices.map(x => ({ label: x.label, onClick: () => { edits.push([c.slot, x.value]); update(); } }));
-      if (c.remove) items.push('-', { label: 'Take it away', icon: 'x', onClick: () => { edits.push([c.slot, null]); update(); } });
+      if (c.remove) items.push('-', { label: $t('features.sayit.take_it_away'), icon: 'x', onClick: () => { edits.push([c.slot, null]); update(); } });
       if (items.length) contextMenu(r.left, r.bottom + 4, items);
       e.stopPropagation();
     };
@@ -213,23 +303,24 @@ export function openSayIt(app, { text: startText = '' } = {}) {
   }
 
   const dlg = modal({
-    title: 'Say it, see it', wide: true,
-    text: current ? `Say what to change in "${app.store.project.name}" - or describe a new one.`
-      : 'Say what should happen - who, where, how, how long. It is made for you on this PC, ready to tune and send to the game.',
+    title: $t('features.sayit.say_it_see_it'), wide: true,
+    text: current ? $t('features.sayit.say_what_to_change_in', { projectName: app.store.project.name })
+      : $t('features.sayit.say_what_should_happen_who'),
     body: h('div', { class: 'sayit' },
       h('div', { class: 'search sayit-box' }, icon('say-it'), input),
+      getLanguage() !== 'en' ? h('div', { class: 'hint sayit-english' }, $t('features.sayit.english_only')) : null,
       refusal, chips, notes, ideas,
-      h('div', { class: 'hint sayit-adults' }, 'Adults only: two grown-up sims who both want it. Click a chip to change it.')),
+      h('div', { class: 'hint sayit-adults' }, $t('features.sayit.adults_only_two_grown_up'))),
     buttons: [
-      { label: 'Cancel', kind: 'ghost' },
-      { label: current ? 'Change it' : 'Make it', kind: 'primary', onClick: () => go() },
+      { label: $t('features.sayit.cancel'), kind: 'ghost' },
+      { label: current ? $t('features.sayit.change_it_2') : $t('features.sayit.make_it'), kind: 'primary', onClick: () => go() },
     ],
   });
   dlg.dialog.classList.add('sayit-modal');
   const mainBtn = dlg.footer.querySelector('.btn.primary');
   function setButton() {
     const change = current && res && !res.fresh && !res.refused;
-    mainBtn.textContent = change ? 'Change it' : 'Make it';
+    mainBtn.textContent = change ? $t('features.sayit.change_it_2') : $t('features.sayit.make_it');
     mainBtn.disabled = !!(res && res.refused);
   }
   input.addEventListener('input', () => { edits = edits.filter(([slot]) => slot.startsWith('extra:') || slot === 'build'); update(); });
@@ -238,7 +329,7 @@ export function openSayIt(app, { text: startText = '' } = {}) {
   async function go() {
     update();
     if (!res || res.refused) return false;
-    if (res.empty && !res.surprise && !edits.length && !current) { toast('Type what should happen - or pick one of the ideas.'); return false; }
+    if (res.empty && !res.surprise && !edits.length && !current) { toast($t('features.sayit.type_what_should_happen_or')); return false; }
     let s = spec;
     if (res.surprise) {
       const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -264,22 +355,22 @@ export function install(app) {
   const hooks = app.hooks || {};
   const add = (name, fn) => { const list = name.split('.').reduce((o, k) => o && o[k], hooks); if (Array.isArray(list)) list.push(fn); };
 
-  add('homeCards', a => [{ id: 'sayit', icon: 'say-it', title: 'Say it, see it',
-    text: '"Slow cowgirl on the sofa, 5 seconds" - type it and it is made for you.', onClick: () => openSayIt(a) }]);
+  add('homeCards', a => [{ id: 'sayit', icon: 'say-it', title: $t('features.sayit.say_it_see_it'),
+    text: $t('features.sayit.slow_cowgirl_on_sofa_5'), onClick: () => openSayIt(a) }]);
   add('commands', a => [
-    { group: 'Actions', id: 'sayit', label: openSayit(a) ? 'Say it: change this animation' : 'Say it, see it', icon: 'say-it',
-      sub: openSayit(a) ? '"rougher", "longer", "add kissing", "on the bed instead"' : 'type a sentence, get the animation',
+    { group: $t('features.sayit.actions'), id: 'sayit', label: openSayit(a) ? $t('features.sayit.say_it_change_this_animation') : $t('features.sayit.say_it_see_it'), icon: 'say-it',
+      sub: openSayit(a) ? $t('features.sayit.rougher_longer_add_kissing_on') : $t('features.sayit.type_sentence_get_animation'),
       words: 'say it type text sentence describe words prompt write magic make generate', run: () => openSayIt(a) },
   ]);
-  add('helpRows', () => [{ group: 'Making animations', keys: ['Ctrl', 'K'], text: 'Type "Say it" - then describe the animation in your own words' }]);
+  add('helpRows', () => [{ group: $t('features.sayit.making_animations'), keys: ['Ctrl', 'K'], text: $t('features.sayit.type_say_it_then_describe') }]);
   // a Say it animation: change it in words from the Motion step
   add('sections.motion', (a, root) => {
     const cur = openSayit(a);
     if (!cur) return;
-    root.append(section('Made from your words',
+    root.append(section($t('features.sayit.made_from_your_words'),
       cur.text ? h('div', { class: 'hint sayit-said' }, `"${cur.text}"`) : null,
-      h('button', { class: 'btn block soft', type: 'button', onclick: () => openSayIt(a) }, icon('say-it'), 'Change it in words'),
-      h('div', { class: 'hint' }, 'Say "rougher", "longer", "add kissing" or "on the bed instead" - it is made again with that change.')));
+      h('button', { class: 'btn block soft', type: 'button', onclick: () => openSayIt(a) }, icon('say-it'), $t('features.sayit.change_it_in_words')),
+      h('div', { class: 'hint' }, $t('features.sayit.say_rougher_longer_add_kissing'))));
   });
   window.wickedSayIt = { open: opts => openSayIt(app, opts), make: (text, opts) => { const r = S.parse(text, { current: opts && opts.change && openSayit(app) ? openSayit(app).spec : null }); return r.refused ? Promise.resolve(false) : makeFromSpec(app, r.spec, { text, ask: false, before: r.fresh ? null : openSayit(app)?.spec }); } };
 }

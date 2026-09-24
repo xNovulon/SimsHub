@@ -14,6 +14,7 @@ import { LIMBS, HIPS, HINGE, KNUCKLE, TURN_GROUPS, LIMB_LABEL, isHold } from './
 import { spacePos, worldToSpace, spaceToWorld, solveTwoBone, spaceQuat, setSpaceQuat, clampToLimits } from './posemath.js';
 import * as K from './facekit.js';
 import * as Holds from './holds.js';
+import { $t } from './i18n.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const FACE_NEAR = 0.9;                // the dots also show in the Pose tool when the camera is this close to a face
@@ -368,13 +369,13 @@ export class Interaction {
         for (const [, w] of this.views()) w.hover(w === v ? v.index(d.bone) : -1);
         this.vp.canvas.style.cursor = 'pointer';
         this.app.setHotBone?.(d.bone);
-        this.app.hud(`${sim ? sim.label + ' · ' : ''}${K.label(d.bone, sim && sim.frame)} · ${d.bone} · drag · T move/turn`);
+        this.app.hud($t('interact.drag_t_move_turn', { v: sim ? sim.label + ' · ' : '', label: K.label(d.bone, sim && sim.frame), bone: d.bone }));
         return;
       }
       if (this._pickEyeTarget(e)) {
         for (const [, w] of this.views()) w.hover(-1);
         this.vp.canvas.style.cursor = 'grab';
-        this.app.hud('Look-at ring · drag it and both eyes follow');
+        this.app.hud($t('interact.look_at_ring_drag_it'));
         return;
       }
     }
@@ -396,7 +397,7 @@ export class Interaction {
     for (const [, v] of this.views()) v.hover(v !== hoverSim ? -1 : this.tool === 'move' ? 'all' : hoverBone);
     this.vp.canvas.style.cursor = hit ? 'pointer' : 'default';
     this.app.setHotBone?.(hit && this.tool !== 'move' ? hoverSim.bones[hoverBone].name : null);
-    this.app.hud(hit ? (this.tool === 'move' ? `${this.app.store.sim(this.app.idOf(hoverSim))?.label || 'Sim'} · click to place` : this.app.boneLabel(hoverSim, hoverBone)) : null);
+    this.app.hud(hit ? (this.tool === 'move' ? $t('interact.click_to_place', { sim: this.app.store.sim(this.app.idOf(hoverSim))?.label || $t('interact.sim') }) : this.app.boneLabel(hoverSim, hoverBone)) : null);
   }
 
   // Alt+click in the Pose / Face tool picks the exact bone (twist and helper bones too)
@@ -419,10 +420,10 @@ export class Interaction {
     const who = sim ? sim.label + ' · ' : '';
     if (x.kind === 'hips') return `${who}hips`;
     const pin = sim && sim.pins && sim.pins[x.limb], name = LIMB_LABEL[x.limb] || x.limb;
-    if (isHold(pin)) return `${who}${name} · ${Holds.holdText(this.app, pin)} (drag it away to let go)`;
-    if (pin && !Array.isArray(pin) && pin.at) return `${who}${name} · pinned from ${pin.from} to ${pin.to} (Alt+click lets go)`;
-    if (pin) return `${who}${name} · pinned (Alt+click lets go)`;
-    return `${who}${name} (drop it on the partner to hold on · Alt+click pins it)`;
+    if (isHold(pin)) return $t('interact.drag_it_away_to_let', { who, name, holdText: Holds.holdText(this.app, pin) });
+    if (pin && !Array.isArray(pin) && pin.at) return $t('interact.pinned_from_to_alt_click', { who, name, from: pin.from, to: pin.to });
+    if (pin) return $t('interact.pinned_alt_click_lets_go', { who, name });
+    return $t('interact.drop_it_on_partner_to', { who, name });
   }
 
   _click(e) {
@@ -517,7 +518,7 @@ export class Interaction {
       if (a.modes.length < 2) return false;
       a.mode = (a.mode + 1) % a.modes.length;
       this.vp.gizmo.setMode(a.modes[a.mode]);
-      this.app.hud(a.modes[a.mode] === 'rotate' ? 'Rings: turn it' : 'Arrows: move it');
+      this.app.hud(a.modes[a.mode] === 'rotate' ? $t('interact.rings_turn_it') : $t('interact.arrows_move_it'));
       return true;
     }
     if (!a || a.kind !== 'bone') return false;
@@ -526,18 +527,18 @@ export class Interaction {
       if (!lim) return false;
       const cur = this.faceGizmo[a.bone] || lim.mode, other = cur === 'move' ? 'turn' : 'move';
       if (!(other === 'move' ? lim.move : lim.turn).some(Boolean)) {
-        this.app.hud(`${K.label(a.bone)} only ${cur === 'move' ? 'moves' : 'turns'}`);
+        this.app.hud($t(cur === 'move' ? 'interact.part_only_moves' : 'interact.part_only_turns', { part: K.label(a.bone) }));
         return true;
       }
       this.faceGizmo[a.bone] = other;
       this.selectFaceBone(a.simId, a.bone);
-      this.app.hud(other === 'move' ? 'Arrows: move it' : 'Rings: turn it');
+      this.app.hud(other === 'move' ? $t('interact.arrows_move_it') : $t('interact.rings_turn_it'));
       return true;
     }
     if (a.extra && !K.isTwist(a.bone)) {
       this.faceGizmo[a.bone] = this.faceGizmo[a.bone] === 'move' ? 'turn' : 'move';
       this.selectBone(a.simId, a.bone);
-      this.app.hud(this.faceGizmo[a.bone] === 'move' ? 'Arrows: move it' : 'Rings: turn it');
+      this.app.hud(this.faceGizmo[a.bone] === 'move' ? $t('interact.arrows_move_it') : $t('interact.rings_turn_it'));
       return true;
     }
     return false;
@@ -675,7 +676,7 @@ export class Interaction {
     if (now - (this._limitT || 0) < 250) return;
     this._limitT = now;
     this._limitHit = (this._limitHit || 0) + 1;
-    this.app.hud('Natural limit reached - switch off Natural limits for special poses (or hold Alt)', { hold: 1600 });
+    this.app.hud($t('interact.natural_limit_reached_switch_off'), { hold: 1600 });
   }
 
   // Whole back / Neck & head (spec_editing 9.1): a turn of one bone of the chain is spread over the whole chain, each
@@ -705,7 +706,7 @@ export class Interaction {
     const d = this.faceHandles.find(x => x.bone === bone);
     if (d && (!d.flashT || now - d.flashT > 300)) d.flashT = now;
     this._limitHit = (this._limitHit || 0) + 1;
-    this.app.hud('Safe range reached - hold Alt to go further', { hold: 1600 });
+    this.app.hud($t('interact.safe_range_reached_hold_alt'), { hold: 1600 });
   }
 
   // Move and/or turn a whole sim (sim space: `move` offset, `turn` radians about the vertical through `pivot`).
@@ -834,7 +835,7 @@ export class Interaction {
   togglePin(simId, limb) {
     const sim = this.app.store.sim(simId), v = this.views().get(simId);
     if (!sim || !v) return;
-    this.app.store.checkpoint(sim.pins[limb] ? 'Let go' : 'Pin');
+    this.app.store.checkpoint(sim.pins[limb] ? $t('interact.let_go') : 'Pin');
     const was = sim.pins[limb];
     if (was) delete sim.pins[limb];
     else sim.pins[limb] = spacePos(v, v.bone(LIMBS[limb][2])).toArray();
@@ -842,7 +843,7 @@ export class Interaction {
     this.refreshHandles();
     this.app.afterEdit();
     this.app.emitSelection();
-    if (isHold(was)) this.app.hud(`${LIMB_LABEL[limb]} let go.`, { hold: 1400 });
+    if (isHold(was)) this.app.hud($t('interact.let_go_2', { v: LIMB_LABEL[limb] }), { hold: 1400 });
   }
 
   // Holds (spec_bodies 4.5): drop on the nearest partner, re-find after a mirror, pin for part of the loop.

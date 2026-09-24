@@ -6,29 +6,30 @@ import { newSim } from '../state.js';
 import { sampleToPose, sortKeys } from '../animation.js';
 import { sampleToFaceBones, keyFramesFor, sparseFaceBones } from '../facekit.js';
 import * as KO from '../keyops.js';
+import { $t, fmtList } from '../i18n.js';
 
 const select = (options, value) => h('select', {}, options.map(([v, t]) => h('option', { value: v, selected: v === value }, t)));
 
 export function openImportDialog(app, preview) {
   const total = preview.length;
-  const every = select([['smart', 'Smart - keys only where needed (recommended)'], ['3', 'Every 3 frames (very detailed)'], ['6', 'Every 6 frames'], ['10', 'Every 10 frames'], ['15', 'Every 15 frames (simple)']], 'smart');
+  const every = select([['smart', $t('dialogs.import.smart_keys_only_where_needed')], ['3', $t('dialogs.import.every_3_frames_very_detailed')], ['6', $t('dialogs.import.every_6_frames')], ['10', $t('dialogs.import.every_10_frames')], ['15', $t('dialogs.import.every_15_frames_simple')]], 'smart');
   const smooth = h('input', { type: 'checkbox' });
   const start = h('input', { class: 'text', type: 'number', min: 0, step: 0.5, value: 0 });
   const dur = h('input', { class: 'text', type: 'number', min: 0.5, step: 0.5, value: Math.min(total / 30, 10).toFixed(1) });
   const replace = h('input', { type: 'checkbox', checked: true });
   modal({
-    title: 'Import as keys',
-    text: `${preview.anim.name} by ${preview.anim.author} · ${(total / 30).toFixed(1)} s, ${preview.anim.actors.length} sims. Keys you can then change.`,
+    title: $t('dialogs.import.import_as_keys'),
+    text: $t('dialogs.import.by_s_sims_keys_you', { animName: preview.anim.name, author: preview.anim.author, total: (total / 30).toFixed(1), actorCount: preview.anim.actors.length }),
     body: h('div', {},
       h('div', { class: 'grid-2' },
-        h('label', { class: 'field' }, h('span', {}, 'Key spacing'), every),
-        h('label', { class: 'field' }, h('span', {}, 'Start at (seconds)'), start),
-        h('label', { class: 'field' }, h('span', {}, 'Length (seconds)'), dur)),
-      h('label', { class: 'check' }, replace, 'Replace my sims with this animation\'s sims'),
-      h('label', { class: 'check', title: 'Takes out small shakes (captured or hand-shaky motion) before the keys are chosen' }, smooth, 'Smooth out small shakes')),
+        h('label', { class: 'field' }, h('span', {}, $t('dialogs.import.key_spacing')), every),
+        h('label', { class: 'field' }, h('span', {}, $t('dialogs.import.start_at_seconds')), start),
+        h('label', { class: 'field' }, h('span', {}, $t('dialogs.import.length_seconds')), dur)),
+      h('label', { class: 'check' }, replace, $t('dialogs.import.replace_my_sims_with_this')),
+      h('label', { class: 'check', title: $t('dialogs.import.takes_out_small_shakes_captured') }, smooth, $t('dialogs.import.smooth_out_small_shakes'))),
     buttons: [
-      { label: 'Cancel', kind: 'ghost' },
-      { label: 'Import', kind: 'primary', onClick: () => importKeys(app, preview, every.value === 'smart' ? 'smart' : +every.value, Math.round(+start.value * 30), Math.round(+dur.value * 30), replace.checked, { smooth: smooth.checked }) },
+      { label: $t('dialogs.import.cancel'), kind: 'ghost' },
+      { label: $t('dialogs.import.import'), kind: 'primary', onClick: () => importKeys(app, preview, every.value === 'smart' ? 'smart' : +every.value, Math.round(+start.value * 30), Math.round(+dur.value * 30), replace.checked, { smooth: smooth.checked }) },
     ],
   });
 }
@@ -51,7 +52,7 @@ export function importKeys(app, preview, every, from, length, replace, { smooth 
   const anim = preview.anim;
   from = Math.max(0, Math.min(from, preview.length - 2));
   length = Math.max(10, Math.min(length, preview.length - from));
-  app.store.checkpoint('Import as keys');
+  app.store.checkpoint($t('dialogs.import.import_as_keys'));
   const p = app.store.project;
   if (replace) p.sims = [];
   const made = [];
@@ -102,16 +103,16 @@ export function importKeys(app, preview, every, from, length, replace, { smooth 
   app.physicsChanged();
   app.frameSims();
   const nKeys = p.sims.map(s => s.keys.filter(k => !k.faceOnly).length);
-  toast(smart ? `Imported ${anim.clips.length} sims - ${nKeys.join(' and ')} keys, only where the motion needs them.` : `Imported ${anim.clips.length} sims with keys every ${every} frames.`, 'ok');
+  toast(smart ? $t('dialogs.import.imported_sims_keys_only_where', { clipCount: anim.clips.length, nKeys: fmtList(nKeys) }) : $t('dialogs.import.imported_sims_with_keys_every', { clipCount: anim.clips.length, every }), 'ok');
   // a part of a clip often doesn't loop cleanly: offer to blend the end into the start
   const pop = KO.loopCheck(p).filter(r => r.kind === 'pop');
   if (pop.length) {
-    choiceBar("This part doesn't loop smoothly - the end jumps back to the start.", [
-      { label: 'Blend the end into the start', primary: true, onClick: () => {
-        app.store.checkpoint('Blend the end into the start');
+    choiceBar($t('dialogs.import.this_part_doesn_t_loop'), [
+      { label: $t('dialogs.import.blend_end_into_start'), primary: true, onClick: () => {
+        app.store.checkpoint($t('dialogs.import.blend_end_into_start'));
         for (const r of pop) { const s = p.sims.find(x => x.id === r.simId); if (s) KO.fixLoop(p, s, 'pop'); }
         app.keysChanged(); app.afterEdit();
-        toast('The end now flows back into the start.', 'ok');
+        toast($t('dialogs.import.end_now_flows_back_into'), 'ok');
       } },
     ], { timeout: 16000 });
   }

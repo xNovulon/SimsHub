@@ -1,5 +1,6 @@
 // Small UI helpers: element builder, toasts, modal dialogs, context menus, and the plug-in helpers other parts use
 // to add toolbar buttons and icons without touching index.html.
+import { $t } from './i18n.js';
 export function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -80,7 +81,7 @@ export function choiceBar(text, actions = [], { timeout = 12000 } = {}) {
     el.innerHTML = '';
     el.append(h('span', { class: 'msg' }, t),
       ...acts.map(a => h('button', { class: 'btn small ' + (a.primary ? 'soft' : 'ghost'), onclick: () => { if (a.onClick() !== false) close(); else arm(); } }, a.label)),
-      h('button', { class: 'icon-btn sm', title: 'Close', onclick: close }, icon('x')));
+      h('button', { class: 'icon-btn sm', title: $t('ui.close'), onclick: close }, icon('x')));
     arm();
   };
   fill(text, actions);
@@ -197,7 +198,7 @@ export function modal({ title, text, body, buttons = [], onClose, wide = false }
   }));
   const dlg = h('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true', tabindex: '-1' },
     h('header', {}, h('div', { class: 'grow' }, h('h2', {}, title), text ? h('p', {}, text) : null),
-      h('button', { class: 'icon-btn sm modal-x', title: 'Close (Esc)', onclick: () => close() }, icon('x'))),
+      h('button', { class: 'icon-btn sm modal-x', title: $t('ui.close_esc'), onclick: () => close() }, icon('x'))),
     h('div', { class: 'body' }, body || null),
     buttons.length ? footer : null);
   const back = h('div', { class: 'backdrop', onmousedown: e => { if (e.target === back && !closed) close(); } }, dlg);
@@ -219,7 +220,7 @@ export function modal({ title, text, body, buttons = [], onClose, wide = false }
 export function confirmBox(title, text, okLabel = 'OK', danger = false) {
   return new Promise(res => {
     modal({ title, text, onClose: () => res(false), buttons: [
-      { label: 'Cancel', kind: 'ghost', onClick: () => res(false) },
+      { label: $t('ui.cancel'), kind: 'ghost', onClick: () => res(false) },
       { label: okLabel, kind: danger ? 'danger' : 'primary', onClick: () => res(true) },
     ] });
   });

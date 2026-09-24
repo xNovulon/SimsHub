@@ -6,22 +6,23 @@ import * as THREE from 'three';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { updateCutaway } from './furniture.js';
+import { $t } from './i18n.js';
 
 // sky: [top, middle (horizon), below]; glow: a soft band of light at the horizon; floor: [centre, edge]
 export const LOOKS = {
-  studio: { label: 'Studio', sub: 'Clear light for posing', exposure: 1.08,
+  studio: { label: $t('stage.studio'), sub: $t('stage.clear_light_for_posing'), exposure: 1.08,
     sky: ['#0a0810', '#241a2f', '#150f1c'], glow: ['#6a3a78', 0.28], fog: [5.5, 15], floor: ['#3a3046', '#241a2f'],
     hemi: ['#fff4ee', '#2a2228', 0.85], key: ['#fff3ea', 2.5], rim: ['#ff7ab8', 0.75], rim2: ['#a88bff', 0.55], fill: ['#fff0e8', 0.6], bloom: 0.25 },
-  boudoir: { label: 'Boudoir', sub: 'Warm, pink rim, romantic', exposure: 1.0,
+  boudoir: { label: $t('stage.boudoir'), sub: $t('stage.warm_pink_rim_romantic'), exposure: 1.0,
     sky: ['#080506', '#1d0f16', '#0f080c'], glow: ['#8a3050', 0.22], fog: [5, 14], floor: ['#43283a', '#2b1420'],
     hemi: ['#ffd9c2', '#2a1418', 0.6], key: ['#ffd2a8', 2.2], rim: ['#ff5fa2', 1.5], rim2: ['#c070ff', 0.7], fill: ['#ffb99a', 0.35], bloom: 0.45 },
-  neon: { label: 'Neon night', sub: 'Dark with pink and blue edges', exposure: 0.95,
+  neon: { label: $t('stage.neon_night'), sub: $t('stage.dark_with_pink_and_blue'), exposure: 0.95,
     sky: ['#040308', '#0d0a18', '#07050c'], glow: ['#2c2466', 0.26], fog: [4.5, 13], floor: ['#241c3a', '#130f24'],
     hemi: ['#9aa6ff', '#10081a', 0.35], key: ['#e6e0ff', 1.3], rim: ['#ff3fa4', 2.4], rim2: ['#3fd8ff', 2.0], fill: ['#7a6cff', 0.25], bloom: 0.7 },
-  daylight: { label: 'Daylight', sub: 'Soft and even - check clipping', exposure: 1.15,
+  daylight: { label: $t('stage.daylight'), sub: $t('stage.soft_and_even_check_clipping'), exposure: 1.15,
     sky: ['#2c2a36', '#56505f', '#3a3542'], glow: ['#8a7f96', 0.2], fog: [7, 20], floor: ['#6b6474', '#56505f'],
     hemi: ['#ffffff', '#6a6070', 1.5], key: ['#ffffff', 1.6], rim: ['#ffffff', 0.4], rim2: ['#dfe8ff', 0.4], fill: ['#ffffff', 0.9], bloom: 0 },
-  candle: { label: 'Candle', sub: 'Low warm light for showcase', exposure: 1.05,
+  candle: { label: $t('stage.candle'), sub: $t('stage.low_warm_light_for_showcase'), exposure: 1.05,
     sky: ['#050302', '#160c07', '#0a0604'], glow: ['#6a3814', 0.24], fog: [4, 12], floor: ['#3a2416', '#1e110a'],
     hemi: ['#ffb070', '#140a06', 0.35], key: ['#ffb36b', 2.0], rim: ['#ff8a3d', 1.1], rim2: ['#ff5fa2', 0.5], fill: ['#ff9a55', 0.3], bloom: 0.55, flicker: true },
 };

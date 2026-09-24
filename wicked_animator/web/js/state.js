@@ -1,6 +1,7 @@
 // The project being edited, undo/redo, and change notifications.
 import { SIM_COLORS, SKIN_TONES } from './bones.js';
 import { splitFaceBones } from './animation.js';
+import { $t } from './i18n.js';
 
 export function uid(prefix = 'p') { return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
@@ -39,9 +40,9 @@ export function cleanKey(k) {
 }
 
 export const BODY_TYPES = {
-  yf: { label: 'Female', short: 'F', gender: 'FEMALE' },
-  ym: { label: 'Male', short: 'M', gender: 'MALE' },
-  yf_futa: { label: 'Female with penis', short: 'F+', gender: 'MALE' },
+  yf: { label: $t('state.female'), short: 'F', gender: 'FEMALE' },
+  ym: { label: $t('state.male'), short: 'M', gender: 'MALE' },
+  yf_futa: { label: $t('state.female_with_penis'), short: 'F+', gender: 'MALE' },
 };
 
 export function newSim(project, frame = 'yf') {
@@ -144,7 +145,7 @@ export class Store {
   // The JSON of the project as it was before the last change (null when there is none).
   peekUndo() { const e = this.undo[this.undo.length - 1]; return e ? e.s : null; }
   // The last n steps, newest first: [{label, t}].
-  history(n = 15) { return this.undo.slice(-n).reverse().map(e => ({ label: e.label || 'Change', t: e.t })); }
+  history(n = 15) { return this.undo.slice(-n).reverse().map(e => ({ label: e.label || $t('state.change'), t: e.t })); }
   // Undo i + 1 steps at once (i = index in history()), with one 'project' notice.
   undoTo(i) {
     const n = Math.min(this.undo.length, Math.max(0, i) + 1);

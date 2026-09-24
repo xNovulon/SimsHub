@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { spaceQuat, spacePos, rotateInSpace, solveTwoBone } from './posemath.js';
 import { LIMBS } from './bones.js';
+import { $t } from './i18n.js';
 
 const PI = Math.PI, TAU = 2 * Math.PI;
 const _q = new THREE.Quaternion();
@@ -11,56 +12,56 @@ const _q = new THREE.Quaternion();
 // ---------------------------------------------------------------- the catalogue
 // sign: which way "away from the pose" goes along the axis. Every motion starts from your pose (the contact point).
 export const MOTIONS = {
-  thrust: { label: 'Thrust', group: 'Hips', desc: 'Hips pull back and push in. Pose them joined - the motion pulls out from your pose and slams back in.',
+  thrust: { label: $t('motion.thrust'), group: $t('motion.hips'), desc: $t('motion.hips_pull_back_and_push'),
     params: { strokes: 4, distance: 5, sharp: 0.65, tilt: 8, follow: 0.6, axis: 'forward', reverse: false } },
-  ride: { label: 'Ride', group: 'Hips', desc: 'Rises and drops back down onto the partner (cowgirl, reverse cowgirl, sitting).',
+  ride: { label: $t('motion.ride'), group: $t('motion.hips'), desc: $t('motion.rises_and_drops_back_down'),
     params: { strokes: 3, distance: 6, sharp: 0.55, tilt: 6, follow: 0.6, axis: 'up', reverse: false } },
-  grind: { label: 'Grind', group: 'Hips', desc: 'Rocks the hips back and forth without pulling out.',
+  grind: { label: $t('motion.grind'), group: $t('motion.hips'), desc: $t('motion.rocks_hips_back_and_forth'),
     params: { strokes: 2, distance: 2.5, sharp: 0, tilt: 14, follow: 0.5, axis: 'forward', reverse: false } },
-  bounce: { label: 'Bounce', group: 'Hips', desc: 'Bounces up and down - soft or hard.',
+  bounce: { label: $t('motion.bounce'), group: $t('motion.hips'), desc: $t('motion.bounces_up_and_down_soft'),
     params: { strokes: 4, distance: 5, sharp: 0.3, tilt: 2, follow: 0.5, axis: 'up', reverse: false } },
-  twerk: { label: 'Twerk', group: 'Hips', desc: 'Quick hip rolls with the butt.',
+  twerk: { label: $t('motion.twerk'), group: $t('motion.hips'), desc: $t('motion.quick_hip_rolls_with_butt'),
     params: { strokes: 6, distance: 1.5, sharp: 0.4, tilt: 16, follow: 0.3, axis: 'up', reverse: false } },
-  sway: { label: 'Sway', group: 'Hips', desc: 'Gentle side-to-side hips.',
+  sway: { label: $t('motion.sway'), group: $t('motion.hips'), desc: $t('motion.gentle_side_to_side_hips'),
     params: { strokes: 1, distance: 3, sharp: 0, tilt: 0, follow: 0.6, axis: 'side', reverse: false } },
-  headbob: { label: 'Head bob', group: 'Upper body', desc: 'Head and neck go forward and back (oral).',
+  headbob: { label: $t('motion.head_bob'), group: $t('motion.upper_body'), desc: $t('motion.head_and_neck_go_forward'),
     params: { strokes: 3, angle: 14, distance: 1.5, sharp: 0.3, follow: 0.5, reverse: false } },
-  stroke: { label: 'Hand stroke', group: 'Hands', desc: 'A hand slides back and forth - along the partner\'s penis if one is near (handjob, fingering, rubbing).',
+  stroke: { label: $t('motion.hand_stroke'), group: $t('motion.hands'), desc: $t('motion.hand_slides_back_and_forth'),
     params: { strokes: 3, distance: 8, sharp: 0.2, limb: 'R hand', axis: 'penis', reverse: false } },
-  breathe: { label: 'Breathing', group: 'Upper body', desc: 'The chest rises and falls. Makes any pose feel alive.',
+  breathe: { label: $t('motion.breathing'), group: $t('motion.upper_body'), desc: $t('motion.chest_rises_and_falls_makes'),
     params: { strokes: 2, angle: 2.5, sharp: 0, follow: 0 } },
   // late: they run after every sim's pose is known (pass B), so they see where the partner really is this frame
-  look: { label: 'Look at', group: 'Upper body', late: true,
-    desc: 'Head, neck and eyes turn toward the partner (face, chest or between the legs) or toward where the camera was.',
+  look: { label: $t('motion.look_at'), group: $t('motion.upper_body'), late: true,
+    desc: $t('motion.head_neck_and_eyes_turn'),
     params: { target: 'face', who: 'auto', eyes: true, limit: 70 } },
-  tremble: { label: 'Tremble', group: 'Whole body', late: true,
-    desc: 'Shaking legs, hands or the whole body - for climaxes. Loops without a jump.',
+  tremble: { label: $t('motion.tremble'), group: $t('motion.whole_body'), late: true,
+    desc: $t('motion.shaking_legs_hands_or_whole'),
     params: { amount: 2.5, speed: 1, parts: 'legs', start: 0, end: 1 } },
   // spec_game 6: the game's own idle loops on top of the pose. `times` (not `strokes`: a new motion copies the
   // partner's strokes, and breathing must keep its own pace) 0 = Auto, as often as fits the loop at the game's speed.
-  idle: { label: 'Idle (from the game)', group: 'Upper body',
-    desc: 'Real breathing and small shifts from The Sims 4. Still sims look alive.',
+  idle: { label: $t('motion.idle_from_game'), group: $t('motion.upper_body'),
+    desc: $t('motion.real_breathing_and_small_shifts'),
     params: { clip: 'a_idle_neutral_loop_3_x', times: 0 } },
 };
 
 export const MOTION_PARAMS = {
-  strokes: { label: 'Times per loop', min: 1, max: 16, step: 1, unit: '×', hint: 'Whole numbers keep the loop seamless' },
-  distance: { label: 'Distance', min: 0, max: 30, step: 0.5, unit: 'cm' },
-  angle: { label: 'Angle', min: 0, max: 40, step: 0.5, unit: '°' },
-  sharp: { label: 'Soft ↔ Hard', min: 0, max: 1, step: 0.05, pct: true, hint: 'Hard speeds up into the pose and hits' },
-  tilt: { label: 'Hip roll', min: -30, max: 30, step: 1, unit: '°' },
-  follow: { label: 'Body follows', min: 0, max: 1, step: 0.05, pct: true, hint: 'Spine and head react a moment later' },
-  phase: { label: 'Timing offset', min: 0, max: 1, step: 0.01, pct: true, hint: 'Shift it against the partner' },
-  weight: { label: 'Strength', min: 0, max: 1.5, step: 0.05, pct: true },
-  amount: { label: 'Shaking', min: 0, max: 8, step: 0.1, unit: '°' },
-  speed: { label: 'Speed', min: 0.5, max: 2, step: 0.05, unit: '×' },
-  limit: { label: 'Turn up to', min: 20, max: 90, step: 1, unit: '°', hint: 'Past this the eyes do the rest' },
-  start: { label: 'Starts at', min: 0, max: 1, step: 0.01, pct: true, hint: 'Where in the loop it begins' },
-  end: { label: 'Ends at', min: 0, max: 1, step: 0.01, pct: true, hint: 'Where in the loop it stops' },
+  strokes: { label: $t('motion.times_per_loop'), min: 1, max: 16, step: 1, unit: '×', hint: $t('motion.whole_numbers_keep_loop_seamless') },
+  distance: { label: $t('motion.distance'), min: 0, max: 30, step: 0.5, unit: 'cm' },
+  angle: { label: $t('motion.angle'), min: 0, max: 40, step: 0.5, unit: '°' },
+  sharp: { label: $t('motion.soft_hard'), min: 0, max: 1, step: 0.05, pct: true, hint: $t('motion.hard_speeds_up_into_pose') },
+  tilt: { label: $t('motion.hip_roll'), min: -30, max: 30, step: 1, unit: '°' },
+  follow: { label: $t('motion.body_follows'), min: 0, max: 1, step: 0.05, pct: true, hint: $t('motion.spine_and_head_react_moment') },
+  phase: { label: $t('motion.timing_offset'), min: 0, max: 1, step: 0.01, pct: true, hint: $t('motion.shift_it_against_partner') },
+  weight: { label: $t('motion.strength'), min: 0, max: 1.5, step: 0.05, pct: true },
+  amount: { label: $t('motion.shaking'), min: 0, max: 8, step: 0.1, unit: '°' },
+  speed: { label: $t('motion.speed'), min: 0.5, max: 2, step: 0.05, unit: '×' },
+  limit: { label: $t('motion.turn_up_to'), min: 20, max: 90, step: 1, unit: '°', hint: $t('motion.past_this_eyes_do_rest') },
+  start: { label: $t('motion.starts_at'), min: 0, max: 1, step: 0.01, pct: true, hint: $t('motion.where_in_loop_it_begins') },
+  end: { label: $t('motion.ends_at'), min: 0, max: 1, step: 0.01, pct: true, hint: $t('motion.where_in_loop_it_stops') },
 };
-export const LOOK_TARGETS = { face: 'Face', chest: 'Chest', groin: 'Between the legs', camera: 'Where the camera is now' };
-export const TREMBLE_PARTS = { legs: 'Legs', hands: 'Hands', body: 'Whole body' };
-export const AXES = { forward: 'Where the hips face', up: 'Straight up', bodyUp: 'Along the back', side: 'Side to side', penis: "Partner's penis", forearm: 'Along the forearm' };
+export const LOOK_TARGETS = { face: $t('motion.look_face'), chest: $t('motion.look_chest'), groin: $t('motion.between_legs'), camera: $t('motion.where_camera_is_now') };
+export const TREMBLE_PARTS = { legs: $t('motion.tremble_legs'), hands: $t('motion.tremble_hands'), body: $t('motion.tremble_body') };
+export const AXES = { forward: $t('motion.where_hips_face'), up: $t('motion.straight_up'), bodyUp: $t('motion.along_back'), side: $t('motion.axis_side'), penis: $t('motion.axis_penis'), forearm: $t('motion.along_forearm') };
 
 let _id = 0;
 export function newLayer(type) {

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import * as A from '../animation.js';
 import { POSABLE, HIPS, PENIS } from '../bones.js';
 import { FINGER_BONES } from './retarget.js';
+import { $t } from '../i18n.js';
 
 const deg = THREE.MathUtils.degToRad;
 const _a = new THREE.Quaternion(), _b = new THREE.Quaternion(), _c = new THREE.Quaternion();
@@ -295,9 +296,9 @@ export function everyKeys(poses, faces, every) {
 // take is stretched to that many frames; null = the take is stretched to the project's length.
 export function applyToSim(app, simId, take, { mode = 'replace', at = 0, fitLength = null, detail = 0.5, faceOnly = false, headTurns = null, source = 'video', quiet = false, checkpoint = true, every = null } = {}) {
   const store = app.store, p = store.project, s = store.sim(simId);
-  if (!s) throw new Error('Pick a sim first.');
+  if (!s) throw new Error($t('capture.keys.pick_sim_first'));
   let { poses, faces } = take;
-  if (!poses || !poses.length) throw new Error('Nothing to put on.');
+  if (!poses || !poses.length) throw new Error($t('capture.keys.nothing_to_put_on'));
   if (checkpoint) store.checkpoint();                   // one Ctrl+Z undoes all of it (two sims: the caller's one)
   const loop = !!p.loop;
   const lenBefore = p.length;

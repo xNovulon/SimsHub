@@ -1,6 +1,7 @@
 // Shared bits of the step panels: the sim pills and the sim settings card.
 import { h } from '../ui.js';
 import { SIM_COLORS } from '../bones.js';
+import { $t } from '../i18n.js';
 
 export const nice = s => s.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 export const pct = v => Math.round(v * 100) + '%';
@@ -19,14 +20,14 @@ export function simTabs(app, onPick) {
 export function simSettings(app, sim) {
   const name = h('input', { class: 'text', value: sim.label });
   name.addEventListener('change', () => { app.store.checkpoint(); sim.label = name.value || sim.label; app.refreshPanels(); });
-  const role = h('select', {}, [['FEMALE', 'Female part'], ['MALE', 'Male part (gives)'], ['BOTH', 'Either']].map(([v, t]) => h('option', { value: v, selected: sim.gender === v }, t)));
+  const role = h('select', {}, [['FEMALE', $t('steps.common.female_part')], ['MALE', $t('steps.common.male_part_gives')], ['BOTH', $t('steps.common.either')]].map(([v, t]) => h('option', { value: v, selected: sim.gender === v }, t)));
   role.addEventListener('change', () => { app.store.checkpoint(); sim.gender = role.value; app.store.setDirty(true); app.refreshPanels(); });
   return h('div', {},
-    h('label', { class: 'field' }, h('span', {}, 'Name'), name),
-    h('label', { class: 'field' }, h('span', {}, 'Which sims WickedWhims casts in this part'), role),
-    h('div', { class: 'field' }, h('span', {}, "Skin tone (the game's own skins)"), h('div', { class: 'swatches' }, pickTones(app.tones).map(t => h('button', {
+    h('label', { class: 'field' }, h('span', {}, $t('steps.common.name')), name),
+    h('label', { class: 'field' }, h('span', {}, $t('steps.common.which_sims_wickedwhims_casts_in')), role),
+    h('div', { class: 'field' }, h('span', {}, $t('steps.common.skin_tone_game_s_own')), h('div', { class: 'swatches' }, pickTones(app.tones).map(t => h('button', {
       class: (sim.tone || '') === t.hex ? 'active' : '', style: { background: t.swatch }, title: t.type || '', onclick: () => app.setTone(sim.id, t.hex) })))),
-    h('div', { class: 'field' }, h('span', {}, 'Colour in the app'), h('div', { class: 'swatches' }, SIM_COLORS.map(c => h('button', { class: sim.color === c ? 'active' : '', style: { background: c }, onclick: () => app.setColor(sim.id, c) })))));
+    h('div', { class: 'field' }, h('span', {}, $t('steps.common.colour_in_app')), h('div', { class: 'swatches' }, SIM_COLORS.map(c => h('button', { class: sim.color === c ? 'active' : '', style: { background: c }, onclick: () => app.setColor(sim.id, c) })))));
 }
 
 // A spread of the game's skin tones, light to dark (the default tone first).

@@ -8,6 +8,7 @@
 import { emptyPerson } from './clean.js';
 import { writeFrame, isMock } from './mock.js';
 import { BASE, makeTasks, detectFrame, transferables } from './detect.js';
+import { $t } from '../i18n.js';
 
 export { BASE, detectFrame };
 let mp = null;
@@ -17,7 +18,7 @@ async function lib() { return (mp = mp || await import(`${BASE}/vision_bundle.mj
 export async function createTracker({ body = true, hands = true, face = true, quality = 'best', people = 1, mode = 'VIDEO', onStatus = null, mock = null } = {}) {
   people = Math.max(1, Math.min(2, people | 0 || 1));
   if (mock || isMock()) return { mock: true, mode, body, hands, face, people, stats: { ms: [] }, close() {} };
-  onStatus && onStatus('Warming up the motion reader...');
+  onStatus && onStatus($t('capture.tracker.warming_up_motion_reader'));
   return makeTasks(await lib(), { body, hands, face, quality, people, mode });
 }
 
@@ -60,11 +61,11 @@ export async function createWorkerTracker(opts = {}, { mockTake = null, timeout 
     },
   };
   const ready = new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('The motion reader thread did not start in time.')), timeout);
+    const timer = setTimeout(() => reject(new Error($t('capture.tracker.motion_reader_thread_did_not'))), timeout);
     w.onmessage = e => {
       const m = e.data || {};
       if (m.type === 'ready') { clearTimeout(timer); tr.delegates = m.delegates || {}; resolve(); }
-      else if (m.type === 'error') { clearTimeout(timer); reject(new Error(m.error || 'The motion reader thread failed.')); }
+      else if (m.type === 'error') { clearTimeout(timer); reject(new Error(m.error || $t('capture.tracker.motion_reader_thread_failed'))); }
       else if (m.type === 'result' || m.type === 'frame-error') {
         const p = pending.get(m.id);
         if (!p) return;
@@ -76,7 +77,7 @@ export async function createWorkerTracker(opts = {}, { mockTake = null, timeout 
         } else p.reject(new Error(m.error || 'frame'));
       }
     };
-    w.onerror = e => { clearTimeout(timer); e.preventDefault && e.preventDefault(); reject(new Error(e.message || 'The motion reader thread failed.')); };
+    w.onerror = e => { clearTimeout(timer); e.preventDefault && e.preventDefault(); reject(new Error(e.message || $t('capture.tracker.motion_reader_thread_failed'))); };
   });
   const mock = mockTake ? { t: mockTake.t, people: mockTake.people } : null;
   w.postMessage({ type: 'init', opts: { ...opts, people }, mock });

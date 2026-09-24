@@ -8,6 +8,7 @@ import { KINDS } from './tags.js';
 import { maybeTour } from './tour.js';
 import { finishSplash } from './splash.js';
 import { reducedMotion } from './fx.js';
+import { $t } from './i18n.js';
 
 const kindName = k => (KINDS.find(x => x[0] === k) || ['', k || 'Animation'])[1];
 const $ = id => document.getElementById(id);
@@ -42,14 +43,14 @@ export function hideHome(app, { from = null } = {}) {
 function startCards(app) {
   const blank = template => () => app.newScene(true, true, template, () => { hideHome(app); app.showStep('pose'); });
   const cards = [
-    { id: 'magic', title: 'Magic Animation', icon: 'wand', big: true, cls: 'magic-card',
-      text: 'Pick a position and a place - one click gives you a complete animation: posed on the real furniture, moving, with physics, faces, claps, wet sounds and moans. Ready to send to the game.',
+    { id: 'magic', title: $t('home.magic_animation'), icon: 'wand', big: true, cls: 'magic-card',
+      text: $t('home.pick_position_and_place_one'),
       onClick: () => { hideHome(app); app.openMagic(); }, art: magicStrip(app) },
-    { id: 'blank', title: 'Blank animation', icon: 'blank', wide: true, text: 'Start from scratch - pick who is in it:',
-      pills: [['couple', 'Woman & man'], ['ff', 'Two women'], ['mm', 'Two men'], ['futa', 'Woman & futa'], ['solo', 'One sim']].map(([t, l]) => ({ label: l, onClick: blank(t) })) },
-    { id: 'library', title: 'Start from an animation', icon: 'library', text: 'Pick any WickedWhims animation you have and make your own version of it.',
+    { id: 'blank', title: $t('home.blank_animation'), icon: 'blank', wide: true, text: $t('home.start_from_scratch_pick_who'),
+      pills: [['couple', $t('home.woman_man')], ['ff', $t('home.two_women')], ['mm', $t('home.two_men')], ['futa', $t('home.woman_futa')], ['solo', $t('home.one_sim')]].map(([t, l]) => ({ label: l, onClick: blank(t) })) },
+    { id: 'library', title: $t('home.start_from_animation'), icon: 'library', text: $t('home.pick_any_wickedwhims_animation_you'),
       onClick: () => { hideHome(app); app.showStep('library'); } },
-    { id: 'tray', title: 'With my own sims', icon: 'couple', text: 'Load sims from your Tray with their body shape and skin.',
+    { id: 'tray', title: $t('home.with_my_own_sims'), icon: 'couple', text: $t('home.load_sims_from_your_tray'),
       onClick: () => { app.newScene(true, true, 'couple', () => { hideHome(app); app.showStep('scene'); app.openTray(); }); } },
   ];
   // cards other parts of the app add (a failing one is skipped)
@@ -168,22 +169,22 @@ export async function showHome(app) {
   const inner = h('div', { class: 'home-inner' },
     h('div', { class: 'home-top' },
       h('img', { src: 'img/logo.svg', class: 'logo', alt: '' }),
-      h('div', {}, h('h1', {}, 'Novulon\'s ', h('span', {}, 'Wicked Animator')), h('p', {}, 'Make WickedWhims animations without Blender - pose, add motion, send to the game.')),
+      h('div', {}, h('h1', {}, $t('home.novulon_s'), h('span', {}, $t('home.wicked_animator'))), h('p', {}, $t('home.make_wickedwhims_animations_without'))),
       h('div', { class: 'grow' }),
-      h('button', { class: 'btn ghost', onclick: () => app.open() }, icon('open'), 'Open...'),
-      app.store.project.sims.length ? h('button', { class: 'btn primary', onclick: () => hideHome(app) }, hasWork ? `Continue "${app.store.project.name}"` : 'Go to the editor', icon('arrow')) : null),
-    h('h3', {}, 'Start something new'),
+      h('button', { class: 'btn ghost', onclick: () => app.open() }, icon('open'), $t('home.open')),
+      app.store.project.sims.length ? h('button', { class: 'btn primary', onclick: () => hideHome(app) }, hasWork ? $t('home.continue', { projectName: app.store.project.name }) : $t('home.go_to_editor'), icon('arrow')) : null),
+    h('h3', {}, $t('home.start_something_new')),
     starts,
-    h('h3', { class: 'with-action' }, h('span', {}, 'Your animations'), h('div', { class: 'grow' }),
-      h('button', { class: 'btn small ghost', onclick: () => { hideHome(app); app.showStep('share'); } }, icon('package'), 'Share a mod')),
+    h('h3', { class: 'with-action' }, h('span', {}, $t('home.your_animations')), h('div', { class: 'grow' }),
+      h('button', { class: 'btn small ghost', onclick: () => { hideHome(app); app.showStep('share'); } }, icon('package'), $t('home.share_mod'))),
     projGrid,
-    h('h3', {}, 'Your progressions'), progGrid,
-    h('h3', {}, 'How it works'),
+    h('h3', {}, $t('home.your_progressions')), progGrid,
+    h('h3', {}, $t('home.how_it_works')),
     h('div', { class: 'starts how' },
-      ...[['1', 'Pose', 'One click on a ready pose (cowgirl, missionary, doggy...). Drag hands and feet to adjust - pinned ones stay put.'],
-        ['2', 'Move', 'Add Thrust, Ride or Head bob. Set how often and how hard. It loops perfectly by itself.'],
-        ['3', 'It comes alive', 'Physics, opening holes, blinking, faces and sounds are automatic - switch any of them off.'],
-        ['4', 'Play it', 'Send to game, restart The Sims 4, pick it in WickedWhims. Or export a mod to share.']].map(([n, t, s]) =>
+      ...[['1', $t('home.pose'), $t('home.one_click_on_ready_pose')],
+        ['2', $t('home.move'), $t('home.add_thrust_ride_or_head')],
+        ['3', $t('home.it_comes_alive'), $t('home.physics_opening_holes_blinking_faces')],
+        ['4', $t('home.play_it'), $t('home.send_to_game_restart_sims')]].map(([n, t, s]) =>
         h('div', { class: 'start static' }, h('div', { class: 'ic num' }, h('b', {}, n)), h('b', {}, t), h('small', {}, s)))));
   root.append(inner);
   // the first time Home opens in a session its parts rise in one after another
@@ -201,11 +202,11 @@ export async function showHome(app) {
     const [list, progs] = await Promise.all([api.projects(), api.progressions()]);
     if (!projGrid.isConnected) return;
     projGrid.innerHTML = '';
-    if (!list.length) projGrid.append(emptyState('Your animations show up here', 'Make one in a single click with Magic, or start from a pose. Save with Ctrl+S.',
-      h('button', { class: 'btn primary', onclick: () => { hideHome(app); app.openMagic(); } }, icon('wand'), 'Make a Magic animation')));
+    if (!list.length) projGrid.append(emptyState($t('home.your_animations_show_up_here'), $t('home.make_one_in_single_click'),
+      h('button', { class: 'btn primary', onclick: () => { hideHome(app); app.openMagic(); } }, icon('wand'), $t('home.make_magic_animation'))));
     // every way of opening goes through here: unsaved work is never thrown away without asking
     const open = async (m, card) => {
-      if (app.store.dirty && m.uid !== app.store.project.uid && !(await confirmBox('Open another animation?', 'Unsaved changes to the one open now will be lost.', 'Open', true))) return;
+      if (app.store.dirty && m.uid !== app.store.project.uid && !(await confirmBox($t('home.open_another_animation'), $t('home.unsaved_changes_to_one_open'), $t('home.open_2'), true))) return;
       await app.loadProject(m.file, { from: card ? card.querySelector('.thumb') : null });
     };
     for (const m of list) {
@@ -213,30 +214,30 @@ export async function showHome(app) {
       if (img) { img.onload = () => img.classList.add('in'); img.onerror = () => img.classList.add('in'); if (img.complete && img.naturalWidth) img.classList.add('in'); }
       const card = h('div', { class: 'proj', tabindex: '0', onclick: () => open(m, card), onkeydown: e => { if (e.key === 'Enter') open(m, card); },
         oncontextmenu: e => { e.preventDefault(); contextMenu(e.clientX, e.clientY, [
-        { label: 'Open', icon: 'open', onClick: () => open(m, card) },
-        { label: 'Remove from the list', icon: 'trash', danger: true, onClick: async () => {
-          if (!(await confirmBox('Remove this animation?', `"${m.name}" is moved to a backup folder (not deleted).`, 'Remove', true))) return;
-          try { await api.removeProject(m.file); } catch (err) { toast('Could not remove it: ' + err.message, 'err'); return; }
+        { label: $t('home.open_2'), icon: 'open', onClick: () => open(m, card) },
+        { label: $t('home.remove_from_list'), icon: 'trash', danger: true, onClick: async () => {
+          if (!(await confirmBox($t('home.remove_this_animation'), $t('home.is_moved_to_backup_folder', { mName: m.name }), $t('home.remove'), true))) return;
+          try { await api.removeProject(m.file); } catch (err) { toast($t('home.could_not_remove_it', { message: err.message }), 'err'); return; }
           app.shareData = null;
-          card.remove(); toast('Removed (a backup is kept).');
+          card.remove(); toast($t('home.removed_backup_is_kept'));
         } }]); } },
         h('div', { class: 'thumb' }, img || icon('scene')),
-        h('div', { class: 'info' }, h('b', {}, m.name), h('span', {}, `${m.author ? 'by ' + m.author + ' · ' : ''}${new Date(m.modified * 1000).toLocaleDateString()}`),
+        h('div', { class: 'info' }, h('b', {}, m.name), h('span', {}, `${m.author ? $t('home.by', { author: m.author }) : ''}${new Date(m.modified * 1000).toLocaleDateString()}`),
           h('div', { class: 'row' }, h('span', { class: 'chip hot' }, kindName(m.category)), h('span', { class: 'chip' }, `${m.sims} sims`), h('span', { class: 'chip' }, `${(m.length / (m.fps || 30)).toFixed(1)} s`))));
       projGrid.append(card);
     }
     const byUid = Object.fromEntries(list.map(p => [p.uid, p]));
-    if (!progs.length) progGrid.append(emptyState('Chain animations into a story', 'e.g. oral → handjob → cowgirl. Each keeps its own kind and tags.',
-      h('button', { class: 'btn', onclick: () => { hideHome(app); app.showStep('share'); } }, icon('chain'), 'Make a progression'), 'chain'));
+    if (!progs.length) progGrid.append(emptyState($t('home.chain_animations_into_story'), $t('home.e_g_oral_handjob_cowgirl'),
+      h('button', { class: 'btn', onclick: () => { hideHome(app); app.showStep('share'); } }, icon('chain'), $t('home.make_progression')), 'chain'));
     for (const g of progs) {
       const flow = h('div', { class: 'prog-flow' });
       g.steps.forEach((u, i) => { if (i) flow.append(icon('arrow')); flow.append(h('span', { class: 'st' }, byUid[u]?.name || '?')); });
       if (g.repeat) flow.append(icon('loop'));
-      progGrid.append(h('div', { class: 'prog-card' }, h('h4', {}, icon('chain'), g.name), h('span', { class: 'muted' }, `${g.steps.length} step${g.steps.length === 1 ? '' : 's'}`), flow,
-        h('button', { class: 'btn small', onclick: () => { hideHome(app); app.showStep('share'); } }, 'Edit')));
+      progGrid.append(h('div', { class: 'prog-card' }, h('h4', {}, icon('chain'), g.name), h('span', { class: 'muted' }, $t('home.n_steps', { n: g.steps.length })), flow,
+        h('button', { class: 'btn small', onclick: () => { hideHome(app); app.showStep('share'); } }, $t('home.edit'))));
     }
   } catch (e) {
     projGrid.innerHTML = '';
-    projGrid.append(h('div', { class: 'warn-box' }, 'Could not load your animations: ' + e.message));
+    projGrid.append(h('div', { class: 'warn-box' }, $t('home.could_not_load_your_animations', { message: e.message })));
   }
 }

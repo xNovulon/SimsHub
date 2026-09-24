@@ -24,6 +24,7 @@ import { ensureIcons, ensureStyles } from './capture/icons.js';
 import { frameTake } from './capture/mirror.js';
 import { solvePair, snapContacts, matchRhythm, shiftLoop } from './capture/couple.js';
 import { dockMethods } from './capture/dock.js';
+import { $t } from './i18n.js';
 
 export { ensureIcons, ensureStyles };
 
@@ -44,7 +45,7 @@ export async function captureStatus() {
 export async function installCapture(onProgress) {
   const r = await fetch('/api/capture_install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   let st = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(st.error || 'The download could not start.');
+  if (!r.ok) throw new Error(st.error || $t('capture.download_could_not_start'));
   onProgress && onProgress(st);
   while (st.busy) {
     await new Promise(res => setTimeout(res, 500));
@@ -150,12 +151,12 @@ class Preview3D {
 
 // ---------------------------------------------------------------- the studio
 const STEPS = {
-  video: ['Pick', 'Part', 'Reading', 'Check', 'Put it on'],
-  webcam: ['Get ready', 'Record', 'Check', 'Put it on'],
-  face: ['Get ready', 'Record', 'Check', 'Put it on'],
-  photo: ['Pick', 'Use this pose'],
+  video: [$t('capture.pick'), $t('capture.part'), $t('capture.reading'), $t('capture.check'), $t('capture.put_it_on')],
+  webcam: [$t('capture.get_ready'), $t('capture.record'), $t('capture.check'), $t('capture.put_it_on')],
+  face: [$t('capture.get_ready'), $t('capture.record'), $t('capture.check'), $t('capture.put_it_on')],
+  photo: [$t('capture.pick'), $t('capture.use_this_pose')],
 };
-const TITLES = { video: 'Copy moves from a video', webcam: 'Copy moves from your webcam', face: 'Copy your face', photo: 'Copy a pose from a photo' };
+const TITLES = { video: $t('capture.copy_moves_from_video'), webcam: $t('capture.copy_moves_from_your_webcam'), face: $t('capture.copy_your_face'), photo: $t('capture.copy_pose_from_photo') };
 
 let current = null;
 // options: mirror - the webcam studio starts the live mirror as soon as the adults-only box is ticked;
@@ -165,7 +166,7 @@ export function openCaptureStudio(app, { source = 'video', simId = app.store.sel
   if (current) current.close(true);
   if (!simId || !app.store.sim(simId)) {
     const s = app.store.project.sims[0];
-    if (!s) { toast('Add a sim first - then copy real moves onto it.'); return null; }
+    if (!s) { toast($t('capture.add_sim_first_then_copy')); return null; }
     simId = s.id;
   }
   current = new Studio(app, source, simId, { mirror: mirror && (source === 'webcam' || source === 'face'), two });
@@ -214,15 +215,15 @@ class Studio {
     this.countEl = h('div', { class: 'cap-count hidden' });
     this.stage = h('div', { class: 'cap-stage' }, this.media, this.overlay, this.scan, this.ringBox, this.countEl, this.chipBox);
     this.previewCanvas = h('canvas', { class: 'cap-preview-canvas' });
-    this.previewTag = h('div', { class: 'cap-preview-tag' }, h('span', { class: 'dot' }), s ? s.label : 'Sim');
+    this.previewTag = h('div', { class: 'cap-preview-tag' }, h('span', { class: 'dot' }), s ? s.label : $t('capture.sim'));
     this.panel = h('div', { class: 'cap-panel' });
     this.foot = h('div', { class: 'cap-foot' });
     this.root = h('div', { class: 'cap-studio', role: 'dialog', 'aria-modal': 'true', 'aria-label': TITLES[this.source], tabindex: '-1', style: { '--sim': s ? s.color : '#ff4f9a' } },
       h('header', { class: 'cap-top' },
         h('div', { class: 'cap-brand' }, h('span', { class: 'cap-brand-icon' }, icon(this.source === 'face' ? 'cap-face' : this.source === 'photo' ? 'cap-photo' : this.source === 'webcam' ? 'cap-webcam' : 'cap-video')),
-          h('div', {}, h('b', {}, TITLES[this.source]), h('span', {}, 'Everything stays on this PC'))),
+          h('div', {}, h('b', {}, TITLES[this.source]), h('span', {}, $t('capture.everything_stays_on_this_pc')))),
         h('ol', { class: 'cap-steps' }, this.stepEls),
-        h('button', { class: 'icon-btn cap-x', title: 'Close (Esc)', onclick: () => this.tryClose() }, icon('x'))),
+        h('button', { class: 'icon-btn cap-x', title: $t('capture.close_esc'), onclick: () => this.tryClose() }, icon('x'))),
       h('div', { class: 'cap-body' },
         this.stage,
         h('aside', { class: 'cap-side' },
@@ -290,7 +291,7 @@ class Studio {
     const motion = await this._mockMotion();
     if (this.closed) return;
     const take = takeFromMotion(this.app.assets.rig, motion, { seconds: 20, face: true, hands: true, noise: 0.002 });
-    this._setVideo(new MockVideo(take, { live: this.source === 'webcam' || this.source === 'face' }), 'Test clip - ' + (motion.name || 'dance'));
+    this._setVideo(new MockVideo(take, { live: this.source === 'webcam' || this.source === 'face' }), $t('capture.test_clip', { name: motion.name || $t('capture.test_clip_dance') }));
   }
   // the stand-in's motion: a dance, a couple (two people), or the scene itself (window.__captureMockScene)
   async _mockMotion(still = false) {
@@ -315,36 +316,36 @@ class Studio {
     const mb = Math.max(1, Math.ceil((st.bytes_needed || 63875911) / 1e6));
     this.bar = h('div', { class: 'cap-bar' }, h('i', {}));
     this.barText = h('div', { class: 'cap-bar-text' }, '');
-    if (navigator.onLine === false) { this.barText.textContent = 'No internet right now - connect once to download it.'; this.barText.classList.add('err'); }
+    if (navigator.onLine === false) { this.barText.textContent = $t('capture.no_internet_right_now_connect'); this.barText.classList.add('err'); }
     // the stage says what the download gives (it would be an empty box otherwise)
     if (!this.media.querySelector('.cap-intro')) {
       const item = (ic, b, t) => h('li', {}, h('span', { class: 'cap-intro-icon' }, icon(ic)), h('div', {}, h('b', {}, b), h('span', {}, t)));
       this.media.innerHTML = '';
       this.media.append(h('div', { class: 'cap-intro' },
         h('span', { class: 'cap-drop-icon' }, icon('cap-film')),
-        h('b', { class: 'cap-intro-title' }, 'Film it, play it'),
+        h('b', { class: 'cap-intro-title' }, $t('capture.film_it_play_it')),
         h('ul', {},
-          item('cap-video', 'A video, your webcam or a photo', 'Any real adult - the sim copies the moves'),
-          item('cap-face', 'Body, hands, fingers and face', 'Blinks, smiles, the mouth, even a wink'),
-          item('cap-shield', 'Everything stays on this PC', 'Nothing is uploaded - after the download it works offline'))));
+          item('cap-video', $t('capture.video_your_webcam_or_photo'), $t('capture.any_real_adult_sim_copies')),
+          item('cap-face', $t('capture.body_hands_fingers_and_face'), $t('capture.blinks_smiles_mouth_even_wink')),
+          item('cap-shield', $t('capture.everything_stays_on_this_pc'), $t('capture.nothing_is_uploaded_after_download')))));
     }
     P.append(h('div', { class: 'cap-card cap-install' },
       h('div', { class: 'cap-card-icon' }, icon('cap-download')),
-      h('h3', {}, 'One-time download'),
-      h('p', {}, `Motion capture needs a one-time download (${mb} MB). After that it works without internet. Your videos never leave this PC.`),
+      h('h3', {}, $t('capture.one_time_download')),
+      h('p', {}, $t('capture.motion_capture_needs_one_time', { mb })),
       this.bar, this.barText,
-      h('p', { class: 'cap-fine' }, 'MediaPipe © Google LLC, Apache License 2.0')));
-    const btn = h('button', { class: 'btn primary big cap-go' }, icon('cap-download'), 'Download');
+      h('p', { class: 'cap-fine' }, $t('capture.mediapipe_google_llc_apache_license'))));
+    const btn = h('button', { class: 'btn primary big cap-go' }, icon('cap-download'), $t('capture.download'));
     btn.onclick = async () => {
       btn.disabled = true;
       this.barText.classList.remove('err');
-      this.barText.textContent = 'Starting...';
+      this.barText.textContent = $t('capture.starting');
       this.root.classList.add('busy');
       try {
         const done = await installCapture(s => {
           const f = s.total_bytes ? Math.min(1, s.done_bytes / s.total_bytes) : 0;
           this.bar.firstChild.style.transform = `scaleX(${f})`;
-          this.barText.textContent = s.busy ? `${Math.round(f * 100)}% - ${s.stage || 'Downloading...'}` : '';
+          this.barText.textContent = s.busy ? `${Math.round(f * 100)}% - ${s.stage || $t('capture.downloading')}` : '';
         });
         this.status = done;
         this.bar.firstChild.style.transform = 'scaleX(1)';
@@ -353,7 +354,7 @@ class Studio {
         this.barText.append(icon('check'), ' Ready!');
         setTimeout(() => { this.media.innerHTML = ''; this._setStep('pick'); }, 900);
       } catch (e) {
-        this.barText.textContent = e.message || 'The download did not finish.';
+        this.barText.textContent = e.message || $t('capture.download_did_not_finish');
         this.barText.classList.add('err');
         btn.disabled = false;
       } finally { this.root.classList.remove('busy'); }
@@ -364,9 +365,9 @@ class Studio {
   _adultBox() {
     const box = h('input', { type: 'checkbox', checked: this.adult });
     box.addEventListener('change', () => { this.adult = box.checked; this.render(); });
-    const text = this.source === 'photo' ? 'Everyone in this picture is an adult (18+) and agreed to be photographed.'
-      : this.source === 'video' ? 'Everyone in this video is an adult (18+) and agreed to be filmed.'
-      : 'I am an adult (18+), and everyone on camera is an adult who agreed to be filmed.';
+    const text = this.source === 'photo' ? $t('capture.everyone_in_this_picture_is')
+      : this.source === 'video' ? $t('capture.everyone_in_this_video_is')
+      : $t('capture.i_am_adult_18_and');
     return h('label', { class: 'cap-adult' + (this.adult ? ' on' : '') }, box, h('span', { class: 'cap-tick' }, icon('check')), h('span', {}, text));
   }
 
@@ -380,22 +381,22 @@ class Studio {
     if (this.source === 'photo') return this._render_pickPhoto(P, F);
     if (this.source === 'webcam' || this.source === 'face') return this._render_pickCam(P, F);
     if (!this.video) {
-      this._dropZone('video/*,.mp4,.webm,.mov', 'Drop a video here, or click to choose', '.mp4, .webm or .mov - any video of a real person');
+      this._dropZone('video/*,.mp4,.webm,.mov', $t('capture.drop_video_here_or_click'), $t('capture.video_types_hint'));
     }
     P.append(h('div', { class: 'cap-card' },
-      h('h3', {}, this.video ? (this.videoName || 'Your video') : 'Pick a video'),
-      h('p', {}, this.video ? `${secs(this.video.duration)} long.` : 'Film yourself, or use any video of a real adult. It works best with one person, filmed from the front or the side, with the whole body in view.'),
-      this.video ? h('button', { class: 'btn small ghost', onclick: () => this._clearVideo() }, icon('reset'), 'Pick another video') : null,
-      h('button', { class: 'btn small ghost', onclick: () => this._switchSource('webcam') }, icon('cap-webcam'), 'Use my webcam')));
+      h('h3', {}, this.video ? (this.videoName || $t('capture.your_video')) : $t('capture.pick_video')),
+      h('p', {}, this.video ? $t('capture.secs_long', { secs: secs(this.video.duration) }) : $t('capture.film_yourself_or_use_any')),
+      this.video ? h('button', { class: 'btn small ghost', onclick: () => this._clearVideo() }, icon('reset'), $t('capture.pick_another_video')) : null,
+      h('button', { class: 'btn small ghost', onclick: () => this._switchSource('webcam') }, icon('cap-webcam'), $t('capture.use_my_webcam'))));
     P.append(this._adultBox());
     P.append(h('div', { class: 'cap-switches' },
-      this._switch('Body', 'Arms, legs, hips and head', this.opts.body, v => { this.opts.body = v; }),
-      this._switch('Hands and fingers', 'Needs the hands in view', this.opts.hands, v => { this.opts.hands = v; }),
-      this._switch('Face', this.faceSmall ? 'Face too small in this video' : 'Expressions, blinks, the mouth', this.opts.face && !this.faceSmall, v => { this.opts.face = v; }, this.faceSmall)));
+      this._switch($t('capture.body'), $t('capture.arms_legs_hips_and_head'), this.opts.body, v => { this.opts.body = v; }),
+      this._switch($t('capture.hands_and_fingers'), $t('capture.needs_hands_in_view'), this.opts.hands, v => { this.opts.hands = v; }),
+      this._switch($t('capture.face'), this.faceSmall ? $t('capture.face_too_small_in_this') : $t('capture.expressions_blinks_mouth'), this.opts.face && !this.faceSmall, v => { this.opts.face = v; }, this.faceSmall)));
     const long = this.video && this.video.duration > 12;
-    const next = h('button', { class: 'btn primary big cap-go', disabled: !this.video || !this.adult }, long ? 'Next' : 'Read the moves', icon('arrow'));
+    const next = h('button', { class: 'btn primary big cap-go', disabled: !this.video || !this.adult }, long ? $t('capture.next') : $t('capture.read_moves'), icon('arrow'));
     next.onclick = () => (long ? this._setStep('part') : this.read());
-    F.append(h('div', { class: 'cap-foot-note' }, !this.adult ? 'Tick the box to go on.' : !this.video ? 'Pick a video to go on.' : ''), h('div', { class: 'grow' }), next);
+    F.append(h('div', { class: 'cap-foot-note' }, !this.adult ? $t('capture.tick_box_to_go_on') : !this.video ? $t('capture.pick_video_to_go_on') : ''), h('div', { class: 'grow' }), next);
   }
 
   _dropZone(accept, title, sub) {
@@ -412,11 +413,11 @@ class Studio {
 
   _loadFile(file) {
     if (this.source === 'photo') {
-      if (!/^image\//.test(file.type)) return this.chip('type', 'That is not a picture - pick a .jpg, .png or .webp.', 'warn');
+      if (!/^image\//.test(file.type)) return this.chip('type', $t('capture.that_is_not_picture_pick'), 'warn');
       const url = URL.createObjectURL(file);
       const img = h('img', { class: 'cap-video', alt: '' });
       img.onload = () => { this._setPhoto(img, file.name); };
-      img.onerror = () => this.chip('type', 'This picture can\'t be opened here.', 'warn');
+      img.onerror = () => this.chip('type', $t('capture.this_picture_can_t_be'), 'warn');
       img.src = url;
       this._urls = [...(this._urls || []), url];
       return;
@@ -425,7 +426,7 @@ class Studio {
     const v = h('video', { class: 'cap-video', muted: true, playsinline: true, preload: 'auto' });
     v.muted = true;
     v.addEventListener('loadedmetadata', () => { this._setVideo(v, file.name); }, { once: true });
-    v.addEventListener('error', () => { this.chip('type', 'This video type can\'t be opened here. Save it as MP4 (H.264) and try again.', 'warn'); }, { once: true });
+    v.addEventListener('error', () => { this.chip('type', $t('capture.this_video_type_can_t'), 'warn'); }, { once: true });
     v.src = url;
     this._urls = [...(this._urls || []), url];
   }
@@ -447,7 +448,7 @@ class Studio {
       const tr = await this._tracker();
       if (!tr || !this.video || this.closed) return;
       const fr = detectFrame(tr, this.video, 1, { W: this.video.videoWidth, H: this.video.videoHeight });
-      if (fr.people > 1) this.chip('people', 'Two people found - pick who to copy', 'warn', { label: 'Pick', run: () => this._pickPerson(fr) });
+      if (fr.people > 1) this.chip('people', $t('capture.two_people_found_pick_who'), 'warn', { label: $t('capture.pick'), run: () => this._pickPerson(fr) });
       if (this.opts.face && fr.pose && !fr.face) { this.faceSmall = true; this.opts.face = false; this.render(); }
       if (fr.pose) this._drawSkeleton(fr);
     } catch (e) { console.warn('capture: first frame', e); }
@@ -456,10 +457,10 @@ class Studio {
   _pickPerson() {
     // the tracker follows whoever is nearest the chosen side
     const tr = this._tr;
-    const pick = side => { if (tr) tr.last = { hip: [side === 'left' ? 0.25 : 0.75, 0.55] }; this.chip('people', side === 'left' ? 'Copying the person on the left.' : 'Copying the person on the right.', 'ok'); };
-    this.chip('people', 'Who should be copied?', 'warn', { label: 'The one on the left', run: () => pick('left') });
+    const pick = side => { if (tr) tr.last = { hip: [side === 'left' ? 0.25 : 0.75, 0.55] }; this.chip('people', side === 'left' ? $t('capture.copying_person_on_left') : $t('capture.copying_person_on_right'), 'ok'); };
+    this.chip('people', $t('capture.who_should_be_copied'), 'warn', { label: $t('capture.one_on_left'), run: () => pick('left') });
     const el = this.chips.get('people');
-    el.append(h('button', { class: 'cap-chip-btn', onclick: () => pick('right') }, 'The one on the right'));
+    el.append(h('button', { class: 'cap-chip-btn', onclick: () => pick('right') }, $t('capture.one_on_right')));
   }
 
   _clearVideo() {
@@ -484,28 +485,28 @@ class Studio {
     if (this._tr) { this._tr.close(); this._tr = null; }
     if (this._trPromise && this._trMode === key) return this._trPromise;
     this._trMode = key;
-    this.chip('warm', 'Warming up the motion reader...', 'soft');
+    this.chip('warm', $t('capture.warming_up_motion_reader'), 'soft');
     this._trPromise = createTracker({ body: this.opts.body || this.source !== 'face', hands: this.opts.hands, face: this.opts.face || this.source === 'face', quality: this.source === 'webcam' || this.source === 'face' ? 'fast' : 'best', mode, people })
       .then(tr => { this._tr = tr; this.chip('warm', null); return tr; })
-      .catch(e => { this.chip('warm', 'The motion reader could not start: ' + (e.message || e), 'warn'); this._trPromise = null; throw e; });
+      .catch(e => { this.chip('warm', $t('capture.motion_reader_could_not_start', { message: e.message || e }), 'warn'); this._trPromise = null; throw e; });
     return this._trPromise;
   }
 
   // ---------------------------------------------------------------- 2. the part (long videos)
   _render_part(P, F) {
     const v = this.video, d = v.duration;
-    P.append(h('div', { class: 'cap-card' }, h('h3', {}, 'Choose the part'),
-      h('p', {}, 'Drag the handles to the part you want (up to 60 s).'),
-      h('div', { class: 'cap-range-text' }, `${secs(this.range[0])} to ${secs(this.range[1])} - ${secs(this.range[1] - this.range[0])}`)));
+    P.append(h('div', { class: 'cap-card' }, h('h3', {}, $t('capture.choose_part')),
+      h('p', {}, $t('capture.drag_handles_to_part_you')),
+      h('div', { class: 'cap-range-text' }, $t('capture.to', { v: secs(this.range[0]), v2: secs(this.range[1]), v3: secs(this.range[1] - this.range[0]) }))));
     const strip = h('div', { class: 'cap-strip' });
     const sel = h('div', { class: 'cap-strip-sel' });
-    const hA = h('div', { class: 'cap-handle', role: 'slider', 'aria-label': 'Start' }), hB = h('div', { class: 'cap-handle', role: 'slider', 'aria-label': 'End' });
+    const hA = h('div', { class: 'cap-handle', role: 'slider', 'aria-label': $t('capture.start') }), hB = h('div', { class: 'cap-handle', role: 'slider', 'aria-label': 'End' });
     const place = () => {
       const a = this.range[0] / d * 100, b = this.range[1] / d * 100;
       hA.style.left = a + '%'; hB.style.left = b + '%';
       sel.style.left = a + '%'; sel.style.width = (b - a) + '%';
       const txt = P.querySelector('.cap-range-text');
-      if (txt) txt.textContent = `${secs(this.range[0])} to ${secs(this.range[1])} - ${secs(this.range[1] - this.range[0])}`;
+      if (txt) txt.textContent = $t('capture.to', { v: secs(this.range[0]), v2: secs(this.range[1]), v3: secs(this.range[1] - this.range[0]) });
     };
     const drag = (which, el) => el.addEventListener('pointerdown', e => {
       e.preventDefault(); el.setPointerCapture(e.pointerId);
@@ -523,8 +524,8 @@ class Studio {
     drag(0, hA); drag(1, hB);
     const thumbs = h('div', { class: 'cap-thumbs' });
     strip.append(thumbs, sel, hA, hB);
-    F.append(h('button', { class: 'btn ghost', onclick: () => this._setStep('pick') }, icon('prev'), 'Back'), strip,
-      h('button', { class: 'btn primary big cap-go', disabled: !this.adult, onclick: () => this.read() }, 'Read the moves', icon('arrow')));
+    F.append(h('button', { class: 'btn ghost', onclick: () => this._setStep('pick') }, icon('prev'), $t('capture.back')), strip,
+      h('button', { class: 'btn primary big cap-go', disabled: !this.adult, onclick: () => this.read() }, $t('capture.read_moves'), icon('arrow')));
     place();
     this._filmstrip(thumbs, 8);
   }
@@ -550,10 +551,10 @@ class Studio {
 
   // ---------------------------------------------------------------- 3. reading
   _render_reading(P, F) {
-    P.append(h('div', { class: 'cap-card' }, h('h3', {}, 'Reading your moves'),
-      h('p', {}, 'The video plays at the speed this PC can read it. The sim copies along on the right.'),
+    P.append(h('div', { class: 'cap-card' }, h('h3', {}, $t('capture.reading_your_moves')),
+      h('p', {}, $t('capture.video_plays_at_speed_this')),
       h('div', { class: 'cap-live-stats' }, this.readStat = h('span', {}, ''))));
-    F.append(h('div', { class: 'grow' }), h('button', { class: 'btn ghost', onclick: () => { this.abort && this.abort.abort(); } }, 'Stop'));
+    F.append(h('div', { class: 'grow' }), h('button', { class: 'btn ghost', onclick: () => { this.abort && this.abort.abort(); } }, $t('capture.stop')));
   }
 
   _ring(fraction, text) {
@@ -566,7 +567,7 @@ class Studio {
     if (!this.adult) return;
     this._setStep('reading');
     this.scan.classList.remove('hidden');
-    this._ring(0, 'Reading your moves...');
+    this._ring(0, $t('capture.reading_your_moves_2'));
     let tr;
     try { tr = await this._tracker(); } catch { this._setStep('pick'); return; }
     this.abort = new AbortController();
@@ -579,13 +580,13 @@ class Studio {
         from, to, signal: this.abort.signal,
         onFrame: (fr, t, prog) => {
           this._drawSkeleton(fr);
-          this._ring(Math.max(0, Math.min(1, prog)), 'Reading your moves...');
-          if (this.readStat) this.readStat.textContent = `${secs(t - from)} read`;
+          this._ring(Math.max(0, Math.min(1, prog)), $t('capture.reading_your_moves_2'));
+          if (this.readStat) this.readStat.textContent = $t('capture.secs_read', { secs: secs(t - from) });
           const po = fr.pose && fr.pose.world;
           const ankles = po && po[27 * 4 + 3] >= 0.5 && po[28 * 4 + 3] >= 0.5;
           feetGone = po && !ankles ? feetGone + 1 : 0;
-          if (feetGone === 10 && !feetWarned) { feetWarned = true; this.chip('feet', `Feet out of view at ${secs(t)}`, 'warn'); }
-          if (fr.people > 1 && !crowd) { crowd = true; this.chip('people', 'Two people found - pick who to copy', 'warn', { label: 'Pick', run: () => this._pickPerson() }); }
+          if (feetGone === 10 && !feetWarned) { feetWarned = true; this.chip('feet', $t('capture.feet_out_of_view_at', { t: secs(t) }), 'warn'); }
+          if (fr.people > 1 && !crowd) { crowd = true; this.chip('people', $t('capture.two_people_found_pick_who'), 'warn', { label: $t('capture.pick'), run: () => this._pickPerson() }); }
           // the sim copies along (a quick solve of this frame, a few times a second)
           const now = performance.now();
           if (po && now - lastPreview > 45) {
@@ -601,13 +602,13 @@ class Studio {
       this.scan.classList.add('hidden');
       this.ringBox.classList.add('hidden');
       if (e && e.name === 'AbortError') { this._setStep(this.video.duration > 12 ? 'part' : 'pick'); return; }
-      this.chip('err', 'Reading stopped: ' + (e.message || e), 'warn');
+      this.chip('err', $t('capture.reading_stopped', { message: e.message || e }), 'warn');
       this._setStep('pick');
       return;
     }
     this.readMs = performance.now() - t0;
     this.scan.classList.add('hidden');
-    this._ring(1, 'Tidying up your moves...');
+    this._ring(1, $t('capture.tidying_up_your_moves'));
     await new Promise(r => setTimeout(r, 30));
     this.process();
     this.ringBox.classList.add('hidden');
@@ -682,25 +683,25 @@ class Studio {
   _render_check(P, F) {
     const N = this.clean ? this.clean.t.length : 0;
     const face = this.opts.face && this.faceRes && this.faceRes.ok;
-    P.append(h('div', { class: 'cap-card' }, h('h3', {}, 'Check and trim'),
-      h('p', {}, 'Green is clear, yellow is guessed a bit, red is guessed. Drag the handles, or let the app find the best loop.'),
-      this.opts.body ? h('button', { class: 'btn soft block cap-loop-btn', onclick: () => { this.findLoop(true); this.render(); } }, icon('loop'), 'Find the best loop') : null,
-      this.loop && this.loop.found ? h('div', { class: 'cap-ok' }, icon('check'), 'Loops smoothly') : null));
+    P.append(h('div', { class: 'cap-card' }, h('h3', {}, $t('capture.check_and_trim')),
+      h('p', {}, $t('capture.green_is_clear_yellow_is')),
+      this.opts.body ? h('button', { class: 'btn soft block cap-loop-btn', onclick: () => { this.findLoop(true); this.render(); } }, icon('loop'), $t('capture.find_best_loop')) : null,
+      this.loop && this.loop.found ? h('div', { class: 'cap-ok' }, icon('check'), $t('capture.loops_smoothly')) : null));
     const sl = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: this.smooth });
     sl.addEventListener('change', () => { this.smooth = +sl.value; this._reprocess(); });
-    P.append(h('div', { class: 'cap-slider' }, h('div', { class: 'cap-slider-ends' }, h('span', {}, 'Smooth'), h('span', {}, 'Detailed')), sl));
+    P.append(h('div', { class: 'cap-slider' }, h('div', { class: 'cap-slider-ends' }, h('span', {}, $t('capture.smooth')), h('span', {}, $t('capture.detailed'))), sl));
     if (face) {
       const ex = h('input', { type: 'range', min: 1, max: 1.6, step: 0.05, value: this.exaggerate });
       ex.addEventListener('change', () => { this.exaggerate = +ex.value; this._reprocess(); });
-      P.append(h('div', { class: 'cap-slider' }, h('div', { class: 'cap-slider-ends' }, h('span', {}, 'Face as it was'), h('span', {}, 'Stronger face')), ex));
+      P.append(h('div', { class: 'cap-slider' }, h('div', { class: 'cap-slider-ends' }, h('span', {}, $t('capture.face_as_it_was')), h('span', {}, $t('capture.stronger_face'))), ex));
     }
     const sw = h('div', { class: 'cap-switches' });
     if (this.opts.body) {
-      sw.append(this._switch('Keep feet on the floor', null, this.feet, v => { this.feet = v; this._reprocess(); }),
-        this._switch('Stay in place', null, this.stay, v => { this.stay = v; this._reprocess(); }));
+      sw.append(this._switch($t('capture.keep_feet_on_floor'), null, this.feet, v => { this.feet = v; this._reprocess(); }),
+        this._switch($t('capture.stay_in_place'), null, this.stay, v => { this.stay = v; this._reprocess(); }));
     }
-    sw.append(this._switch('Also copy head turns', null, this.headTurns, v => { this.headTurns = v; this._reprocess(); }));
-    if (this.opts.body) sw.append(this._switch('Swap left and right', 'If the sim moves the wrong arm or leg', this.swap, v => { this.swap = v; this._reprocess(); }));
+    sw.append(this._switch($t('capture.also_copy_head_turns'), null, this.headTurns, v => { this.headTurns = v; this._reprocess(); }));
+    if (this.opts.body) sw.append(this._switch($t('capture.swap_left_and_right'), $t('capture.if_sim_moves_wrong_arm'), this.swap, v => { this.swap = v; this._reprocess(); }));
     P.append(sw);
     // the timeline: quality strip, loop handles, the playhead
     this.qCanvas = h('canvas', { class: 'cap-quality' });
@@ -709,12 +710,12 @@ class Studio {
     this.loopSel = h('div', { class: 'cap-strip-sel' });
     const tl = h('div', { class: 'cap-timeline' }, this.qCanvas, this.loopSel, this.hA, this.hB, this.playhead);
     this.tl = tl;
-    const playBtn = h('button', { class: 'icon-btn cap-play', title: 'Play (Space)', onclick: () => this.togglePlay() }, icon(this.playing ? 'pause' : 'play'));
+    const playBtn = h('button', { class: 'icon-btn cap-play', title: $t('capture.play_space'), onclick: () => this.togglePlay() }, icon(this.playing ? 'pause' : 'play'));
     this.playBtn = playBtn;
     const before = h('div', { class: 'seg-inline cap-ba' },
-      h('button', { class: this.before ? 'on' : '', onclick: () => { this.before = true; this.render(); this._show(this.cursor); } }, 'Before'),
-      h('button', { class: this.before ? '' : 'on', onclick: () => { this.before = false; this.render(); this._show(this.cursor); } }, 'After'));
-    F.append(playBtn, tl, before, h('button', { class: 'btn primary big cap-go', disabled: !N, onclick: () => { this.playing && this.togglePlay(); this._setStep('apply'); } }, 'Next', icon('arrow')));
+      h('button', { class: this.before ? 'on' : '', onclick: () => { this.before = true; this.render(); this._show(this.cursor); } }, $t('capture.before')),
+      h('button', { class: this.before ? '' : 'on', onclick: () => { this.before = false; this.render(); this._show(this.cursor); } }, $t('capture.after')));
+    F.append(playBtn, tl, before, h('button', { class: 'btn primary big cap-go', disabled: !N, onclick: () => { this.playing && this.togglePlay(); this._setStep('apply'); } }, $t('capture.next'), icon('arrow')));
     requestAnimationFrame(() => { this._drawQuality(); this._placeHandles(false); this._wireTimeline(); this._show(this.cursor || 0); });
   }
 
@@ -856,8 +857,8 @@ class Studio {
     const others = p.sims.filter(s => s.id !== this.target);
     if (this.fitLength === undefined) this.fitLength = !others.length && this.useLoop;
     const stretchNote = !others.length ? null : others.length === 1
-      ? `${others[0].label}'s animation is stretched to this length too.`
-      : "The other sims' animations are stretched to this length too.";
+      ? $t('capture.s_animation_is_stretched_to', { vLabel: others[0].label })
+      : $t('capture.other_sims_animations_are_stretched');
     const sel = h('select', { class: 'cap-select' }, p.sims.map(s => h('option', { value: s.id, selected: s.id === this.target }, s.label)));
     sel.addEventListener('change', () => { this.target = sel.value; this._readSim(); const s = app.store.sim(this.target); this.root.style.setProperty('--sim', s.color); this.render(); });
     const at = Math.round(app.store.frame);
@@ -866,16 +867,16 @@ class Studio {
       r.addEventListener('change', () => { this.mode = val; this.render(); });
       return h('label', { class: 'cap-radio' + (this.mode === val ? ' on' : '') }, r, h('span', {}, label));
     };
-    P.append(h('div', { class: 'cap-card' }, h('h3', {}, 'Put it on'),
-      h('div', { class: 'cap-put' }, h('span', {}, 'Put it on:'), sel),
-      radio('replace', 'Replace the whole animation'),
-      radio('insert', `Only here (from ${secs(at / p.fps)})`),
-      this.mode === 'replace' ? this._switch(`Make the animation this long (${secs(len / 30)})`,
+    P.append(h('div', { class: 'cap-card' }, h('h3', {}, $t('capture.put_it_on')),
+      h('div', { class: 'cap-put' }, h('span', {}, $t('capture.put_it_on_2')), sel),
+      radio('replace', $t('capture.replace_whole_animation')),
+      radio('insert', $t('capture.only_here_from', { at: secs(at / p.fps) })),
+      this.mode === 'replace' ? this._switch($t('capture.make_animation_this_long', { len: secs(len / 30) }),
         this.fitLength && Math.round(len) !== p.length ? stretchNote : null, this.fitLength, v => { this.fitLength = v; this.render(); }) : null,
-      h('p', { class: 'cap-fine' }, 'One Ctrl+Z takes it all back.')));
-    const go = h('button', { class: 'btn primary big cap-go cap-make' }, icon('key'), 'Make keys');
+      h('p', { class: 'cap-fine' }, $t('capture.one_ctrl_z_takes_it'))));
+    const go = h('button', { class: 'btn primary big cap-go cap-make' }, icon('key'), $t('capture.make_keys'));
     go.onclick = () => this.makeKeys(go);
-    F.append(h('button', { class: 'btn ghost', onclick: () => this._setStep('check') }, icon('prev'), 'Back'), h('div', { class: 'grow' }), go);
+    F.append(h('button', { class: 'btn ghost', onclick: () => this._setStep('check') }, icon('prev'), $t('capture.back')), h('div', { class: 'grow' }), go);
   }
 
   // after "Make the animation this long": say the new length, and whose moves were stretched along
@@ -883,8 +884,8 @@ class Studio {
     const p = this.app.store.project;
     if (p.length === lenBefore) return '';
     const others = p.sims.filter(x => x.id !== s.id);
-    const who = !others.length ? '' : others.length === 1 ? ` ${others[0].label}'s animation was stretched to match.` : " The other sims' animations were stretched to match.";
-    return ` The animation is ${secs(p.length / p.fps)} long now.${who}`;
+    const who = !others.length ? '' : others.length === 1 ? $t('capture.s_animation_was_stretched_to', { vLabel: others[0].label }) : $t('capture.other_sims_animations_were_stretched');
+    return $t('capture.animation_is_long_now', { pCount: secs(p.length / p.fps), who });
   }
 
   _takeLength() {
@@ -938,9 +939,9 @@ class Studio {
       const r = btn.getBoundingClientRect();
       if (fx && fx.burst && !reduced()) fx.burst(r.left + r.width / 2, r.top + r.height / 2, { count: 36, power: 0.9 });
     } catch { /* no particles */ }
-    const src = this.source === 'webcam' ? 'your webcam' : this.source === 'face' ? 'your face' : this.source === 'photo' ? 'your picture' : 'your video';
-    const text = this.source === 'photo' ? `Pose from your picture put on ${s.label} at ${(at / p.fps).toFixed(2)} s. Undo with Ctrl+Z.`
-      : `Made ${count} key${count === 1 ? '' : 's'} on ${s.label} from ${src}.${this._lengthNote(s, lenBefore)} Undo with Ctrl+Z.`;
+    const src = this.source === 'webcam' ? $t('capture.your_webcam') : this.source === 'face' ? $t('capture.your_face') : this.source === 'photo' ? $t('capture.your_picture') : $t('capture.your_video_2');
+    const text = this.source === 'photo' ? $t('capture.pose_from_your_picture_put', { sLabel: s.label, at: (at / p.fps).toFixed(2) })
+      : $t('capture.made_keys_on_from_undo', { count, sLabel: s.label, src, _lengthNote: this._lengthNote(s, lenBefore) });
     const keys = s.keys.map(k => k.frame);
     try { app.emit && app.emit('keyed', { simId: s.id, frame: keys[0] || 0, kind: 'add' }); } catch { /* optional */ }
     this.close(true);
@@ -956,14 +957,14 @@ class Studio {
   _render_pickCam(P, F) {
     const face = this.source === 'face';
     P.append(h('div', { class: 'cap-card' },
-      h('h3', {}, face ? 'Copy your face' : 'Act it out yourself'),
-      h('p', {}, face ? 'Sit close to the camera in good light. First look at the camera with a relaxed face for 2 seconds, then make your faces. Hold T to stick your tongue out.'
-        : 'Stand back so your whole body is in view. Press Space (or Record): a 3-2-1 count-in, then act it out. Press Space again to stop.'),
-      !face ? h('button', { class: 'btn small ghost', onclick: () => this._switchSource('video') }, icon('cap-video'), 'Use a video instead') : null));
+      h('h3', {}, face ? $t('capture.copy_your_face') : $t('capture.act_it_out_yourself')),
+      h('p', {}, face ? $t('capture.sit_close_to_camera_in')
+        : $t('capture.stand_back_so_your_whole')),
+      !face ? h('button', { class: 'btn small ghost', onclick: () => this._switchSource('video') }, icon('cap-video'), $t('capture.use_video_instead')) : null));
     P.append(this._adultBox());
-    const rec = h('button', { class: 'btn primary big cap-go', disabled: !this.adult || !this.cam }, icon('rec'), 'Record');
+    const rec = h('button', { class: 'btn primary big cap-go', disabled: !this.adult || !this.cam }, icon('rec'), $t('capture.record'));
     rec.onclick = () => this.countIn();
-    F.append(h('div', { class: 'cap-foot-note' }, !this.adult ? 'Tick the box to go on.' : !this.cam ? 'Starting the camera...' : 'Space starts and stops.'), h('div', { class: 'grow' }), rec);
+    F.append(h('div', { class: 'cap-foot-note' }, !this.adult ? $t('capture.tick_box_to_go_on') : !this.cam ? $t('capture.starting_camera') : $t('capture.space_starts_and_stops')), h('div', { class: 'grow' }), rec);
     if (!this.cam && !this._camStarting) this._startCamera();
   }
 
@@ -995,7 +996,7 @@ class Studio {
       const tr = await this._tracker();
       this._liveLoop(tr);
     } catch (e) {
-      this.chip('cam', e && e.name === 'NotAllowedError' ? 'The camera was not allowed.' : 'No camera found - plug one in, or use a video instead.', 'warn');
+      this.chip('cam', e && e.name === 'NotAllowedError' ? $t('capture.camera_was_not_allowed') : $t('capture.no_camera_found_plug_one'), 'warn');
     } finally { this._camStarting = false; }
   }
 
@@ -1021,10 +1022,10 @@ class Studio {
         if (!face) {
           const po = fr.pose && fr.pose.world;
           const feet = po && po[27 * 4 + 3] >= 0.5 && po[28 * 4 + 3] >= 0.5;
-          this.chip('feet', feet ? 'Feet in view' : 'Step back until your feet are in view', feet ? 'ok' : 'warn');
+          this.chip('feet', feet ? $t('capture.feet_in_view') : $t('capture.step_back_until_your_feet'), feet ? 'ok' : 'warn');
           if (po) { const one = this._oneFrameTake(fr); this.preview.setPose(solveOne(this.solver, one, 0, 0, { facing: this.facing, psi: this._psiFor(one), base: this.basePose })); }
         } else {
-          this.chip('facein', fr.face ? 'Face found' : 'Look at the camera', fr.face ? 'ok' : 'warn');
+          this.chip('facein', fr.face ? $t('capture.face_found') : $t('capture.look_at_camera'), fr.face ? 'ok' : 'warn');
         }
         const now = performance.now();
         if (now - lastLight > 500) {
@@ -1034,7 +1035,7 @@ class Studio {
           const d = g.getImageData(0, 0, 32, 18).data;
           let sum = 0; for (let k = 0; k < d.length; k += 4) sum += 0.2126 * d[k] + 0.7152 * d[k + 1] + 0.0722 * d[k + 2];
           const lum = sum / (d.length / 4) / 255;
-          this.chip('light', lum > 0.18 ? 'Good light' : 'More light, please', lum > 0.18 ? 'ok' : 'warn');
+          this.chip('light', lum > 0.18 ? $t('capture.good_light') : $t('capture.more_light_please'), lum > 0.18 ? 'ok' : 'warn');
         }
       } catch (e) { console.warn('capture: live', e); }
       if (this.cam.requestVideoFrameCallback) this.cam.requestVideoFrameCallback(step); else requestAnimationFrame(step);
@@ -1065,9 +1066,9 @@ class Studio {
     this.render();
     const face = this.source === 'face';
     if (face) {
-      this.chip('cal', 'Look at the camera with a relaxed face', 'soft');
+      this.chip('cal', $t('capture.look_at_camera_with_relaxed'), 'soft');
       this._calRing();
-      setTimeout(() => { if (this.recording) { this.chip('cal', 'Hold T to stick your tongue out', 'soft'); } }, 2000);
+      setTimeout(() => { if (this.recording) { this.chip('cal', $t('capture.hold_t_to_stick_your'), 'soft'); } }, 2000);
     }
     this.abort = new AbortController();
     this._tongue = 0; this._tongueTarget = 0;
@@ -1092,18 +1093,18 @@ class Studio {
     this.root.classList.remove('rec');
     this.chip('cal', null);
     this._live = false;
-    if (!this.raw || this.raw.t.length < 5) { this.chip('short', 'That was too short - try again.', 'warn'); this._setStep('pick'); this._liveLoop(tr); return; }
+    if (!this.raw || this.raw.t.length < 5) { this.chip('short', $t('capture.that_was_too_short_try'), 'warn'); this._setStep('pick'); this._liveLoop(tr); return; }
     this.process();
     this._setStep('check');
   }
 
   _render_record(P, F) {
     const face = this.source === 'face';
-    P.append(h('div', { class: 'cap-card' }, h('h3', {}, this.recording ? 'Recording' : 'Get ready...'),
-      h('p', {}, face ? 'Make your faces - the sim copies them. Hold T to stick your tongue out.' : 'Act it out - the sim copies you on the right.'),
+    P.append(h('div', { class: 'cap-card' }, h('h3', {}, this.recording ? $t('capture.recording') : $t('capture.get_ready_2')),
+      h('p', {}, face ? $t('capture.make_your_faces_sim_copies') : $t('capture.act_it_out_sim_copies')),
       h('div', { class: 'cap-rec-time' }, h('span', { class: 'cap-rec-dot' }), this.recStat = h('span', {}, '0.0 s'))));
-    F.append(h('div', { class: 'cap-foot-note' }, 'Space stops.'), h('div', { class: 'grow' }),
-      h('button', { class: 'btn primary big cap-go', disabled: !this.recording, onclick: () => this.abort && this.abort.abort() }, icon('pause'), 'Stop'));
+    F.append(h('div', { class: 'cap-foot-note' }, $t('capture.space_stops')), h('div', { class: 'grow' }),
+      h('button', { class: 'btn primary big cap-go', disabled: !this.recording, onclick: () => this.abort && this.abort.abort() }, icon('pause'), $t('capture.stop')));
   }
 
   _calRing() {
@@ -1111,7 +1112,7 @@ class Studio {
     const t0 = performance.now();
     const tick = () => {
       const f = Math.min(1, (performance.now() - t0) / 2000);
-      this._ring(f, 'Relaxed face...');
+      this._ring(f, $t('capture.relaxed_face'));
       if (f < 1 && !this.closed) requestAnimationFrame(tick); else setTimeout(() => this.ringBox.classList.add('hidden'), 250);
     };
     tick();
@@ -1119,21 +1120,21 @@ class Studio {
 
   // ---------------------------------------------------------------- photo
   _render_pickPhoto(P, F) {
-    if (!this.photo && !this._photoZone) { this._photoZone = true; this._dropZone('image/*', 'Drop a picture here, or click to choose', '.jpg, .png or .webp - one real adult, the whole body in view'); }
+    if (!this.photo && !this._photoZone) { this._photoZone = true; this._dropZone('image/*', $t('capture.drop_picture_here_or_click'), $t('capture.photo_types_hint')); }
     if (this.mock && !this.photo && !this._mockPhotoing) {
       this._mockPhotoing = true;
       loadMockMotion().then(m => {
         const take = takeFromMotion(this.app.assets.rig, m, { seconds: 4, face: true, hands: true });
         const v = new MockVideo(take); v.seek(2.3);
-        this._setPhoto(v, 'Test picture');
+        this._setPhoto(v, $t('capture.test_picture'));
       });
     }
-    P.append(h('div', { class: 'cap-card' }, h('h3', {}, this.photo ? 'Your picture' : 'Pick a picture'),
-      h('p', {}, this.photo ? (this.photoPose ? 'This is the pose the app read. Use it, and it becomes a key at the current frame.' : 'Reading the pose...') : 'The sim takes the pose in the picture, at the current frame.')));
+    P.append(h('div', { class: 'cap-card' }, h('h3', {}, this.photo ? $t('capture.your_picture_2') : $t('capture.pick_picture')),
+      h('p', {}, this.photo ? (this.photoPose ? $t('capture.this_is_pose_app_read') : $t('capture.reading_pose')) : $t('capture.sim_takes_pose_in_picture'))));
     P.append(this._adultBox());
-    const use = h('button', { class: 'btn primary big cap-go', disabled: !this.photoPose || !this.adult }, icon('check'), 'Use this pose');
+    const use = h('button', { class: 'btn primary big cap-go', disabled: !this.photoPose || !this.adult }, icon('check'), $t('capture.use_this_pose'));
     use.onclick = () => this.usePhoto(use);
-    F.append(h('div', { class: 'cap-foot-note' }, !this.adult ? 'Tick the box to go on.' : ''), h('div', { class: 'grow' }), use);
+    F.append(h('div', { class: 'cap-foot-note' }, !this.adult ? $t('capture.tick_box_to_go_on') : ''), h('div', { class: 'grow' }), use);
   }
   _render_photo(P, F) { this._render_pickPhoto(P, F); }
 
@@ -1147,7 +1148,7 @@ class Studio {
       const tr = await this._tracker(this.mock ? 'VIDEO' : 'IMAGE');
       const { take, record } = await trackPhoto(tr, img);
       this._drawSkeleton(record);
-      if (!record.pose) { this.chip('photo', 'No person found in this picture.', 'warn'); return; }
+      if (!record.pose) { this.chip('photo', $t('capture.no_person_found_in_this'), 'warn'); return; }
       this.photoTake = take;
       const r = solveTake(take, 0, this.solver, { facing: this.facing, base: this.basePose, hands: true, fingers: true, stick: false });
       this.photoPose = r.poses[0];
@@ -1155,7 +1156,7 @@ class Studio {
       this.photoFace = face.ok ? face.faces[0] : null;
       this.preview.setPose(this.photoPose, this.photoFace);
       this._setStep('photo');
-    } catch (e) { this.chip('photo', 'The picture could not be read: ' + (e.message || e), 'warn'); }
+    } catch (e) { this.chip('photo', $t('capture.picture_could_not_be_read', { message: e.message || e }), 'warn'); }
   }
 
   usePhoto(btn) {
@@ -1169,7 +1170,7 @@ class Studio {
     const at = Math.round(app.store.frame);
     try { applyToSim(app, s.id, res, { mode: 'insert', at, detail: 0.5 }); } catch (e) { this.chip('err', e.message, 'warn'); return; }
     this.close(true);
-    toast(`Pose from your picture put on ${s.label} at ${(at / app.store.project.fps).toFixed(2)} s. Undo with Ctrl+Z.`, 'ok');
+    toast($t('capture.pose_from_your_picture_put', { sLabel: s.label, at: (at / app.store.project.fps).toFixed(2) }), 'ok');
     try { app.timeline && app.timeline.flash && !reduced() && app.timeline.flash(s.id, at, 'add'); } catch { /* optional */ }
   }
 
@@ -1244,7 +1245,7 @@ class Studio {
 
   async tryClose() {
     if ((this.step === 'check' || this.step === 'apply') && this.clean) {
-      const ok = await confirmBox('Leave without making keys?', 'The moves that were read are not kept.', 'Leave', true);
+      const ok = await confirmBox($t('capture.leave_without_making_keys'), $t('capture.moves_that_were_read_are'), $t('capture.leave'), true);
       if (!ok) return;
     }
     this.close();

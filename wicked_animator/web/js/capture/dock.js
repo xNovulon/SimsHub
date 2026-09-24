@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { h, icon, toast } from '../ui.js';
 import { LiveMirror } from './mirror.js';
 import { createWorkerTracker, detectFrame } from './tracker.js';
+import { $t, fmtList } from '../i18n.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion');
 const wantsWorker = () => {
@@ -23,14 +24,14 @@ export const dockMethods = {
 
   _mirrorSwitch() {
     const ok = this.adult && this.cam;
-    const sub = !this.adult ? 'Tick the box first' : !this.cam ? 'Starting the camera...' : this.twoPeople ? 'Both sims copy you two live in the big view' : 'Your sim copies you live in the big view';
+    const sub = !this.adult ? $t('capture.dock.tick_box_first') : !this.cam ? $t('capture.dock.starting_camera') : this.twoPeople ? $t('capture.dock.both_sims_copy_you_two') : $t('capture.dock.your_sim_copies_you_live');
     const input = h('input', { type: 'checkbox', checked: !!this.docked || !!this.mirrorWanted, disabled: !ok && !this.mirrorWanted });
     input.addEventListener('change', () => {
       if (input.checked) { this.mirrorWanted = true; if (ok) this.startMirror(); else this.render(); }
       else { this.mirrorWanted = false; this.render(); }
     });
     return h('div', { class: 'toggle-row cap-switch cap-mirror-switch' + (ok || this.mirrorWanted ? '' : ' off') },
-      h('div', {}, h('b', {}, 'Live mirror'), h('span', {}, sub)), h('label', { class: 'switch' }, input, h('span')));
+      h('div', {}, h('b', {}, $t('capture.dock.live_mirror')), h('span', {}, sub)), h('label', { class: 'switch' }, input, h('span')));
   },
 
   // ---------------------------------------------------------------- on / off
@@ -42,9 +43,9 @@ export const dockMethods = {
     const ids = this._mirrorSims();
     this.mirror = new LiveMirror(this.app, { simIds: ids, solver: this.solver, hands: this.opts.hands, face: this.opts.face || this.source === 'face', smooth: this.smooth }).start();
     this._dock();
-    this.chip('thread', 'Warming up the motion reader...', 'soft');
+    this.chip('thread', $t('capture.dock.warming_up_motion_reader'), 'soft');
     try { this.mirrorTr = await this._mirrorTracker(); } catch (e) {
-      this.chip('thread', 'The motion reader could not start: ' + (e.message || e), 'warn');
+      this.chip('thread', $t('capture.dock.motion_reader_could_not_start', { message: e.message || e }), 'warn');
       return;
     }
     this.chip('thread', null);
@@ -112,15 +113,15 @@ export const dockMethods = {
     this._drawSkeleton(fr);
     const po = fr.pose && fr.pose.world;
     const feet = po && po[27 * 4 + 3] >= 0.5 && po[28 * 4 + 3] >= 0.5;
-    if (this.source !== 'face') this.chip('feet', !po ? 'Step into the picture' : feet ? 'Feet in view' : 'Step back until your feet are in view', feet ? 'ok' : 'warn');
-    if (this.twoPeople && !(fr.others && fr.others[0] && fr.others[0].pose)) this.chip('two', 'Only one person in view', 'warn');
+    if (this.source !== 'face') this.chip('feet', !po ? $t('capture.dock.step_into_picture') : feet ? $t('capture.dock.feet_in_view') : $t('capture.dock.step_back_until_your_feet'), feet ? 'ok' : 'warn');
+    if (this.twoPeople && !(fr.others && fr.others[0] && fr.others[0].pose)) this.chip('two', $t('capture.dock.only_one_person_in_view'), 'warn');
     else this.chip('two', null);
   },
 
   _mirrorStatus() {
     if (!this.mirror || !this.statEl) return;
     const f = this.mirror.fps();
-    this.statEl.textContent = f.shown ? `Live - ${f.shown} moves a second` : 'Waiting for you...';
+    this.statEl.textContent = f.shown ? $t('capture.dock.live_moves_second', { shown: f.shown }) : $t('capture.dock.waiting_for_you');
     this.statEl.classList.toggle('on', f.shown > 0);
   },
 
@@ -172,21 +173,21 @@ export const dockMethods = {
   _render_dock(P, F) {
     const app = this.app;
     const names = this._mirrorSims().map(id => app.store.sim(id)).filter(Boolean).map(s => s.label);
-    const who = names.length > 1 ? `${names[0]} and ${names[1]} copy you two` : `${names[0] || 'Your sim'} copies you`;
-    this.statEl = h('span', { class: 'cap-dock-stat' }, 'Waiting for you...');
+    const who = names.length > 1 ? $t('capture.dock.and_copy_you_two', { v: names[0], v2: names[1] }) : (names[0] ? $t('capture.dock.copies_you', { name: names[0] }) : $t('capture.dock.your_sim_copies_you'));
+    this.statEl = h('span', { class: 'cap-dock-stat' }, $t('capture.dock.waiting_for_you'));
     if (this.recording || this.counting) {
-      P.append(h('div', { class: 'cap-dock-line rec' }, h('span', { class: 'cap-rec-dot' }), h('b', {}, this.recording ? 'Recording' : 'Get ready...'),
+      P.append(h('div', { class: 'cap-dock-line rec' }, h('span', { class: 'cap-rec-dot' }), h('b', {}, this.recording ? $t('capture.dock.recording') : $t('capture.dock.get_ready')),
         this.recStat = h('span', { class: 'cap-dock-time' }, '0.0 s')));
       F.append(h('div', { class: 'grow' }),
-        h('button', { class: 'btn primary cap-go cap-dock-rec', disabled: !this.recording, onclick: () => this.abort && this.abort.abort() }, icon('pause'), 'Stop (Space)'));
+        h('button', { class: 'btn primary cap-go cap-dock-rec', disabled: !this.recording, onclick: () => this.abort && this.abort.abort() }, icon('pause'), $t('capture.dock.stop_space')));
       return;
     }
     P.append(h('div', { class: 'cap-dock-line' }, h('span', { class: 'cap-live-dot' }), h('b', {}, who), this.statEl));
     F.append(
-      h('button', { class: 'btn small ghost cap-dock-back', title: 'Back to the full capture studio', onclick: () => { this.stopMirror(); this.render(); this._restartLive(); } }, icon('prev'), 'Studio'),
+      h('button', { class: 'btn small ghost cap-dock-back', title: $t('capture.dock.back_to_full_capture_studio'), onclick: () => { this.stopMirror(); this.render(); this._restartLive(); } }, icon('prev'), $t('capture.dock.studio')),
       h('div', { class: 'grow' }),
-      h('button', { class: 'btn small soft cap-dock-keep', title: 'Key this pose at the current frame (K)', onclick: () => this.keepPose() }, icon('key'), 'Keep pose'),
-      h('button', { class: 'btn small primary cap-dock-rec', title: 'Record a take: 3-2-1, then act it out (Space)', onclick: () => this.countIn() }, icon('rec'), 'Record'));
+      h('button', { class: 'btn small soft cap-dock-keep', title: $t('capture.dock.key_this_pose_at_current'), onclick: () => this.keepPose() }, icon('key'), $t('capture.dock.keep_pose')),
+      h('button', { class: 'btn small primary cap-dock-rec', title: $t('capture.dock.record_take_3_2_1'), onclick: () => this.countIn() }, icon('rec'), $t('capture.dock.record')));
     this._mirrorStatus();
   },
 
@@ -198,9 +199,9 @@ export const dockMethods = {
     if (!this.mirror || !this.adult) return;
     const app = this.app, f = Math.round(app.store.frame), p = app.store.project;
     const done = this.mirror.keep();
-    if (!done.length) { toast('Step into the picture first - then K keeps your pose.'); return; }
+    if (!done.length) { toast($t('capture.dock.step_into_picture_first_then')); return; }
     const names = done.map(id => app.store.sim(id).label);
-    toast(`Pose kept on ${names.join(' and ')} at ${(f / (p.fps || 30)).toFixed(2)} s. Undo with Ctrl+Z.`, 'ok');
+    toast($t('capture.dock.pose_kept_on_at_s', { names: fmtList(names), f: (f / (p.fps || 30)).toFixed(2) }), 'ok');
     try { app.emit && app.emit('keyed', { simId: done[0], frame: f, kind: 'add' }); } catch { /* optional */ }
     if (!reduced()) for (const id of done) try { app.timeline && app.timeline.flash && app.timeline.flash(id, f, 'add'); } catch { /* optional */ }
   },

@@ -20,6 +20,7 @@ import { LIMBS, HIPS, CENTER, PALM } from './bones.js';
 import { spacePos, spaceQuat, setSpaceQuat, solveTwoBone } from './posemath.js';
 import * as PL from './placing.js';
 import { scanClipping, capsulesOf, capsuleNow } from './clipcheck.js';
+import { $t } from './i18n.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
@@ -94,7 +95,7 @@ export async function restorePlace(app, project = app.store.project) {
 // The place row for an id (null when it is not known any more - a CC object that left the Mods folder)
 export async function placeRow(id) {
   if (!id) return null;
-  if (id === 'floor') return { id: 'floor', label: 'Floor', kind: 'floor', location: 'FLOOR', group: 'Floor and walls' };
+  if (id === 'floor') return { id: 'floor', label: $t('refit.floor'), kind: 'floor', location: 'FLOOR', group: $t('refit.floor_and_walls') };
   const list = await allPlaces().catch(() => []);
   return list.find(x => x.id === id || (x.location && ('ww:' + x.location) === id)) || null;
 }
@@ -337,14 +338,14 @@ async function trayBodiesReady(app, ms = 15000) {
 // Move the open animation to another place, as a NEW animation. The original stays as it was (saved first when it
 // has changes). -> {project, where, below, issues, deep, lifted, pins, name, from}
 export async function moveToPlace(app, row, { save = true, name = null } = {}) {
-  if (!row) throw new Error('Pick a place first.');
+  if (!row) throw new Error($t('refit.pick_place_first'));
   const orig = app.store.project;
-  if (!orig.sims.length) throw new Error('There are no sims to move.');
+  if (!orig.sims.length) throw new Error($t('refit.there_are_no_sims_to'));
   if (app.playing) app.setPlaying(false);
   if (app.endTrial && app.trial && app.trial.size) app.endTrial();
   if (save && app.store.dirty && orig.sims.some(s => s.keys.length)) {
     const ok = await app.save();
-    if (!ok) throw new Error('The original could not be saved first, so nothing was moved.');
+    if (!ok) throw new Error($t('refit.original_could_not_be_saved'));
   }
   const fromDef = (app.furniture || []).find(f => f.id === orig.furniture);
   const fromInfo = orig.furniture && orig.furniture !== 'floor' ? await app._furnitureInfo(orig.furniture) : null;
@@ -356,7 +357,7 @@ export async function moveToPlace(app, row, { save = true, name = null } = {}) {
   else { p.locations = def ? [...def.locations] : [row.location]; delete p.customLocations; }
   p.movedFrom = { uid: orig.uid, name: orig.name, furniture: orig.furniture || 'floor', locations: [...(orig.locations || [])] };
   const info = row.id === 'floor' ? null : await app._furnitureInfo(row.id);
-  if (row.id !== 'floor' && !info) throw new Error(`The ${label.toLowerCase()} could not be read from the game files.`);
+  if (row.id !== 'floor' && !info) throw new Error($t('refit.could_not_be_read_from', { label: label.toLowerCase() }));
   // the resting hands and feet: how high above the old furniture's top they were
   const clears = pinClearances(p.sims, fromInfo);
   openInEditor(app, p);
@@ -392,7 +393,7 @@ export async function moveToPlace(app, row, { save = true, name = null } = {}) {
   let saved = null;
   if (save) { const ok = await app.save(); saved = ok ? app._file : null; }
   return { project: app.store.project, name: app.store.project.name, where, below, issues, deep, lifted, pins: pinsMoved,
-    from: { name: orig.name, uid: orig.uid, label: fromDef ? fromDef.label : 'Floor' }, to: label, saved, credit: creditOf(orig) };
+    from: { name: orig.name, uid: orig.uid, label: fromDef ? fromDef.label : $t('refit.floor') }, to: label, saved, credit: creditOf(orig) };
 }
 
 // ---------------------------------------------------------------- the workbench (versions)
@@ -652,7 +653,7 @@ export function applyContacts(wb, contacts, { remap = {}, movers = null } = {}) 
 // face keep their size.
 const GROW = ['b__Spine1__', 'b__Spine2__', 'b__Neck__', 'b__Head__',
   ...['Clavicle', 'UpperArm', 'Forearm', 'Hand', 'Thigh', 'Calf', 'Foot', 'ShoulderTwist', 'ForearmTwist', 'ThighTwist'].flatMap(n => [`b__L_${n}__`, `b__R_${n}__`])];
-export const HEIGHTS = { short: { scale: 0.93, label: 'shorter', word: 'Short' }, tall: { scale: 1.07, label: 'taller', word: 'Tall' } };
+export const HEIGHTS = { short: { scale: 0.93, label: 'shorter', word: $t('refit.short') }, tall: { scale: 1.07, label: 'taller', word: $t('refit.tall') } };
 
 // Scale a sim's body in every key (the bones' places, so it shows in the game too), with the hips' height over
 // what it stands, sits or lies on scaled the same way.
@@ -726,19 +727,19 @@ function actFor(p, receiverFrame) {
 }
 
 export const PAIRINGS = {
-  ff: { label: 'Two women', short: 'F/F', frames: ['yf', 'yf'] },
-  mm: { label: 'Two men', short: 'M/M', frames: ['ym', 'ym'] },
-  fm: { label: 'A woman and a man', short: 'F/M', frames: ['yf', 'ym'] },
+  ff: { label: $t('refit.two_women'), short: 'F/F', frames: ['yf', 'yf'] },
+  mm: { label: $t('refit.two_men'), short: 'M/M', frames: ['ym', 'ym'] },
+  fm: { label: $t('refit.woman_and_man'), short: 'F/M', frames: ['yf', 'ym'] },
 };
 
 // What a version spec does, in words (and the name suffix).
 export function specLabel(p, spec) {
   const sim = spec.simId && p.sims.find(s => s.id === spec.simId);
-  if (spec.kind === 'height') return { suffix: `${sim ? sim.label + ' ' : ''}${HEIGHTS[spec.size].label}`, text: `${sim ? sim.label : 'One sim'} ${HEIGHTS[spec.size].label} (${Math.round(Math.abs(HEIGHTS[spec.size].scale - 1) * 100)}%)` };
-  if (spec.kind === 'tray') return { suffix: `${spec.tray.name || 'Tray sim'}'s body`, text: `${sim ? sim.label : 'One sim'} with ${spec.tray.name || 'a Tray sim'}'s body` };
+  if (spec.kind === 'height') return { suffix: `${sim ? sim.label + ' ' : ''}${HEIGHTS[spec.size].label}`, text: `${sim ? sim.label : $t('refit.one_sim')} ${HEIGHTS[spec.size].label} (${Math.round(Math.abs(HEIGHTS[spec.size].scale - 1) * 100)}%)` };
+  if (spec.kind === 'tray') return { suffix: $t('refit.sims_body', { name: spec.tray.name || $t('refit.tray_sim') }), text: $t('refit.with_sims_body', { sim: sim ? sim.label : $t('refit.one_sim'), name: spec.tray.name || $t('refit.tray_sim_2') }) };
   if (spec.kind === 'pair') return { suffix: PAIRINGS[spec.pair].short, text: PAIRINGS[spec.pair].label };
-  if (spec.kind === 'swap') return { suffix: 'roles swapped', text: 'The roles swapped' };
-  return { suffix: 'version', text: 'A version' };
+  if (spec.kind === 'swap') return { suffix: 'roles swapped', text: $t('refit.roles_swapped') };
+  return { suffix: 'version', text: $t('refit.version') };
 }
 
 // Make one version of a project (the source is never changed). spec:
@@ -781,7 +782,7 @@ export async function makeVersion(app, source, spec, { name = null } = {}) {
   } else if (spec.kind === 'swap') {
     // the two sims trade bodies (the motion stays: whoever does the giving motion now has the other body)
     const giver = giverOf(app, p), recv = p.sims.find(s => s !== giver);
-    if (!giver || !recv) throw new Error('Swapping roles needs two sims.');
+    if (!giver || !recv) throw new Error($t('refit.swapping_roles_needs_two_sims'));
     const bodyOf = s => ({ frame: s.frame, gender: s.gender, tray: s.tray, tone: s.tone, skin: s.skin, color: s.color, label: s.label, hair: s.hair, voice: s.voice, voicePitch: s.voicePitch, body: s.body });
     const a = bodyOf(giver), b = bodyOf(recv);
     const put = (s, x) => { for (const [k, val] of Object.entries(x)) { if (val === undefined) delete s[k]; else s[k] = clone(val); } };

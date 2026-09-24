@@ -11,6 +11,7 @@ import * as PM from './posemath.js';
 import { FACE_SLIDERS } from './face.js';
 import { h, icon, toast, contextMenu, fillRange } from './ui.js';
 import { localStorageGet, localStorageSet } from './state.js';
+import { $t } from './i18n.js';
 
 const GUTTER = 168, RULER = 28;
 const DEG = 180 / Math.PI;
@@ -34,21 +35,21 @@ export function fromRestEuler(r, deg) {
 
 // The parts the bar offers (the selected part first).
 const PARTS = [
-  ['b__Pelvis__', 'Hips'], ['b__Spine0__', 'Lower back'], ['b__Spine1__', 'Middle back'], ['b__Spine2__', 'Chest'], ['b__Neck__', 'Neck'], ['b__Head__', 'Head'],
-  ['b__Jaw__', 'Jaw'], ['face', 'Face sliders'],
-  ...['L', 'R'].flatMap(s => { const w = s === 'L' ? 'left' : 'right'; return [[`b__${s}_Clavicle__`, `Shoulder (${w})`], [`b__${s}_UpperArm__`, `Upper arm (${w})`], [`b__${s}_Forearm__`, `Forearm (${w})`],
-    [`b__${s}_Hand__`, `Hand (${w})`], [`b__${s}_Thigh__`, `Thigh (${w})`], [`b__${s}_Calf__`, `Shin (${w})`], [`b__${s}_Foot__`, `Foot (${w})`]]; }),
-  ['b__Penis_Base', 'Penis'], ['b__Tounge__1', 'Tongue'],
+  ['b__Pelvis__', $t('curves.hips')], ['b__Spine0__', $t('curves.lower_back')], ['b__Spine1__', $t('curves.middle_back')], ['b__Spine2__', $t('curves.chest')], ['b__Neck__', $t('curves.neck')], ['b__Head__', $t('curves.head')],
+  ['b__Jaw__', $t('curves.jaw')], ['face', $t('curves.face_sliders')],
+  ...['L', 'R'].flatMap(s => { const w = s === 'L' ? $t('curves.left') : $t('curves.right'); return [[`b__${s}_Clavicle__`, $t('curves.shoulder_side', { w })], [`b__${s}_UpperArm__`, $t('curves.upper_arm', { w })], [`b__${s}_Forearm__`, $t('curves.forearm_side', { w })],
+    [`b__${s}_Hand__`, $t('curves.hand_side', { w })], [`b__${s}_Thigh__`, $t('curves.thigh_side', { w })], [`b__${s}_Calf__`, $t('curves.shin_side', { w })], [`b__${s}_Foot__`, $t('curves.foot_side', { w })]]; }),
+  ['b__Penis_Base', $t('curves.penis')], ['b__Tounge__1', $t('curves.tongue')],
 ];
 const ROT = [
-  { id: 'rx', label: 'Bend', color: '#ff5d7a', axis: 0 },
-  { id: 'ry', label: 'Twist', color: '#3ddc97', axis: 1 },
-  { id: 'rz', label: 'Tilt', color: '#57b8ff', axis: 2 },
+  { id: 'rx', label: $t('curves.bend'), color: '#ff5d7a', axis: 0 },
+  { id: 'ry', label: $t('curves.twist'), color: '#3ddc97', axis: 1 },
+  { id: 'rz', label: $t('curves.tilt'), color: '#57b8ff', axis: 2 },
 ];
 const POS = [
-  { id: 'up', label: 'Height', color: '#ffb547', axis: 0 },
-  { id: 'fwd', label: 'Forward', color: '#c9a7ff', axis: 1 },
-  { id: 'side', label: 'Side', color: '#ff8a5b', axis: 2 },
+  { id: 'up', label: $t('curves.height'), color: '#ffb547', axis: 0 },
+  { id: 'fwd', label: $t('curves.forward'), color: '#c9a7ff', axis: 1 },
+  { id: 'side', label: $t('curves.side'), color: '#ff8a5b', axis: 2 },
 ];
 const FACE_SHADES = ['#ff7ab6', '#ff9ecb', '#e85d9f', '#ffb3d6', '#d9468a', '#ff8fc0'];
 const niceStep = (pxPerUnit, units) => { for (const u of units) if (u * pxPerUnit >= 28) return u; return units[units.length - 1]; };
@@ -120,7 +121,7 @@ export class CurveView {
       return list.map((n, i) => ({ id: 'face:' + n, label: (FACE_SLIDERS[n] || { label: n }).label.replace(/\s*\(.*\)$/, ''), color: FACE_SHADES[i % FACE_SHADES.length], unit: '%', kind: 'face', slider: n }));
     }
     const hinge = B.HINGE && B.HINGE[part];
-    const out = ROT.map(c => ({ ...c, unit: '°', kind: 'rot', label: hinge && c.axis === 2 ? 'Bend (hinge)' : c.label, locked: !!(hinge && c.axis !== 2) }));
+    const out = ROT.map(c => ({ ...c, unit: '°', kind: 'rot', label: hinge && c.axis === 2 ? $t('curves.bend_hinge') : c.label, locked: !!(hinge && c.axis !== 2) }));
     if (part === 'b__Pelvis__') out.push(...POS.map(c => ({ ...c, unit: 'cm', kind: 'pos' })));
     return out;
   }
@@ -247,50 +248,50 @@ export class CurveView {
     this._barSig = sig;
     const bar = this.bar;
     bar.innerHTML = '';
-    if (!sim) { bar.append(h('span', { class: 'cb-label' }, 'Add a sim to see its curves.')); return; }
+    if (!sim) { bar.append(h('span', { class: 'cb-label' }, $t('curves.add_sim_to_see_its'))); return; }
     const part = this.currentPart(), sel = this.store.selected.bone;
     const nameOf = n => (PARTS.find(x => x[0] === n) || [n, B.label ? B.label(n, sim.frame) : n])[1];
     const opts = [];
     if (sel && !PARTS.some(x => x[0] === sel)) opts.push([sel, `Selected: ${nameOf(sel)}`]);
     opts.push(...PARTS.filter(([n]) => n === 'face' || (this.app.simViews.get(sim.id)?.bone(n))));
-    const select = h('select', { title: 'Which part the curves show (picking one selects it in the 3D view)' }, opts.map(([v, t]) => h('option', { value: v, selected: v === part }, t)));
+    const select = h('select', { title: $t('curves.which_part_curves_show_picking') }, opts.map(([v, t]) => h('option', { value: v, selected: v === part }, t)));
     select.onchange = () => { this.pickPart(select.value); select.blur(); };
     bar.append(select);
     for (const c of this.channels()) {
-      const b = h('button', { class: 'chipbtn' + (this.hidden.has(c.id) ? ' off' : ''), title: c.locked ? `${c.label}: a hinge only bends one way` : `Show / hide ${c.label}`, style: { '--c': c.color } },
+      const b = h('button', { class: 'chipbtn' + (this.hidden.has(c.id) ? ' off' : ''), title: c.locked ? $t('curves.hinge_only_bends_one_way', { cLabel: c.label }) : $t('curves.show_hide', { cLabel: c.label }), style: { '--c': c.color } },
         h('span', { class: 'sw' }), c.label);
       b.onclick = () => { if (this.hidden.has(c.id)) this.hidden.delete(c.id); else this.hidden.add(c.id); localStorageSet('curveChannelsOff', [...this.hidden]); this._syncBar(true); this.draw(true); };
       bar.append(b);
     }
-    if (part !== 'face') bar.append(h('button', { class: 'chipbtn', title: 'The face sliders over time', onclick: () => this.pickPart('face') }, icon('face'), ' Face'));
+    if (part !== 'face') bar.append(h('button', { class: 'chipbtn', title: $t('curves.face_sliders_over_time'), onclick: () => this.pickPart('face') }, icon('face'), $t('curves.face')));
     bar.append(h('span', { class: 'cb-sep' }));
-    bar.append(h('button', { class: 'chipbtn', title: 'Zoom so every curve fits (F)', onclick: () => this.frameAll() }, 'Frame all'));
-    const wm = h('button', { class: 'chipbtn' + (this.withMotions ? ' on' : ''), title: 'Also show the final motion (keys + motions + pins) as a dashed line' }, 'With motions');
+    bar.append(h('button', { class: 'chipbtn', title: $t('curves.zoom_so_every_curve_fits'), onclick: () => this.frameAll() }, $t('curves.frame_all')));
+    const wm = h('button', { class: 'chipbtn' + (this.withMotions ? ' on' : ''), title: $t('curves.also_show_final_motion_keys') }, $t('curves.with_motions'));
     wm.onclick = () => { this.withMotions = !this.withMotions; this.invalidate(); this._syncBar(true); this.draw(true); };
     bar.append(wm);
     bar.append(h('span', { class: 'cb-sep' }));
     // Smooth: a live slider (one undo step); This part | Whole body
-    const scope = h('div', { class: 'seg-inline', title: 'Smooth this part only, or the whole body' },
-      h('button', { class: this.smoothScope === 'part' ? 'on' : '', onclick: () => { this.smoothScope = 'part'; this._syncBar(true); } }, 'This part'),
-      h('button', { class: this.smoothScope === 'body' ? 'on' : '', onclick: () => { this.smoothScope = 'body'; this._syncBar(true); } }, 'Whole body'));
+    const scope = h('div', { class: 'seg-inline', title: $t('curves.smooth_this_part_only_or') },
+      h('button', { class: this.smoothScope === 'part' ? 'on' : '', onclick: () => { this.smoothScope = 'part'; this._syncBar(true); } }, $t('curves.this_part')),
+      h('button', { class: this.smoothScope === 'body' ? 'on' : '', onclick: () => { this.smoothScope = 'body'; this._syncBar(true); } }, $t('curves.whole_body')));
     const bones = () => (this.smoothScope === 'part' && part !== 'face' ? new Set(part === 'b__Pelvis__' ? HIPS : [part]) : null);
-    const sm = h('input', { type: 'range', min: 0, max: 100, step: 1, value: 0, title: 'Smooth: drag to take out small shakes (on the selected keys, or every key of this sim)' });
+    const sm = h('input', { type: 'range', min: 0, max: 100, step: 1, value: 0, title: $t('curves.smooth_drag_to_take_out') });
     fillRange(sm);
     sm.addEventListener('pointerdown', () => this.app.smoothLive('start', 0, bones()));
     sm.addEventListener('input', () => this.app.smoothLive('input', +sm.value / 100, bones()));
     sm.addEventListener('change', () => { this.app.smoothLive('end', +sm.value / 100, bones()); sm.value = 0; fillRange(sm); sm.blur(); });
-    bar.append(h('span', { class: 'cb-label' }, 'Smooth'), sm, scope);
-    const simp = h('button', { class: 'chipbtn', title: 'Fewer keys - the motion stays within 1.5° (right-click for other amounts)' }, 'Simplify');
+    bar.append(h('span', { class: 'cb-label' }, $t('curves.smooth')), sm, scope);
+    const simp = h('button', { class: 'chipbtn', title: $t('curves.fewer_keys_motion_stays_within') }, $t('curves.simplify'));
     simp.onclick = () => this.app.simplifySelection(1.5);
-    simp.oncontextmenu = e => { e.preventDefault(); contextMenu(e.clientX, e.clientY, [{ heading: 'Keep the motion within' }, ...[0.5, 1.5, 3, 6].map(t => ({ label: `${t}°`, onClick: () => this.app.simplifySelection(t) }))]); };
-    bar.append(simp, h('button', { class: 'chipbtn', title: 'Smooth a little, then fewer keys - for imported or captured motion', onclick: () => this.app.cleanUpSelection() }, 'Clean up'));
+    simp.oncontextmenu = e => { e.preventDefault(); contextMenu(e.clientX, e.clientY, [{ heading: $t('curves.keep_motion_within') }, ...[0.5, 1.5, 3, 6].map(t => ({ label: `${t}°`, onClick: () => this.app.simplifySelection(t) }))]); };
+    bar.append(simp, h('button', { class: 'chipbtn', title: $t('curves.smooth_little_then_fewer_keys'), onclick: () => this.app.cleanUpSelection() }, $t('curves.clean_up')));
     bar.append(h('span', { class: 'cb-sep' }));
-    const lc = h('button', { class: 'chipbtn', title: 'Does the end flow back into the start?' }, icon('loop'), ' Loop check');
+    const lc = h('button', { class: 'chipbtn', title: $t('curves.does_end_flow_back_into') }, icon('loop'), $t('curves.loop_check'));
     lc.onclick = () => { const r = lc.getBoundingClientRect(); this.app.loopMenu(r.left, r.top - 8 - 200); };
     bar.append(lc);
     if (p.autoCurve === 'legacy') {
-      bar.append(h('button', { class: 'chipbtn on', title: 'Auto smooth keys then flow without overshooting, and two equal keys really hold still (this animation was made before)',
-        onclick: () => { this.store.checkpoint('Smoother Auto curve'); p.autoCurve = 'clamped'; this.app.keysChanged(); this.app.afterEdit(); toast('The smoother Auto curve is on: no overshoot, holds stay still. Undo with Ctrl+Z.', 'ok'); } }, 'Use the smoother Auto curve'));
+      bar.append(h('button', { class: 'chipbtn on', title: $t('curves.auto_smooth_keys_then_flow'),
+        onclick: () => { this.store.checkpoint($t('curves.smoother_auto_curve')); p.autoCurve = 'clamped'; this.app.keysChanged(); this.app.afterEdit(); toast($t('curves.smoother_auto_curve_is_on'), 'ok'); } }, $t('curves.use_smoother_auto_curve')));
     }
   }
 
@@ -390,7 +391,7 @@ export class CurveView {
       g.beginPath();
       for (let f = a; f <= b; f++) { const x = this.xAt(f % p.length), y = this.yAt(vals[f % p.length]); if (f === a) g.moveTo(x, y); else g.lineTo(x, y); }
       g.strokeStyle = ch.color; g.lineWidth = 3.2; g.stroke(); g.lineWidth = 1;
-      const key = hv.seg.key, name = key.ease === 'custom' ? 'Custom curve' : (EASE_INFO[key.ease || 'auto'] || EASE_INFO.auto)[0];
+      const key = hv.seg.key, name = key.ease === 'custom' ? $t('curves.custom_curve') : (EASE_INFO[key.ease || 'auto'] || EASE_INFO.auto)[0];
       const mf = Math.round((a + b) / 2) % p.length, mx = this.xAt(mf), my = this.yAt(vals[mf]) - 16;
       g.font = `700 10.5px ${FONT}`;
       const tw = g.measureText(name).width + 14;
@@ -434,7 +435,7 @@ export class CurveView {
     g.fillStyle = col('--panel'); g.fillRect(0, RULER + 1, GUTTER, hgt - RULER - 1);
     g.strokeStyle = line; g.beginPath(); g.moveTo(GUTTER + 0.5, RULER); g.lineTo(GUTTER + 0.5, hgt); g.stroke();
     g.font = `700 11.5px ${FONT}`; g.fillStyle = text; g.textBaseline = 'middle';
-    const partName = s.part === 'face' ? 'Face sliders' : (PARTS.find(x => x[0] === s.part) || [0, B.label ? B.label(s.part, sim && sim.frame) : s.part])[1];
+    const partName = s.part === 'face' ? $t('curves.face_sliders') : (PARTS.find(x => x[0] === s.part) || [0, B.label ? B.label(s.part, sim && sim.frame) : s.part])[1];
     g.fillText((sim ? sim.label + ' · ' : '') + partName, 12, 14);
     const fr = Math.max(0, Math.min(p.length - 1, Math.round(this.store.frame)));
     this._chanRows = [];
@@ -451,8 +452,8 @@ export class CurveView {
       g.globalAlpha = 1;
       this._chanRows.push({ ch, y0: y - 10, y1: y + 10 });
     });
-    if (!sim) { g.fillStyle = muted; g.font = `500 12.5px ${FONT}`; g.fillText('Add a sim to see its curves.', GUTTER + 16, top + 30); }
-    else if (!s.keys.length) { g.fillStyle = 'rgba(255,255,255,0.4)'; g.font = `500 12px ${FONT}`; g.fillText('No keys on this part yet - double-click here to key what you see.', GUTTER + 20, top + 24); }
+    if (!sim) { g.fillStyle = muted; g.font = `500 12.5px ${FONT}`; g.fillText($t('curves.add_sim_to_see_its'), GUTTER + 16, top + 30); }
+    else if (!s.keys.length) { g.fillStyle = 'rgba(255,255,255,0.4)'; g.font = `500 12px ${FONT}`; g.fillText($t('curves.no_keys_on_this_part'), GUTTER + 20, top + 24); }
     this.lastDrawMs = performance.now() - t0;
   }
 
@@ -532,13 +533,13 @@ export class CurveView {
     if (!d.mode) {
       if (Math.hypot(dx, dy) < 6) return;
       d.mode = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'time' : 'value';
-      if (d.mode === 'time' && !this._timeToastShown) { this._timeToastShown = true; toast('Keys hold the whole body - this moves the whole key.'); }
-      if (d.mode === 'value' && d.ch.locked) { toast('A hinge only bends one way - drag its Bend (hinge) line.'); d.mode = 'none'; return; }
+      if (d.mode === 'time' && !this._timeToastShown) { this._timeToastShown = true; toast($t('curves.keys_hold_whole_body_this')); }
+      if (d.mode === 'value' && d.ch.locked) { toast($t('curves.hinge_only_bends_one_way_2')); d.mode = 'none'; return; }
     }
     if (d.mode === 'time') {
       const df = Math.round(dx / this.tl.pxPerFrame);
       if (!d.moved && !df) return;
-      if (!d.moved) { this.store.checkpoint(d.sel0.size > 1 ? `Move ${d.sel0.size} keys` : 'Move key'); d.snap = this.tl._snapKeys(); d.moved = true; }
+      if (!d.moved) { this.store.checkpoint(d.sel0.size > 1 ? $t('curves.move_keys', { size: d.sel0.size }) : $t('curves.move_key')); d.snap = this.tl._snapKeys(); d.moved = true; }
       if (df === d.df) return;
       this.tl._restoreKeys(d.snap);
       const rep = KO.moveSel(p, d.sel0, df);
@@ -557,7 +558,7 @@ export class CurveView {
     const sim = this.sim(), p = this.store.project, part = this.currentPart();
     if (!sim) return;
     if (!d.moved) {
-      this.store.checkpoint(`Change ${d.ch.label.replace(' (hinge)', '')}`);
+      this.store.checkpoint($t('curves.change_part', { part: d.ch.label.replace($t('curves.hinge_suffix'), '') }));
       d.snapKeys = clone(sim.keys);
       d.moved = true;
     }
@@ -652,7 +653,7 @@ export class CurveView {
         this.app.keysChanged();
         this.app.afterEdit();
         if (d.mode === 'time') this.tl.pop([...this.tl.sel]);
-        if (d.rep && d.rep.replaced && d.rep.replaced.length) toast(`${d.rep.replaced.length} key${d.rep.replaced.length > 1 ? 's were' : ' was'} replaced - Ctrl+Z brings ${d.rep.replaced.length > 1 ? 'them' : 'it'} back.`);
+        if (d.rep && d.rep.replaced && d.rep.replaced.length) toast($t('curves.keys_were_replaced_ctrl_z', { replacedCount: d.rep.replaced.length }));
       } else if (d.sel0.size > 1 && !e.ctrlKey && !e.shiftKey) this.tl.selectOnly([d.id]);
       this.app.selectionChanged();
     }
@@ -667,10 +668,10 @@ export class CurveView {
     this.hover = hit;
     const now = hit && hit.seg ? `${hit.seg.ch.id}|${hit.seg.a}` : '';
     this.canvas.style.cursor = hit && hit.point ? (hit.ch.locked ? 'not-allowed' : 'ns-resize') : hit && hit.seg ? 'pointer' : x < GUTTER ? 'pointer' : y < RULER ? 'ew-resize' : 'default';
-    this.canvas.title = hit && hit.point ? `${hit.ch.label} at frame ${hit.point.frame}: ${Math.round(hit.point.v[hit.ch.id] * 10) / 10}${hit.ch.unit} · drag up/down to change it (Shift: finer) · sideways to move the key`
-      : hit && hit.seg ? 'Click for the timing of this part of the motion'
-      : x < GUTTER ? 'Click a channel to hide or show it'
-      : y > RULER ? 'Double-click to key here · Ctrl+drag to select keys · wheel zooms (Ctrl+wheel: the values) · middle-drag moves the values' : '';
+    this.canvas.title = hit && hit.point ? $t('curves.at_frame_drag_up_down', { chLabel: hit.ch.label, frame: hit.point.frame, v: Math.round(hit.point.v[hit.ch.id] * 10) / 10, unit: hit.ch.unit })
+      : hit && hit.seg ? $t('curves.click_for_timing_of_this')
+      : x < GUTTER ? $t('curves.click_channel_to_hide_or')
+      : y > RULER ? $t('curves.double_click_to_key_here') : '';
     if (was !== now) this.draw();
   }
 
@@ -735,8 +736,8 @@ export function openTimingEditor(app, sim, key, x, y) {
   const name = h('div', { class: 'name' });
   const dots = h('div', { class: 'dots' });
   const count = app.timeline.selKeysOf(sim.id).filter(k => !k.faceOnly).length + [...app.timeline.sel].filter(id => KO.parseId(id).kind === 'key' && KO.parseId(id).simId !== sim.id).length;
-  const allBtn = count > 1 ? h('button', { class: 'btn small soft' }, `Use on all ${count} selected keys`) : null;
-  const pop = h('div', { class: 'timing-pop', role: 'dialog' }, h('h4', {}, `Timing from frame ${key.frame}`), canvas, name, dots, allBtn);
+  const allBtn = count > 1 ? h('button', { class: 'btn small soft' }, $t('curves.use_on_all_selected_keys', { count })) : null;
+  const pop = h('div', { class: 'timing-pop', role: 'dialog' }, h('h4', {}, $t('curves.timing_from_frame', { frame: key.frame })), canvas, name, dots, allBtn);
   document.body.append(pop);
   pop.style.left = clamp(x, 8, innerWidth - 236) + 'px';
   pop.style.top = clamp(y, 8, innerHeight - 330) + 'px';
@@ -754,7 +755,7 @@ export function openTimingEditor(app, sim, key, x, y) {
     for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(px(i / 4), py(Y0)); g.lineTo(px(i / 4), py(Y1)); g.stroke(); }
     for (const v of [0, 0.5, 1]) { g.strokeStyle = v === 0 || v === 1 ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.07)'; g.beginPath(); g.moveTo(px(0), py(v)); g.lineTo(px(1), py(v)); g.stroke(); }
     g.fillStyle = 'rgba(255,255,255,.35)'; g.font = `500 9px ${FONT}`;
-    g.fillText('this key', px(0) + 2, py(0) + 11); g.fillText('next key', px(1) - 38, py(1) - 5);
+    g.fillText($t('curves.this_key'), px(0) + 2, py(0) + 11); g.fillText($t('curves.next_key'), px(1) - 38, py(1) - 5);
     const f = fnOf(k), color = (EASE_INFO[k.ease || 'auto'] || EASE_INFO.auto)[2];
     g.beginPath();
     for (let i = 0; i <= 100; i++) { const t = i / 100, v = k.ease === 'hold' ? (t < 1 ? 0 : 1) : f(t); if (!i) g.moveTo(px(t), py(v)); else g.lineTo(px(t), py(v)); }
@@ -766,7 +767,7 @@ export function openTimingEditor(app, sim, key, x, y) {
     g.beginPath(); g.moveTo(px(0), py(0)); g.lineTo(px(c[0]), py(c[1])); g.moveTo(px(1), py(1)); g.lineTo(px(c[2]), py(c[3])); g.stroke();
     for (const [hx, hy] of [[c[0], c[1]], [c[2], c[3]]]) { g.beginPath(); g.arc(px(hx), py(hy), 5.5, 0, Math.PI * 2); g.fillStyle = '#ff4f9a'; g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke(); g.lineWidth = 1; }
     g.globalAlpha = 1;
-    const info = k.ease === 'custom' ? ['Custom curve', 'Your own timing - drag the two handles'] : (EASE_INFO[k.ease || 'auto'] || EASE_INFO.auto);
+    const info = k.ease === 'custom' ? [$t('curves.custom_curve'), $t('curves.your_own_timing_drag_two')] : (EASE_INFO[k.ease || 'auto'] || EASE_INFO.auto);
     name.textContent = `${info[0]} · ${info[1]}`;
     dots.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.ease === (k.ease || 'auto')));
   };
@@ -783,7 +784,7 @@ export function openTimingEditor(app, sim, key, x, y) {
     const c = k.ease === 'custom' && validCurve(k.curve) ? k.curve : EASE_CURVE[k.ease || 'auto'] || EASE_CURVE.smooth;
     const d1 = Math.hypot(X - px(c[0]), Y - py(c[1])), d2 = Math.hypot(X - px(c[2]), Y - py(c[3]));
     if (Math.min(d1, d2) > 14) return;
-    app.store.checkpoint('Change timing');
+    app.store.checkpoint($t('curves.change_timing'));
     const kk = findKey();
     if (kk.ease !== 'custom') { kk.curve = c.slice(); kk.ease = 'custom'; }
     drag = { h: d1 <= d2 ? 0 : 1 };

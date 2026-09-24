@@ -8,6 +8,7 @@ import * as A from './animation.js';
 import * as B from './bones.js';
 import { mirrorQuat } from './posemath.js';
 import { FACE_SLIDERS } from './face.js';
+import { $t } from './i18n.js';
 
 const clone = x => (x === undefined ? x : typeof structuredClone === 'function' ? structuredClone(x) : JSON.parse(JSON.stringify(x)));
 const mod = (a, n) => ((a % n) + n) % n;
@@ -38,8 +39,8 @@ const FALLBACK_PARTS = {
 // Jaw and tongue live only in key.faceBones (plan 2.1), so no body part lists them.
 const noFace = list => (list || []).filter(n => !(B.FACE_SET || new Set()).has(n));
 export const BODY_PARTS = Object.fromEntries(Object.entries({ ...FALLBACK_PARTS, ...(B.BODY_PARTS || {}) }).map(([k, v]) => [k, k === 'all' ? v : noFace(v)]));
-export const PART_LABEL = B.PART_LABEL || { all: 'Whole body', upper: 'Upper body', lower: 'Lower body', hands: 'Both hands',
-  'L hand': 'Left hand', 'R hand': 'Right hand', face: 'Face' };
+export const PART_LABEL = B.PART_LABEL || { all: $t('keyops.whole_body'), upper: $t('keyops.upper_body'), lower: $t('keyops.lower_body'), hands: $t('keyops.both_hands'),
+  'L hand': $t('keyops.left_hand'), 'R hand': $t('keyops.right_hand'), face: $t('keyops.face') };
 export const partBones = part => (!part || part === 'all' ? null : new Set(BODY_PARTS[part] || []));
 export const partHasFace = part => !part || part === 'all' || part === 'face';
 
@@ -393,11 +394,11 @@ export function loopCheck(project) {
 }
 
 export const LOOP_TEXT = {
-  pause: 'pauses for a frame at the loop point',
-  snap: 'jumps at the loop point (the last key holds)',
-  pop: 'the end jumps back to the start',
-  ok: 'flows smoothly',
-  open: 'the loop is off',
+  pause: $t('keyops.pauses_for_frame_at_loop'),
+  snap: $t('keyops.jumps_at_loop_point_last'),
+  pop: $t('keyops.end_jumps_back_to_start'),
+  ok: $t('keyops.flows_smoothly'),
+  open: $t('keyops.loop_is_off'),
 };
 
 export function fixLoop(project, sim, kind) {
