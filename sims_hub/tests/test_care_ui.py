@@ -154,7 +154,7 @@ class CareUI(unittest.TestCase):
         p = self.page
         p.wait_for_selector('#care-patch [data-care-pick]', timeout=10000)
         card = p.inner_text('#care-patch')
-        for words in ('After a game update', 'MCCC', 'Kuttoe', 'does not prove that a mod is broken', 'SET ASIDE FOR NOW',
+        for words in ('After a game update', 'MCCC', 'Kuttoe', "doesn't prove a mod is broken", 'SET ASIDE FOR NOW',
                       'Srsly Pack'):
             self.assertIn(words, card)
         self.assertEqual(p.locator('#care-patch [data-care-pick]').count(), 4)
@@ -226,7 +226,7 @@ class CareUI(unittest.TestCase):
         self.assertEqual(self.tasks('restore_saves'), [{'backup': backup_id}])
         # undoable from the Tools page
         self.open('tools')
-        p.wait_for_selector('.change.next:has-text("Put back saves from a backup")', timeout=10000)
+        p.wait_for_selector('.change.next:has-text("Restored saves from a backup")', timeout=10000)
 
 
 if __name__ == '__main__':

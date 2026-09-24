@@ -25,6 +25,11 @@ API
   POST /api/patchday/seen | /api/errors/seen | /api/batchfix/open {"rel"}
   tasks: set_aside {"rels", "why"} | put_back {"rels"} | backup_saves | restore_saves {"backup"} | batch_fix_scan
   GET  /api/cc..., /api/saves/<slot>/cc, POST /api/cc/open   the CC browser (see its section below)
+  GET  /api/settings                 {"language": code|null, "system_language": code|null, "languages": [...]}
+  POST /api/settings {"language"}    choose the Hub's language (kept in data\\hub_settings.json)
+
+Languages: every JSON answer goes out in the chosen language - the engine's English sentences are translated on
+the way (speedkit/hub/i18n.py; each translated field keeps its original as '<field>_en').
 
 A finished task is 'done' when its result says ok, and 'failed' when it says not ok or raised.
 """
@@ -43,12 +48,13 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from speedkit.hub import care_routes
+from speedkit.hub import care_routes, i18n
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, 'web')
 ROOT = os.path.dirname(os.path.dirname(HERE))
 LOG = os.path.join(ROOT, 'data', 'hub.log')
+SETTINGS = os.path.join(ROOT, 'data', 'hub_settings.json')
 PORT = int(os.environ.get('SIMS_HUB_PORT', '8766'))
 APP = "Novulon's Sims Hub"
 
@@ -171,9 +177,11 @@ class Task:
 class Hub:
     """Everything the handlers share: the engine, the caches and the one-task runner."""
 
-    def __init__(self, api, mode='engine', why='', opener=None, log_path=LOG):
+    def __init__(self, api, mode='engine', why='', opener=None, log_path=LOG, settings_path=None):
         self.api, self.mode, self.why = api, mode, why
         self.log_path = log_path
+        self.settings = i18n.Settings(settings_path)          # None: kept in memory only (example data)
+        self.words = i18n.translator()
         self.opener = opener or (self._no_open if mode == 'stub' else self._startfile)
         self.lock = threading.Lock()
         self.tasks = {}
@@ -181,6 +189,33 @@ class Hub:
         self.last_report = None
         self._cache = {}                        # name -> (time, value)
         self._cache_locks = {k: threading.Lock() for k in ('status', 'saves', 'graphics', 'inbox')}
+
+    # ---------------------------------------------------------------- the language
+    @property
+    def language(self):
+        return self.settings.language or i18n.DEFAULT
+
+    def localize(self, obj):
+        """An answer in the chosen language (the engine's sentences translated; originals kept as '<field>_en')."""
+        try:
+            return self.words.localize(obj, self.language)
+        except Exception:
+            _log(self, 'translating an answer failed:\n%s' % traceback.format_exc())
+            return obj
+
+    def language_view(self):
+        return {'ok': True, 'message': '', 'language': self.settings.language, 'system_language': i18n.system_language(),
+                'languages': [{'code': c, 'name': n} for c, n in i18n.LANGUAGES]}
+
+    def set_language(self, code):
+        if code not in i18n.CODES:
+            raise BadRequest('Pick one of the languages the Hub offers.')
+        try:
+            self.settings.set('language', code)
+        except OSError as ex:
+            _log(self, 'saving the language failed: %s' % ex)
+            return dict(self.language_view(), ok=False, message="Couldn't save the language.")
+        return self.language_view()
 
     # ---------------------------------------------------------------- calling the engine
     def call(self, name, *args, **kwargs):
@@ -214,7 +249,7 @@ class Hub:
         st = dict(self.cached('status', STATUS_TTL, lambda: self.call('status'), refresh))
         with self.lock:
             cur = self.current.view() if self.current else None
-        st['hub'] = {'engine': self.mode, 'preview': self.mode == 'stub', 'app': APP,
+        st['hub'] = {'engine': self.mode, 'preview': self.mode == 'stub', 'app': APP, 'language': self.language,
                      'task': {'id': cur['id'], 'action': cur['action']} if cur else None}
         return st
 
@@ -377,10 +412,10 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def _ok(self, obj, code=200):
-        self._send(code, _json(obj))
+        self._send(code, _json(self.hub.localize(obj)))
 
     def _error(self, code, message, **extra):
-        self._send(code, _json(dict({'ok': False, 'message': message}, **extra)))
+        self._send(code, _json(self.hub.localize(dict({'ok': False, 'message': message}, **extra))))
 
     def _local(self):
         """Only pages this server serves may talk to it: the right Host (stops DNS rebinding) and, when the
@@ -453,6 +488,8 @@ class Handler(BaseHTTPRequestHandler):
                              'busy': hub.current is not None})
         if route == 'status':
             return self._ok(hub.status(refresh))
+        if route == 'settings':
+            return self._ok(hub.language_view())
         if route == 'saves':
             return self._ok(hub.saves(refresh))
         if route == 'graphics':
@@ -489,6 +526,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._ok({'ok': True, 'task': task.id})
         if route == 'open':
             return self._ok(hub.open(body.get('what')))
+        if route == 'settings':
+            return self._ok(hub.set_language(body.get('language')))
         if route == 'game_path':
             path = body.get('path')
             if not isinstance(path, str) or not path.strip() or len(path) > 1024 or '\x00' in path:
@@ -697,6 +736,9 @@ def make_server(port=PORT, api=None, mode=None, why='', **hub_kwargs):
     httpd.port = httpd.server_address[1]
     httpd.hosts = {'127.0.0.1:%d' % httpd.port, 'localhost:%d' % httpd.port}
     httpd.origins = {'http://' + h for h in httpd.hosts}
+    if 'settings_path' not in hub_kwargs:
+        # the Hub's settings file; example data keeps them in memory (nothing on the PC changes)
+        hub_kwargs['settings_path'] = os.environ.get('SIMS_HUB_SETTINGS') or (None if mode == 'stub' else SETTINGS)
     httpd.hub = Hub(api, mode, why, **hub_kwargs)
     return httpd
 

@@ -167,7 +167,7 @@ class Tasks(Base):
         ev = v['progress']
         self.assertGreaterEqual(len(ev), 8)
         for e in ev:
-            self.assertEqual(set(e), {'step', 'fraction', 'message', 't'})
+            self.assertEqual(set(e) - {'message_en'}, {'step', 'fraction', 'message', 't'})   # message_en: see i18n.py
             self.assertTrue(e['message'])
             self.assertTrue(e['fraction'] is None or 0 <= e['fraction'] <= 1)
         self.assertEqual(ev[-1]['fraction'], 1.0)

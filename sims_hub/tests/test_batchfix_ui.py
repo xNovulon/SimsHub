@@ -135,7 +135,7 @@ class BatchFixUI(unittest.TestCase):
         p.wait_for_selector('.change:has-text("Set CC aside until it gets a Sims 4 Studio fix")', timeout=10000)
         # "Check again" runs the check as a task
         p.click('[data-act="bf-scan"]')
-        self.finish_task('Check finished')
+        self.finish_task('Check complete')
         self.assertEqual(self.tasks('batch_fix_scan'), [{}])
 
 

@@ -1,10 +1,12 @@
 // Novulon's Sims Hub - patch day, "which mod caused this error?", save backups & save health, load-time savings.
 // hub.js imports this module, hands it its helpers (init), puts these sections into its pages and adds these buttons
 // to its click table. The server routes are in speedkit/hub/care_routes.py (docs/care.md).
-
+// Its words come from the language catalogs (i18n/<code>.json, keys care.*).
+import * as I from './i18n.js';
 import * as bf from './batchfix.js';           // CC that may need a Sims 4 Studio fix (Tools page)
+const { t } = I;
 
-let H = null;                                  // hub.js helpers: $, esc, ic, call, render, runTask, confirmBox, ...
+let H = null;                                  // hub.js helpers: esc, ic, call, render, runTask, confirmBox, ...
 export function init(helpers) { H = helpers; bf.init(helpers); }
 
 // what these pages show: the last answer of each read, and what is being read now
@@ -23,7 +25,7 @@ async function read(key, force) {
   const r = await H.call(READS[key] + (force ? '?refresh=1' : ''));
   C.loading.delete(key);
   if (r.busy) return;                         // a change is running: asked again when it is done
-  C[key] = r.http === 200 ? r : { ok: false, message: r.message || "This couldn't be read right now." };
+  C[key] = r.http === 200 ? r : { ok: false, message: r.message || t('care.read_error') };
   if (key === 'patch') resetPick();
   if ((NEEDS[H.page()] || []).includes(key)) H.render();
 }
@@ -35,6 +37,13 @@ export function afterTask() {
   load(H.page(), true);
 }
 
+// a new language: what the server said is asked for again
+export function forget() {
+  C.patch = C.errors = C.health = C.savings = null;
+  C.loading.clear();
+  bf.reset();
+}
+
 const noChange = () => H.busy() || H.gameRunning();
 const esc = v => H.esc(v);
 const ic = (id, cls) => H.ic(id, cls);
@@ -43,11 +52,12 @@ const ic = (id, cls) => H.ic(id, cls);
 function mins(s) {
   if (!H.isNum(s)) return '—';
   s = Math.round(Number(s));
-  if (s < 90) return `${s} s`;
+  if (s < 90) return t('unit.s', { n: s });
   const m = Math.round(s / 60);
-  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
+  return m < 60 ? t('unit.min', { n: m }) : t('unit.h_min', { h: Math.floor(m / 60), m: m % 60 });
 }
-const MODE = { fast: 'Quick Start', save: 'One save', full: 'Full Start', studio: 'Studio mode', other: 'Other' };
+const MODE = { fast: 'mode.quick', save: 'mode.save', full: 'mode.full', studio: 'mode.studio', other: 'mode.other' };
+const modeName = m => t(MODE[m] || 'mode.other');
 const fileOf = rel => String(rel || '').split('/').pop();
 
 // -------------------------------------------------------------------------------- Home
@@ -56,22 +66,30 @@ export function homeBanner() {
   if (p && p.ok && p.game && p.game.updated) {
     const n = (p.older || []).length;
     out.push(`<div class="care-banner" data-care="patch-banner"><div class="ic warn">${ic('warn')}</div><div class="grow">
-      <b>The Sims 4 was updated${p.game.version ? ` (${esc(p.game.version)})` : ''}</b>
-      <span>${n ? `${H.plural(n, 'script mod')} ${n === 1 ? 'is' : 'are'} older than the latest game update. Game updates often break script mods.`
-        : 'All script mods are newer than the latest game update.'}</span>${bf.patchLine(p.batch_fixes)}</div>
-      ${n ? `<a class="btn small primary" href="#tools" data-care-scroll="care-patch">${ic('search')}Review script mods</a>` : ''}
-      <button class="btn small ghost" data-act="care-patch-seen">Dismiss</button></div>`);
+      <b>${esc(p.game.version ? t('care.patch.updated_to', { version: p.game.version }) : t('care.patch.updated'))}</b>
+      <span>${esc(n ? t('care.patch.older', { n }) : t('care.patch.all_newer'))}</span>${bf.patchLine(p.batch_fixes)}</div>
+      ${n ? `<a class="btn small primary" href="#tools" data-care-scroll="care-patch">${ic('search')}${esc(t('care.patch.review'))}</a>` : ''}
+      <button class="btn small ghost" data-act="care-patch-seen">${esc(t('care.dismiss'))}</button></div>`);
   }
   const e = C.errors;
   const fresh = e && e.ok ? (e.errors || []).filter(g => g.new) : [];
   if (fresh.length) {
     const named = fresh.filter(g => g.mod).length;
     out.push(`<div class="care-banner soft" data-care="errors-banner"><div class="ic pink">${ic('bug')}</div><div class="grow">
-      <b>${H.plural(fresh.length, 'new game error')}</b>
-      <span>${named ? `Mod identified for ${named} of ${fresh.length}.` : 'No mod identified.'}</span></div>
-      <a class="btn small" href="#tools" data-care-scroll="care-errors">${ic('arrow')}View errors</a></div>`);
+      <b>${esc(t('care.errors.new', { n: fresh.length }))}</b>
+      <span>${esc(named ? t('care.errors.named', { named, n: fresh.length }) : t('care.errors.none_named'))}</span></div>
+      <a class="btn small" href="#tools" data-care-scroll="care-errors">${ic('arrow')}${esc(t('care.errors.view'))}</a></div>`);
   }
   return out.join('');
+}
+
+// the note under the load-time bars: how far the numbers can be trusted (the same rules as speedkit/loadstats.py)
+function savingsNote(r, modes) {
+  if (r.confidence === 'none') return t('care.load.none');
+  if (r.confidence === 'one_mode') return t(modes.full && H.isNum(modes.full.total_s) ? 'care.load.try_quick' : 'care.load.try_full');
+  if (H.isNum(r.saved_s) && r.saved_s <= 0) return t('care.load.not_quicker');
+  if (r.confidence === 'low') return t('care.load.few');
+  return '';
 }
 
 export function homeSavings() {
@@ -81,65 +99,70 @@ export function homeSavings() {
   const shown = ['fast', 'save', 'full', 'studio'].filter(m => modes[m] && H.isNum(modes[m].total_s));
   let body;
   if (!shown.length) {
-    body = `<div class="empty" style="padding:12px 2px 0">${esc(r.message)}</div>`;
+    body = `<div class="empty" style="padding:12px 2px 0">${esc(t('care.load.none'))}</div>`;
   } else {
     const max = Math.max(...shown.map(m => modes[m].total_s));
     body = `<div class="care-bars">${shown.map(m => {
       const d = modes[m], w = Math.max(2, d.total_s / max * 100);
-      return `<div class="care-bar"><span class="lbl">${esc(MODE[m])}</span>
+      return `<div class="care-bar"><span class="lbl">${esc(modeName(m))}</span>
         <span class="track"><i class="${m === 'full' ? 'full' : m === 'studio' ? 'studio' : ''}" style="width:${w.toFixed(1)}%"></i></span>
-        <b>${mins(d.total_s)}</b><small>${H.plural(d.starts, 'start')}</small></div>`;
+        <b>${esc(mins(d.total_s))}</b><small>${esc(t('care.load.starts', { n: Number(d.starts) || 0 }))}</small></div>`;
     }).join('')}</div>`;
     if (H.isNum(r.saved_s) && r.saved_s > 0) {
-      body += `<div class="care-saved">${ic('bolt')}<div><b>${esc(MODE[r.compare] || 'Quick Start')}: about ${mins(r.saved_s)} less per start than Full Start</b>
-        ${H.isNum(r.saved_total_s) && r.saved_total_s >= 120 ? `<span>${mins(r.saved_total_s)} saved in total so far.</span>` : ''}</div></div>`;
+      body += `<div class="care-saved">${ic('bolt')}<div><b>${esc(t('care.load.saved', { mode: modeName(r.compare || 'fast'), time: mins(r.saved_s) }))}</b>
+        ${H.isNum(r.saved_total_s) && r.saved_total_s >= 120 ? `<span>${esc(t('care.load.saved_total', { time: mins(r.saved_total_s) }))}</span>` : ''}</div></div>`;
     }
-    if (r.confidence !== 'ok') body += `<div class="note">${ic('info')}<span>${esc(r.message)}</span></div>`;
+    const note = savingsNote(r, modes);
+    if (r.confidence !== 'ok' && note) body += `<div class="note">${ic('info')}<span>${esc(note)}</span></div>`;
   }
-  return `<h3 class="sec">Loading times</h3>
+  return `<h3 class="sec">${esc(t('care.load.section'))}</h3>
     <div class="card care-load" data-care="savings"><div class="card-head"><div class="ic blue">${ic('clock')}</div><div class="grow">
-      <h2>How long the game takes to load</h2><p>Time from pressing Play to the main menu, plus loading the save. Measured by the SpeedKit Monitor; typical value per mode.</p></div></div>
+      <h2>${esc(t('care.load.title'))}</h2><p>${esc(t('care.load.text'))}</p></div></div>
       ${body}</div>`;
 }
 
 // -------------------------------------------------------------------------------- Saves
 function healthOf(slot) {
-  const h = C.health;
-  return h && h.ok ? (h.saves || []).find(s => s.slot === slot || s.file === slot + '.save') : null;
+  const x = C.health;
+  return x && x.ok ? (x.saves || []).find(s => s.slot === slot || s.file === slot + '.save') : null;
 }
+
+const LEVEL = { growing: 'care.size.growing', very_big: 'care.size.very_big', big: 'care.size.big' };
 
 export function saveLine(save) {
-  const h = healthOf(save.slot);
-  if (!h) return '';
-  const grow = H.isNum(h.growth_mb) && h.growth_mb >= 1 ? ` · grew ${Math.round(h.growth_mb)} MB in ${H.plural(h.growth_days, 'day')}` : '';
-  const warn = h.level !== 'ok';
-  return `<div class="care-size${warn ? ' warn' : ''}" title="${esc(h.note || '')}">${ic(warn ? 'warn' : 'saves')}<span>${esc(Math.round(h.size_mb))} MB${esc(grow)}</span>
-    ${warn ? `<span class="chip warn">${h.level === 'growing' ? 'Growing fast' : h.level === 'very_big' ? 'Very big' : 'Getting big'}</span>` : ''}</div>`;
+  const x = healthOf(save.slot);
+  if (!x) return '';
+  const size = t('unit.mb', { v: I.num(Math.round(x.size_mb)) });
+  const grow = H.isNum(x.growth_mb) && x.growth_mb >= 1
+    ? ' · ' + t('care.size.grew', { mb: t('unit.mb', { v: I.num(Math.round(x.growth_mb)) }), n: Number(x.growth_days) || 0 }) : '';
+  const warn = x.level !== 'ok';
+  return `<div class="care-size${warn ? ' warn' : ''}" title="${esc(x.note || '')}">${ic(warn ? 'warn' : 'saves')}<span>${esc(size + grow)}</span>
+    ${warn ? `<span class="chip warn">${esc(t(LEVEL[x.level] || 'care.size.big'))}</span>` : ''}</div>`;
 }
 
-const REASON = { 'by hand': 'Made manually', 'before restore': 'Made just before a restore', 'before setting mods aside': 'Made on patch day, before mods were set aside' };
-const mb = b => H.isNum(b) ? (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`) : '—';
+// why a backup was made (the engine's reason words) -> catalog key
+const REASON = { 'by hand': 'care.backup.by_hand', 'before restore': 'care.backup.before_restore', 'before setting mods aside': 'care.backup.before_aside' };
+const size = b => H.isNum(b) ? (b >= 1e9 ? t('unit.gb', { v: I.num(b / 1e9, 1) }) : t('unit.mb', { v: I.num(Math.max(1, Math.round(b / 1e6))) })) : '—';
 
 export function savesSection() {
-  const h = C.health;
+  const x = C.health;
   let body;
-  if (!h) body = `<div class="saves-loading" style="padding:16px 4px"><div class="spinner sm"></div>Looking at your backups...</div>`;
-  else if (!h.ok) body = `<div class="note err">${ic('warn')}<span>${esc(h.message)}</span></div>`;
+  if (!x) body = `<div class="saves-loading" style="padding:16px 4px"><div class="spinner sm"></div>${esc(t('care.backup.loading'))}</div>`;
+  else if (!x.ok) body = `<div class="note err">${ic('warn')}<span>${esc(x.message)}</span></div>`;
   else {
-    const list = h.backups || [];
-    const warn = (h.saves || []).filter(s => s.level !== 'ok');
+    const list = x.backups || [];
+    const warn = (x.saves || []).filter(s => s.level !== 'ok');
     body = (warn.length ? warn.map(s => `<div class="note warn">${ic('warn')}<span><b>${esc(s.name)}</b>: ${esc(s.note)}</span></div>`).join('') : '')
       + (list.length ? `<div class="care-list">${list.map(b => `<div class="care-row" data-backup="${esc(b.id)}">
           <div class="ci">${ic('shield')}</div><div class="grow"><b>${esc(H.dayTime(b.when))}</b>
-          <span>${esc(REASON[b.reason] || 'Backup')} · ${H.plural(b.files, 'save')} · ${mb(b.bytes)} · ${esc(H.ago(b.when))}</span></div>
-          ${b.complete ? `<button class="btn small" data-act="care-restore" data-backup="${esc(b.id)}"${noChange() ? ' disabled' : ''}>${ic('undo')}Restore these saves</button>`
-            : `<span class="chip warn">Incomplete</span>`}</div>`).join('')}</div>`
-        : `<div class="empty" style="padding:12px 2px 0">No backups yet. A backup copies the saves; it never changes them.</div>`);
+          <span>${esc([t(REASON[H.en(b, 'reason')] || 'care.backup.backup'), t('care.backup.saves', { n: Number(b.files) || 0 }), size(b.bytes), H.ago(b.when)].join(' · '))}</span></div>
+          ${b.complete ? `<button class="btn small" data-act="care-restore" data-backup="${esc(b.id)}"${noChange() ? ' disabled' : ''}>${ic('undo')}${esc(t('care.backup.restore'))}</button>`
+            : `<span class="chip warn">${esc(t('care.backup.incomplete'))}</span>`}</div>`).join('')}</div>`
+        : `<div class="empty" style="padding:12px 2px 0">${esc(t('care.backup.none'))}</div>`);
   }
   return `<div class="card care-backups" style="margin-top:22px" data-care="backups"><div class="card-head"><div class="ic green">${ic('shield')}</div><div class="grow">
-      <h2>Save backups</h2><p>Copies of every save, stored outside the game's folders. The newest ${h && h.keep ? h.keep : 5} backups are kept,
-      and one is made automatically before patch-day changes. Save contents are never changed.</p></div>
-      <button class="btn primary" data-act="care-backup"${noChange() ? ' disabled' : ''}>${ic('shield')}Back up now</button></div>
+      <h2>${esc(t('care.backup.title'))}</h2><p>${esc(t('care.backup.text', { n: x && x.keep ? Number(x.keep) : 5 }))}</p></div>
+      <button class="btn primary" data-act="care-backup"${noChange() ? ' disabled' : ''}>${ic('shield')}${esc(t('care.backup.now'))}</button></div>
       ${body}</div>`;
 }
 
@@ -153,73 +176,87 @@ function resetPick() {
   C.pick = new Set(p && p.ok && p.game && p.game.updated ? (p.older || []).map(o => o.rel) : []);
 }
 
+const asideLabel = n => `${ic('pause')}${esc(t('care.patch.aside_btn'))}${n ? ` (${I.num(n)})` : ''}`;
+
 function patchCard() {
   const p = C.patch;
   let body;
-  if (!p) body = `<div class="saves-loading" style="padding:16px 4px"><div class="spinner sm"></div>Checking your game's version...</div>`;
+  if (!p) body = `<div class="saves-loading" style="padding:16px 4px"><div class="spinner sm"></div>${esc(t('care.patch.loading'))}</div>`;
   else if (!p.ok) body = `<div class="note err">${ic('warn')}<span>${esc(p.message)}</span></div>`;
   else {
     if (!C.pick) resetPick();
     const g = p.game || {}, older = p.older || [], aside = p.set_aside || [];
+    const head = g.updated
+      ? [g.version ? t('care.patch.now_version', { version: g.version }) : t('care.patch.updated'), g.update_time ? H.ago(g.update_time) : ''].filter(Boolean).join(' · ')
+      : g.version ? t('care.patch.version', { version: g.version }) : t('app.game');
     const status = `<div class="care-status${g.updated ? ' hot' : ''}">${ic(g.updated ? 'warn' : 'check')}<div>
-        <b>${g.updated ? `Updated${g.version ? ` to ${esc(g.version)}` : ''}${g.update_time ? ` · ${esc(H.ago(g.update_time))}` : ''}`
-          : g.version ? `The Sims 4 ${esc(g.version)}` : 'The Sims 4'}</b>
+        <b>${esc(head)}</b>
         <span>${esc(p.message)}</span>${g.updated ? bf.patchLine(p.batch_fixes) : ''}</div></div>`;
-    const rows = older.map(o => `<label class="care-row pick"><input type="checkbox" data-care-pick="${esc(o.rel)}"${C.pick.has(o.rel) ? ' checked' : ''}>
+    const rows = older.map(o => {
+      const bits = [fileOf(o.rel), t('care.patch.from', { date: H.day(o.date), n: Number(o.days_before) || 0 })];
+      if ((o.goes_with || []).length) bits.push(t('care.patch.goes_with', { n: o.goes_with.length }));
+      return `<label class="care-row pick"><input type="checkbox" data-care-pick="${esc(o.rel)}"${C.pick.has(o.rel) ? ' checked' : ''}>
         <div class="ci">${ic('terminal')}</div><div class="grow"><b title="${esc(o.rel)}">${esc(o.mod)}</b>
-        <span>${esc(fileOf(o.rel))} · from ${esc(H.dayTime(o.date).split(',')[0])}, ${H.plural(o.days_before, 'day')} before the update${(o.goes_with || []).length ? ` · ${H.plural(o.goes_with.length, 'file')} that go${o.goes_with.length === 1 ? 'es' : ''} with it` : ''}</span></div></label>`).join('');
+        <span>${esc(bits.join(' · '))}</span></div></label>`;
+    }).join('');
     const n = older.filter(o => C.pick.has(o.rel)).length;
     const listBlock = older.length ? `<div class="care-list">${rows}</div>
-      <div class="actions"><button class="btn primary" data-act="care-aside" data-care-count${n && !noChange() ? '' : ' disabled'}>${ic('pause')}Set these aside until they're updated${n ? ` (${n})` : ''}</button>
-        <button class="btn ghost small" data-act="care-pick-all">${n === older.length ? 'Select none' : 'Select all'}</button></div>
-      <div class="note">${ic('info')}<span>An older file does not prove that a mod is broken, and a newer file does not prove that it is fixed. Setting a mod aside
-        deletes nothing: the game stops loading it until it is put back or the change is undone.</span></div>` : '';
+      <div class="actions"><button class="btn primary" data-act="care-aside" data-care-count${n && !noChange() ? '' : ' disabled'}>${asideLabel(n)}</button>
+        <button class="btn ghost small" data-act="care-pick-all">${esc(t(n === older.length ? 'care.patch.select_none' : 'care.patch.select_all'))}</button></div>
+      <div class="note">${ic('info')}<span>${esc(t('care.patch.note'))}</span></div>` : '';
     body = status + (older.length ? (g.updated ? listBlock
-      : `<details class="more care-more"><summary>Show the ${H.plural(older.length, 'script mod')} older than the last update</summary>${listBlock}</details>`) : '');
+      : `<details class="more care-more"><summary>${esc(t('care.patch.show_older', { n: older.length }))}</summary>${listBlock}</details>`) : '');
     if (aside.length) {
-      body += `<h3 class="sec" style="margin:22px 0 8px">Set aside for now <span class="n">${aside.length}</span></h3><div class="care-list">${aside.map(h => `<div class="care-row">
-        <div class="ci">${ic('pause')}</div><div class="grow"><b title="${esc(h.rel)}">${esc(h.mod)}</b>
-        <span>${esc(fileOf(h.rel))} · set aside ${esc(H.ago(h.since))}${h.why === 'error' ? ' because of an error' : h.why === 'fix' ? ' until it gets a Sims 4 Studio fix' : ' after an update'}${h.state === 'updated' ? ' · a newer copy is in your Mods folder now' : ''}</span></div>
-        ${h.state === 'aside' ? `<button class="btn small" data-act="care-back" data-rel="${esc(h.rel)}"${noChange() ? ' disabled' : ''}>${ic('undo')}Put back</button>` : '<span class="chip ok">Updated</span>'}</div>`).join('')}</div>`;
+      body += `<h3 class="sec" style="margin:22px 0 8px">${esc(t('care.patch.aside_title'))} <span class="n">${I.num(aside.length)}</span></h3><div class="care-list">${aside.map(x => {
+        const why = { error: 'care.patch.aside_error', fix: 'care.patch.aside_fix' }[x.why] || 'care.patch.aside_update';
+        const bits = [fileOf(x.rel), t(why, { ago: H.ago(x.since) })];
+        if (x.state === 'updated') bits.push(t('care.patch.newer_copy'));
+        return `<div class="care-row">
+        <div class="ci">${ic('pause')}</div><div class="grow"><b title="${esc(x.rel)}">${esc(x.mod)}</b>
+        <span>${esc(bits.join(' · '))}</span></div>
+        ${x.state === 'aside' ? `<button class="btn small" data-act="care-back" data-rel="${esc(x.rel)}"${noChange() ? ' disabled' : ''}>${ic('undo')}${esc(t('care.put_back'))}</button>` : `<span class="chip ok">${esc(t('care.patch.updated_chip'))}</span>`}</div>`;
+      }).join('')}</div>`;
     }
   }
   return `<div class="card" id="care-patch" data-care="patch"><div class="card-head"><div class="ic warn">${ic('pause')}</div><div class="grow">
-      <h2>After a game update</h2><p>Game updates often break script mods until their creators release updates. Script mods older than the latest game update are listed here.</p></div>
-      <button class="btn small ghost" data-act="care-refresh" title="Look again">${ic('refresh')}</button></div>${body}</div>`;
+      <h2>${esc(t('care.patch.title'))}</h2><p>${esc(t('care.patch.text'))}</p></div>
+      <button class="btn small ghost" data-act="care-refresh" title="${esc(t('common.look_again'))}">${ic('refresh')}</button></div>${body}</div>`;
 }
 
 function errorRow(g) {
   const m = g.mod;
-  const who = m ? (g.how === 'named' ? `<b>${esc(m.name)}</b>` : `<b>Probably ${esc(m.name)}</b>`)
-    : `<b>No mod named</b>`;
-  const hint = m ? `${esc(m.file)}${m.root !== 'Mods' && !g.set_aside ? ' · already set aside' : ''}`
-    : g.kind === 'ui' ? "An error in the game's menus. Mods that change the menus can cause these." : 'The cause may be the game itself, or a mod that changes the game\'s files.';
-  const act = m && g.set_aside ? `<span class="chip ok">${ic('check')}Set aside</span>`
-    : m && m.can_set_aside ? `<button class="btn small soft" data-act="care-error-aside" data-rel="${esc(m.rel)}" data-name="${esc(m.name)}"${noChange() ? ' disabled' : ''}>${ic('pause')}Set ${esc(m.name)} aside</button>` : '';
+  const who = `<b>${esc(m ? (g.how === 'named' ? m.name : t('care.error.probably', { name: m.name })) : t('care.error.no_mod'))}</b>`;
+  const hint = m ? (m.root !== 'Mods' && !g.set_aside ? `${m.file} · ${t('care.error.already_aside')}` : m.file)
+    : t(g.kind === 'ui' ? 'care.error.ui' : 'care.error.game');
+  const act = m && g.set_aside ? `<span class="chip ok">${ic('check')}${esc(t('care.error.set_aside'))}</span>`
+    : m && m.can_set_aside ? `<button class="btn small soft" data-act="care-error-aside" data-rel="${esc(m.rel)}" data-name="${esc(m.name)}"${noChange() ? ' disabled' : ''}>${ic('pause')}${esc(t('care.error.aside_btn'))}</button>` : '';
+  const meta = [H.ago(g.last)];
+  if (g.count > 1) meta.push(t('care.error.times', { n: Number(g.count), date: H.day(g.first) }));
+  if (g.how === 'mentioned') meta.push(t('care.error.mentioned'));
   return `<div class="care-error${g.new ? ' new' : ''}" data-error="${esc(g.id)}"><div class="top"><div class="ci">${ic(g.kind === 'ui' ? 'image' : 'bug')}</div>
-      <div class="grow">${who}<span>${hint}</span></div>${act}</div>
+      <div class="grow">${who}<span>${esc(hint)}</span></div>${act}</div>
     <div class="what">${esc(g.error)}</div>
-    <div class="meta">${esc(H.ago(g.last))}${g.count > 1 ? ` · ${g.count} times since ${esc(H.dayTime(g.first).split(',')[0])}` : ''}${g.how === 'mentioned' ? ' · the report mentions this mod; it is not certain to be the cause' : ''}</div>
-    <details class="more"><summary>Technical details (for the mod's creator)</summary><pre class="care-raw">${esc(g.details)}</pre>
-      <div class="muted" style="font-size:12px;margin-top:6px">From ${esc((g.files || []).join(', '))}</div></details></div>`;
+    <div class="meta">${esc(meta.join(' · '))}</div>
+    <details class="more"><summary>${esc(t('care.error.details'))}</summary><pre class="care-raw">${esc(g.details)}</pre>
+      <div class="muted" style="font-size:12px;margin-top:6px">${esc(t('care.error.from', { files: (g.files || []).join(', ') }))}</div></details></div>`;
 }
 
 function errorsCard() {
   const e = C.errors;
   let body;
-  if (!e) body = `<div class="saves-loading" style="padding:16px 4px"><div class="spinner sm"></div>Reading the game's error reports...</div>`;
+  if (!e) body = `<div class="saves-loading" style="padding:16px 4px"><div class="spinner sm"></div>${esc(t('care.errors.loading'))}</div>`;
   else if (!e.ok) body = `<div class="note err">${ic('warn')}<span>${esc(e.message)}</span></div>`;
   else {
     const all = e.errors || [], fresh = all.filter(g => g.new), old = all.filter(g => !g.new);
     body = `<div class="care-status${fresh.length ? ' hot' : ''}">${ic(fresh.length ? 'bug' : 'check')}<div><b>${esc(e.message)}</b>
-      <span>${all.length ? 'Newest first. Repeated errors are shown once, with how often they happened.' : 'Error reports written by the game are read here.'}</span></div></div>`;
+      <span>${esc(t(all.length ? 'care.errors.order' : 'care.errors.empty'))}</span></div></div>`;
     if (fresh.length) body += `<div class="care-errors">${fresh.map(errorRow).join('')}</div>`;
-    if (old.length) body += `<details class="more care-more"><summary>Errors marked as seen (${old.length})</summary><div class="care-errors">${old.map(errorRow).join('')}</div></details>`;
-    if (fresh.length) body += `<div class="actions"><button class="btn small" data-act="care-errors-seen">${ic('check')}Mark as seen</button></div>`;
+    if (old.length) body += `<details class="more care-more"><summary>${esc(t('care.errors.seen_list', { n: old.length }))}</summary><div class="care-errors">${old.map(errorRow).join('')}</div></details>`;
+    if (fresh.length) body += `<div class="actions"><button class="btn small" data-act="care-errors-seen">${ic('check')}${esc(t('care.errors.mark_seen'))}</button></div>`;
   }
   return `<div class="card" id="care-errors" data-care="errors"><div class="card-head"><div class="ic pink">${ic('bug')}</div><div class="grow">
-      <h2>Which mod caused this error?</h2><p>The game writes an error report when something goes wrong. Each error is matched to the mod behind it, where possible.</p></div>
-      <button class="btn small ghost" data-act="care-refresh" title="Look again">${ic('refresh')}</button></div>${body}</div>`;
+      <h2>${esc(t('care.errors.title'))}</h2><p>${esc(t('care.errors.text'))}</p></div>
+      <button class="btn small ghost" data-act="care-refresh" title="${esc(t('common.look_again'))}">${ic('refresh')}</button></div>${body}</div>`;
 }
 
 export function toolsSections() {
@@ -228,15 +265,15 @@ export function toolsSections() {
 
 // -------------------------------------------------------------------------------- the progress window
 export const TITLES = {
-  set_aside: a => a.why === 'error' ? 'Setting the mod aside' : a.why === 'fix' ? 'Setting CC files aside' : 'Setting mods aside',
-  put_back: () => 'Putting mods back', backup_saves: () => 'Backing up saves', restore_saves: () => 'Restoring saves',
+  set_aside: a => t({ error: 'care.task.aside_one', fix: 'care.task.aside_fix' }[a.why] || 'care.task.aside'),
+  put_back: () => t('care.task.put_back'), backup_saves: () => t('care.task.backup'), restore_saves: () => t('care.task.restore'),
   ...bf.TITLES,
 };
 export const DONE = {
-  set_aside: () => 'Set aside', put_back: () => 'Mods put back', backup_saves: () => 'Saves backed up',
-  restore_saves: () => 'Saves restored', ...bf.DONE,
+  set_aside: () => t('care.done.aside'), put_back: () => t('care.done.put_back'), backup_saves: () => t('care.done.backup'),
+  restore_saves: () => t('care.done.restore'), ...bf.DONE,
 };
-export const KIND = { aside: ['Set mods aside', 'pause'], saves: ['Put back saves from a backup', 'shield'] };
+export const KIND = { aside: ['care.kind.aside', 'pause'], saves: ['care.kind.saves', 'shield'] };
 
 // -------------------------------------------------------------------------------- buttons
 function picked() {
@@ -248,12 +285,13 @@ async function setAside() {
   const list = picked();
   if (!list.length) return;
   const extra = list.reduce((a, o) => a + (o.goes_with || []).length, 0);
+  const names = list.slice(0, 6).map(o => o.mod);
   const yes = await H.confirmBox({
-    title: `Set ${H.plural(list.length, 'script mod')} aside?`,
-    text: 'The game stops loading them until they are put back. The saves are backed up first.',
-    what: `<div class="confirm-what"><b>${list.slice(0, 6).map(o => esc(o.mod)).join(', ')}${list.length > 6 ? ` and ${list.length - 6} more` : ''}</b>
-      <span>${extra ? `${H.plural(extra, 'file')} that belong${extra === 1 ? 's' : ''} to them go${extra === 1 ? 'es' : ''} too. ` : ''}Nothing is deleted. Each mod can be put back once it is updated, or the change can be undone on the Tools page.</span></div>`,
-    ok: 'Set them aside', cancel: 'Cancel',
+    title: t('care.aside.title', { n: list.length }),
+    text: esc(t('care.aside.text')),
+    what: `<div class="confirm-what"><b>${esc(list.length > 6 ? t('care.aside.names_more', { names: names.join(', '), n: list.length - 6 }) : names.join(', '))}</b>
+      <span>${esc([extra ? t('care.aside.extra', { n: extra }) : '', t('care.aside.undo')].filter(Boolean).join(' '))}</span></div>`,
+    ok: t('care.aside.ok'), cancel: t('common.cancel'),
   });
   if (yes) H.runTask('set_aside', { rels: list.map(o => o.rel), why: 'patch' });
 }
@@ -261,10 +299,10 @@ async function setAside() {
 async function errorAside(btn) {
   const name = btn.dataset.name, rel = btn.dataset.rel;
   const yes = await H.confirmBox({
-    title: `Set ${name} aside?`,
-    text: 'The game stops loading this mod until it is put back. Nothing is deleted.',
-    what: `<div class="confirm-what"><b>${esc(fileOf(rel))}</b><span>If the errors stop, this mod was the cause; check for an update from its creator. It can be put back on this page, or the change can be undone.</span></div>`,
-    ok: 'Set it aside', cancel: 'Cancel',
+    title: t('care.aside_one.title', { name }),
+    text: esc(t('care.aside_one.text')),
+    what: `<div class="confirm-what"><b>${esc(fileOf(rel))}</b><span>${esc(t('care.aside_one.what'))}</span></div>`,
+    ok: t('care.aside_one.ok'), cancel: t('common.cancel'),
   });
   if (yes) H.runTask('set_aside', { rels: [rel], why: 'error' });
 }
@@ -273,18 +311,18 @@ async function restore(btn) {
   const b = ((C.health && C.health.backups) || []).find(x => x.id === btn.dataset.backup);
   if (!b) return;
   const yes = await H.confirmBox({
-    title: 'Restore these saves?', danger: true,
-    text: `The saves return to their state on ${esc(H.dayTime(b.when))}. The current saves are backed up first.`,
-    what: `<div class="confirm-what"><b>${(b.saves || []).slice(0, 5).map(s => esc(s.save_name || s.name)).join(', ')}</b>
-      <span>Saves created after this backup are not changed. "Undo last change" on the Tools page restores the current saves.</span></div>`,
-    ok: 'Restore', cancel: 'Cancel',
+    title: t('care.restore.title'), danger: true,
+    text: esc(t('care.restore.text', { date: H.dayTime(b.when) })),
+    what: `<div class="confirm-what"><b>${esc((b.saves || []).slice(0, 5).map(s => s.save_name || s.name).join(', '))}</b>
+      <span>${esc(t('care.restore.what'))}</span></div>`,
+    ok: t('care.restore.ok'), cancel: t('common.cancel'),
   });
   if (yes) H.runTask('restore_saves', { backup: b.id });
 }
 
 async function seen(route, key) {
   const r = await H.call(route, {});
-  if (!r.ok) { H.toast(r.message || "That didn't work.", 'err'); return; }
+  if (!r.ok) { H.toast(r.message || t('common.failed'), 'err'); return; }
   await read(key, true);
   H.render();
 }
@@ -315,7 +353,7 @@ document.addEventListener('change', e => {
   const n = picked().length, btn = document.querySelector('[data-care-count]');
   if (btn) {
     btn.disabled = !n || noChange();
-    btn.innerHTML = `${ic('pause')}Set these aside until they're updated${n ? ` (${n})` : ''}`;
+    btn.innerHTML = asideLabel(n);
   }
 });
 document.addEventListener('click', e => {

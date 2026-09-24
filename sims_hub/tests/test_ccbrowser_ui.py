@@ -138,7 +138,7 @@ class CCBrowserUI(unittest.TestCase):
         n = self.page.eval_on_selector_all('#cc-browser .cc-pic img', 'els => els.filter(i => i.naturalWidth > 0).length')
         self.assertGreaterEqual(n, 6)
         self.assertEqual(len(self.cards()), 60)
-        self.assertIn('Showing 1-60 of', self.page.inner_text('#cc-browser .cc-count'))
+        self.assertIn('Showing 1–60 of', self.page.inner_text('#cc-browser .cc-count'))
         # a file without a picture shows its category's icon
         self.assertGreater(self.page.eval_on_selector_all('#cc-browser .cc-ph svg', 'els => els.length'), 0)
 
@@ -155,7 +155,7 @@ class CCBrowserUI(unittest.TestCase):
         self.page.wait_for_function('() => !document.querySelector("#cc-browser .cc-count").textContent.includes("of 5")')
         self.page.click('#cc-browser .cc-pager [data-cc="page"]:has-text("Next")')
         self.page.wait_for_function('() => document.querySelector("#cc-browser .cc-pager").textContent.includes("Page 2 of")')
-        self.assertIn('Showing 61-120', self.page.inner_text('#cc-browser .cc-count'))
+        self.assertIn('Showing 61–120', self.page.inner_text('#cc-browser .cc-count'))
         self.page.select_option('[data-cc-f="flag"]', 'duplicate')
         self.wait_count('of 6')
         self.page.select_option('[data-cc-f="flag"]', '')
@@ -208,7 +208,7 @@ class CCBrowserUI(unittest.TestCase):
         self.page.click('.cc-tabs [data-tab="missing"]')
         self.page.wait_for_selector('.cc-miss')
         text = self.page.inner_text('.cc-wide .body')
-        self.assertIn('Saves store only an ID number', text)
+        self.assertIn('Saves only store an ID number', text)
         self.assertIn('In the safe copies', text)
         self.assertIn('Not found on this PC', text)
         self.assertRegex(text, r'[0-9A-F]{16}')

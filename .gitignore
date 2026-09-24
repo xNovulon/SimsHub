@@ -13,6 +13,7 @@
 **/research/usedcc/*.sqlite
 **/research/bench/
 sims_hub/data/ccthumbs/
+sims_hub/data/hub_settings.json
 
 # Python artifacts
 __pycache__/

@@ -778,3 +778,11 @@ details.more[open] > :not(summary) { animation: rise .3s var(--ease) both; }
   .skel::after, .cc-pic::before, .bar-track i::after, .play.fast .go::after, .state-card.running .big-dot::after { display: none; }
   .cc-pic img { opacity: 1; transform: none; }
 }
+
+/* ---------------------------------------------------------------- Tools: the language picker (js/hub.js, js/i18n.js) - the look of the CC browser's drop-downs */
+.lang-card { margin-top: 16px; }
+.lang-pick { appearance: none; -webkit-appearance: none; height: 38px; padding: 0 34px 0 12px; border-radius: 10px; border: 1px solid var(--line-2); color: var(--text); font-size: 13.5px; font-weight: 600; min-width: 210px; max-width: 100%; cursor: pointer; transition: border-color var(--t-fast);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aaa2b9' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") right 10px center / 15px no-repeat, var(--panel-2); }
+.lang-pick:hover { border-color: var(--line-3); }
+.lang-pick:focus-visible { border-color: var(--accent-line); outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.lang-pick option { background: var(--panel-2); color: var(--text); }

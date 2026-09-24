@@ -13,27 +13,27 @@
 <body>
 <div id="app">
   <header id="topbar">
-    <a class="brand" href="#home" title="Home">
+    <a class="brand" href="#home" title="Home" data-i18n-title="nav.home">
       <img src="img/logo.svg" alt="" class="logo">
       <div class="brand-text"><b>Novulon's</b><span>Sims Hub</span></div>
     </a>
     <div class="top-mid"><div class="mode-chip hidden" id="mode-chip"></div></div>
     <div class="top-actions">
-      <span class="preview-chip hidden" id="preview-chip" title="SpeedKit's engine isn't installed yet, so the Hub shows example data. Nothing on your PC is changed.">Example data</span>
-      <span class="game-chip hidden" id="game-chip"><i></i>The Sims 4 is running</span>
-      <button class="icon-btn" id="btn-refresh" data-act="refresh" title="Look again"><svg><use href="#i-refresh"/></svg></button>
+      <span class="preview-chip hidden" id="preview-chip" title="The Hub is showing example data because the SpeedKit engine isn't installed yet. Nothing on your PC changes." data-i18n="top.preview" data-i18n-title="top.preview_title">Example data</span>
+      <span class="game-chip hidden" id="game-chip"><i></i><span data-i18n="top.running">The Sims 4 is running</span></span>
+      <button class="icon-btn" id="btn-refresh" data-act="refresh" title="Refresh" data-i18n-title="common.look_again"><svg><use href="#i-refresh"/></svg></button>
     </div>
   </header>
 
-  <nav id="rail">
-    <a href="#home" data-page="home"><svg><use href="#i-home"/></svg><span>Home</span></a>
-    <a href="#saves" data-page="saves"><svg><use href="#i-saves"/></svg><span>Saves</span></a>
-    <a href="#library" data-page="library"><svg><use href="#i-library"/></svg><span>Library</span></a>
-    <a href="#performance" data-page="performance"><svg><use href="#i-gauge"/></svg><span>Performance</span></a>
-    <a href="#tools" data-page="tools"><svg><use href="#i-tools"/></svg><span>Tools</span></a>
+  <nav id="rail" aria-label="Pages" data-i18n-aria="nav.aria">
+    <a href="#home" data-page="home"><svg><use href="#i-home"/></svg><span data-i18n="nav.home">Home</span></a>
+    <a href="#saves" data-page="saves"><svg><use href="#i-saves"/></svg><span data-i18n="nav.saves">Saves</span></a>
+    <a href="#library" data-page="library"><svg><use href="#i-library"/></svg><span data-i18n="nav.library">Library</span></a>
+    <a href="#performance" data-page="performance"><svg><use href="#i-gauge"/></svg><span data-i18n="nav.performance">Performance</span></a>
+    <a href="#tools" data-page="tools"><svg><use href="#i-tools"/></svg><span data-i18n="nav.tools">Tools</span></a>
   </nav>
 
-  <main id="main"><div class="page" id="page"><div class="page-loading"><div class="spinner"></div><span>Opening the Hub...</span></div></div></main>
+  <main id="main"><div class="page" id="page"><div class="page-loading"><div class="spinner"></div><span data-i18n="app.opening">Opening the Hub…</span></div></div></main>
 </div>
 
 <div id="overlay-root"></div>
