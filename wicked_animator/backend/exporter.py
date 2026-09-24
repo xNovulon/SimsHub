@@ -87,6 +87,33 @@ def sound_events(actor, fps):
     return events
 
 
+def _is_own(name):
+    import mysounds
+    return mysounds.is_mine(name)
+
+
+def _own_sounds(actors, warnings):
+    """Your own sounds (mysounds.py) the actors use -> (their resources, the names that are packed). One that is not
+    on this computer any more is left out of the clips with a warning."""
+    import mysounds
+    names = sorted({str(s.get('name')) for a in actors for s in a.get('sounds') or [] if mysounds.is_mine(s.get('name'))})
+    if not names:
+        return [], set()
+    res, missing = mysounds.resources(names)
+    for n in missing:
+        msg = 'Your sound \u2018%s\u2019 is not on this computer any more, so it was left out.' % n
+        if msg not in warnings:
+            warnings.append(msg)
+    return res, set(names) - set(missing)
+
+
+def _drop_missing_own(actor, packed):
+    """The actor without sound events for your own sounds that are not packed."""
+    sounds = actor.get('sounds') or []
+    keep = [s for s in sounds if not _is_own(s.get('name')) or s.get('name') in packed]
+    return actor if len(keep) == len(sounds) else dict(actor, sounds=keep)
+
+
 def uid_tag(uid):
     """6 hex digits from an animation's uid (stable, and different for different animations)."""
     return '%06x' % (fnv32(str(uid)) & 0xFFFFFF) if uid else ''
@@ -318,8 +345,10 @@ def animation_resources(project, metas=None, present=None):
     resources, actors_xml, sounds = [], [], []
     voices = False
     checks = []
+    mine_res, mine_names = _own_sounds(project['actors'], checks)
     for k, actor in enumerate(project['actors']):
         actor = _check_voices(actor, checks)
+        actor = _drop_missing_own(actor, mine_names)
         clip_name = '%s_%df_%d' % (base, ticks, k + 1)
         clip, header = write_clip(clip_name, 'x', ticks, actor_channels(actor, frames, hold=hold),
                                   source="Novulon's Wicked Animator", events=sound_events(actor, fps), tick_length=1.0 / fps)
@@ -327,7 +356,7 @@ def animation_resources(project, metas=None, present=None):
         resources.append((T_CLIP, 0, inst, clip))
         resources.append((T_CLIP_HEADER, 0, inst, header))
         voices = voices or any(s.get('kind') == 'voice' for s in actor.get('sounds') or [])
-        sounds += [s['name'] for s in actor.get('sounds') or []]
+        sounds += [s['name'] for s in actor.get('sounds') or [] if not _is_own(s['name'])]
         gender = actor.get('gender') or 'BOTH'
         actors_xml.append({
             'clip': clip_name, 'gender': gender, 'naked': actor.get('naked'), 'body': actor.get('body'),
@@ -338,7 +367,7 @@ def animation_resources(project, metas=None, present=None):
             'animated_vagina': bool(actor.get('animatedVagina')) and gender != 'MALE',
             'invisible_teeth': bool(actor.get('invisibleTeeth')), 'cum_after': actor.get('cumAfter')})
     prop_res, props_xml, props_info = prop_resources(project, base, ticks, frames, hold, fps, checks)
-    resources += prop_res
+    resources += prop_res + mine_res
     nxt, next_names, random_ok, warnings = _links(project, metas, present)
     tags = [t for t in (project.get('tags') or []) if t]
     if voices and 'CUSTOM_VOICE_SFX' not in tags:
@@ -364,7 +393,7 @@ def animation_resources(project, metas=None, present=None):
                        'next': nxt, 'next_names': next_names, 'random': random_ok, 'name': name, 'author': author,
                        'category': category, 'locations': anim['locations'], 'genders': [a['gender'] for a in actors_xml],
                        'warnings': warnings, 'events': n_events, 'props': props_info,
-                       'prop_clips': [p['clip'] for p in props_xml]}
+                       'prop_clips': [p['clip'] for p in props_xml], 'own_sounds': sorted(mine_names)}
 
 
 def _in_use(ex):
@@ -621,7 +650,7 @@ def export(project, present=None):
         warnings.append('The sounds from parked mods could not be copied: %s' % (str(ex) or repr(ex)))
     return {'path': path, 'package': info['base'] + '.package', 'clips': info['clips'], 'bytes': size,
             'next': info['next'], 'next_names': info['next_names'], 'random': info['random'], 'sound_kit': kit,
-            'replaced': moved, 'warnings': warnings}
+            'replaced': moved, 'warnings': warnings, 'own_sounds': len(info['own_sounds'])}
 
 
 # ------------------------------------------------------------------ a mod to share
@@ -702,6 +731,7 @@ def bundle(req):
     return {'folder': folder, 'package': pkg, 'zip': zpath, 'bytes': size, 'animations': len(infos),
             'progressions': [g['name'] for g in progs], 'sounds_packed': len({n for v in credits.values() for n in v}),
             'credits': credits, 'missing_sounds': missing, 'sounds_need_pack': needs, 'installed': installed,
+            'own_sounds': len({n for i in infos for n in i.get('own_sounds') or []}),
             'warnings': warnings}
 
 
@@ -743,6 +773,9 @@ def _readme(title, author, fname, infos, progs, metas, credits, missing, needs=N
         lines += ['', 'SOUNDS PACKED INSIDE (credit to their creators)']
         for pkg, names in credits.items():
             lines.append(f"  - from {pkg}: {', '.join(sorted(names))}")
+    own = sorted({n for i in infos for n in i.get('own_sounds') or []})
+    if own:
+        lines += ['', "THE CREATOR'S OWN SOUNDS PACKED INSIDE: " + ', '.join(own)]
     if needs:
         lines += ['', 'SOUNDS THAT NEED A GAME PACK: ' + ', '.join(f'{n} ({p})' for n, p in sorted(needs.items()))]
     if missing:

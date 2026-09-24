@@ -156,6 +156,7 @@ export function showExported(app, res, p) {
       ...warnings.map(w => h('div', { class: 'warn-box' }, w)),
       res.replaced && res.replaced.length ? h('p', { class: 'hint' }, 'The older copy was taken out of your Mods folder, so it never shows twice.') : null,
       res.sound_kit ? h('p', { class: 'hint' }, `${res.sound_kit.sounds} sounds from parked packs were copied into your Mods so they play.`) : null,
+      res.own_sounds ? h('p', { class: 'hint' }, `${res.own_sounds === 1 ? 'Your own sound is' : res.own_sounds + ' of your own sounds are'} packed inside it.`) : null,
       h('p', { class: 'hint' }, `${((res.bytes || 0) / 1024).toFixed(0)} KB. Sending again replaces it.`),
       extraSlot),
     buttons: [{ label: 'Done', kind: 'primary' }],
