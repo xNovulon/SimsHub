@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Novulon's Wicked Animator - the desktop app (a real Windows window around the animator), with .NET inside it so
-       it runs on any Windows 10/11 PC as it is. The parts both Novulon apps share are in ..\..\shared\desktop.
+  <!-- Novulon's Sims Hub - the desktop app (a real Windows window around the Hub), with .NET inside it so it runs on
+       any Windows 10/11 PC as it is. The parts both Novulon apps share are in ..\..\shared\desktop.
        Build: powershell -ExecutionPolicy Bypass -File desktop\build.ps1  (GitHub builds and publishes it by itself:
        .github\workflows\build-apps.yml) -->
   <PropertyGroup>
@@ -10,9 +10,9 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>Wicked Animator</AssemblyName>
-    <RootNamespace>WickedAnimator</RootNamespace>
-    <ApplicationIcon>..\web\img\logo.ico</ApplicationIcon>
+    <AssemblyName>Sims Hub</AssemblyName>
+    <RootNamespace>SimsHub</RootNamespace>
+    <ApplicationIcon>..\speedkit\hub\web\img\hub.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
@@ -26,20 +26,20 @@
     <!-- the same code gives the same program, so an app whose code did not change is not downloaded again -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <Product>Novulon's Wicked Animator</Product>
-    <AssemblyTitle>Novulon's Wicked Animator</AssemblyTitle>
-    <Description>Novulon's Wicked Animator</Description>
+    <Product>Novulon's Sims Hub</Product>
+    <AssemblyTitle>Novulon's Sims Hub</AssemblyTitle>
+    <Description>Novulon's Sims Hub</Description>
     <Company>Novulon</Company>
     <Copyright>Novulon</Copyright>
     <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Microsoft's WebView2 SDK 1.0.3179.45 (redistributable, signed by Microsoft) -->
     <Compile Include="..\..\shared\desktop\*.cs" LinkBase="shared" />
+    <!-- Microsoft's WebView2 SDK 1.0.3179.45 (redistributable, signed by Microsoft) -->
     <Reference Include="Microsoft.Web.WebView2.Core"><HintPath>..\..\shared\desktop\lib\Microsoft.Web.WebView2.Core.dll</HintPath></Reference>
     <Reference Include="Microsoft.Web.WebView2.WinForms"><HintPath>..\..\shared\desktop\lib\Microsoft.Web.WebView2.WinForms.dll</HintPath></Reference>
     <EmbeddedResource Include="..\..\shared\desktop\lib\WebView2Loader.dll" LogicalName="WebView2Loader.dll" />
-    <EmbeddedResource Include="..\web\img\logo.ico" LogicalName="logo.ico" />
+    <EmbeddedResource Include="..\speedkit\hub\web\img\hub.ico" LogicalName="logo.ico" />
     <EmbeddedResource Include="logo.png" LogicalName="logo.png" />
   </ItemGroup>
 </Project>

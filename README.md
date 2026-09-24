@@ -1,30 +1,50 @@
-# Sims Hub & Wicked Animator
+# Novulon's apps for The Sims 4
 
-Unified workspace containing:
-- **Sims Hub** (sims_hub/): Performance and mod management suite for The Sims 4.
-- **Wicked Animator** (wicked_animator/): Animation previewer, pose editor, and authoring tools for WickedWhims.
+Two Windows apps. Each one is a single download: open it and it installs itself, adds its shortcuts, sets up
+everything it needs, and keeps itself up to date.
 
-## Auto-update
+| | App | What it does | Download |
+| --- | --- | --- | --- |
+| 🎬 | **Novulon's Wicked Animator** | Make WickedWhims animations without Blender: pose your sims, key them on a timeline, add sounds, and send them straight to the game. | [**WickedAnimator.exe**](https://github.com/Novulxn/Sims-Hub/releases/latest/download/WickedAnimator.exe) |
+| ⚡ | **Novulon's Sims Hub** | Load the game faster with only the CC your saves use, fix lag while keeping max graphics, merge new downloads, and clear out duplicate CC. Nothing is ever deleted, and every change can be undone. | [**SimsHub.exe**](https://github.com/Novulxn/Sims-Hub/releases/latest/download/SimsHub.exe) |
 
-Both apps keep themselves up to date from this repository's `main` branch, so pushing to GitHub is all it takes:
+## Installing
 
-| App | Opens from | Updates on this PC |
-| --- | --- | --- |
-| Novulon's Wicked Animator | `Wicked Animator.exe` (Desktop shortcut) | the folder the exe is in (`Tools\sims4_animator`) from `wicked_animator/` |
-| Novulon's Sims Hub | "Novulon's Sims Hub" Desktop shortcut | `Tools\sims4_speedkit` from `sims_hub/` |
+1. Download the app you want (or both).
+2. Open it. The first time, Windows may say **"Windows protected your PC"** because the apps aren't code-signed.
+   Click **More info**, then **Run anyway**.
+3. That's it. The app:
+   - installs itself in your user folder (`Tools\sims4_animator` or `Tools\sims4_speedkit`) and adds Desktop and
+     Start Menu shortcuts,
+   - installs **Python** and the Python packages it needs if they're missing (just for you; no administrator needed),
+   - installs **Microsoft Edge WebView2** if it's missing (it comes with Windows 11),
+   - opens.
 
-Each time an app opens, it asks GitHub for the newest commit. That's one small request, and it's skipped when the PC is
-offline. When there's a newer commit, only the changed files are downloaded and checked against GitHub's hashes. They
-are put in place only after every download succeeds. Files that aren't in the repo, like your own poses, caches and
-logs, are never touched. A file you edited yourself is copied to a backup before it's replaced (the last three backups
-are kept).
+The first start takes a minute or two while all of this happens. You can delete the downloaded file afterwards and
+use the shortcuts. Both apps need Windows 10 or 11 (64-bit), and an internet connection the first time.
 
-- Animator: `wicked_animator/desktop/Updater.cs`. Its state, log and backups are in `%LOCALAPPDATA%\NovulonWickedAnimator\update`.
-  When a new `Wicked Animator.exe` arrives, the app swaps itself and reopens as the new version.
-- Hub: `sims_hub/speedkit/hub/update.py`, run by the launcher before the Hub starts. Its state, log and backups are in
-  `%LOCALAPPDATA%\NovulonSimsHub\update`. A Hub that is already running is restarted for an update only when no Hub
-  window is open and no task is running.
-- `.github/workflows/build-animator-exe.yml` rebuilds `Wicked Animator.exe` whenever `wicked_animator/desktop/` changes and
-  commits it, so the exe on GitHub always matches the code.
-- A folder that is a git clone of this repo is left to git (`git pull`). To turn updating off, set
-  `WICKED_NO_UPDATE=1` (Animator) or `SIMS_HUB_NO_UPDATE=1` (Hub).
+## Updates
+
+Each time you open an app, it checks GitHub for a newer version. That's one small request, and it's skipped when you're
+offline. New files are downloaded and checked before anything is replaced, and the app updates its own program the same
+way. Your own files (projects, poses, settings, caches) are never touched. If an update replaces a file you edited, a
+backup is kept.
+
+## For developers
+
+| Folder | What's in it |
+| --- | --- |
+| `wicked_animator/` | The animator: Python engine (`backend/`), web interface (`web/`), desktop app (`desktop/`), checks (`tools/`) |
+| `sims_hub/` | The Hub: Python engine (`speedkit/`, UI in `speedkit/hub/`), in-game mod (`ingame/`, built into `dist/`), desktop app (`desktop/`), `tests/`, `research/`, `docs/` |
+| `shared/desktop/` | What both desktop apps share: installing, updating, Python and WebView2 setup, the splash card |
+| `.github/workflows/build-apps.yml` | Builds both apps on every change to their desktop code and publishes them on the [apps release](https://github.com/Novulxn/Sims-Hub/releases/tag/apps) |
+
+- **Releasing:** push to `main`. Installed apps pick up changed files the next time they open. When desktop code changes,
+  the workflow publishes new builds, and installed apps swap themselves for them.
+- **What's installed on users' PCs:** each app's folder, minus the files only developers need (`desktop/`, `tools/`,
+  `tests/`, `research/`, `docs/`, `branding/`). The lists are in each app's `desktop/Program.cs`.
+- **Working on the code:** a git clone is never auto-updated, so it stays yours. Build an app locally with
+  `desktop\build.ps1`, or run the engines directly (`python backend\server.py`, `python -m speedkit.hub`). To turn
+  updating off, set `WICKED_NO_UPDATE=1` or `SIMS_HUB_NO_UPDATE=1`.
+- **Logs:** `%LOCALAPPDATA%\NovulonWickedAnimator` and `%LOCALAPPDATA%\NovulonSimsHub` hold `update\update.log`,
+  `python-setup.log`, `setup.log` and `engine.log`.

@@ -6,8 +6,9 @@
 
 The icon: headless Chrome (or Edge) renders logo.svg to PNGs at 16, 32, 48 and 256 px on a transparent
 background, and those PNGs go into one .ico file as they are (Windows Vista and later read PNG icons).
-The shortcut: "<Desktop>\\Novulon's Sims Hub.lnk" -> pythonw.exe -m speedkit.hub --open (no console window at all;
-see launcher.py), made with WScript.Shell. "Start Novulon's Sims Hub.bat" stays as a fallback. Nothing else on
+The shortcut: "<Desktop>\\Novulon's Sims Hub.lnk" -> "Sims Hub.exe" when the Hub has it (the desktop app,
+sims_hub/desktop), else pythonw.exe -m speedkit.hub --open (no console window at all; see launcher.py), made with
+WScript.Shell. "Start Novulon's Sims Hub.bat" stays as a fallback. Nothing else on
 the Desktop is touched.
 """
 import base64
@@ -25,6 +26,7 @@ IMG = os.path.join(HERE, 'web', 'img')
 LOGO = os.path.join(IMG, 'logo.svg')
 ICO = os.path.join(IMG, 'hub.ico')
 BAT = os.path.join(ROOT, "Start Novulon's Sims Hub.bat")
+EXE = os.path.join(ROOT, 'Sims Hub.exe')
 NAME = "Novulon's Sims Hub"
 SIZES = (16, 32, 48, 256)
 BROWSERS = (r'%ProgramFiles%\Google\Chrome\Application\chrome.exe', r'%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe',
@@ -148,7 +150,10 @@ def pythonw():
 ARGS = '-m speedkit.hub --open'
 
 
-def make_shortcut(desktop=None, target=None, args=ARGS, name=NAME):
+def make_shortcut(desktop=None, target=None, args=None, name=NAME):
+    if target is None and args is None and os.path.isfile(EXE):
+        target, args = EXE, ''                   # the desktop app: it starts the Hub itself
+    args = ARGS if args is None else args
     lnk = os.path.join(desktop or desktop_dir(), name + '.lnk')
     script = ('$s = (New-Object -ComObject WScript.Shell).CreateShortcut(%s); $s.TargetPath = %s; $s.Arguments = %s; '
               '$s.WorkingDirectory = %s; $s.IconLocation = %s; $s.Description = %s; $s.WindowStyle = 1; $s.Save()'

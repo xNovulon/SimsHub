@@ -180,6 +180,17 @@ class Update(unittest.TestCase):
             self.assertEqual(update.run(self.root)['changed'], 0)
         self.assertEqual(self.gh.calls, [])
 
+    def test_files_only_developers_need_are_left_out(self):
+        self.write('tests/old_test.py', b'mine\n')                     # a copy already here stays as it is
+        self.gh.push({'sims_hub/speedkit/a.py': b'1\n', 'sims_hub/tests/test_a.py': b't\n', 'sims_hub/tests/old_test.py': b'new\n',
+                      'sims_hub/research/big.bin': b'x' * 100, 'sims_hub/research/merging/companions.json': b'{}\n',
+                      'sims_hub/desktop/Program.cs': b'//\n'})
+        r = update.run(self.root)
+        self.assertEqual(r['changed'], 2)
+        self.assertEqual(self.read('research/merging/companions.json'), b'{}\n')
+        self.assertFalse(self.exists('tests/test_a.py') or self.exists('research/big.bin') or self.exists('desktop'))
+        self.assertEqual(self.read('tests/old_test.py'), b'mine\n')
+
     def test_only_three_backups_are_kept(self):
         for i in range(5):
             os.makedirs(os.path.join(update.DIR, 'backup', '2026-01-0%d_000000' % (i + 1)))

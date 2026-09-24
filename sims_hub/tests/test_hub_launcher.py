@@ -132,7 +132,7 @@ class Shortcut(unittest.TestCase):
     def test_make_shortcut_in_a_temp_folder(self):
         tmp = tempfile.mkdtemp(prefix='hublnk_')
         try:
-            lnk = desktop.make_shortcut(tmp)
+            lnk = desktop.make_shortcut(tmp, args=desktop.ARGS)          # the pythonw one (not Sims Hub.exe)
             self.assertEqual(os.path.basename(lnk), "Novulon's Sims Hub.lnk")
             ps = ("$s = (New-Object -ComObject WScript.Shell).CreateShortcut('%s'); "
                   "$s.TargetPath; $s.Arguments; $s.WorkingDirectory; $s.IconLocation; $s.Description" % lnk.replace("'", "''"))

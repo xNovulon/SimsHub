@@ -7,7 +7,7 @@ down: the Hub simply opens as it is). When there is a newer one, only the files 
 checked against GitHub's own hash, and only once every one of them is here are they put in place - an update is never
 half-applied by a lost connection. Files that are not on GitHub (your own, caches, logs) are never touched; a file you
 changed yourself is copied to the update backup before it is replaced. Windows line ends (CRLF) count as the same
-text, and .bat files are written with them.
+text, and .bat files are written with them. Files only developers need (SKIP) are left out.
 
 A folder that is a git checkout of the repository is left to git (it is where the Hub is worked on).
 SIMS_HUB_NO_UPDATE=1 turns updating off. The same steps keep Novulon's Wicked Animator up to date
@@ -32,6 +32,14 @@ DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'N
 API = 'https://api.github.com/repos/%s/%s' % (OWNER, REPO)
 RAW = 'https://raw.githubusercontent.com/%s/%s' % (OWNER, REPO)
 KEEP_BACKUPS = 3
+# only developers need these (the program's source, tests, research notes, artwork) - the same list as Sims Hub.exe's
+# (sims_hub/desktop/Program.cs); the Hub reads one research file
+SKIP = ('desktop/', 'tests/', 'research/', 'branding/', 'docs/')
+KEEP = ('research/merging/companions.json',)
+
+
+def wanted(rel):
+    return rel in KEEP or not rel.startswith(SKIP)
 
 
 def fetch(url, accept=None, timeout=60):
@@ -189,15 +197,18 @@ def run(root=None, commit=None):
         commit = commit or latest_commit()
         if not commit or commit == state['commit']:
             return nothing
-        files = tree(commit)
-        if not files:
+        every = tree(commit)
+        if not every:
             return nothing
+        files = {rel: sha for rel, sha in every.items() if wanted(rel)}
+        for rel in [r for r in state['files'] if r in every and r not in files]:
+            del state['files'][rel]                       # developers only: a copy already here stays as it is
         todo = []
         for rel, sha in files.items():
             target = target_path(root, rel)
             if target and not same_as(target, sha):
                 todo.append((rel, sha, target))
-        gone = [rel for rel in state['files'] if rel not in files]
+        gone = [rel for rel in state['files'] if rel not in every]
         if not todo and not gone:
             state['files'].update(files)
             state['commit'] = commit

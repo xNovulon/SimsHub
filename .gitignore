@@ -39,3 +39,10 @@ desktop.ini
 
 # Tests that write to E:\speedkit_test\... make a folder by that name inside the repo on Linux/macOS
 **/E:*
+
+# profiler output
+prof.out
+
+# the apps are built by GitHub and published as downloads (.github/workflows/build-apps.yml), not kept here
+wicked_animator/Wicked Animator.exe
+sims_hub/Sims Hub.exe

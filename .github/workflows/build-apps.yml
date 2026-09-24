@@ -1,0 +1,81 @@
+# Builds both apps - "Wicked Animator.exe" and "Sims Hub.exe", each with .NET inside - whenever their desktop code
+# changes, and publishes them as the downloads on the "apps" release. Each app folder's app.json then names the new
+# build, and every installed copy swaps itself for it the next time it opens (shared/desktop/Updater.cs).
+name: Build the apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'shared/desktop/**'
+      - 'wicked_animator/desktop/**'
+      - 'sims_hub/desktop/**'
+      - 'wicked_animator/web/img/logo.ico'
+      - 'sims_hub/speedkit/hub/web/img/hub.ico'
+      - '.github/workflows/build-apps.yml'
+      - '.github/release-notes.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apps
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet publish wicked_animator/desktop/WickedAnimator.csproj -c Release -o publish/animator -nologo -v:minimal
+          if ($LASTEXITCODE -ne 0) { throw "the animator did not build" }
+          dotnet publish sims_hub/desktop/SimsHub.csproj -c Release -o publish/hub -nologo -v:minimal
+          if ($LASTEXITCODE -ne 0) { throw "the Hub did not build" }
+          Copy-Item "publish/animator/Wicked Animator.exe" WickedAnimator.exe
+          Copy-Item "publish/hub/Sims Hub.exe" SimsHub.exe
+
+      # a program without its marker could never update itself again, so installed copies would refuse it
+      - name: Check they can update themselves
+        shell: pwsh
+        run: |
+          python -c "import sys; bad = [f for f, m in (('WickedAnimator.exe', 'Novulon.WickedAnimator.AutoUpdate.v1'), ('SimsHub.exe', 'Novulon.SimsHub.AutoUpdate.v1')) if m.encode('utf-16-le') not in open(f, 'rb').read()]; sys.exit('no update marker in ' + ', '.join(bad) if bad else 0)"
+
+      - name: Publish the downloads
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view apps *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create apps WickedAnimator.exe SimsHub.exe --title "Novulon's apps for The Sims 4" --notes-file .github/release-notes.md --latest
+          } else {
+            gh release upload apps WickedAnimator.exe SimsHub.exe --clobber
+            if ($LASTEXITCODE -eq 0) { gh release edit apps --notes-file .github/release-notes.md --latest }
+          }
+          if ($LASTEXITCODE -ne 0) { throw "the downloads could not be published" }
+
+      # only after the downloads are up: installed copies read this to know a new build is there
+      - name: Name the new builds
+        shell: pwsh
+        run: |
+          foreach ($a in @(@{ dir = 'wicked_animator'; asset = 'WickedAnimator.exe' }, @{ dir = 'sims_hub'; asset = 'SimsHub.exe' })) {
+            $sha = (Get-FileHash $a.asset -Algorithm SHA256).Hash.ToLowerInvariant()
+            [ordered]@{ asset = $a.asset; sha256 = $sha } | ConvertTo-Json | Set-Content -Path "$($a.dir)/app.json" -Encoding utf8NoBOM
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add wicked_animator/app.json sims_hub/app.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { Write-Host "Neither app changed."; exit 0 }
+          git commit -m "Publish new app builds"
+          git pull --rebase origin $env:GITHUB_REF_NAME
+          git push origin HEAD:$env:GITHUB_REF_NAME
