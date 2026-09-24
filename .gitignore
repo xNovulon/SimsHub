@@ -12,6 +12,7 @@
 **/research/merging/bench/
 **/research/usedcc/*.sqlite
 **/research/bench/
+sims_hub/data/ccthumbs/
 
 # Python artifacts
 __pycache__/

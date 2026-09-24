@@ -59,6 +59,11 @@ Requires the WickedWhims mod. For adults (18+).
 - **Less lag, same graphics.** Fixes the settings that slow the game down while keeping maximum quality.
 - **Tidy downloads.** New downloads are sorted and merged automatically; script mods are never touched.
 - **Duplicate cleaner.** Finds identical copies of CC and checks the game still loads exactly the same content.
+- **CC browser.** Every CC file with its picture and category, searchable, with what each save uses and what is missing.
+- **After game updates.** Lists script mods older than the update and can set them aside until they are fixed.
+- **Error reports.** Reads the game's error files and names the mod that caused each error.
+- **Save backups.** Back up and restore saves, and see which saves are growing large.
+- **Load-time tracking.** Shows how long the game takes to load in each mode and the time saved.
 - **Safe by design.** Every change can be undone, and nothing changes while the game is running.
 
 ## Installation

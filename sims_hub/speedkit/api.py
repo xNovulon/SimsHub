@@ -646,7 +646,8 @@ def _title(j):
             return 'Changed the game options'
         return 'Changed the graphics settings'
     return {'caches': 'Cleared the game caches', 'merge': 'Combined mod files', 'inbox': 'Installed new downloads',
-            'dedup': 'Removed duplicate copies', 'usedpack': 'Made the used-CC pack'}.get(kind, 'Changed %s' % kind)
+            'dedup': 'Removed duplicate copies', 'usedpack': 'Made the used-CC pack',
+            'setaside': 'Set CC files aside'}.get(kind, 'Changed %s' % kind)
 
 
 def _disk():
@@ -1621,6 +1622,353 @@ def open_folder(which):
         return {'ok': False, 'message': 'The %s folder does not exist yet.' % which}
     _open(p)
     return {'ok': True, 'message': 'Opened %s.' % p, 'path': p}
+
+
+# ------------------------------------------------------------------------------------------ CC browser
+# The Library page's pictures and categories and the Saves page's "CC this save uses" (speedkit/ccbrowser.py,
+# docs/ccbrowser.md). Its index and pictures live beside the library index (data\ccbrowser.sqlite,
+# data\ccthumbs\), never in the game's folders.
+CC_MISSING_KINDS = {'cas': 'Clothing, hair, makeup or another Create a Sim item',
+                    'object': 'A Build/Buy object on a lot', 'look': 'A skin tone, slider or preset'}
+_CC_PICS = []                       # one ExtraPictures for the whole process (it keeps file indexes in memory)
+
+
+def _cc_paths():
+    d = os.path.dirname(os.path.abspath(_cfg['db_path']))
+    return os.path.join(d, 'ccbrowser.sqlite'), os.path.join(d, 'ccthumbs')
+
+
+def _cc_index():
+    from . import ccbrowser as CB
+    return CB.CCIndex(_cc_paths()[0])
+
+
+def _cc_thumbs():
+    from . import ccbrowser as CB
+    return CB.ThumbCache(_cc_paths()[1])
+
+
+def _cc_side_places():
+    """Where CC that is not in Mods may still be: the Hub's safe copies (every journal home) and the Inbox."""
+    places = [('safe copies', os.path.join(h, 'quarantine')) for h in _journal_homes()]
+    places.append(('Inbox', _inbox_path()))
+    return places
+
+
+def _cc_extra(more=()):
+    """ExtraPictures over the game's thumbnail cache, the newest thumbnail caches in the safe copies and `more`."""
+    from . import ccbrowser as CB
+    if not _CC_PICS:
+        _CC_PICS.append(CB.ExtraPictures())
+    ex = _CC_PICS[0]
+
+    def old_caches():
+        out = []
+        for _, q in _cc_side_places()[:-1]:
+            for dp, dn, fn in os.walk(q):
+                out += [os.path.join(dp, n) for n in fn if n.lower() == 'localthumbcache.package']
+
+        def age(p):
+            try:
+                return -os.path.getmtime(p)
+            except OSError:
+                return 0
+        return sorted(out, key=age)[:5]
+    return ex.with_files([os.path.join(_sims(), 'localthumbcache.package')] + list(more) +
+                         _cached(('cc_old_caches',), 300, old_caches))
+
+
+def _cc_token(text):
+    import hashlib
+    return hashlib.blake2b(text.encode('utf-8', 'replace'), digest_size=6).hexdigest()
+
+
+def _cc_view(row):
+    """One index row as the app shows it (plain words, no inside names)."""
+    from . import ccbrowser as CB
+    if not row:
+        return None
+    used_by = json.loads(row['used_by']) if row.get('used_by') else []
+    pic = _cc_token('%s|%s|%s|%s' % (row['rel'], row['size'], row['mtime'], row['thumb'])) if row.get('thumb') else None
+    dup = row.get('dup_of')
+    return {'id': row['id'], 'name': row['name'], 'rel': row['rel'], 'folder': row['folder'] or '',
+            'creator': row['creator'], 'kind': row['kind'], 'category': row['category'],
+            'category_label': CB.CATEGORY_LABELS.get(row['category'], 'Other'),
+            'cats': [c for c in (row['cats'] or '').split(',') if c], 'body': row['body'],
+            'part_name': row['part_name'], 'size_mb': round((row['size'] or 0) / 1e6, 2),
+            'modified': datetime.datetime.fromtimestamp(row['mtime'] or 0).isoformat(timespec='seconds'),
+            'cas_parts': row['n_cas'] or 0, 'objects': row['n_obj'] or 0, 'pic': pic,
+            'in_mods': row['root'] == 'Mods', 'used': None if row['used'] is None else bool(row['used']),
+            'used_by': used_by, 'broken': row['broken'],
+            'duplicate_of': (os.path.basename(dup) if dup != '?' else 'another file') if dup else None}
+
+
+@_safe
+def cc_list(category=None, folder=None, creator=None, q=None, used=None, flag=None, sort='name', offset=0, limit=60,
+            facets=False):
+    """One page of the CC browser: {'ok', 'index': {'state': 'ready'|'missing', 'items', 'when', 'used_known'},
+    'total', 'offset', 'limit', 'items': [_cc_view], 'categories': [{'key', 'label', 'n'}], 'flags': {'used',
+    'unused', 'duplicate', 'broken'}} (+ 'folders', 'creators' with facets=True). Reads only the CC index."""
+    from . import ccbrowser as CB
+    idx = _cc_index()
+    try:
+        state = idx.state()
+        r = idx.query(category=category or None, folder=folder, creator=creator or None, q=(q or '').strip() or None,
+                      used=used if used in ('used', 'unused') else None,
+                      flag=flag if flag in CB.FLAGS else None, sort=sort or 'name', offset=offset, limit=limit)
+        out = {'ok': True, 'index': state, 'total': r['total'], 'offset': r['offset'], 'limit': r['limit'],
+               'items': [_cc_view(x) for x in r['items']],
+               'categories': [{'key': k, 'label': lbl, 'n': r['categories'].get(k, 0)} for k, lbl in CB.CATEGORIES],
+               'flags': r['flags']}
+        if facets:
+            out.update(idx.facets())
+    finally:
+        idx.close()
+    if state['state'] == 'missing':
+        out['message'] = "CC files have not been sorted yet. Use 'Sort CC files'; the first run takes a few minutes."
+    return out
+
+
+@_safe
+def cc_item(item_id):
+    """Everything the details window shows about one CC file (its full path too)."""
+    from . import ccbrowser as CB
+    idx = _cc_index()
+    try:
+        row = idx.get(item_id)
+    finally:
+        idx.close()
+    if not row:
+        return {'ok': False, 'message': 'That file is no longer in the CC list. Use "Look again".'}
+    view = _cc_view(row)
+    roots = _roots()
+    view['path'] = CB.locate(roots, row['root'], row['rel']) or os.path.join(roots.get(row['root'], _mods()),
+                                                                              row['rel'].replace('/', os.sep))
+    return dict(view, ok=True)
+
+
+def cc_picture(item_id=None, kind=None, instance=None):
+    """The picture of one CC file (item_id) or of one CAS part / object by its id (kind 'cas'|'object', instance as
+    16 hex digits): {'ok': True, 'data': bytes, 'type': 'image/webp'|'image/png'} or {'ok': False}. Pictures are
+    made once and then read from data\\ccthumbs\\. Not JSON: the server sends the bytes as they are."""
+    from . import ccbrowser as CB
+    try:
+        thumbs = _cc_thumbs()
+        if item_id is not None:
+            idx = _cc_index()
+            lib = None
+            try:
+                row = idx.get(int(item_id))
+                if row and (row.get('thumb') or '').startswith('cache:') and os.path.exists(_cfg['db_path']):
+                    lib = _library()
+                got = CB.item_picture(idx, thumbs, int(item_id), _roots(), _cc_extra(), lib=lib)
+            finally:
+                idx.close()
+                if lib is not None:
+                    lib.close()
+        else:
+            inst = int(str(instance), 16)
+            idx = _cc_index()
+            try:
+                more = [p for p, place, name, t in idx.side_find([inst]).get(inst, ())]
+            finally:
+                idx.close()
+            lib = _library() if os.path.exists(_cfg['db_path']) else None
+            try:
+                got = CB.part_picture(lib, thumbs, 'cas' if kind == 'cas' else 'object', inst, _cc_extra(more))
+            finally:
+                if lib is not None:
+                    lib.close()
+        if not got:
+            return {'ok': False, 'message': 'No picture.'}
+        return {'ok': True, 'data': got[0], 'type': got[1]}
+    except Exception as e:
+        _log_error('cc_picture', e)
+        return {'ok': False, 'message': 'No picture.'}
+
+
+@_safe
+def cc_scan(progress=None):
+    """Sort every CC file into a category and find its picture (incremental: only new or changed files are read;
+    the first time takes a few minutes for a big library). Also marks duplicates, damaged files and which CC the
+    saves use. Read-only on the game's folders. Returns {'ok', 'message', 'items', 'read', 'seconds'}."""
+    tell = _Progress(progress)
+    t0 = time.time()
+    with _run_lock:
+        tell('library', 0.0, 'Looking for new or changed CC files')
+        lib = _library()
+        idx = _cc_index()
+        try:
+            lib.scan()
+            tell('saves', 0.12, 'Reading which CC the saves use (the first run takes a while)')
+            refs = None
+            try:
+                refs = U.scan_references(_saves(), _tray(), _cfg['refs_db'], workers=_cfg['scan_workers'])
+            except Exception as e:
+                _log_error('cc_scan.refs', e)
+            names = {}
+            try:
+                for h in S.list_saves(_saves()):
+                    if h.get('name'):
+                        names[h['slot'] + '.save'] = h['name']
+            except Exception as e:
+                _log_error('cc_scan.names', e)
+
+            def sub(step, fraction=None, message=''):
+                tell(step, None if fraction is None else round(0.3 + 0.7 * fraction, 3), message)
+            res = idx.scan(lib, refs=refs, save_names=names, progress=sub, skip=F.is_speedkit_file)
+        finally:
+            idx.close()
+            lib.close()
+    tell('done', 1.0, 'Sorted %s CC files' % format(res['items'], ','))
+    msg = 'Sorted %s CC files into categories.' % format(res['items'], ',')
+    if res['read']:
+        msg += ' %s new or changed files were looked at.' % format(res['read'], ',')
+    return {'ok': True, 'message': msg, 'items': res['items'], 'read': res['read'],
+            'seconds': round(time.time() - t0, 1)}
+
+
+@_safe
+def cc_set_aside(ids, progress=None):
+    """Set CC files aside: out of Mods into the safe copies, as one change that 'Undo last change' puts back.
+    ids: CC browser item ids. Refuses while the game runs; script mods and files not in Mods are left alone.
+    Returns {'ok', 'message', 'journal', 'done': [names], 'refused': [{'name', 'why'}]}."""
+    from . import ccbrowser as CB
+    tell = _Progress(progress)
+    nothing = {'ok': False, 'message': 'Pick the files to set aside first.', 'journal': None, 'done': [], 'refused': []}
+    try:
+        ids = [int(i) for i in (ids or [])]
+    except (TypeError, ValueError):
+        return nothing
+    if not ids:
+        return nothing
+    if _game_running():
+        return dict(nothing, message='The Sims 4 is running. Close the game first, then try again.')
+    tell('check', 0.0, 'Making sure the game is closed')
+    with _run_lock:
+        idx = _cc_index()
+        try:
+            r = CB.set_aside(idx, ids, sims=_sims(), home=_home(), check_game=_cfg['check_game'], progress=tell)
+        finally:
+            idx.close()
+    _cache.clear()
+    refused = [{'name': n, 'why': w} for n, w in r['refused']]
+    n = len(r['done'])
+    if not n:
+        why = refused[0]['why'] if refused else ''
+        return dict(nothing, message=('Nothing was set aside. %s' % why).strip(), refused=refused)
+    msg = ('Set aside %d file%s. They are kept safe - "Undo last change" on the Tools page puts them back.'
+           % (n, '' if n == 1 else 's'))
+    if refused:
+        msg += ' %d file%s stayed where %s.' % (len(refused), '' if len(refused) == 1 else 's',
+                                                'it was' if len(refused) == 1 else 'they were')
+    tell('done', 1.0, msg)
+    return {'ok': True, 'message': msg, 'journal': r['journal'], 'done': r['done'], 'refused': refused}
+
+
+@_safe
+def cc_open(item_id):
+    """Open the folder of one CC file in Explorer, with the file selected."""
+    info = cc_item(item_id)
+    if not info.get('ok'):
+        return info
+    path = info['path']
+    if not os.path.exists(path):
+        return {'ok': False, 'message': 'That file is no longer there. Use "Look again".'}
+    folder = os.path.dirname(path)
+    if _cfg['opener'] is None and os.name == 'nt':
+        subprocess.Popen(['explorer', '/select,', path], creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    else:
+        _open(folder)
+    return {'ok': True, 'message': 'Opened the folder of %s.' % info['name'], 'path': folder}
+
+
+class _SideLookup:
+    """ccbrowser.usage_report's side folders: indexed only when a save really misses CC."""
+
+    def __init__(self, idx):
+        self.idx, self.ready = idx, False
+
+    def side_find(self, instances):
+        if not self.ready:
+            self.idx.side_update(_cc_side_places())
+            self.ready = True
+        return self.idx.side_find(instances)
+
+
+@_safe
+def save_cc(slot, progress=None):
+    """The CC one save uses ('tray': the households and lots in the game's library): the installed CC files with
+    their pictures, the CC per household and sim, and the CC it uses that is installed nowhere (by id - and by
+    name when a copy is in the safe copies or the Inbox). Read-only. Returns {'ok', 'slot', 'name', 'household',
+    'counts', 'files', 'households', 'missing', 'index'}."""
+    from . import ccbrowser as CB
+    tell = _Progress(progress)
+    tell('read', None, 'Reading what this save uses')
+    played, name, household = None, None, None
+    if slot == 'tray':
+        refs = U.load_refs(_saves(), _tray(), _cfg['refs_db'])
+        tray_srcs = [s for s in refs.sources if s.kind not in ('save', 'backup')]
+        if not tray_srcs:
+            return {'ok': False, 'message': 'The in-game library has no households or lots yet.'}
+        sub = U.Refs(tray_srcs, {s.fp: refs.by_fp[s.fp] for s in tray_srcs if s.fp in refs.by_fp},
+                     {s.fp: refs.sims.get(s.fp, []) for s in tray_srcs}, {}, False)
+        name = 'In-game library'
+    else:
+        try:
+            slot = S.slot_name(slot)
+        except S.SaveError:
+            return {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
+        path = os.path.join(_saves(), slot + '.save')
+        if not os.path.isfile(path):
+            return {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
+        try:
+            if _run_lock.locked():          # a Play is running: use what is known, parse nothing
+                sub = S.save_refs(U.load_refs(_saves(), _tray(), _cfg['refs_db']), slot)
+            else:
+                sub = S.scan_one(_saves(), slot, _cfg['refs_db'])
+        except S.SaveError:
+            return {'ok': False, 'message': 'This save could not be read just now (the game may be saving it). '
+                                            'Try again in a minute.'}
+        try:
+            h = S.read_header(path)
+            played, name, household = h.get('household_id'), h.get('name'), h.get('household')
+        except S.SaveError:
+            pass
+    tell('match', None, 'Matching its CC with your CC files')
+    game = _game()
+    ids = None
+    if game is not None:
+        try:
+            ids = _game_ids(game)
+        except Exception as e:
+            _log_error('save_cc.game_ids', e)
+    lib = _library()
+    idx = _cc_index()
+    try:
+        if not lib.packages():
+            lib.scan()
+        rep = CB.usage_report(lib, sub, ids, idx, played_household=played, skip=F.is_speedkit_file,
+                              side=_SideLookup(idx))
+        state = idx.state()
+    finally:
+        idx.close()
+        lib.close()
+    files = []
+    for f in rep['files']:
+        view = _cc_view(f['item'])
+        files.append({'name': f['name'], 'folder': f['folder'], 'in_mods': f['root'] == 'Mods', 'item': view,
+                      'category_label': view['category_label'] if view else None,
+                      'parts': f['parts'], 'objects': f['objects'], 'looks': f['looks'],
+                      'pic': ({'kind': 'cas', 'id': f['first_part']} if f['first_part'] else
+                              {'kind': 'object', 'id': f['first_object']} if f['first_object'] else None),
+                      'sims': f['sims'], 'sims_count': f['sims_count']})
+    missing = [dict(m, what=CC_MISSING_KINDS.get(m['kind'], 'CC'),
+                    found=[{'place': x['place'], 'name': x['name'], 'creator': x['creator']} for x in m['found']])
+               for m in rep['missing']]
+    return {'ok': True, 'slot': slot, 'name': name or slot, 'household': household, 'counts': rep['counts'],
+            'files': files, 'households': rep['households'], 'missing': missing, 'index': state,
+            'message': '' if files or missing else 'This save uses no CC.'}
 
 
 # ------------------------------------------------------------------------------------------ finding the game

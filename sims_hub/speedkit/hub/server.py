@@ -24,6 +24,7 @@ API
   GET  /api/patchday | /api/errors | /api/save_health | /api/load_savings  [?refresh=1]
   POST /api/patchday/seen | /api/errors/seen
   tasks: set_aside {"rels", "why"} | put_back {"rels"} | backup_saves | restore_saves {"backup"}
+  GET  /api/cc..., /api/saves/<slot>/cc, POST /api/cc/open   the CC browser (see its section below)
 
 A finished task is 'done' when its result says ok, and 'failed' when it says not ok or raised.
 """
@@ -249,7 +250,7 @@ class Hub:
             except care_routes.BadArgs as ex:
                 raise BadRequest(str(ex))
         allowed = {'play': {'target'}, 'prepare': {'target'}, 'inbox': {'apply'}, 'graphics_tune': {'apply'},
-                   'graphics_restore': {'apply'}}.get(action, set())
+                   'graphics_restore': {'apply'}}.get(action, TASK_ARGS.get(action, set()))
         extra = set(args) - allowed
         if extra:
             raise BadRequest('Unknown detail for this task: %s.' % ', '.join(sorted(extra)))
@@ -261,6 +262,8 @@ class Hub:
                 raise BadRequest('Pick how to play: fast, full, studio or a save.')
         if 'apply' in args and not isinstance(args['apply'], bool):
             raise BadRequest('"apply" must be true or false.')
+        if action in TASK_CHECKS:
+            TASK_CHECKS[action](args)
 
     def start(self, action, args):
         """-> (Task, None) or (None, the running Task)."""
@@ -286,7 +289,7 @@ class Hub:
             result = {'ok': False, 'message': 'Something unexpected went wrong in the Hub.'}
         if task.action == 'report' and result.get('ok') and result.get('path'):
             self.last_report = result['path']
-        changes = task.action not in ('cleanup_plan', 'report') and (
+        changes = task.action not in ('cleanup_plan', 'report', 'cc_scan') and (
             task.args.get('apply', True) if task.action in ('inbox', 'graphics_tune', 'graphics_restore') else True)
         with self.lock:
             task.result = result
@@ -443,6 +446,8 @@ class Handler(BaseHTTPRequestHandler):
     def _get(self, route, q):
         refresh = q.get('refresh') in ('1', 'true', 'yes')
         hub = self.hub
+        if route == 'cc' or route.startswith('cc/') or (route.startswith('saves/') and route.endswith('/cc')):
+            return cc_get(self, route, q)
         if route == 'ping':
             return self._ok({'ok': True, 'app': APP, 'engine': hub.mode, 'pid': os.getpid(),
                              'busy': hub.current is not None})
@@ -475,6 +480,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _post(self, route, body):
         hub = self.hub
+        if route and route.startswith('cc/'):
+            return cc_post(self, route, body)
         if route == 'task':
             task, running = hub.start(body.get('action'), body.get('args') or {})
             if running is not None:
@@ -529,6 +536,130 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != 'HEAD':
             self.wfile.write(data)
+
+
+# ---------------------------------------------------------------------------------------------- CC browser
+# docs/ccbrowser.md. Read-only requests (never a task): the list and pictures read only the CC index and the
+# picture cache, so they also answer while a task runs; a save's CC waits for tasks other than the CC scan.
+#   GET  /api/cc?category=&folder=&creator=&q=&used=&flag=&sort=&offset=&limit=&facets=1   api.cc_list(...)
+#   GET  /api/cc/item/<id>             api.cc_item(id)
+#   GET  /api/cc/thumb/<id>[?v=...]    the file's picture (image bytes, cached by the browser for a week: the
+#                                      list's 'pic' token changes when the file does), 404 when it has none
+#   GET  /api/cc/pic/<cas|object>/<16 hex digits>   the picture of one CAS part / object by its id (same rules)
+#   GET  /api/saves/<slot>/cc[?refresh=1]           api.save_cc(slot) ('tray' = the in-game library), cached 60 s
+#   POST /api/cc/open {"id"}           api.cc_open(id): the file's folder in Explorer
+#   tasks: 'cc_scan' (sort the CC into categories) and 'cc_set_aside' {"ids": [...]} (undoable)
+CC_ACTIONS = {'cc_scan': 'sorting CC files', 'cc_set_aside': 'setting CC files aside'}
+ACTIONS.update(CC_ACTIONS)
+TAKES_PROGRESS.update({'cc_scan', 'cc_set_aside', 'save_cc'})
+CC_TTL = 60.0
+CC_WORD = re.compile(r'^[a-z_]{1,40}$')
+CC_HEX = re.compile(r'^[0-9A-Fa-f]{1,16}$')
+CC_SORTS = ('name', 'newest', 'biggest', 'folder', 'category')
+
+
+def _cc_ids(args):
+    ids = args.get('ids')
+    if not isinstance(ids, list) or not ids or len(ids) > 500 or \
+            not all(isinstance(i, int) and not isinstance(i, bool) and 0 < i < 2 ** 53 for i in ids):
+        raise BadRequest('Pick the files to set aside first.')
+
+
+TASK_ARGS = {'cc_set_aside': {'ids'}}           # task action -> the details it takes (check_args)
+TASK_CHECKS = {'cc_set_aside': _cc_ids}         # task action -> a check of those details
+
+
+def _cc_text(q, name, most):
+    v = q.get(name)
+    if v is None or v == '':
+        return None
+    if len(v) > most or '\x00' in v:
+        raise BadRequest('That filter is too long.')
+    return v
+
+
+def _cc_int(q, name, default, lo, hi):
+    try:
+        v = int(q.get(name, default))
+    except (TypeError, ValueError):
+        raise BadRequest('"%s" must be a number.' % name)
+    return max(lo, min(hi, v))
+
+
+def _cc_image(handler, got):
+    if not isinstance(got, dict) or not got.get('ok') or not isinstance(got.get('data'), (bytes, bytearray)):
+        return handler._error(404, 'No picture.')
+    ctype = got.get('type') if got.get('type') in ('image/webp', 'image/png', 'image/jpeg') else 'image/png'
+    data = bytes(got['data'])
+    handler.send_response(200)
+    handler.send_header('Content-Type', ctype)
+    handler.send_header('Content-Length', str(len(data)))
+    handler.send_header('Cache-Control', 'private, max-age=604800')
+    handler.send_header('X-Content-Type-Options', 'nosniff')
+    handler.end_headers()
+    if handler.command != 'HEAD':
+        handler.wfile.write(data)
+
+
+def _cc_picture(hub, **kw):
+    fn = getattr(hub.api, 'cc_picture', None)
+    if not callable(fn):
+        return None
+    try:
+        return fn(**kw)
+    except Exception:
+        _log(hub, 'api.cc_picture failed:\n%s' % traceback.format_exc())
+        return None
+
+
+def cc_get(handler, route, q):
+    hub = handler.hub
+    if route == 'cc':
+        used, flag, sort = q.get('used') or None, q.get('flag') or None, q.get('sort') or 'name'
+        category = _cc_text(q, 'category', 40)
+        if category is not None and not CC_WORD.match(category):
+            raise BadRequest('Unknown category.')
+        if used not in (None, 'used', 'unused') or flag not in (None, 'duplicate', 'broken') or sort not in CC_SORTS:
+            raise BadRequest('Unknown filter.')
+        return handler._ok(hub.call('cc_list', category=category, folder=_cc_text(q, 'folder', 260),
+                                    creator=_cc_text(q, 'creator', 120), q=_cc_text(q, 'q', 200), used=used,
+                                    flag=flag, sort=sort, offset=_cc_int(q, 'offset', 0, 0, 10 ** 7),
+                                    limit=_cc_int(q, 'limit', 60, 1, 200), facets=q.get('facets') == '1'))
+    parts = route.split('/')
+    if len(parts) == 3 and parts[1] in ('item', 'thumb') and parts[2].isdigit() and len(parts[2]) < 16:
+        if parts[1] == 'item':
+            return handler._ok(hub.call('cc_item', int(parts[2])))
+        return _cc_image(handler, _cc_picture(hub, item_id=int(parts[2])))
+    if len(parts) == 4 and parts[1] == 'pic' and parts[2] in ('cas', 'object') and CC_HEX.match(parts[3]):
+        return _cc_image(handler, _cc_picture(hub, kind=parts[2], instance=parts[3].upper()))
+    if len(parts) == 3 and parts[0] == 'saves' and parts[2] == 'cc':
+        slot = parts[1]
+        if not SLOT_RE.match(slot):
+            raise BadRequest('Pick a save first.')
+        with hub.lock:
+            running = hub.current
+        if running is not None and running.action != 'cc_scan':
+            return handler._ok(dict(hub.busy_message(running), files=[], missing=[], households=[]))
+        cache = hub.__dict__.setdefault('_cc_saves', {})
+        hit = cache.get(slot)
+        with hub.lock:                          # a finished task (a sort, files set aside...) makes the answer old
+            changed = max([t.finished or 0 for t in hub.tasks.values()] or [0])
+        if hit and q.get('refresh') not in ('1', 'true', 'yes') and time.time() - hit[0] < CC_TTL and hit[0] > changed:
+            return handler._ok(hit[1])
+        value = hub.call('save_cc', slot)
+        if value.get('ok'):
+            cache[slot] = (time.time(), value)
+        return handler._ok(value)
+    return handler._error(404, 'Unknown request.')
+
+
+def cc_post(handler, route, body):
+    if route == 'cc/open':
+        i = body.get('id')
+        if not isinstance(i, int) or isinstance(i, bool) or i <= 0:
+            raise BadRequest('Pick a file first.')
+        return handler._ok(handler.hub.call('cc_open', i))
+    return handler._error(404, 'Unknown request.')
 
 
 _EXCLUSIVE = getattr(socket, 'SO_EXCLUSIVEADDRUSE', None)

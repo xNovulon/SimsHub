@@ -111,6 +111,7 @@ def reset():
     global STATE
     with _lock:
         STATE = _initial_state()
+        _cc_reset()
 
 
 def _run(progress, steps):
@@ -239,6 +240,8 @@ def undo_last(progress=None):
             STATE['graphics'].update(state='sgr_full', label="Simp4Sims 'SGR Full' - looks great but causes lag", can_tune=True)
         if last['kind'] == 'profile':
             STATE['profile'] = {'name': 'full', 'save_slot': None, 'label': 'All CC - every mod is loaded'}
+        if last['kind'] == 'setaside':
+            _cc_restore(last['id'])
     on_undo(last)                    # patch day / save backups (stub_care.py)
     return {'ok': True, 'message': 'Undid the change from %s.' % last['when'].replace('T', ' '), 'journal': last['id']}
 
@@ -465,3 +468,448 @@ def open_path(path):
 # ------------------------------------------------------------------ patch day, game errors, save backups, load times
 from speedkit.hub.stub_care import (patch_day, patch_seen, game_errors, errors_seen, save_health,  # noqa: E402,F401
                                    load_savings, set_aside, put_back, backup_saves, restore_saves, on_undo)
+# ------------------------------------------------------------------ the CC browser (docs/ccbrowser.md)
+# Example CC with little generated pictures (a tiny PNG writer: no Pillow needed for the preview). CC holds the
+# browser's state; reset() puts it back. Test knob: CC['ready'] = False shows the "not sorted yet" page.
+import hashlib as _hashlib
+import random as _random
+import struct as _struct
+import zlib as _zlib
+
+_CC_CATEGORIES = [
+    ('hair', 'Hair'), ('hat', 'Hats'), ('top', 'Tops'), ('bottom', 'Bottoms'), ('fullbody', 'Full outfits'),
+    ('shoes', 'Shoes'), ('accessory', 'Accessories'), ('makeup', 'Makeup'), ('eyes', 'Eyes & brows'),
+    ('skin', 'Skin & tattoos'), ('cas_other', 'Other CAS'), ('pets', 'Pets'), ('sliders', 'Sliders & presets'),
+    ('buildbuy', 'Build/Buy objects'), ('walls', 'Walls & floors'), ('poses', 'Poses & animations'),
+    ('gameplay', 'Gameplay mods'), ('script', 'Script mods'), ('other', 'Other'),
+]
+_CC_LABELS = dict(_CC_CATEGORIES)
+# category -> (how many, folder, creators, things, body name, hue)
+_CC_PLAN = {
+    'hair': (46, 'Hair', ['Simstrouble', 'Simpliciaty', 'Wingssims', 'Anto', 'Sonyasims'],
+             ['Braids', 'Nala', 'Bun', 'Curls', 'Bob', 'Waves', 'Afro Puff', 'Pixie', 'Ponytail', 'Locs'], 'Hair', 0.93),
+    'hat': (8, 'Accessories', ['Sentate', 'Trillyke'], ['Beret', 'Cap', 'Sun Hat'], 'Hat', 0.08),
+    'top': (34, 'Clothes', ['Sentate', 'Trillyke', 'Madlen', 'Serenity'],
+            ['Crop Top', 'Hoodie', 'Blouse', 'Sweater', 'Tank', 'Shirt'], 'Top', 0.60),
+    'bottom': (22, 'Clothes', ['Trillyke', 'Madlen', 'Christopher067'], ['Jeans', 'Skirt', 'Cargo Pants', 'Shorts'],
+               'Bottom', 0.55),
+    'fullbody': (24, 'Clothes', ['Sentate', 'Serenity', 'Arethabee'], ['Venus Dress', 'Gown', 'Jumpsuit', 'Sundress'],
+                 'Full outfit', 0.83),
+    'shoes': (16, 'Clothes', ['Madlen', 'Sentate'], ['Boots', 'Heels', 'Sneakers', 'Sandals'], 'Shoes', 0.03),
+    'accessory': (22, 'Accessories', ['Trillyke', 'Arethabee'], ['Earrings', 'Necklace', 'Rings', 'Glasses'],
+                  'Earrings', 0.14),
+    'makeup': (20, 'Makeup', ['Pralinesims', 'Sammi'], ['Lipstick', 'Blush', 'Eyeliner', 'Eyeshadow'], 'Lipstick', 0.97),
+    'eyes': (10, 'Makeup', ['Pralinesims', 'Northern Siberia Winds'], ['Eyes', 'Brows'], 'Eye color', 0.50),
+    'skin': (12, 'Skin', ['Sammi', 'Pyxis'], ['Skin Overlay', 'Freckles', 'Tattoo'], 'Freckles', 0.07),
+    'sliders': (6, 'Sliders', ['Luumia', 'Ellie'], ['Height Slider', 'Nose Preset'], None, 0.72),
+    'buildbuy': (40, 'BuildBuy', ['Peacemaker', 'Felixandre', 'Harrie', 'Syboulette', 'Mxims'],
+                 ['Sofa', 'Armchair', 'Plant', 'Bookcase', 'Lamp', 'Rug', 'Kitchen', 'Bed'], None, 0.10),
+    'walls': (8, 'BuildBuy', ['Peacemaker', 'Harrie'], ['Brick Walls', 'Wood Floors', 'Tiles'], None, 0.04),
+    'poses': (8, 'Poses', ['Katverse', 'Flowerchamber'], ['Couple Poses', 'Selfie Poses', 'Family Poses'], None, 0.78),
+    'gameplay': (10, 'Gameplay', ['LittleMsSam', 'Kawaiistacie', 'Zerbu'],
+                 ['Better Autonomy', 'Slice of Life', 'No Autosave', 'More Traits'], None, None),
+    'script': (8, 'Scripts', ['mc', 'TwistedMexi', 'Lumpinou'],
+               ['cmd_center', 'BetterExceptions', 'RPO', 'TOOL'], None, None),
+}
+_CC_MISSING_KINDS = {'cas': 'Clothing, hair, makeup or another Create a Sim item',
+                     'object': 'A Build/Buy object on a lot', 'look': 'A skin tone, slider or preset'}
+CC = {}
+_CC_PNG = {}
+
+
+def _png(w, h, pixels):
+    """A PNG (RGBA, 8 bit) from rows of bytes."""
+    def chunk(kind, data):
+        return _struct.pack('>I', len(data)) + kind + data + _struct.pack('>I', _zlib.crc32(kind + data) & 0xFFFFFFFF)
+    raw = b''.join(b'\x00' + bytes(row) for row in pixels)
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', _struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0)) +
+            chunk(b'IDAT', _zlib.compress(raw, 6)) + chunk(b'IEND', b''))
+
+
+def _hsv(h, s, v):
+    i = int(h * 6) % 6
+    f = h * 6 - int(h * 6)
+    p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+    r, g, b = [(v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v), (v, p, q)][i]
+    return int(r * 255), int(g * 255), int(b * 255)
+
+
+def _seg(u, v, a, b, width):
+    ax, ay = a
+    bx, by = b
+    dx, dy = bx - ax, by - ay
+    k = max(0.0, min(1.0, ((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy or 1)))
+    return (u - ax - k * dx) ** 2 + (v - ay - k * dy) ** 2 < width * width
+
+
+def _shape(cat, u, v):
+    """0 background, 1 the thing, 2 its second colour."""
+    if cat == 'hair':
+        if (u - .5) ** 2 / .04 + (v - .56) ** 2 / .05 < 1:
+            return 2
+        return 1 if (u - .5) ** 2 + (v - .45) ** 2 < .1 or (abs(u - .5) < .31 and .45 < v < .86) else 0
+    if cat == 'hat':
+        return 1 if ((u - .5) ** 2 / .16 + (v - .62) ** 2 / .006 < 1) or (abs(u - .5) < .2 and .32 < v < .62) else 0
+    if cat == 'top':
+        return 1 if (abs(u - .5) < .2 and .28 < v < .86) or (.28 < v < .48 and abs(u - .5) < .2 + (.48 - v) * 1.2) else 0
+    if cat == 'bottom':
+        return 1 if (.24 < v < .34 and abs(u - .5) < .2) or (.24 < v < .9 and .03 < abs(u - .5) < .2) else 0
+    if cat == 'fullbody':
+        return 1 if .18 < v < .9 and abs(u - .5) < .1 + (v - .18) * .42 else 0
+    if cat == 'shoes':
+        return 1 if (u - .5) ** 2 / .12 + (v - .66) ** 2 / .012 < 1 or (abs(u - .66) < .08 and .45 < v < .66) else 0
+    if cat == 'accessory':
+        d = (u - .5) ** 2 + (v - .56) ** 2
+        return 2 if (u - .5) ** 2 + (v - .3) ** 2 < .006 else 1 if .03 < d < .06 else 0
+    if cat == 'makeup':
+        return 2 if abs(u - .5) < .09 and .22 < v < .45 and v > .22 + abs(u - .5) else \
+            1 if abs(u - .5) < .12 and .45 < v < .86 else 0
+    if cat == 'eyes':
+        return 2 if (u - .5) ** 2 + (v - .5) ** 2 < .012 else 1 if (u - .5) ** 2 / .1 + (v - .5) ** 2 / .02 < 1 else 0
+    if cat == 'skin':
+        return 2 if (int(u * 11) + int(v * 13)) % 7 == 0 and (u - .5) ** 2 + (v - .5) ** 2 < .1 else \
+            1 if (u - .5) ** 2 + (v - .5) ** 2 < .12 else 0
+    if cat == 'sliders':
+        for y in (.3, .5, .7):
+            if abs(v - y) < .015 and .18 < u < .82:
+                return 1
+            if (u - (.3 + y * .5)) ** 2 + (v - y) ** 2 < .003:
+                return 2
+        return 0
+    if cat == 'buildbuy':                       # a sofa: back, cushions, arms, little legs
+        if .52 < v < .64 and .24 < u < .76:
+            return 2
+        return 1 if ((.3 < v < .52 and .2 < u < .8) or (.42 < v < .72 and (.12 < u < .26 or .74 < u < .88)) or
+                     (.52 < v < .72 and .12 < u < .88) or (.72 <= v < .78 and (.16 < u < .2 or .8 < u < .84))) else 0
+    if cat == 'walls':
+        row = int(v * 8)
+        return 1 if ((u * 4 + (row % 2) * .5) % 1) > .08 and (v * 8) % 1 > .12 else 2
+    if cat == 'poses':
+        return 1 if (_seg(u, v, (.5, .38), (.5, .66), .03) or _seg(u, v, (.5, .66), (.38, .88), .03) or
+                     _seg(u, v, (.5, .66), (.62, .88), .03) or _seg(u, v, (.5, .45), (.3, .3), .03) or
+                     _seg(u, v, (.5, .45), (.7, .56), .03) or (u - .5) ** 2 + (v - .28) ** 2 < .006) else 0
+    return 1 if (u - .5) ** 2 + (v - .5) ** 2 < .08 else 0
+
+
+def _cc_draw(cat, seed, size=128):
+    """A little picture for one example item: a soft gradient in the category's colour and the thing's shape."""
+    key = (cat, seed % 7, size)
+    if key in _CC_PNG:
+        return _CC_PNG[key]
+    hue = (_CC_PLAN.get(cat, (0, 0, 0, 0, 0, .7))[5] or .7) + (seed % 7 - 3) * .012
+    top, bottom = _hsv(hue % 1, .35, .98), _hsv(hue % 1, .55, .78)
+    thing, second = _hsv((hue + .02) % 1, .75, .55), _hsv((hue + .5) % 1, .25, .98)
+    if cat in ('hair', 'hat'):
+        second = (242, 200, 170)                # a face under the hair
+    rows = []
+    for y in range(size):
+        v = y / size
+        bg = tuple(int(top[k] + (bottom[k] - top[k]) * v) for k in range(3))
+        row = bytearray()
+        for x in range(size):
+            s = _shape(cat, x / size, v)
+            c = thing if s == 1 else second if s == 2 else bg
+            row += bytes((c[0], c[1], c[2], 255))
+        rows.append(row)
+    _CC_PNG[key] = _png(size, size, rows)
+    return _CC_PNG[key]
+
+
+def _cc_items():
+    rnd = _random.Random(20260924)
+    items = []
+    n = 0
+    base = datetime.now().replace(microsecond=0)
+    for cat, (count, folder, creators, things, body, hue) in _CC_PLAN.items():
+        for k in range(count):
+            n += 1
+            creator = creators[k % len(creators)]
+            thing = things[(k // len(creators)) % len(things)]
+            script = cat == 'script'
+            name = ('%s_%s.ts4script' % (creator, thing.replace(' ', '')) if script else
+                    '%s_%s_%02d.package' % (creator, thing.replace(' ', ''), k + 1) if k % 5 else
+                    '[%s] %s.package' % (creator, thing))
+            cas = cat in ('hair', 'hat', 'top', 'bottom', 'fullbody', 'shoes', 'accessory', 'makeup', 'eyes', 'skin')
+            body = {'Rings': 'Ring', 'Brows': 'Eyebrows', 'Eyes': 'Eye color', 'Skin Overlay': 'Skin overlay'}.get(
+                thing, thing if cat in ('accessory', 'makeup', 'skin') else _CC_PLAN[cat][4])
+            items.append({
+                'id': n, 'name': name, 'rel': '%s/%s' % (folder, name), 'folder': folder, 'creator': creator,
+                'kind': 'script' if script else 'package', 'category': cat, 'category_label': _CC_LABELS[cat],
+                'cats': [cat], 'body': body, 'part_name': ('y%s%s_%s' % ('f' if k % 2 else 'm', body.replace(' ', ''),
+                                                                           thing.replace(' ', ''))) if body else None,
+                'size_mb': round(rnd.uniform(0.2, 38.0 if cat == 'buildbuy' else 12.0), 2),
+                'modified': (base - timedelta(days=rnd.randint(0, 900), minutes=rnd.randint(0, 1400))).isoformat(),
+                'cas_parts': rnd.randint(1, 40) if cas else 0, 'objects': rnd.randint(1, 6) if cat == 'buildbuy' else 0,
+                'pic': None if (hue is None or (cas and k % 9 == 8)) else 'p%d' % n, 'in_mods': k % 11 != 10,
+                'used': None if cat in ('script', 'gameplay', 'poses') else k % 3 != 2,
+                'used_by': [], 'broken': None, 'duplicate_of': None,
+            })
+    saves = ['Wicked Nights', 'Legacy Challenge', 'San Myshuno Apartment Life with a Very Long Save Name', 'Build Test']
+    for it in items:
+        if it['used']:
+            it['used_by'] = sorted({saves[(it['id'] * 7 + j) % 4] for j in range(1 + it['id'] % 3)})
+    # a few files that hold the same CC as another file, and two damaged ones
+    groups = {}
+    for it in items:
+        groups.setdefault((it['category'], it['creator']), []).append(it)
+    for cat in ('hair', 'fullbody', 'buildbuy'):
+        a, b = next(g for (c, _), g in groups.items() if c == cat and len(g) > 1)[:2]
+        a['duplicate_of'], b['duplicate_of'] = b['name'], a['name']
+    for cat, k, why in (('shoes', 3, "This file is damaged: the game can't read it."), ('gameplay', 1, 'This file is empty.')):
+        it = [x for x in items if x['category'] == cat][k]
+        it.update(broken=why, pic=None, used=None if cat == 'gameplay' else False)
+    return items
+
+
+def _cc_reset():
+    CC.clear()
+    CC.update({'ready': True, 'when': (datetime.now() - timedelta(hours=2)).replace(microsecond=0).isoformat(),
+               'items': _cc_items(), 'aside': {}})
+
+
+_cc_reset()
+
+
+def _cc_match(it, category=None, folder=None, creator=None, q=None, used=None, flag=None):
+    if category and category not in it['cats']:
+        return False
+    if folder and it['folder'] != ('' if folder == '(root)' else folder):
+        return False
+    if creator and it['creator'] != creator:
+        return False
+    if q:
+        hay = ' '.join(str(x or '') for x in (it['rel'], it['part_name'], it['creator'])).lower()
+        if not all(w in hay for w in q.lower().split()):
+            return False
+    if used == 'used' and it['used'] is not True:
+        return False
+    if used == 'unused' and it['used'] is not False:
+        return False
+    if flag == 'duplicate' and not it['duplicate_of']:
+        return False
+    if flag == 'broken' and not it['broken']:
+        return False
+    return True
+
+
+_CC_SORTS = {'name': lambda it: (it['name'].lower(), it['id']), 'newest': lambda it: (it['modified'], it['id']),
+             'biggest': lambda it: (it['size_mb'], it['id']), 'folder': lambda it: (it['folder'].lower(), it['name'].lower()),
+             'category': lambda it: (it['category'], it['name'].lower())}
+
+
+def _cc_state():
+    return {'state': 'ready' if CC['ready'] else 'missing', 'items': len(CC['items']) if CC['ready'] else 0,
+            'when': CC['when'] if CC['ready'] else None, 'used_known': CC['ready'], 'complete': True, 'generation': 1}
+
+
+def cc_list(category=None, folder=None, creator=None, q=None, used=None, flag=None, sort='name', offset=0, limit=60,
+            facets=False):
+    with _lock:
+        items = list(CC['items']) if CC['ready'] else []
+        state = _cc_state()
+    offset, limit = max(0, int(offset or 0)), max(1, min(200, int(limit or 60)))
+    f = dict(folder=folder, creator=creator, q=q, used=used, flag=flag)
+    hits = [it for it in items if _cc_match(it, category=category, **f)]
+    hits.sort(key=_CC_SORTS.get(sort, _CC_SORTS['name']), reverse=sort in ('newest', 'biggest'))
+    counts = {}
+    for it in items:
+        if _cc_match(it, **f):
+            for c in it['cats']:
+                counts[c] = counts.get(c, 0) + 1
+    base = [it for it in items if _cc_match(it, category=category, folder=folder, creator=creator, q=q)]
+    out = {'ok': True, 'index': state, 'total': len(hits), 'offset': offset, 'limit': limit,
+           'items': copy.deepcopy(hits[offset:offset + limit]),
+           'categories': [{'key': k, 'label': lbl, 'n': counts.get(k, 0)} for k, lbl in _CC_CATEGORIES],
+           'flags': {'used': sum(1 for it in base if it['used'] is True),
+                     'unused': sum(1 for it in base if it['used'] is False),
+                     'duplicate': sum(1 for it in base if it['duplicate_of']),
+                     'broken': sum(1 for it in base if it['broken'])}}
+    if facets:
+        folders, creators = {}, {}
+        for it in items:
+            folders[it['folder'] or '(root)'] = folders.get(it['folder'] or '(root)', 0) + 1
+            creators[it['creator']] = creators.get(it['creator'], 0) + 1
+        out['folders'] = [{'name': k, 'n': v} for k, v in sorted(folders.items(), key=lambda kv: kv[0].lower())]
+        out['creators'] = [{'name': k, 'n': v} for k, v in sorted(creators.items(), key=lambda kv: kv[0].lower())
+                           if v > 1]
+    if not CC['ready']:
+        out['message'] = "CC files have not been sorted yet. Use 'Sort CC files'; the first run takes a few minutes."
+    return out
+
+
+def _cc_find(item_id):
+    with _lock:
+        return next((it for it in CC['items'] if it['id'] == item_id), None)
+
+
+def cc_item(item_id):
+    it = _cc_find(item_id)
+    if not it:
+        return {'ok': False, 'message': 'That file is no longer in the CC list. Use "Look again".'}
+    root = 'Mods' if it['in_mods'] else 'Mods_parked'
+    return dict(copy.deepcopy(it), ok=True,
+                path='C:\\Users\\basim\\Documents\\Electronic Arts\\The Sims 4\\%s\\%s' % (root, it['rel'].replace('/', '\\')))
+
+
+def cc_picture(item_id=None, kind=None, instance=None):
+    """Image bytes, like the engine's (the server sends them as they are)."""
+    if item_id is not None:
+        it = _cc_find(item_id)
+        if not it or not it['pic']:
+            return {'ok': False, 'message': 'No picture.'}
+        return {'ok': True, 'data': _cc_draw(it['category'], it['id']), 'type': 'image/png'}
+    try:
+        n = int(str(instance), 16)
+    except ValueError:
+        return {'ok': False, 'message': 'No picture.'}
+    cat = _CC_PART_CATS.get(n)
+    if cat is None or n % 3 == 0 and n >= 0xDEAD000000000000:       # some missing CC has no picture anywhere
+        return {'ok': False, 'message': 'No picture.'}
+    return {'ok': True, 'data': _cc_draw(cat, n), 'type': 'image/png'}
+
+
+_CC_PART_CATS = {}
+
+
+def cc_scan(progress=None):
+    with _lock:
+        n = len(CC['items'])
+    _run(progress, [('library', 'Looking for new or changed CC files'),
+                    ('saves', 'Reading which CC the saves use'),
+                    ('cc', 'Sorting CC files: %s of %s' % (format(n // 2, ','), format(n, ','))),
+                    ('cc', 'Finding duplicate and damaged files'),
+                    ('done', 'Sorted %s CC files' % format(n, ','))])
+    with _lock:
+        CC['ready'] = True
+        CC['when'] = datetime.now().replace(microsecond=0).isoformat()
+    return {'ok': True, 'message': 'Sorted %s CC files into categories.' % format(n, ','), 'items': n,
+            'read': 12, 'seconds': 4.2}
+
+
+def cc_set_aside(ids, progress=None):
+    nothing = {'ok': False, 'message': 'Pick the files to set aside first.', 'journal': None, 'done': [], 'refused': []}
+    if not ids:
+        return nothing
+    bad = _busy()
+    if bad:
+        return dict(nothing, message=bad['message'])
+    done, refused = [], []
+    with _lock:
+        for i in ids:
+            it = next((x for x in CC['items'] if x['id'] == i), None)
+            if it is None:
+                refused.append({'name': '#%s' % i, 'why': 'It is no longer in the CC list. Use "Look again".'})
+            elif it['kind'] == 'script':
+                refused.append({'name': it['name'], 'why': 'Script mods are not changed by the Hub.'})
+            elif not it['in_mods']:
+                refused.append({'name': it['name'], 'why': "It is not in the Mods folder right now (moved out by Play FAST or "
+                                                           "one-save mode). Switch to All CC first."})
+            else:
+                done.append(it)
+    if not done:
+        return dict(nothing, message=('Nothing was set aside. %s' % (refused[0]['why'] if refused else '')).strip(),
+                    refused=refused)
+    _run(progress, [('check', 'Making sure the game is closed')] +
+         [('setaside', 'Setting aside %s' % it['name']) for it in done[:6]])
+    names = [it['name'] for it in done]
+    jid = _journal('setaside', 'set aside %d CC file%s: %s' % (len(done), '' if len(done) == 1 else 's',
+                                                              ', '.join(names[:5])))
+    with _lock:
+        CC['aside'][jid] = done
+        CC['items'] = [x for x in CC['items'] if x not in done]
+        STATE['library']['packages'] -= len(done)
+    msg = ('Set aside %d file%s. They are kept safe - "Undo last change" on the Tools page puts them back.'
+           % (len(done), '' if len(done) == 1 else 's'))
+    if refused:
+        msg += ' %d file%s stayed where %s.' % (len(refused), '' if len(refused) == 1 else 's',
+                                                'it was' if len(refused) == 1 else 'they were')
+    return {'ok': True, 'message': msg, 'journal': jid, 'done': names, 'refused': refused}
+
+
+def _cc_restore(jid):
+    """undo_last of a 'setaside' change: the files come back."""
+    back = CC['aside'].pop(jid, [])
+    CC['items'] = sorted(CC['items'] + back, key=lambda it: it['id'])
+    STATE['library']['packages'] += len(back)
+
+
+def cc_open(item_id):
+    it = _cc_find(item_id)
+    if not it:
+        return {'ok': False, 'message': 'That file is no longer in the CC list. Use "Look again".'}
+    return {'ok': True, 'message': 'Preview: the folder of %s would open now.' % it['name']}
+
+
+_CC_SIMS = {
+    'Slot_00000014': [('Novulon', True, ['Ava Novulon', 'Luna Novulon', 'Kai Novulon', 'Mira Novulon']),
+                      ('Bheeb', False, ['Bella Bheeb', 'Tom Bheeb']), ('Townies', False, ['Jade Rosa', 'Ira Cole'])],
+    'Slot_00000009': [('Goth', True, ['Bella Goth', 'Mortimer Goth', 'Cassandra Goth', 'Alexander Goth']),
+                      ('Landgraab', False, ['Nancy Landgraab', 'Geoffrey Landgraab'])],
+    'Slot_00000011': [('Landgraab-Bheeb Family', True, ['Malcolm Landgraab-Bheeb', 'Katrina Bheeb'])],
+    'Slot_00000003': [('Builders', True, ['Test Sim'])],
+    'tray': [('Pancakes', False, ['Eliza Pancakes', 'Bob Pancakes']), ('Caliente', False, ['Nina Caliente'])],
+}
+
+
+def save_cc(slot, progress=None):
+    """The CC one example save uses, per sim, and the CC it misses ('tray': the in-game library)."""
+    with _lock:
+        save = next((s for s in STATE['saves'] if s['slot'] == slot), None)
+        items = [it for it in CC['items'] if it['kind'] == 'package' and it['category'] not in ('gameplay', 'poses')
+                 and not it['broken']]
+    if slot != 'tray' and save is None:
+        return {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
+    if progress:
+        _run(progress, [('read', 'Reading what this save uses')])
+    rnd = _random.Random(slot)
+    picked = rnd.sample(items, min(len(items), 18 if slot == 'Slot_00000003' else 64))
+    files = []
+    for n, it in enumerate(picked):
+        obj = it['category'] in ('buildbuy', 'walls')
+        part = 0xA000000000000000 + it['id'] * 16 + n % 3
+        _CC_PART_CATS[part] = it['category']
+        files.append({'name': it['name'], 'folder': it['folder'], 'in_mods': it['in_mods'], 'item': copy.deepcopy(it),
+                      'category_label': it['category_label'], 'parts': 0 if obj else rnd.randint(1, 9),
+                      'objects': rnd.randint(1, 5) if obj else 0, 'looks': 0,
+                      'pic': {'kind': 'object' if obj else 'cas', 'id': '%016X' % part} if it['pic'] else None,
+                      'sims': [], 'sims_count': 0})
+    files.sort(key=lambda f: -(f['parts'] + f['objects']))
+    wearable = [n for n, f in enumerate(files) if f['parts']]
+    households = []
+    for hname, played, sims in _CC_SIMS.get(slot, [('Household', True, ['A Sim'])]):
+        h = {'name': hname, 'id': '%016X' % (0x7000 + len(households)), 'played': played, 'sims': []}
+        for sname in sims:
+            worn = sorted(rnd.sample(wearable, min(len(wearable), rnd.randint(3, 8))))
+            for w in worn:
+                if sname not in files[w]['sims']:
+                    files[w]['sims'].append(sname)
+                    files[w]['sims_count'] += 1
+            h['sims'].append({'name': sname, 'role': 'sim', 'files': worn, 'parts': len(worn) + rnd.randint(0, 6),
+                              'missing': 0})
+        households.append(h)
+    n_missing = (save.get('cc_missing') or 0) if save else 4
+    everyone = [(h['name'], s) for h in households for s in h['sims']]
+    missing = []
+    finds = [[{'place': 'safe copies', 'name': 'Trillyke_Earrings_Hoops.package', 'creator': 'Trillyke'}],
+             [{'place': 'Inbox', 'name': '[Sentate] Aurora Top.package', 'creator': 'Sentate'}]]
+    for k in range(n_missing):
+        kind = 'object' if k % 6 == 5 else 'look' if k % 9 == 7 else 'cas'
+        inst = 0xDEAD000000000000 + rnd.randint(1, 1 << 40)
+        if kind != 'look':
+            _CC_PART_CATS[inst] = 'buildbuy' if kind == 'object' else rnd.choice(['hair', 'top', 'shoes', 'accessory'])
+        wearers = rnd.sample(everyone, min(len(everyone), 1 + k % 3)) if kind != 'object' else []
+        for hn, s in wearers:
+            s['missing'] += 1
+        t = {'cas': 0x034AEECB, 'object': 0xC0DB5AE7, 'look': 0x0354796A}[kind]
+        missing.append({'id': '%016X' % inst, 'key': '%08X:00000000:%016X' % (t, inst), 'kind': kind,
+                        'what': _CC_MISSING_KINDS[kind], 'sims': sorted(s['name'] for _, s in wearers),
+                        'sims_count': len(wearers), 'households': sorted({hn for hn, _ in wearers}),
+                        'found': finds[k] if k < len(finds) else []})
+    for h in households:
+        h['sims'].sort(key=lambda s: (-s['missing'], -s['parts'], s['name']))
+    counts = {'files': len(files), 'parts': sum(f['parts'] for f in files), 'objects': sum(f['objects'] for f in files),
+              'looks': 0, 'missing': len(missing), 'sims': sum(len(h['sims']) for h in households)}
+    name = 'In-game library' if slot == 'tray' else save['name']
+    return {'ok': True, 'slot': slot, 'name': name, 'household': save.get('household') if save else None,
+            'counts': counts, 'files': files, 'households': households, 'missing': missing, 'index': _cc_state(),
+            'message': ''}

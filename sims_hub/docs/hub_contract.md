@@ -163,6 +163,34 @@ SpeedKit Monitor reads it: when another save is loaded in that mode, or (fast an
 wears CC the mode does not load (CC installed nowhere does not count - it is missing in every mode), it shows
 "This save was not prepared for this mode - do not save. Restart the game from Novulon's Sims Hub."
 
+### CC browser (added; docs/ccbrowser.md)
+
+```python
+cc_scan(progress=None) -> {'ok', 'message', 'items': int, 'read': int, 'seconds': float}
+    # a task: sorts every new/changed CC file into a category, finds its picture, marks duplicates, damaged files
+    # and what the saves use. Read-only on the game's folders; index in data\ccbrowser.sqlite.
+cc_list(category=None, folder=None, creator=None, q=None, used=None, flag=None, sort='name', offset=0, limit=60,
+        facets=False) -> {'ok', 'index': {'state': 'ready'|'missing', 'items', 'when', 'used_known', ...},
+                          'total', 'offset', 'limit', 'items': [item], 'categories': [{'key', 'label', 'n'}],
+                          'flags': {'used', 'unused', 'duplicate', 'broken'},
+                          'folders': [{'name', 'n'}], 'creators': [{'name', 'n'}]}   # the last two with facets=True
+    # used: 'used'|'unused'; flag: 'duplicate'|'broken'; sort: name|newest|biggest|folder|category; limit <= 200.
+    # item: {'id', 'name', 'rel', 'folder', 'creator' (a guess), 'kind': 'package'|'script', 'category',
+    #        'category_label', 'cats', 'body', 'part_name', 'size_mb', 'modified', 'cas_parts', 'objects',
+    #        'pic': token|None, 'in_mods', 'used': bool|None, 'used_by': [save names], 'duplicate_of', 'broken'}
+cc_item(item_id) -> item + {'ok', 'path'}
+cc_picture(item_id=None, kind=None, instance=None) -> {'ok': True, 'data': bytes, 'type': 'image/webp'|'image/png'}
+    # not JSON (the server sends the bytes); kind 'cas'|'object' + instance (16 hex digits): one part's picture
+cc_set_aside(ids, progress=None) -> {'ok', 'message', 'journal', 'done': [names], 'refused': [{'name', 'why'}]}
+    # a task: files out of Mods into the safe copies (journal kind 'setaside', undo_last puts them back)
+cc_open(item_id) -> {'ok', 'message'}                              # the file's folder, file selected
+save_cc(slot, progress=None) -> {'ok', 'slot', 'name', 'household', 'counts': {'files', 'parts', 'objects', 'looks',
+                                 'missing', 'sims'}, 'files': [...], 'households': [...], 'missing': [...], 'index'}
+    # slot 'tray' = the in-game library. missing: [{'id', 'key' ('TTTTTTTT:00000000:IIIIIIIIIIIIIIII'), 'kind':
+    # 'cas'|'object'|'look', 'what', 'sims', 'households', 'found': [{'place': 'safe copies'|'Inbox', 'name',
+    # 'creator'}]}] - a name only when a copy is found; otherwise only the ID is known.
+```
+
 ## speedkit/hub/ (owned by the APP agent)
 
 - `speedkit/hub/server.py`: `python -m speedkit.hub` starts a local server on 127.0.0.1:8766 (ThreadingHTTPServer),
@@ -183,6 +211,10 @@ wears CC the mode does not load (CC installed nowhere does not count - it is mis
   - (added) `GET /api/patchday|errors|save_health|load_savings[?refresh=1]`, `POST /api/patchday/seen|errors/seen`,
     and the tasks `set_aside {"rels", "why"}`, `put_back {"rels"}`, `backup_saves`, `restore_saves {"backup"}`
     (`speedkit/hub/care_routes.py`, docs/care.md)
+  - (added) CC browser: `GET /api/cc?...` (cc_list), `GET /api/cc/item/<id>`, `GET /api/cc/thumb/<id>?v=` and
+    `GET /api/cc/pic/<cas|object>/<hex id>` (image bytes, 404 without a picture), `GET /api/saves/<slot>/cc`
+    (save_cc, cached 60 s, waits for tasks other than the CC sort), `POST /api/cc/open {"id"}`; tasks
+    `cc_scan` and `cc_set_aside {"ids": [...]}` (docs/ccbrowser.md)
   - Binds only to 127.0.0.1; rejects requests whose Host/Origin is not local.
 - Launcher `Start Novulon's Sims Hub.bat` in the project root, modelled on
   `C:\Users\basim\Tools\sims4_animator\Start Wicked Animator.bat` (start server once, open Chrome/Edge `--app`).

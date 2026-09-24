@@ -151,8 +151,13 @@ function loadForPage() {
   care.load(S.page);
 }
 
+// sections that keep their own elements alive across re-draws put them back here (e.g. the CC browser)
+const AFTER_RENDER = [];
+
 function render(fresh = false) {
   const page = $('#page');
+  const act = document.activeElement;
+  const keep = act && act.id && page.contains(act) ? { id: act.id, a: act.selectionStart, b: act.selectionEnd } : null;
   const open = !fresh && $$('details', page).map(d => d.open);      // a re-draw keeps opened sections open
   page.innerHTML = PAGES[S.page]();
   if (open) $$('details', page).forEach((d, i) => { if (open[i]) d.open = true; });
@@ -161,6 +166,9 @@ function render(fresh = false) {
     page.style.animation = 'none'; void page.offsetWidth; page.style.animation = '';
   }
   if (S.page === 'performance') drawChart();
+  AFTER_RENDER.forEach(fn => fn(fresh));
+  const back = keep && document.getElementById(keep.id);
+  if (back && back !== document.activeElement) { back.focus(); try { back.setSelectionRange(keep.a, keep.b); } catch { /* not a text box */ } }
 }
 
 function renderTop() {
@@ -336,10 +344,11 @@ function renderSaves() {
         ${isNum(s.cc_missing) && s.cc_missing > 0 ? `<span class="chip warn" title="CC this save uses that isn't in your Mods folder any more">${ic('warn')}${num(s.cc_missing)} missing</span>` : ''}</div>
       <div class="extra">${s.problem ? `${ic('warn')}${esc(s.problem)}` : extra}</div>
       ${care.saveLine(s)}
+      ${saveCcButton(s)}
       <button class="btn primary block" data-act="play" data-target="save:${esc(s.slot)}"${canPlay() ? '' : ' disabled'}>
         ${ic('play')}${why ? esc(why) : 'Play this save'}</button>
     </div>`;
-  }).join('')}</div>${care.savesSection()}`;
+  }).join('')}</div>${care.savesSection()}` + trayCcCard();
 }
 
 // -------------------------------------------------------------------------------- Library
@@ -363,6 +372,7 @@ function renderLibrary() {
   const plan = S.plan;
   return `<div class="page-head"><div class="grow"><h1>Your <span>CC library</span></h1>
       <p>${isNum(lib.packages) ? `${num(lib.packages)} CC and mod files, ${gb(lib.gb)} in total.` : 'Add new downloads, free up space, and see what you have.'}</p></div></div>
+    ${ccSlot()}
 
     <div class="card"><div class="card-head"><div class="ic">${ic('download')}</div><div class="grow"><h2>Add new downloads</h2>
       <p>Put the CC and mods you download into this folder. Press <b>Add to game</b>, and the Hub puts them in the right place, the safe way.</p></div></div>
@@ -1055,6 +1065,467 @@ document.addEventListener('click', e => {
   if (fn) { e.preventDefault(); fn(b); }
 });
 
+// ------------------------------------------------------------------------------------------ CC browser (Library) + a save's CC (Saves)
+// docs/ccbrowser.md. The browser is one element that lives across page re-draws (render() puts it back into
+// #cc-slot), so the search box keeps its text and focus while the status refreshes. Only one page of cards
+// (60) is ever in the page; pictures load lazily from /api/cc/thumb (cached by the browser).
+const CC_ICONS = {
+  hair: '<path d="M5 20c0-7 1-12.5 7-12.5S19 13 19 20M8.5 20c0-3.5.8-6.2 3.5-7.7 2.7 1.5 3.5 4.2 3.5 7.7"/>',
+  hat: '<path d="M3 17.5h18M6 17.5c0-5.5 2.6-9.5 6-9.5s6 4 6 9.5"/>',
+  top: '<path d="M8.5 4 4 6.5l1.8 4 2.2-1V20h8V9.5l2.2 1 1.8-4L15.5 4a3.5 3.5 0 0 1-7 0z"/>',
+  bottom: '<path d="M7 3.5h10l1 17h-4.2L12 10l-1.8 10.5H6z"/>',
+  fullbody: '<path d="M9.5 3.5h5l-1 5 4.5 12h-12l4.5-12z"/>',
+  shoes: '<path d="M3 16.5h18v2.5H3zM3 16.5c0-4 .8-7.5 2.8-8.5l4 3c2 1.2 6 2.2 9 3 1.2.4 2.2 1.3 2.2 2.5"/>',
+  accessory: '<circle cx="12" cy="14.5" r="5.5"/><path d="M9.3 4.5h5.4l1.6 2.5L12 10 7.7 7z"/>',
+  makeup: '<path d="M9 21h6v-8H9zM10 13V7.5l4-3.5v9"/>',
+  eyes: '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  skin: '<path d="M12 3c3 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-6.5 6-11z"/>',
+  cas_other: '<path d="M12 3c.6 4.5 2.5 6.4 7 7-4.5.6-6.4 2.5-7 7-.6-4.5-2.5-6.4-7-7 4.5-.6 6.4-2.5 7-7z"/>',
+  pets: '<circle cx="6.5" cy="10" r="1.8"/><circle cx="10" cy="6" r="1.8"/><circle cx="14" cy="6" r="1.8"/><circle cx="17.5" cy="10" r="1.8"/><path d="M12 11.5c-3 0-6 4-6 6.5 0 1.5 1.2 2.4 3 2l3-1 3 1c1.8.4 3-.5 3-2 0-2.5-3-6.5-6-6.5z"/>',
+  sliders: '<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="17" r="2"/>',
+  buildbuy: '<path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M3 12a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5.5 17v2.5M18.5 17v2.5"/>',
+  walls: '<path d="M3 5h18v14H3zM3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>',
+  poses: '<circle cx="12" cy="4.8" r="2"/><path d="M12 7v7m0 0-3 6.5m3-6.5 3 6.5M5.5 10.5l6.5-1.5 6-2.5"/>',
+  gameplay: '<path d="M7 8h10a4 4 0 0 1 4 4v2.5a2.5 2.5 0 0 1-4.5 1.5L15 14H9l-1.5 2a2.5 2.5 0 0 1-4.5-1.5V12a4 4 0 0 1 4-4zM8 10.5v3M6.5 12h3"/>',
+  script: '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7 10 3 2.5L7 15M12.5 15.5H17"/>',
+  other: '<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>',
+  all: '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>',
+  hanger: '<path d="M12 7.5a2.2 2.2 0 1 1 2.2-2.2M12 7.5v1.8L3 16.5h18l-9-7.2"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+};
+(() => {
+  const box = document.createElement('div');
+  box.innerHTML = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${Object.entries(CC_ICONS).map(([k, d]) =>
+    `<symbol id="i-cc-${k}" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</g></symbol>`).join('')}</svg>`;
+  document.body.appendChild(box.firstChild);
+})();
+const ccIc = (cat, cls = '') => ic('cc-' + (CC_ICONS[cat] ? cat : 'other'), cls);
+const CC_PER = 60;
+const CC_SORTS = [['name', 'Name A-Z'], ['newest', 'Newest first'], ['biggest', 'Biggest first'], ['folder', 'By folder']];
+const CCB = {
+  el: null, data: null, loading: false, err: '', f: { category: '', folder: '', creator: '', q: '', used: '', flag: '', sort: 'name' },
+  page: 0, facets: null, sel: new Set(), scan: null, req: 0, qTimer: null,
+};
+
+// everything that needs a hook in the rest of the app
+AFTER_RENDER.push(() => { if (S.page === 'library') ccMount(); });
+Object.assign(TITLES, { cc_scan: () => 'Sorting CC files', cc_set_aside: () => 'Setting CC files aside' });
+Object.assign(DONE, { cc_scan: () => 'CC files sorted', cc_set_aside: () => 'Files set aside' });
+KIND.setaside = ['Set CC files aside', 'folder'];
+Object.assign(ACTS, { 'save-cc': btn => ccSaveModal(btn.dataset.slot) });
+
+// the Library page's spot for the browser (renderLibrary puts it right under the page title)
+const ccSlot = () => '<div id="cc-slot"></div>';
+
+function ccMount() {
+  const slot = $('#cc-slot');
+  if (!slot) return;
+  if (!CCB.el) ccBuild();
+  slot.replaceWith(CCB.el);
+  ccDrawHead();
+  if (!CCB.data && !CCB.loading) ccLoad(true);
+}
+
+function ccBuild() {
+  const el = document.createElement('section');
+  el.className = 'card cc';
+  el.id = 'cc-browser';
+  el.innerHTML = `<div class="card-head"><div class="ic">${ccIc('hanger')}</div><div class="grow"><h2>CC browser</h2>
+      <p>All CC files, sorted into categories with pictures. Select a file to see its location and the saves that use it.</p></div>
+      <div class="cc-head-right"></div></div>
+    <div class="cc-progress hidden"><div class="spinner sm"></div><div class="grow"><b>Sorting CC files...</b><span class="cc-ptext"></span>
+      <div class="bar-track indet"><i style="width:0"></i></div></div></div>
+    <div class="cc-cats" role="tablist" aria-label="Categories"></div>
+    <div class="cc-tools">
+      <label class="cc-search">${ic('search')}<input id="cc-q" type="search" placeholder="Search by name, creator or folder" autocomplete="off" spellcheck="false" aria-label="Search CC files"></label>
+      <select data-cc-f="folder" aria-label="Folder"><option value="">All folders</option></select>
+      <select data-cc-f="creator" aria-label="Creator"><option value="">All creators</option></select>
+      <select data-cc-f="used" aria-label="Used by saves"><option value="">Used or not</option><option value="used">Used in a save</option><option value="unused">Not used anywhere</option></select>
+      <select data-cc-f="flag" aria-label="Problems"><option value="">All files</option><option value="duplicate">Duplicates</option><option value="broken">Damaged files</option></select>
+      <select data-cc-f="sort" aria-label="Sort">${CC_SORTS.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select>
+    </div>
+    <div class="cc-bar"><span class="cc-count"></span><span class="cc-selbar"></span></div>
+    <div class="cc-grid" aria-live="polite"></div>
+    <div class="cc-pager"></div>`;
+  CCB.el = el;
+  $('#cc-q', el).addEventListener('input', e => {
+    clearTimeout(CCB.qTimer);
+    CCB.qTimer = setTimeout(() => { CCB.f.q = e.target.value.trim(); CCB.page = 0; ccLoad(); }, 260);
+  });
+  el.addEventListener('change', e => {
+    const s = e.target.closest('[data-cc-f]');
+    if (s) { CCB.f[s.dataset.ccF] = s.value; CCB.page = 0; ccLoad(); return; }
+    const box = e.target.closest('[data-cc-sel]');
+    if (box) {
+      const id = +box.dataset.ccSel;
+      box.checked ? CCB.sel.add(id) : CCB.sel.delete(id);
+      box.closest('.cc-card').classList.toggle('selected', box.checked);
+      ccDrawSel();
+    }
+  });
+  el.addEventListener('click', e => {
+    if (e.target.closest('.cc-check')) return;
+    const b = e.target.closest('[data-cc]');
+    if (b && !b.disabled) {
+      const what = b.dataset.cc;
+      if (what === 'cat') { CCB.f.category = b.dataset.key; CCB.page = 0; ccLoad(); }
+      else if (what === 'page') { CCB.page = Math.max(0, +b.dataset.page); ccLoad(); CCB.el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      else if (what === 'scan') ccScan();
+      else if (what === 'clear') ccClearFilters();
+      else if (what === 'aside') ccConfirmAside([...CCB.sel]);
+      else if (what === 'unselect') { CCB.sel.clear(); ccDraw(); }
+      return;
+    }
+    const card = e.target.closest('.cc-card');
+    if (card) ccDetails(+card.dataset.id);
+  });
+  el.addEventListener('keydown', e => {
+    const card = e.target.closest('.cc-card');
+    if (card && (e.key === 'Enter' || e.key === ' ') && e.target === card) { e.preventDefault(); ccDetails(+card.dataset.id); }
+  });
+}
+
+function ccQuery(extra = {}) {
+  const p = new URLSearchParams();
+  Object.entries(CCB.f).forEach(([k, v]) => { if (v) p.set(k, v); });
+  p.set('offset', CCB.page * CC_PER);
+  p.set('limit', CC_PER);
+  Object.entries(extra).forEach(([k, v]) => p.set(k, v));
+  return 'cc?' + p.toString();
+}
+
+async function ccLoad(facets = false) {
+  const id = ++CCB.req;
+  CCB.loading = true;
+  if (CCB.el) CCB.el.classList.add('loading');
+  const r = await call(ccQuery(facets || !CCB.facets ? { facets: 1 } : {}));
+  if (id !== CCB.req) return;                           // a newer request is on its way
+  CCB.loading = false;
+  if (r.http === 200 && r.ok !== false) {
+    CCB.data = r; CCB.err = '';
+    if (r.folders) CCB.facets = { folders: r.folders, creators: r.creators || [] };
+    const pages = Math.max(1, Math.ceil((r.total || 0) / CC_PER));
+    if (CCB.page >= pages && r.total) { CCB.page = pages - 1; return ccLoad(); }
+  } else {
+    CCB.err = r.message || "Your CC list couldn't be read right now.";
+    if (!CCB.data) CCB.data = null;
+  }
+  if (CCB.el) CCB.el.classList.remove('loading');
+  ccDraw();
+}
+
+function ccClearFilters() {
+  Object.assign(CCB.f, { category: '', folder: '', creator: '', q: '', used: '', flag: '' });
+  if (CCB.el) $('#cc-q', CCB.el).value = '';
+  CCB.page = 0;
+  ccLoad();
+}
+
+function ccDrawHead() {
+  if (!CCB.el) return;
+  const d = CCB.data, idx = (d && d.index) || {};
+  const off = busy() ? ' disabled' : '';
+  $('.cc-head-right', CCB.el).innerHTML = idx.state === 'ready'
+    ? `<span class="cc-when">${idx.when ? `Sorted ${esc(ago(idx.when))}` : ''}</span><button class="btn small" data-cc="scan"${off}>${ic('refresh')}Look again</button>`
+    : '';
+  const p = $('.cc-progress', CCB.el);
+  p.classList.toggle('hidden', !CCB.scan);
+  if (CCB.scan) {
+    $('.cc-ptext', p).textContent = CCB.scan.text || '';
+    const bar = $('.bar-track', p), fill = $('i', bar), f = CCB.scan.frac;
+    bar.classList.toggle('indet', f === null);
+    if (f !== null) fill.style.width = Math.max(3, f * 100).toFixed(1) + '%';
+  }
+  $$('[data-cc="aside"]', CCB.el).forEach(b => { b.disabled = busy() || gameRunning(); });
+  $$('[data-cc="scan"]', CCB.el).forEach(b => { b.disabled = busy(); });
+}
+
+function ccDraw() {
+  if (!CCB.el) return;
+  ccDrawHead();
+  const d = CCB.data, el = CCB.el;
+  const idx = (d && d.index) || {};
+  const ready = d && idx.state === 'ready';
+  el.classList.toggle('empty-index', !ready);
+  // categories: "All" plus every category that has something (and the one picked)
+  const cats = ((d && d.categories) || []).filter(c => c.n > 0 || c.key === CCB.f.category);
+  $('.cc-cats', el).innerHTML = !ready ? '' : [`<button class="cc-cat${CCB.f.category ? '' : ' on'}" data-cc="cat" data-key="" role="tab" aria-selected="${!CCB.f.category}">${ccIc('all')}<span>All</span></button>`]
+    .concat(cats.map(c => `<button class="cc-cat${CCB.f.category === c.key ? ' on' : ''}" data-cc="cat" data-key="${esc(c.key)}" role="tab" aria-selected="${CCB.f.category === c.key}">${ccIc(c.key)}<span>${esc(c.label)}</span><i>${num(c.n)}</i></button>`)).join('');
+  // the drop-downs keep what is picked; their lists come from the facets
+  const fill = (name, list, first) => {
+    const s = $(`[data-cc-f="${name}"]`, el);
+    if (!s || !list) return;
+    const want = CCB.f[name];
+    const opts = [`<option value="">${esc(first)}</option>`].concat(list.map(x => `<option value="${esc(x.name)}">${esc(x.name)} (${num(x.n)})</option>`));
+    if (want && !list.some(x => x.name === want)) opts.push(`<option value="${esc(want)}">${esc(want)}</option>`);
+    s.innerHTML = opts.join('');
+    s.value = want;
+  };
+  if (CCB.facets) { fill('folder', CCB.facets.folders, 'All folders'); fill('creator', CCB.facets.creators, 'All creators'); }
+  ['used', 'flag', 'sort'].forEach(k => { const s = $(`[data-cc-f="${k}"]`, el); if (s) s.value = CCB.f[k] || (k === 'sort' ? 'name' : ''); });
+  const used = $('[data-cc-f="used"]', el);
+  used.disabled = !idx.used_known;
+  used.title = idx.used_known ? 'CC worn or placed in a save, or by a household or lot in the in-game library' : 'Available after the next "Look again".';
+  $('.cc-tools', el).classList.toggle('hidden', !ready);
+  const grid = $('.cc-grid', el), pager = $('.cc-pager', el), count = $('.cc-count', el);
+  if (!d) {
+    grid.innerHTML = CCB.err ? `<div class="note err">${ic('warn')}<span>${esc(CCB.err)}</span></div>`
+      : `<div class="saves-loading" style="padding:30px 4px"><div class="spinner sm"></div>Loading CC files...</div>`;
+    pager.innerHTML = count.innerHTML = '';
+    return;
+  }
+  if (!ready) {
+    grid.innerHTML = `<div class="cc-empty"><div class="ic">${ccIc('all')}</div><div>
+      <h3>CC files not sorted yet</h3>
+      <p>Sorting reads every CC file once, finds its picture and assigns a category: hair, tops, shoes, makeup, Build/Buy and more. Duplicates, damaged files and CC that no save uses are marked too.</p>
+      <p class="muted">The first run takes a few minutes for a large library. Game files are not changed.</p>
+      <button class="btn primary" data-cc="scan"${busy() ? ' disabled' : ''}>${ic('search')}Sort CC files</button></div></div>`;
+    pager.innerHTML = count.innerHTML = '';
+    ccDrawSel();
+    return;
+  }
+  const items = d.items || [];
+  const filtered = Object.entries(CCB.f).some(([k, v]) => v && k !== 'sort');
+  const from = d.total ? d.offset + 1 : 0, to = d.offset + items.length;
+  count.innerHTML = d.total ? `Showing <b>${num(from)}-${num(to)}</b> of <b>${num(d.total)}</b>${filtered ? ` <button class="linkish" data-cc="clear">Clear filters</button>` : ''}`
+    : '';
+  grid.innerHTML = items.length ? items.map(ccCard).join('')
+    : `<div class="cc-none">${ic('search')}<div><b>No CC files match these filters.</b><span>Change the search words or the category.</span></div>
+       ${filtered ? `<button class="btn small" data-cc="clear">Clear filters</button>` : ''}</div>`;
+  const pages = Math.max(1, Math.ceil(d.total / CC_PER)), pg = CCB.page;
+  pager.innerHTML = pages < 2 ? '' : `<button class="btn small" data-cc="page" data-page="0"${pg ? '' : ' disabled'} title="First page">«</button>
+    <button class="btn small" data-cc="page" data-page="${pg - 1}"${pg ? '' : ' disabled'}>${ic('back')}Back</button>
+    <span>Page <b>${num(pg + 1)}</b> of ${num(pages)}</span>
+    <button class="btn small" data-cc="page" data-page="${pg + 1}"${pg + 1 < pages ? '' : ' disabled'}>Next${ic('arrow')}</button>
+    <button class="btn small" data-cc="page" data-page="${pages - 1}"${pg + 1 < pages ? '' : ' disabled'} title="Last page">»</button>`;
+  if (CCB.err) grid.insertAdjacentHTML('afterbegin', `<div class="note err">${ic('warn')}<span>${esc(CCB.err)}</span></div>`);
+  ccDrawSel();
+}
+
+const ccThumb = it => it && it.pic ? `/api/cc/thumb/${it.id}?v=${encodeURIComponent(it.pic)}` : '';
+
+function ccCard(it) {
+  const src = ccThumb(it), sel = CCB.sel.has(it.id);
+  const badges = [];
+  if (it.broken) badges.push(`<span class="cc-badge bad" title="${esc(it.broken)}">Damaged</span>`);
+  if (it.duplicate_of) badges.push(`<span class="cc-badge dup" title="Everything in it is also in ${esc(it.duplicate_of)}">Duplicate</span>`);
+  if (it.used === false) badges.push(`<span class="cc-badge" title="Not used by any save or in-game library household">Not used</span>`);
+  if (!it.in_mods) badges.push(`<span class="cc-badge" title="Moved out of Mods by Play FAST or one-save mode; back with All CC">Put away</span>`);
+  const sub = [it.body && it.body !== it.category_label ? it.body : it.category_label, it.creator || it.folder].filter(Boolean).join(' · ');
+  return `<div class="cc-card${sel ? ' selected' : ''}" data-id="${it.id}" data-cat="${esc(it.category)}" tabindex="0" title="${esc(it.rel || it.name)}">
+    <div class="cc-pic">${src ? `<img src="${src}" alt="" loading="lazy" decoding="async" data-cat="${esc(it.category)}">` : `<div class="cc-ph">${ccIc(it.category)}</div>`}
+      ${it.kind === 'script' ? '' : `<label class="cc-check" title="Select"><input type="checkbox" data-cc-sel="${it.id}"${sel ? ' checked' : ''} aria-label="Select ${esc(it.name)}"></label>`}
+      ${badges.length ? `<div class="cc-badges">${badges.join('')}</div>` : ''}</div>
+    <div class="cc-meta"><b>${esc(it.name.replace(/\.(package|ts4script)$/i, ''))}</b><span>${esc(sub)}</span></div></div>`;
+}
+
+function ccDrawSel() {
+  if (!CCB.el) return;
+  const n = CCB.sel.size;
+  $('.cc-selbar', CCB.el).innerHTML = !n ? '' : `<b>${plural(n, 'file')} picked</b>
+    <button class="btn small soft" data-cc="aside"${busy() || gameRunning() ? ' disabled' : ''}>${ic('folder')}Set aside</button>
+    <button class="btn small ghost" data-cc="unselect">Clear</button>`;
+}
+
+// --------------------------------------------------------------- sorting (a quiet task: progress shows in the card)
+async function ccScan() {
+  if (busy()) { toast('Please wait - the Hub is still busy.', 'err'); return; }
+  const r = await call('task', { action: 'cc_scan', args: {} });
+  if (r.http === 409) { toast(r.message || 'Please wait - the Hub is still busy.', 'err'); return; }
+  if (!r.ok || !r.task) { toast(r.message || "That didn't work.", 'err'); return; }
+  ccWatch(r.task);
+}
+
+async function ccWatch(id) {
+  S.taskId = id;
+  CCB.scan = { text: 'Getting started...', frac: null };
+  renderTop(); render(); ccDrawHead();
+  let view = null, misses = 0, last = Date.now();
+  for (;;) {
+    const v = await call('task/' + encodeURIComponent(id));
+    if (v.http === 200 && v.state) {
+      misses = 0; view = v;
+      const ev = (v.progress || [])[v.progress.length - 1];
+      if (ev) CCB.scan = { text: ev.message || '', frac: isNum(ev.fraction) ? Number(ev.fraction) : null };
+      ccDrawHead();
+      if (v.state !== 'running') break;
+      if (Date.now() - last > 4000 && S.page === 'library') { last = Date.now(); ccLoad(true); }   // show what is sorted so far
+    } else if (v.http === 404 || ++misses > 20) { view = { state: 'failed', result: { ok: false, message: 'The Hub stopped answering while sorting CC files.' } }; break; }
+    await sleep(600);
+  }
+  S.taskId = null;
+  CCB.scan = null;
+  const res = (view && view.result) || {};
+  toast(res.message || (res.ok ? 'CC files sorted.' : 'Sorting CC files did not finish.'), res.ok ? 'ok' : 'err');
+  CCB.facets = null;
+  refreshStatus(true);
+  render();
+  ccLoad(true);
+}
+
+// --------------------------------------------------------------- one file
+async function ccDetails(id) {
+  const m = modal(`<header><div class="ic">${ccIc('hanger')}</div><div class="grow"><h2>CC file</h2><p>Loading...</p></div>
+    <button class="icon-btn" data-x title="Close">${ic('x')}</button></header><div class="body"><div class="saves-loading"><div class="spinner sm"></div>Loading...</div></div>`, { wide: true });
+  $('[data-x]', m.el).onclick = () => m.close();
+  const r = await call('cc/item/' + id);
+  if (!document.body.contains(m.el)) return;
+  if (!r.ok) { $('.body', m.el).innerHTML = `<div class="note err">${ic('warn')}<span>${esc(r.message || "That file couldn't be found.")}</span></div>`; return; }
+  const src = ccThumb(r);
+  const facts = [
+    ['Category', r.body && r.body !== r.category_label ? `${r.category_label} (${r.body})` : r.category_label],
+    r.part_name ? ['Internal name', r.part_name] : null,
+    r.creator ? ['Creator (guessed from the file name)', r.creator] : null,
+    ['Folder', r.folder || 'Mods (not in a folder)'],
+    r.cas_parts ? ['Create a Sim items', num(r.cas_parts)] : null,
+    r.objects ? ['Build/Buy objects', num(r.objects)] : null,
+    ['Size', r.size_mb >= 1 ? `${r.size_mb.toFixed(1)} MB` : `${Math.max(1, Math.round(r.size_mb * 1000))} KB`],
+    ['Changed', dayTime(r.modified)],
+  ].filter(Boolean);
+  const used = r.used === true ? `<div class="note ok">${ic('check')}<span>Used by: <b>${r.used_by.map(esc).join(', ')}</b></span></div>`
+    : r.used === false ? `<div class="note">${ic('info')}<span>Not used by any save or in-game library household. Walls, floors and CC needed only by a script mod are not always detected.</span></div>` : '';
+  $('header p', m.el).textContent = r.name;
+  $('header h2', m.el).textContent = r.name.replace(/\.(package|ts4script)$/i, '');
+  $('.body', m.el).innerHTML = `<div class="cc-detail"><div class="cc-big">${src ? `<img src="${src}" alt="" data-cat="${esc(r.category)}">` : `<div class="cc-ph">${ccIc(r.category)}</div>`}</div>
+    <div class="grow"><table class="cc-facts">${facts.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>
+    <div class="path" style="margin-top:10px">${esc(r.path || r.rel)}</div></div></div>
+    ${used}
+    ${r.broken ? `<div class="note err">${ic('warn')}<span>${esc(r.broken)}</span></div>` : ''}
+    ${r.duplicate_of ? `<div class="note warn">${ic('warn')}<span>Everything in this file is also in <b>${esc(r.duplicate_of)}</b>. Only one of the two is needed.</span></div>` : ''}
+    ${r.in_mods ? '' : `<div class="note">${ic('info')}<span>Moved out of the Mods folder by Play FAST or one-save mode. It is back when the game starts with All CC.</span></div>`}`;
+  const foot = document.createElement('footer');
+  foot.innerHTML = `<span class="hint">${r.kind === 'script' ? 'Script mods are left alone by the Hub.' : 'Setting aside can be undone on the Tools page.'}</span>
+    <button class="btn" data-open>${ic('folder')}Open folder</button>
+    ${r.kind === 'script' ? '' : `<button class="btn soft" data-aside${busy() || gameRunning() || !r.in_mods ? ' disabled' : ''}>${ic('folder')}Set aside</button>`}`;
+  m.el.appendChild(foot);
+  $('[data-open]', foot).onclick = async () => { const o = await call('cc/open', { id }); toast(o.message || (o.ok ? 'Opened.' : "That couldn't be opened."), o.ok ? 'ok' : 'err'); };
+  const aside = $('[data-aside]', foot);
+  if (aside) aside.onclick = () => { m.close(); ccConfirmAside([id], r.name); };
+}
+
+async function ccConfirmAside(ids, name = '') {
+  if (!ids.length) return;
+  const one = ids.length === 1;
+  const yes = await confirmBox({
+    title: one ? 'Set this file aside?' : `Set ${plural(ids.length, 'file')} aside?`,
+    text: 'The files leave the Mods folder, so the game no longer loads them. Nothing is deleted: they are kept in the safe copies folder.',
+    what: `<div class="confirm-what"><b>${one && name ? esc(name) : `${plural(ids.length, 'CC file')}`}</b><span><b>Undo last change</b> on the Tools page puts them back.</span></div>`,
+    ok: 'Set aside', cancel: 'Keep them',
+  });
+  if (!yes) return;
+  const view = await runTask('cc_set_aside', { ids });
+  if (view && view.result && view.result.ok) { ids.forEach(i => CCB.sel.delete(i)); }
+  CCB.facets = null;
+  ccLoad(true);
+}
+
+// --------------------------------------------------------------- Saves: the CC one save uses
+const saveCcButton = s => `<button class="btn small ghost cc-save-btn" data-act="save-cc" data-slot="${esc(s.slot)}">${ccIc('hanger')}View CC${isNum(s.cc_missing) && s.cc_missing > 0 ? ' and missing items' : ''}</button>`;
+const trayCcCard = () => `<div class="card cc-tray"><div class="card-head"><div class="ic violet">${ic('users')}</div><div class="grow"><h2>In-game library households</h2>
+  <p>CC used by the households and lots saved in the in-game library, including missing items.</p></div>
+  <button class="btn" data-act="save-cc" data-slot="tray">${ccIc('hanger')}View CC</button></div></div>`;
+const CC_KIND_ICON = { cas: 'top', object: 'buildbuy', look: 'skin' };
+
+function ccSaveModal(slot) {
+  const save = slot === 'tray' ? { name: 'In-game library' } : (saveBySlot(slot) || { name: slot });
+  const X = { tab: 'files', data: null, more: 60 };
+  const m = modal(`<header><div class="ic">${ccIc('hanger')}</div><div class="grow"><h2></h2><p>Loading...</p></div>
+    <button class="icon-btn" data-x title="Close">${ic('x')}</button></header>
+    <div class="cc-tabs hidden" role="tablist"></div><div class="body"><div class="saves-loading"><div class="spinner sm"></div>Reading the CC this save uses. Large saves take a moment.</div></div>`, { wide: true });
+  m.el.classList.add('cc-wide');
+  $('h2', m.el).textContent = slot === 'tray' ? 'CC in the in-game library' : `CC in "${save.name}"`;
+  $('[data-x]', m.el).onclick = () => m.close();
+  const body = $('.body', m.el), tabs = $('.cc-tabs', m.el);
+  const pic = (f, cls) => {
+    const main = f.pic ? `/api/cc/pic/${f.pic.kind}/${f.pic.id}` : '', fb = ccThumb(f.item);
+    const src = main || fb, cat = (f.item && f.item.category) || 'other';
+    return `<div class="${cls}">${src ? `<img src="${src}" alt="" loading="lazy" decoding="async" data-cat="${esc(cat)}"${main && fb ? ` data-fb="${fb}"` : ''}>` : `<div class="cc-ph">${ccIc(cat)}</div>`}</div>`;
+  };
+  function draw() {
+    const d = X.data;
+    const c = d.counts || {};
+    $('header p', m.el).textContent = [plural(c.files, 'CC file'), c.parts ? `${num(c.parts)} CC items worn` : '', c.objects ? `${plural(c.objects, 'object')} on lots` : '',
+      c.missing ? `${num(c.missing)} missing` : 'nothing missing'].filter(Boolean).join(' · ');
+    tabs.classList.remove('hidden');
+    tabs.innerHTML = [['files', `CC it uses <i>${num(c.files)}</i>`], ['sims', 'By household'], ['missing', `Missing <i class="${c.missing ? 'warn' : ''}">${num(c.missing)}</i>`]]
+      .map(([k, l]) => `<button role="tab" aria-selected="${X.tab === k}" class="${X.tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
+    if (X.tab === 'files') {
+      const files = d.files || [];
+      body.innerHTML = !files.length ? `<div class="empty">${esc(d.message || 'This save uses no CC.')}</div>`
+        : `<div class="cc-grid small">${files.slice(0, X.more).map((f, n) => {
+            const who = f.objects && !f.parts ? `On lots: ${plural(f.objects, 'object')}` : f.sims_count ? `Worn by ${f.sims.slice(0, 2).map(esc).join(', ')}${f.sims_count > 2 ? ` +${num(f.sims_count - 2)}` : ''}` : `${plural(f.parts + f.looks, 'item')} used`;
+            return `<div class="cc-card${f.item ? '' : ' plain'}" data-file="${n}" title="${esc(f.folder ? f.folder + '/' + f.name : f.name)}">${pic(f, 'cc-pic')}
+              <div class="cc-meta"><b>${esc(f.name.replace(/\.package$/i, ''))}</b><span>${esc(f.category_label || 'CC')} · ${who}</span></div></div>`;
+          }).join('')}</div>${files.length > X.more ? `<div class="actions" style="justify-content:center"><button class="btn small" data-more>Show more (${num(files.length - X.more)} left)</button></div>` : ''}`;
+    } else if (X.tab === 'sims') {
+      const hh = d.households || [];
+      body.innerHTML = !hh.length ? `<div class="empty">No sim here wears CC.</div>` : hh.map((h, i) => `<details class="cc-hh"${i < 2 || h.played ? ' open' : ''}>
+          <summary>${ic('users')}<b>${esc(h.name)}</b>${h.played ? '<span class="chip hot">Played household</span>' : ''}<span class="muted">${plural(h.sims.length, 'sim')}</span></summary>
+          ${h.sims.map(s => `<div class="cc-sim"><div class="who"><b>${esc(s.name)}</b><span>${plural(s.parts, 'CC item')}${s.missing ? ` · <span class="warn-t">${num(s.missing)} missing</span>` : ''}</span></div>
+            <div class="cc-strip">${s.files.slice(0, 10).map(n => d.files[n] ? pic(d.files[n], 'cc-mini') : '').join('')}${s.files.length > 10 ? `<span class="more">+${num(s.files.length - 10)}</span>` : ''}</div></div>`).join('')}
+        </details>`).join('');
+    } else {
+      const miss = d.missing || [];
+      body.innerHTML = `<div class="note">${ic('info')}<span>Saves store only an ID number for each CC item. A name is shown only when a copy of the file
+          is found in the safe copies or the Inbox; a picture only when the game's thumbnail cache still has one.</span></div>
+        ${!miss.length ? `<div class="note ok">${ic('check')}<span>Nothing is missing. Every CC item this ${slot === 'tray' ? 'library' : 'save'} uses is installed.</span></div>`
+          : `<div class="cc-missing">${miss.slice(0, X.more).map(x => `<div class="cc-miss">
+              <div class="cc-mpic">${x.kind !== 'look' ? `<img src="/api/cc/pic/${x.kind === 'object' ? 'object' : 'cas'}/${x.id}" alt="" loading="lazy" data-cat="${CC_KIND_ICON[x.kind]}">` : `<div class="cc-ph">${ccIc(CC_KIND_ICON[x.kind])}</div>`}</div>
+              <div class="grow"><b>${esc(x.what)}</b>
+                <div class="cc-id"><code>${esc(x.id)}</code><button class="icon-btn" data-copy="${esc(x.key)}" title="Copy its full ID (type, group and number)">${ccIc('copy')}</button></div>
+                ${x.sims && x.sims.length ? `<span class="muted">Worn by ${x.sims.slice(0, 4).map(esc).join(', ')}${x.sims_count > 4 ? ` and ${num(x.sims_count - 4)} more` : ''}</span>` : x.kind === 'object' ? '<span class="muted">Placed on a lot</span>' : ''}
+                ${x.found && x.found.length ? x.found.map(f => `<div class="cc-found">${ic('check')}<span>${f.place === 'Inbox' ? 'In the Inbox' : 'In the safe copies'}: <b>${esc(f.name)}</b>${f.creator ? ` <span class="muted">(creator guessed from the file name: ${esc(f.creator)})</span>` : ''}</span></div>`).join('')
+                  : '<div class="cc-found none">Not found on this PC. Only the ID is known.</div>'}</div></div>`).join('')}</div>
+            ${miss.length > X.more ? `<div class="actions" style="justify-content:center"><button class="btn small" data-more>Show more (${num(miss.length - X.more)} left)</button></div>` : ''}`}`;
+    }
+  }
+  m.el.addEventListener('click', async e => {
+    const t = e.target.closest('[data-tab]');
+    if (t) { X.tab = t.dataset.tab; X.more = 60; draw(); body.scrollTop = 0; return; }
+    if (e.target.closest('[data-more]')) { X.more += 120; draw(); return; }
+    const cp = e.target.closest('[data-copy]');
+    if (cp) {
+      try { await navigator.clipboard.writeText(cp.dataset.copy); toast('Copied: ' + cp.dataset.copy, 'ok'); }
+      catch { toast(cp.dataset.copy); }
+      return;
+    }
+    const card = e.target.closest('[data-file]');
+    if (card && X.data) {
+      const f = X.data.files[+card.dataset.file];
+      if (f && f.item) { const o = await call('cc/open', { id: f.item.id }); toast(o.message || (o.ok ? 'Opened.' : "That couldn't be opened."), o.ok ? 'ok' : 'err'); }
+    }
+  });
+  (async () => {
+    const r = await call(`saves/${encodeURIComponent(slot)}/cc`);
+    if (!document.body.contains(m.el)) return;
+    if (r.http !== 200 || !r.ok) {
+      $('header p', m.el).textContent = '';
+      body.innerHTML = `<div class="note ${r.busy ? 'warn' : 'err'}">${ic('warn')}<span>${esc(r.message || "This save's CC couldn't be read right now.")}</span></div>`;
+      return;
+    }
+    X.data = r;
+    if (slot !== 'tray' && r.counts && r.counts.missing && !r.counts.files) X.tab = 'missing';
+    draw();
+    const note = (r.index || {}).state !== 'ready' ? `<span class="hint">Sort CC files on the Library page to show categories here.</span>` : '<span class="hint">Click a CC file to open its folder.</span>';
+    const foot = document.createElement('footer');
+    foot.innerHTML = `${note}<button class="btn primary" data-x2>Close</button>`;
+    m.el.appendChild(foot);
+    $('[data-x2]', foot).onclick = () => m.close();
+  })();
+}
+
+// pictures that fail: try the file's own picture, then show the category's icon
+document.addEventListener('error', e => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.closest('.cc-pic, .cc-mini, .cc-mpic, .cc-big')) return;
+  const fb = img.dataset.fb;
+  if (fb) { img.dataset.fb = ''; img.src = fb; return; }
+  const ph = document.createElement('div');
+  ph.className = 'cc-ph';
+  ph.innerHTML = ccIc(img.dataset.cat || 'other');
+  img.replaceWith(ph);
+}, true);
+
 // ------------------------------------------------------------------------------------------ start
 window.addEventListener('hashchange', route);
 let resizeT;
@@ -1092,6 +1563,8 @@ Object.assign(KIND, care.KIND);
   route();
   await refreshStatus(true);
   const cur = await call('task/current');
-  if (cur.http === 200 && cur.state === 'running') watchTask(cur.id, { action: cur.action, args: cur.args || {} });
+  if (cur.http === 200 && cur.state === 'running') {
+    if (cur.action === 'cc_scan') ccWatch(cur.id); else watchTask(cur.id, { action: cur.action, args: cur.args || {} });
+  }
   previewHooks();
 })();
