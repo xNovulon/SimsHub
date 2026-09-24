@@ -3,6 +3,7 @@ r"""Open Novulon's Sims Hub with no console window at all (what the Desktop shor
     pythonw -m speedkit.hub                 the same as --open (pythonw never shows a console)
     python  -m speedkit.hub --open
 
+0. The Hub is brought up to date from GitHub first (update.py; quick when there is nothing new, skipped offline).
 1. Is the Hub's server answering on 127.0.0.1:8766? If not, it is started in the background with no console
    (pythonw.exe; else this interpreter as a DETACHED_PROCESS), and we wait until it answers.
 2. Is a Hub window open already? It is brought to the front. Otherwise one is opened: Chrome, then Edge (both
@@ -14,6 +15,7 @@ import ctypes
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -33,11 +35,17 @@ CREATE_NO_WINDOW = 0x08000000
 
 def ping(port, timeout=1.0):
     """Is the Hub itself (not some other program) answering on this port?"""
+    return hub_info(port, timeout) is not None
+
+
+def hub_info(port, timeout=1.0):
+    """The running Hub's ping reply ({'pid', 'busy', ...}), or None."""
     try:
         with urllib.request.urlopen('http://127.0.0.1:%d/api/ping' % port, timeout=timeout) as r:
-            return json.loads(r.read()).get('app') == APP
+            info = json.loads(r.read())
+        return info if info.get('app') == APP else None
     except (OSError, ValueError, AttributeError):
-        return False
+        return None
 
 
 def windowless_python():
@@ -138,8 +146,35 @@ def message(text, error=True):
         print(text)
 
 
+def update_first(port):
+    """Bring the Hub up to date from GitHub (speedkit/hub/update.py) before its window opens. A Hub that is already
+    running is only stopped for that when an update is waiting, no Hub window is open and no task runs; it is started
+    afresh right after. Never keeps the Hub from opening."""
+    try:
+        from speedkit.hub import update
+        info = hub_info(port)
+        if info is None:
+            update.run()
+            return
+        pid = info.get('pid')
+        if not pid or pid == os.getpid() or info.get('busy') or hub_windows():
+            return                        # an older Hub without its pid, at work, or in use: next time
+        commit = update.waiting()
+        if not commit:
+            return
+        os.kill(pid, signal.SIGTERM)      # on Windows this ends the process at once
+        end = time.time() + 5
+        while ping(port, 0.3) and time.time() < end:
+            time.sleep(0.1)
+        update.run(commit=commit)
+    except Exception:                     # noqa: BLE001 - the Hub opens as it is
+        pass
+
+
 def open_hub(port, stub=False, profile=PROFILE):
     url = 'http://127.0.0.1:%d/' % port
+    if not stub:
+        update_first(port)
     if not ping(port):
         try:
             start_server(port, stub)

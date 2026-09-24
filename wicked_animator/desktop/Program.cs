@@ -4,7 +4,8 @@
 // server in backend\server.py - started quietly in the background: no console window, no browser. Closing the window
 // first has the page write any unfinished work to the recovery file, then stops the engine (only if this window
 // started it). Opening the app again while it is open brings the open window to the front; opening it while it is
-// still closing waits for that and then opens it fresh.
+// still closing waits for that and then opens it fresh. Every start first brings the animator up to date from GitHub
+// (Updater.cs).
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,6 +39,8 @@ static class App
     public static readonly string DataDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NovulonWickedAnimator");
     public static int ShowMessage;          // a second copy asks the open window to come to the front
+    public static bool RestartAfterExit;    // the update replaced this program: open the new one once this one ends
+    public static string Commit;            // the GitHub version this folder has (short), when known
     const string MutexName = @"Local\Novulon.WickedAnimator";
     const string ClosingName = @"Local\Novulon.WickedAnimator.Closing";
     static EventWaitHandle _closing;
@@ -89,6 +92,16 @@ static class App
         {
             try { single.ReleaseMutex(); } catch { }
             single.Dispose();
+        }
+        if (RestartAfterExit)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo(Environment.ProcessPath) { UseShellExecute = false, WorkingDirectory = Root };
+                foreach (var a in args) psi.ArgumentList.Add(a);
+                Process.Start(psi);
+            }
+            catch (Exception ex) { Fatal("The animator was updated", "Open it again to use the new version.\n\n" + ex.Message); }
         }
     }
 
@@ -550,6 +563,17 @@ sealed class MainForm : Form
     {
         try
         {
+            // 0. the newest version from GitHub (Updater.cs: quick when there is nothing new, skipped offline)
+            Action<string> say = s => { try { _splash.BeginInvoke(new Action(() => _splash.SetStatus(s))); } catch { } };
+            var update = await Task.Run(() => Updater.Run(say));
+            if (_abandoned || IsDisposed) return;
+            if (update.Restart)
+            {
+                App.RestartAfterExit = true;             // Main opens the new program once this one has ended
+                Quit(); return;
+            }
+            App.Commit = Updater.InstalledCommit();
+
             // 1. the engine: reuse one that already runs (e.g. started by the Sims Hub) unless its code is older
             var status = await Engine.StatusAsync();
             if (status?.Kind == "other")
@@ -676,7 +700,7 @@ sealed class MainForm : Form
         s.IsPinchZoomEnabled = false;
         s.IsBuiltInErrorPageEnabled = false;
         _web.AllowExternalDrop = false;              // a file or link dropped on the window does nothing
-        _ = w.AddScriptToExecuteOnDocumentCreatedAsync($"window.wickedDesktop = {{ version: '{App.Version}' }};");
+        _ = w.AddScriptToExecuteOnDocumentCreatedAsync($"window.wickedDesktop = {{ version: '{App.Version}', commit: '{App.Commit ?? ""}' }};");
 
         w.NavigationStarting += (_, e) =>
         {
@@ -1057,7 +1081,7 @@ sealed class Splash : Form
         }
         using (var dim = new SolidBrush(Color.FromArgb(0x6b, 0x64, 0x78)))
         using (var right = new StringFormat { Alignment = StringAlignment.Far })
-            g.DrawString("v" + App.Version, _small, dim, new RectangleF(0, r.Height - 30 * k, r.Width - 16 * k, 20 * k), right);
+            g.DrawString("v" + App.Version + (App.Commit != null ? " \u00b7 " + App.Commit : ""), _small, dim, new RectangleF(0, r.Height - 30 * k, r.Width - 16 * k, 20 * k), right);
     }
 
     static void Glow(Graphics g, float x, float y, float radius, Color c)
