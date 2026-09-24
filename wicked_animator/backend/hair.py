@@ -116,19 +116,13 @@ def hair_for_name(name, shape=None):
 
 
 # ------------------------------------------------------------------ the mesh
-def _geoms(inst, casp=None, origin=None):
-    """The hair mesh the game shows without a hat: one GEOM of the CAS part's LOD 0.
-
-    A hair's LOD 0 lists three GEOMs of one instance (three groups): the hair itself and two versions cut off at a
-    hat's line, so a hat can cover the top. The cut ones can have more vertices than the hair (a denser cut edge), so
-    the hair is the one that reaches highest (its top within 5 mm: then the one with more vertices). A GEOM under
-    PLACEHOLDER_SIZE is a stand-in (shaved styles are painted on the scalp): no mesh. -> [read_geom() dict] or []."""
+def lod0_geoms(inst, casp=None, origin=None, min_size=PLACEHOLDER_SIZE):
+    """Every GEOM a CAS part's LOD 0 lists (each type/group/instance once), read in full from the part's own side
+    (CC or game) first. A GEOM with fewer than 16 vertices or smaller than min_size is a stand-in and left out.
+    -> ([(top y (99.5th percentile), vertex count, group, read_geom() dict)], how many were listed). Hair and the
+    clothes preview (clothes.py) both read their meshes through this."""
     import morph, casptex
     inst = _to_int(inst)
-    with _lock:
-        if inst in _geom_mem:
-            _geom_mem.move_to_end(inst)
-            return _geom_mem[inst][0]
     if casp is None:
         d = morph.PART_INDEX.read(T_CASP, inst)
         casp = casptex.parse_casp(d) if d else {}
@@ -149,11 +143,27 @@ def _geoms(inst, casp=None, origin=None):
             continue
         n = int(gm.get('n', 0))
         pos = np.asarray(gm.get('positions'), np.float64).reshape(-1, 3) if n else np.zeros((0, 3))
-        if n < 16 or float(np.linalg.norm(pos.max(0) - pos.min(0))) < PLACEHOLDER_SIZE:
+        if n < 16 or float(np.linalg.norm(pos.max(0) - pos.min(0))) < min_size:
             continue
         found.append((float(np.percentile(pos[:, 1], 99.5)), n, g, gm))
+    return found, len(seen)
+
+
+def _geoms(inst, casp=None, origin=None):
+    """The hair mesh the game shows without a hat: one GEOM of the CAS part's LOD 0.
+
+    A hair's LOD 0 lists three GEOMs of one instance (three groups): the hair itself and two versions cut off at a
+    hat's line, so a hat can cover the top. The cut ones can have more vertices than the hair (a denser cut edge), so
+    the hair is the one that reaches highest (its top within 5 mm: then the one with more vertices). A GEOM under
+    PLACEHOLDER_SIZE is a stand-in (shaved styles are painted on the scalp): no mesh. -> [read_geom() dict] or []."""
+    inst = _to_int(inst)
+    with _lock:
+        if inst in _geom_mem:
+            _geom_mem.move_to_end(inst)
+            return _geom_mem[inst][0]
+    found, listed = lod0_geoms(inst, casp, origin)
     pick = []
-    how = 'placeholder' if seen else 'none'
+    how = 'placeholder' if listed else 'none'
     if found:
         tallest = max(f[0] for f in found)
         best = max((f for f in found if f[0] >= tallest - 0.005), key=lambda f: f[1])
@@ -172,18 +182,26 @@ def _geom_choice(inst):
     return hit[1] if hit else None
 
 
-def _mesh_json(g, rig_index, head):
+def _mesh_json(g, rig_index, head, drop_unknown=False):
+    """One GEOM as the preview's flat lists, skinned to the rig: the GEOM's own bone indices go through its bone hash
+    list to rig bone indices. A bone the rig doesn't have goes to `head` (hair), or with drop_unknown its weight is
+    dropped and the rest scaled back up to 1 (clothes: a CC bone must not pull a sleeve to the head); a vertex left
+    with no weight at all goes to `head`."""
     n = int(g['n'])
     pos = np.asarray(g['positions'], np.float64).reshape(-1, 3)
     nrm = np.asarray(g['normals'], np.float64).reshape(-1, 3) if g.get('normals') is not None else np.zeros_like(pos)
     uvs = g['uvsets'][0] if g.get('uvsets') else np.zeros((n, 2), np.float32)
     faces = np.asarray(g['faces'], np.int64)
     hashes = g.get('bone_hashes') or []
-    remap = np.array([rig_index.get(h, head) for h in hashes] + [head], np.int64)
+    miss = -1 if drop_unknown else head
+    remap = np.array([rig_index.get(h, miss) for h in hashes] + [miss], np.int64)
     if g.get('bones') is not None:
         b = np.asarray(g['bones'], np.int64).reshape(-1, 4)
         b = remap[np.clip(b, 0, len(remap) - 1)]
         w = np.asarray(g['weights'], np.float64).reshape(-1, 4)
+        if drop_unknown:
+            w = np.where(b < 0, 0.0, w)
+            b = np.where(b < 0, head, b)
     else:                                                     # no skinning at all: the head carries it
         b = np.full((n, 4), head, np.int64)
         w = np.zeros((n, 4)); w[:, 0] = 1
@@ -299,19 +317,25 @@ def hair_mesh(casp_inst, shape=None):
 def _shaped_meshes(inst, spec):
     """The hair's GEOM deformed by one sim's body shape: the same ops, in the same order, on a fresh bind-pose rig, as
     morph.morph_body() runs on that sim's body - so the hair sits where the game puts it on that head."""
+    rig_index, head = _rig_ids()
+    return shape_geoms(_geoms(inst, None, None), spec, rig_index, head)
+
+
+def shape_geoms(geoms, spec, rig_index, fallback, drop_unknown=False):
+    """GEOMs (read_geom() dicts) deformed by one sim's body shape (spec = trayfmt.sim_body_spec()), as preview meshes.
+    Each GEOM gets a fresh bind-pose rig, so every part of that sim moves the same way. Used for hair and clothes."""
     import morph
     t0 = time.time()
-    rig_index, head = _rig_ids()
     prefix = spec.get('prefix') or 'yf'
     ops, _ = morph.resolve_morphs(spec, prefix)
     out = []
-    for g in _geoms(inst, None, None):
+    for g in geoms:
         if int(g.get('n', 0)) <= 0:
             continue
         r = morph.apply_modifiers(g, spec, prefix, ops=ops)
         g2 = dict(g, positions=np.asarray(r['positions'], np.float64).reshape(-1, 3),
                   normals=np.asarray(r['normals'], np.float64).reshape(-1, 3))
-        m = _mesh_json(g2, rig_index, head)
+        m = _mesh_json(g2, rig_index, fallback, drop_unknown)
         m['stats'] = dict(r['stats'], seconds=round(time.time() - t0, 3))
         out.append(m)
     return out

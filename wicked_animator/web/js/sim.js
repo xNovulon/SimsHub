@@ -262,11 +262,13 @@ export class Sim {
     this._syncParts(true);
   }
 
-  // ---------------------------------------------------------------- hair (and later other CAS parts)
+  // ---------------------------------------------------------------- hair and clothes (CAS parts)
   // A skinned CAS part on this skeleton. Two passes for soft hair edges: solid where alpha >= 0.5, then the thin
   // see-through edges blended on top without writing depth. data = /api/hair's {meshes: [{positions, normals, uvs,
-  // faces, bones, weights}]}, texture = its diffuse (or null: a plain hair colour).
-  addPart(data, texture, { role = 'hair', color = '#3b2a20' } = {}) {
+  // faces, bones, weights}]}, texture = its diffuse (or null: a plain hair colour). Clothes (soft: false) are the
+  // solid pass only, pulled a little toward the camera (offset) so they win over the skin they lie on; `info` goes
+  // into each mesh's userData. -> the new meshes' count added to this.parts (this.parts.length).
+  addPart(data, texture, { role = 'hair', color = '#3b2a20', soft: withSoft = true, offset = 0, info = null } = {}) {
     this.parts = this.parts || [];
     this.partMaterials = this.partMaterials || [];
     this._partGeoms = this._partGeoms || [];
@@ -282,8 +284,9 @@ export class Sim {
       if (!g.attributes.normal) g.computeVertexNormals();
       const base = texture ? { map: texture } : { color };
       const solid = new THREE.MeshStandardMaterial({ ...base, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5, metalness: 0 });
-      const soft = new THREE.MeshStandardMaterial({ ...base, transparent: true, alphaTest: 0.04, depthWrite: false, side: THREE.DoubleSide, roughness: 0.5, metalness: 0 });
-      for (const [mat, order] of [[solid, 0], [soft, 1]]) {
+      if (offset) Object.assign(solid, { polygonOffset: true, polygonOffsetFactor: -offset, polygonOffsetUnits: -2 * offset });
+      const soft = withSoft ? new THREE.MeshStandardMaterial({ ...base, transparent: true, alphaTest: 0.04, depthWrite: false, side: THREE.DoubleSide, roughness: 0.5, metalness: 0 }) : null;
+      for (const [mat, order] of soft ? [[solid, 0], [soft, 1]] : [[solid, 0]]) {
         const m = new THREE.SkinnedMesh(g, mat);
         m.renderOrder = order;
         m.castShadow = order === 0;
@@ -291,11 +294,12 @@ export class Sim {
         m.frustumCulled = false;
         m.name = (data.name || role) + (order ? ' (edges)' : '');
         m.userData.sim = this; m.userData.role = role; m.userData.soft = order === 1;
+        if (info) Object.assign(m.userData, info);
         this.space.add(m);
         m.bind(this.skeleton, new THREE.Matrix4());
         this.parts.push(m);
       }
-      this.partMaterials.push(solid, soft);
+      this.partMaterials.push(...(soft ? [solid, soft] : [solid]));
       this._partGeoms.push(g);
     }
     this._partKey = null;
