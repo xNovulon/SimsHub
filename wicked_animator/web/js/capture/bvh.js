@@ -1,4 +1,4 @@
-// Motion files (BVH) for "Copy real moves": a .bvh from a mocap library (CMU, Mixamo converted to BVH) or a free AI
+// Motion files (BVH; FBX through capture/fbx.js) for "Copy real moves": a .bvh from a mocap library (CMU, Mixamo converted to BVH) or a free AI
 // video tool (Rokoko Vision, DeepMotion, Plask) becomes the same kind of "take" the video capture makes, so it goes
 // through the capture pipeline unchanged: clean.js (30 fps, optional smoothing) -> retarget.js (the solver, hips
 // place, floor, sticky feet) -> keys.js (loop, keys on a sim).
@@ -150,6 +150,7 @@ export function localQuat(bvh, j, frame, target = new THREE.Quaternion()) {
 export function fk(bvh, frame, out = null) {
   const J = bvh.joints.length;
   out = out || { P: new Float64Array(J * 3), Q: new Float64Array(J * 4) };
+  if (bvh.sampled) return sampledPose(bvh, frame, out);
   const P = out.P, Q = out.Q, t = new THREE.Vector3(), qp = new THREE.Quaternion();
   for (let j = 0; j < J; j++) {
     const jt = bvh.joints[j];
@@ -171,6 +172,20 @@ export function fk(bvh, frame, out = null) {
     qp.multiply(_q);
     Q[j * 4] = qp.x; Q[j * 4 + 1] = qp.y; Q[j * 4 + 2] = qp.z; Q[j * 4 + 3] = qp.w;
   }
+  return out;
+}
+
+// A motion sampled from another format (capture/fbx.js): world places per frame, turns relative to the rest.
+function sampledPose(m, frame, out) {
+  const J = m.joints.length, S = m.sampled;
+  if (frame === null || frame === undefined) {
+    out.P.set(S.restP);
+    for (let k = 0; k < J; k++) { out.Q[k * 4] = 0; out.Q[k * 4 + 1] = 0; out.Q[k * 4 + 2] = 0; out.Q[k * 4 + 3] = 1; }
+    return out;
+  }
+  const f = Math.max(0, Math.min(m.frames - 1, frame | 0));
+  out.P.set(S.P.subarray(f * J * 3, (f + 1) * J * 3));
+  out.Q.set(S.Q.subarray(f * J * 4, (f + 1) * J * 4));
   return out;
 }
 
@@ -522,12 +537,9 @@ export function solveFile(bvh, info, rig, { from = 0, to = bvh.frames - 1, smoot
   return { take, solved, result, loop: lp, solver };
 }
 
-// Is this file one this app can't read (FBX, other formats)? -> a message, or null.
+// Is this file one this app can't read? -> a message, or null. (BVH and FBX are read.)
 export function formatProblem(fileName, head = '') {
   const n = String(fileName || '').toLowerCase();
-  if (/\.fbx$/.test(n) || /^Kaydara FBX Binary/.test(head) || /^; FBX/.test(head) || /FBXHeaderExtension/.test(head)) {
-    return 'FBX files can\'t be read here yet. Export your motion as BVH instead: DeepMotion, Plask and Rokoko Vision offer BVH next to FBX when you download. Mixamo only downloads FBX - convert it to BVH first (for example with Blender\'s BVH export).';
-  }
-  if (/\.(glb|gltf|dae|c3d|trc|anim|blend)$/.test(n)) return 'Only BVH motion files can be read here. Export (or convert) your motion as .bvh and try again.';
+  if (/\.(glb|gltf|dae|c3d|trc|anim|blend|ma|mb|max|usd|usdz)$/.test(n)) return 'Only BVH and FBX motion files can be read here. Export (or convert) the motion as .bvh or .fbx and try again.';
   return null;
 }

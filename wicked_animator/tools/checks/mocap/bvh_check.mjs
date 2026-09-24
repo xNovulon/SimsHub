@@ -64,9 +64,10 @@ const near = (a, b, tol) => a.every((x, i) => Math.abs(x - b[i]) <= tol);
     try { B.parseBVH(t); } catch (e) { msg = e instanceof B.BVHError ? e.message : 'OTHER: ' + e.message; }
     row(`refuses ${n} with a plain message`, msg && !msg.startsWith('OTHER'), msg);
   }
-  const fbx = B.formatProblem('dance.fbx', 'Kaydara FBX Binary  \u0000');
-  row('an .fbx gets the "export BVH" message', /BVH/.test(fbx || '') && /Mixamo/.test(fbx || ''), (fbx || '').slice(0, 90));
-  row('a .bvh gets no format message', B.formatProblem('dance.bvh', 'HIERARCHY') === null);
+  // FBX is read too (capture/fbx.js, checked in fbx_check.mjs); other formats get the "export BVH or FBX" message
+  const glb = B.formatProblem('dance.glb', 'glTF');
+  row('.bvh and .fbx get no format message; a .glb is told to export BVH or FBX', B.formatProblem('dance.bvh', 'HIERARCHY') === null
+    && B.formatProblem('dance.fbx', 'Kaydara FBX Binary  \u0000') === null && /BVH and FBX/.test(glb || ''), (glb || '').slice(0, 90));
 }
 
 // ---------------------------------------------------------------- 2. which joint is which (six naming schemes)

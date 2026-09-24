@@ -1,0 +1,211 @@
+; FBX 7.4.0 project file
+; Written by tools/checks/mocap/lib/fbxgen.mjs (test fixture)
+
+FBXHeaderExtension:  {
+	FBXHeaderVersion: 1003
+	FBXVersion: 7400
+}
+
+GlobalSettings:  {
+	Version: 1000
+	Properties70:  {
+		P: "UpAxis", "int", "Integer", "",1
+		P: "UnitScaleFactor", "double", "Number", "",1
+		P: "TimeMode", "enum", "", "",6
+	}
+}
+
+Objects:  {
+	Model: 10001, "Model::mixamorig:Hips", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,98,0
+		}
+	}
+	Model: 10002, "Model::mixamorig:Spine", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,8,0
+		}
+	}
+	Model: 10003, "Model::mixamorig:Spine1", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,12,0
+		}
+	}
+	Model: 10004, "Model::mixamorig:Spine2", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,12,0
+		}
+	}
+	Model: 10005, "Model::mixamorig:Neck", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,16,0
+		}
+	}
+	Model: 10006, "Model::mixamorig:Head", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,9,1
+		}
+	}
+	Model: 10007, "Model::mixamorig:LeftShoulder", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",3,12,0
+		}
+	}
+	Model: 10008, "Model::mixamorig:LeftArm", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",13,0,0
+		}
+	}
+	Model: 10009, "Model::mixamorig:LeftForeArm", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",27,0,0
+		}
+	}
+	Model: 10010, "Model::mixamorig:LeftHand", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",25,0,0
+		}
+	}
+	Model: 10011, "Model::mixamorig:LeftUpLeg", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",9,-6,0
+		}
+	}
+	Model: 10012, "Model::mixamorig:LeftLeg", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-43,0
+		}
+	}
+	Model: 10013, "Model::mixamorig:LeftFoot", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-41,0
+		}
+	}
+	Model: 10014, "Model::mixamorig:LeftToeBase", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-7,12
+		}
+	}
+	Model: 10015, "Model::mixamorig:RightShoulder", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",-3,12,0
+		}
+	}
+	Model: 10016, "Model::mixamorig:RightArm", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",-13,0,0
+		}
+	}
+	Model: 10017, "Model::mixamorig:RightForeArm", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",-27,0,0
+		}
+	}
+	Model: 10018, "Model::mixamorig:RightHand", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",-25,0,0
+		}
+	}
+	Model: 10019, "Model::mixamorig:RightUpLeg", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",-9,-6,0
+		}
+	}
+	Model: 10020, "Model::mixamorig:RightLeg", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-43,0
+		}
+	}
+	Model: 10021, "Model::mixamorig:RightFoot", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-41,0
+		}
+	}
+	Model: 10022, "Model::mixamorig:RightToeBase", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-7,12
+		}
+	}
+	Model: 10023, "Model::mixamorig:Head_End", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,18,0
+		}
+	}
+	Model: 10024, "Model::mixamorig:LeftToeBase_End", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,0,5
+		}
+	}
+	Model: 10025, "Model::mixamorig:RightToeBase_End", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,0,5
+		}
+	}
+	Model: 10026, "Model::mixamorig:LeftHand_End", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",8,0,0
+		}
+	}
+	Model: 10027, "Model::mixamorig:RightHand_End", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",-8,0,0
+		}
+	}
+}
+
+Connections:  {
+	C: "OO",10001,0
+	C: "OO",10002,10001
+	C: "OO",10003,10002
+	C: "OO",10004,10003
+	C: "OO",10005,10004
+	C: "OO",10006,10005
+	C: "OO",10007,10004
+	C: "OO",10008,10007
+	C: "OO",10009,10008
+	C: "OO",10010,10009
+	C: "OO",10011,10001
+	C: "OO",10012,10011
+	C: "OO",10013,10012
+	C: "OO",10014,10013
+	C: "OO",10015,10004
+	C: "OO",10016,10015
+	C: "OO",10017,10016
+	C: "OO",10018,10017
+	C: "OO",10019,10001
+	C: "OO",10020,10019
+	C: "OO",10021,10020
+	C: "OO",10022,10021
+	C: "OO",10023,10006
+	C: "OO",10024,10014
+	C: "OO",10025,10022
+	C: "OO",10026,10010
+	C: "OO",10027,10018
+}

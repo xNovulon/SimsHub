@@ -9,7 +9,9 @@ Starts backend/server.py on the port (default: the first free one from 8793; nev
      (the animation takes the part's length; one Ctrl+Z takes it back)
   4. Ctrl+K "motion file" finds the command and opens the dialog; Esc closes it
   5. the Library has its "Import a motion file" card
-  6. an .fbx dropped on the stage opens the dialog with the "export BVH instead" message
+  6. FBX: a file with two animations is read (FBX facts, an "Animation" list), the second one is picked and put on
+     (keys, one Ctrl+Z back); a binary .fbx dropped on the stage opens the dialog with it; an .fbx with a skeleton
+     but no animation gets a plain message. FBXLoader comes from three.js's add-ons like the app's other add-ons.
 Without The Sims 4 the server can't read the game's skeleton and bodies, so the page gets stand-ins for exactly three
 routes: /api/rig (tools/checks/mocap/fixtures/test_rig.json, a synthetic rig), /api/body (one tiny triangle) and
 /api/status. three.js comes from npm (lib/three.mjs finds or installs it) instead of the CDN.
@@ -148,11 +150,15 @@ def main():
             page.route('**/*', lambda r: (writes.append(r.request.url), r.fulfill(status=200, content_type='application/json', body='{"ok": true, "fake": true}'))
                        if r.request.method == 'POST' and any(r.request.url.split('?')[0].endswith(w) for w in WRITES) else r.fallback())
             page.add_init_script("try { localStorage.setItem('fsa.tourDone', 'true'); localStorage.removeItem('fsa.autosave'); } catch (e) {}")
+            # every toast and choice bar is recorded as it appears (under load one can come and go before a check looks)
+            page.add_init_script("""window.__toastLog = []; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes)
+                if (n.nodeType === 1 && /^(Made |Undone|This part)/.test((n.textContent || '').trim())) window.__toastLog.push((n.textContent || '').trim()); })
+                .observe(document, { childList: true, subtree: true });""")
             page.goto(base + '/?slot=test', wait_until='domcontentloaded')
             page.wait_for_selector('#loading.done', state='attached', timeout=90000)
             page.wait_for_function('window.app && window.app.__mocapfile', timeout=30000)
             page.evaluate("import('/js/home.js').then(h => h.hideHome(window.app))")          # Home -> the editor
-            page.wait_for_selector('#home.hidden', state='attached', timeout=10000)
+            page.wait_for_selector('#home.hidden', state='attached', timeout=30000)
             page.wait_for_timeout(600)
             row('1. the app starts, the plug-in is installed', True, page.evaluate("app.store.project.sims.length + ' sim(s) in the scene'"))
             css = page.evaluate("!!document.querySelector('link[href$=\"features/mocapfile.css\"]')")
@@ -160,7 +166,7 @@ def main():
 
             # 2. Pose step
             page.evaluate("app.showStep('pose')")
-            page.wait_for_selector('[data-mocapfile="open"]', timeout=10000)
+            page.wait_for_selector('[data-mocapfile="open"]', timeout=30000)
             where = page.evaluate("""(() => { const b = document.querySelector('[data-mocapfile="open"]');
                 const prev = b.previousElementSibling; return prev ? prev.className + ' | ' + b.closest('.section, section, div').textContent.slice(0, 60) : 'none'; })()""")
             row('2. Pose step: the button sits right under "Copy real moves"', 'cap-entry' in where, where)
@@ -168,7 +174,7 @@ def main():
             page.wait_for_timeout(300)
             page.screenshot(path=os.path.join(a.shots, 'pose_step.png'))
             page.click('[data-mocapfile="open"]')
-            page.wait_for_selector('.mf-dialog .mf-drop', timeout=10000)
+            page.wait_for_selector('.mf-dialog .mf-drop', timeout=30000)
             disabled = page.evaluate("document.querySelector('.mf-dialog footer .btn.primary').disabled")
             row('2. the dialog opens on "choose a file"; Make keys waits for one', disabled)
             page.screenshot(path=os.path.join(a.shots, 'dialog_pick.png'))
@@ -181,11 +187,16 @@ def main():
             time.sleep(0.4)
             page.screenshot(path=os.path.join(a.shots, 'dialog_file.png'))
             before = page.evaluate("app.store.project.sims.map(s => s.keys.length)")
+            n0 = page.evaluate("(window.__toastLog || []).length")
             page.click('.mf-dialog footer .btn.primary')
             page.wait_for_selector('.mf-dialog', state='detached', timeout=30000)
             after = page.evaluate("({keys: app.store.project.sims.map(s => s.keys.length), length: app.store.project.length, sel: app.store.selected.sim, "
                                   "first: app.store.project.sims[0] && app.store.project.sims[0].keys[0] && Object.keys(app.store.project.sims[0].keys[0].pose.rot).length})")
-            toast = page.evaluate("(document.getElementById('toasts') || document.body).innerText")
+            try:
+                page.wait_for_function("n0 => /^Made /.test((window.__toastLog || []).slice(n0).join(' '))", arg=n0, timeout=15000)
+            except Exception:
+                pass
+            toast = page.evaluate("n0 => (window.__toastLog || []).slice(n0).join(' | ')", n0)
             row('3. Make keys: keys on the sim, a toast says so', after['keys'] and after['keys'][0] > 0 and 'Made' in toast,
                 'keys %s -> %s, %s bones in a key, length %s; toast: %s' % (before, after['keys'], after['first'], after['length'], toast.strip()[:120]))
             row('3. the animation takes the loop\'s length (a 2 s cycle)', abs(after['length'] - 60) <= 3, after['length'])
@@ -204,35 +215,84 @@ def main():
             listed = page.evaluate("[...document.querySelectorAll('.palette-item')].map(li => li.innerText.replace(/\\s+/g, ' ')).filter(t => /motion file/i.test(t)).slice(0, 3)")
             page.evaluate("[...document.querySelectorAll('.palette-item')].find(li => /Import a motion file/.test(li.innerText)).click()")
             try:
-                page.wait_for_selector('.mf-dialog', timeout=5000)
+                page.wait_for_selector('.mf-dialog', timeout=15000)
                 opened = True
             except Exception:
                 opened = False
             row('4. Ctrl+K "motion file" finds the command and opens the dialog', opened and listed, listed)
             page.keyboard.press('Escape')
-            page.wait_for_selector('.mf-dialog', state='detached', timeout=5000)
+            page.wait_for_selector('.mf-dialog', state='detached', timeout=15000)
             row('4. Esc closes it', True)
 
             # 5. Library
             page.evaluate("app.showStep('library')")
-            page.wait_for_selector('[data-mocapfile="library"]', timeout=10000)
+            page.wait_for_selector('[data-mocapfile="library"]', timeout=30000)
             page.evaluate("document.querySelector('[data-mocapfile=\"library\"]').scrollIntoView({block: 'center'})")
             row('5. the Library has the "Import a motion file" card', page.is_visible('[data-mocapfile="library"]'))
             page.screenshot(path=os.path.join(a.shots, 'library.png'))
             page.evaluate("app.library.stopPreview && app.showStep('scene')")
 
-            # 6. an .fbx dropped on the stage
-            page.evaluate("""(() => { const dt = new DataTransfer(); dt.items.add(new File(['Kaydara FBX Binary  '], 'dance.fbx'));
-                const w = document.getElementById('viewport-wrap') || document.body;
-                w.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); })()""")
+            # 6. FBX: two animations, pick the second, make keys, undo
+            page.evaluate("app.showStep('pose')")
+            page.wait_for_selector('[data-mocapfile="open"]', timeout=30000)
+            page.click('[data-mocapfile="open"]')
+            page.wait_for_selector('.mf-dialog .mf-drop', timeout=30000)
+            page.set_input_files('.mf-dialog .mf-input', os.path.join(FIX, 'body_two_stacks.fbx'))
             try:
-                page.wait_for_selector('.mf-dialog .mf-msg.err', timeout=10000)
+                page.wait_for_selector('.mf-dialog .mf-canvas', timeout=30000)
+                facts = page.inner_text('.mf-dialog .mf-facts')
+                stacks = page.evaluate("[...document.querySelectorAll('.mf-dialog .mf-stack option')].map(o => o.textContent)")
+            except Exception as e:
+                facts, stacks = 'not read: %s | %s' % (str(e).splitlines()[0], page.inner_text('.mf-dialog')[:300]), []
+            row('6. FBX: read and described, both animations listed', 'FBX file (binary)' in facts and 'Mixamo skeleton' in facts and len(stacks) == 2,
+                '%s | %s' % (facts.replace('\n', ' / '), stacks))
+            page.select_option('.mf-dialog .mf-stack', '1')
+            page.wait_for_function("document.querySelector('.mf-dialog .mf-stack') && document.querySelector('.mf-dialog .mf-stack').value === '1'", timeout=30000)
+            time.sleep(0.4)
+            page.screenshot(path=os.path.join(a.shots, 'dialog_fbx.png'))
+            before = page.evaluate("app.store.project.sims.map(s => s.keys.length)")
+            page.evaluate("(() => { const s = document.querySelector('.mf-dialog'); for (const sel of s.querySelectorAll('select')) if ([...sel.options].some(o => o.value === 'none')) { sel.value = 'none'; sel.dispatchEvent(new Event('change')); } })()")
+            n0 = page.evaluate("(window.__toastLog || []).length")
+            page.click('.mf-dialog footer .btn.primary')
+            page.wait_for_selector('.mf-dialog', state='detached', timeout=30000)
+            after = page.evaluate("({keys: app.store.project.sims.map(s => s.keys.length), length: app.store.project.length})")
+            try:
+                page.wait_for_function("n0 => /^Made /.test((window.__toastLog || []).slice(n0).join(' '))", arg=n0, timeout=15000)
+            except Exception:
+                pass
+            toast = page.evaluate("n0 => (window.__toastLog || []).slice(n0).join(' | ')", n0)
+            row('6. FBX: "Walk" put on as keys (the still "Idle" would need 1-2), a toast says so',
+                after['keys'][0] > 3 and 'from body_two_stacks.fbx' in toast,
+                'keys %s -> %s, length %s; toast: %s' % (before, after['keys'], after['length'], toast.strip()[:110]))
+            page.evaluate("document.activeElement && document.activeElement.blur && document.activeElement.blur()")
+            page.keyboard.press('Control+z')
+            time.sleep(0.3)
+            undone = page.evaluate("app.store.project.sims.map(s => s.keys.length)")
+            row('6. FBX: one Ctrl+Z takes it back', undone == before, '%s -> %s' % (after['keys'], undone))
+            page.evaluate("document.querySelector('.choice-bar, .choicebar') && document.querySelector('.choice-bar, .choicebar').remove()")
+
+            # dropped on the stage: a binary .fbx, then one without animation
+            def drop(name):
+                data = list(open(os.path.join(FIX, name), 'rb').read())
+                page.evaluate("""([name, bytes]) => { const dt = new DataTransfer(); dt.items.add(new File([new Uint8Array(bytes)], name));
+                    const w = document.getElementById('viewport-wrap') || document.body;
+                    w.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); }""", [name, data])
+            page.evaluate("app.showStep('scene')")
+            drop('body_mixamo_binary.fbx')
+            try:
+                page.wait_for_selector('.mf-dialog .mf-canvas', timeout=30000)
+                facts = page.inner_text('.mf-dialog .mf-facts')
+            except Exception as e:
+                facts = 'no dialog: %s' % str(e).splitlines()[0]
+            row('6. a binary .fbx dropped on the stage opens the dialog with it', 'FBX file (binary)' in facts and '31 frames at 30 fps' in facts, facts.replace('\n', ' / '))
+            drop('skeleton_only.fbx')
+            try:
+                page.wait_for_selector('.mf-dialog .mf-msg.err', timeout=15000)
                 msg = page.inner_text('.mf-dialog .mf-msg.err')
             except Exception as e:
-                msg = 'no dialog: %s; open backdrops: %s' % (str(e).splitlines()[0], page.evaluate(
-                    "[...document.querySelectorAll('#modal-root > *, .cap-backdrop')].map(x => x.className + ':' + x.textContent.slice(0, 40))"))
-            row('6. a dropped .fbx: the dialog says to export BVH instead', 'BVH' in msg and 'FBX' in msg, msg[:300])
-            page.screenshot(path=os.path.join(a.shots, 'dialog_fbx.png'))
+                msg = 'no message: %s' % str(e).splitlines()[0]
+            row('6. an .fbx without animation: a plain message, "Make keys" off', 'no animation' in msg and page.evaluate("document.querySelector('.mf-dialog footer .btn.primary').disabled"), msg[:160])
+            page.screenshot(path=os.path.join(a.shots, 'dialog_fbx_noanim.png'))
             page.keyboard.press('Escape')
             browser.close()
     finally:
