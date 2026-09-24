@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/assets/banner.png" alt="Novulon: Wicked Animator and Sims Hub for The Sims 4" width="100%">
+  <img src=".github/assets/banner.png" alt="Novulon's Sims 4 Tools: Wicked Animator and Sims Hub" width="100%">
 </p>
 
 <p align="center">
