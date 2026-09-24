@@ -10,6 +10,7 @@
 // The server side is backend/doctor.py + gamelog.py (routes doctor_scan, doctor_status, doctor_fix, game_log,
 // game_running). Nothing here changes a file without a click, and every change goes through doctor_fix.
 import * as ui from './ui.js';
+import { browsePanel } from './doctorbrowse.js';
 
 const { h, icon, modal, toast } = ui;
 const reduced = () => (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -50,6 +51,7 @@ const ICONS = {
   'doc-game': '<path d="M12 2.5 7.8 9.3 12 12.4 16.2 9.3z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M7.8 9.3 12 21.5l4.2-12.2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/>',
   'doc-tongue': '<path d="M4 9.5c2.5 2.6 13.5 2.6 16 0" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/><path d="M8.5 11.3v3.2a3.5 3.5 0 0 0 7 0v-3.2M12 12v3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/>',
   'doc-feet': '<path d="M7.5 3.5c2 0 3 2.2 3 5.5s-.7 6.3-2.3 8.5c-1 1.4-3.2.9-3.4-1-.4-3.9-.6-6.1-.3-8.6.3-2.6 1.2-4.4 3-4.4z" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M3 20.5h18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M15 9.5c1.6 0 2.6 1.6 2.6 4.2s-.6 4.5-1.8 5.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+  'doc-star': '<path d="m12 3.2 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/>',
   'doc-hand': '<path d="M8 12.5V5.8a1.4 1.4 0 0 1 2.8 0V11m0-1.5V4.4a1.4 1.4 0 0 1 2.8 0v5.8m0-.7V5.9a1.4 1.4 0 0 1 2.8 0v6.4m0-2.1a1.4 1.4 0 0 1 2.8 0v3.9c0 4-2.6 6.9-6.6 6.9-2.6 0-4.3-1.2-5.8-3.4l-2.1-3.3a1.4 1.4 0 0 1 2.3-1.6L8 13.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
 };
 export function ensureIcons() {
@@ -85,9 +87,10 @@ const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 
 let openDlg = null;
 
-export function openDoctor(app) {
+// tab: 'check' (the scan, the default) or 'browse' (every installed animation, with Favorites and Turn off)
+export function openDoctor(app, { tab = 'check' } = {}) {
   ensureIcons(); ensureStyles();
-  if (openDlg && openDlg.dialog.isConnected) return openDlg;
+  if (openDlg && openDlg.dialog.isConnected) { openDlg.showTab?.(tab); return openDlg; }
   const ctx = { app, simsDir: '', els: new Map(), sections: {}, timer: 0, closed: false, fixed: 0, t0: 0 };
 
   // -- head: radar + status
@@ -109,7 +112,30 @@ export function openDoctor(app) {
     list.append(sec);
   }
   const note = h('div', { class: 'doc-err hidden' });
-  const body = h('div', { class: 'doc' }, head, note, list);
+  const check = h('div', { class: 'doc-tab-check' }, head, note, list);
+  // the Browse tab (doctorbrowse.js) is made the first time it is opened
+  const browseHost = h('div', { class: 'doc-tab-browse hidden' });
+  let browse = null, current = 'check';
+  const tabs = h('div', { class: 'seg-inline doc-tabs', role: 'tablist' });
+  const tabBtn = (id, text) => h('button', { type: 'button', role: 'tab', 'data-tab': id, onclick: () => showTab(id) }, text);
+  tabs.append(tabBtn('check', 'Check my game'), tabBtn('browse', 'Browse my animations'));
+  const showTab = id => {
+    current = id === 'browse' ? 'browse' : 'check';
+    for (const b of tabs.children) { b.classList.toggle('on', b.dataset.tab === current); b.setAttribute('aria-selected', String(b.dataset.tab === current)); }
+    check.classList.toggle('hidden', current !== 'check');
+    browseHost.classList.toggle('hidden', current !== 'browse');
+    if (current === 'browse' && !browse) {
+      browse = browsePanel(app, { onPreview: x => {
+        ctx.dlg.close();
+        if (app.library && typeof app.library.open === 'function') {
+          import('./home.js').then(m => m.hideHome(app)).catch(() => {});
+          app.library.open({ id: x.lib, name: x.name });
+        }
+      } });
+      browseHost.append(browse);
+    }
+  };
+  const body = h('div', { class: 'doc' }, tabs, check, browseHost);
   Object.assign(ctx, { radar, phase, bar, tally, meta, note, list });
 
   const dlg = modal({
@@ -117,14 +143,16 @@ export function openDoctor(app) {
     text: "Why don't my animations show up? A safe look at your Mods folder and WickedWhims' settings.",
     body, wide: true,
     buttons: [
-      { label: 'Rescan', kind: 'ghost', onClick: () => { start(ctx, true); return false; } },
+      { label: 'Rescan', kind: 'ghost', onClick: () => { if (current === 'browse' && browse) browse.refresh(); else start(ctx, true); return false; } },
       { label: 'Done', kind: 'primary' },
     ],
-    onClose: () => { ctx.closed = true; clearTimeout(ctx.timer); openDlg = null; },
+    onClose: () => { ctx.closed = true; clearTimeout(ctx.timer); openDlg = null; if (browse) browse.stop(); },
   });
   dlg.dialog.classList.add('doc-modal');
   openDlg = dlg;
   ctx.dlg = dlg;
+  dlg.showTab = showTab;
+  showTab(tab);
   start(ctx, false);
   return dlg;
 }

@@ -44,6 +44,9 @@ A full animation studio built for WickedWhims, designed for players that have no
 - **Automatic motion.** Physics, sims holding each other, and furniture from the game at the correct scale.
 - **Copy real movement** from a video, your webcam, or a motion-capture file (BVH).
 - **Sound.** Game voices, creator sounds, or your own audio files.
+- **Describe it in words.** Type what should happen and get a finished animation to refine.
+- **Props and places.** Add props the sims hold, and move an animation to any WickedWhims place or CC furniture.
+- **Strip-club dances** timed to the beat of a song.
 - **One-click export** to the game, or package several animations as a mod to share.
 
 Requires the WickedWhims mod. For adults (18+).

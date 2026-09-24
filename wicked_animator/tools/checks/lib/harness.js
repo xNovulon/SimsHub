@@ -18,7 +18,9 @@
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
-const puppeteer = require('C:/Users/basim/Tools/asws/node_modules/puppeteer-core');
+// puppeteer-core is only loaded when a browser is opened, so the pure checks (report, fakeAnswer...) also run where
+// it is not installed (see pw.js for Playwright)
+const puppeteerCore = () => require('C:/Users/basim/Tools/asws/node_modules/puppeteer-core');
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const REFUSED = new Set([8765, 8766, 8777]);
@@ -122,7 +124,7 @@ async function open(port, { w = 1366, h = 768, reducedMotion = false, intercept 
   port = +port;
   if (REFUSED.has(port)) throw new Error(`port ${port} belongs to someone else (the user's app, the Sims Hub or the verifier)`);
   const base = `http://127.0.0.1:${port}`;
-  const browser = await puppeteer.launch({
+  const browser = await puppeteerCore().launch({
     executablePath: CHROME, headless, protocolTimeout: 900000,
     args: ['--use-angle=d3d11', '--enable-webgl', '--ignore-gpu-blocklist', `--window-size=${w},${h}`, ...args],
   });

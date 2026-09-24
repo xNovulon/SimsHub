@@ -83,6 +83,8 @@ import texfmt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.normpath(os.path.join(HERE, '..', 'cache', 'furniture'))
+# WickedWhims' reference object per place: shipped with the app in data/, else the copy an older build left in cache/
+EXAMPLES_SHIPPED = os.path.normpath(os.path.join(HERE, '..', 'data', 'ww_example_objects.json'))
 EXAMPLES = os.path.normpath(os.path.join(HERE, '..', 'cache', 'ww_example_objects.json'))
 INDEX_VERSION = 1       # the resource index (_index_v1.pkl): unchanged, never rebuilt for a new object format
 VERSION = 2             # object JSON and locations_v2.json: 2 = seat/lying spots and the surface grid
@@ -1128,8 +1130,8 @@ def object_mesh(obj_def_id, lod=0, piece=0, state=None):
 
 # ------------------------------------------------------------------ WickedWhims locations
 def example_objects():
-    """WickedWhims' reference object definition id per sex location name (cache/ww_example_objects.json)."""
-    with open(EXAMPLES, encoding='utf-8') as f:
+    """WickedWhims' reference object definition id per sex location name (data/ or cache/ww_example_objects.json)."""
+    with open(EXAMPLES_SHIPPED if os.path.exists(EXAMPLES_SHIPPED) else EXAMPLES, encoding='utf-8') as f:
         s = f.read()
     return json.loads(s[s.index('{'):])        # the file may start with a count line
 

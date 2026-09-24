@@ -1,0 +1,9 @@
+/* Props (features/props.js): the Scene step's list and the "Add a prop" window. */
+.pr-modal { width: min(720px, 96vw); }
+.pr-list { max-height: 50vh; overflow: auto; padding-right: 2px; }
+.pr-item { text-align: left; color: inherit; font: inherit; }
+.pr-row { display: flex; align-items: flex-start; gap: 6px; padding: 8px 9px; margin-bottom: 6px; border-radius: 11px; background: var(--panel-2, #191522); }
+.pr-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.pr-t b { font-size: 12.5px; }
+.pr-t small { font-size: 11px; color: #fde8b0; }
+.pr-t select { width: 100%; height: 30px; font-size: 12px; }

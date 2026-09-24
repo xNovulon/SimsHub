@@ -1,0 +1,11 @@
+/* The game's own clips (features/ea.js): the "Game animations" window and the Motion step's idle picker. */
+.ea-modal { width: min(820px, 96vw); }
+.ea-dlg .filters { align-items: center; }
+.ea-dlg .filters .search { flex: 1; margin-top: 0; }
+.ea-dlg .filters select { flex: none; width: 150px; height: 40px; }
+.ea-cats { margin-top: 10px; }
+.ea-cats .chipbtn small { opacity: .65; font-weight: 600; }
+.ea-list { max-height: 46vh; overflow: auto; padding-right: 2px; }
+.ea-item { text-align: left; color: inherit; font: inherit; }
+.ea-idles select { width: 100%; }
+.hint.warn { color: #fde8b0; }

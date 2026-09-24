@@ -276,6 +276,20 @@ def _prop_frames(vals, frames, size):
     return out + [out[-1]] * (frames - len(out))
 
 
+def _custom_locations(project):
+    """The custom-content objects (their object definition ids) the animation is made for: project['customLocations']
+    (set by "Move to another place" on a CC object). Ids that are not whole numbers are left out."""
+    out = []
+    for x in project.get('customLocations') or []:
+        try:
+            v = int(str(x).strip())
+        except (TypeError, ValueError):
+            continue
+        if 0 < v < (1 << 64) and v not in out:
+            out.append(v)
+    return out
+
+
 def prop_resources(project, base, ticks, frames, hold, fps, warnings):
     """The prop clips of a baked animation (spec_bodies 10.2): one CLIP + clip header per prop that has a track,
     keying the prop rig's transformBone in the animation's space (the sims' space), the same length as the actors'
@@ -329,7 +343,7 @@ def animation_resources(project, metas=None, present=None):
     """([(type, group, instance, bytes)], info) for one baked animation.
 
     Optional (missing = the old behaviour): project['events'] = baked moments (seconds, target = actor index), per
-    actor 'cumAfter' ('AUTO' | 'NONE' | [layers]), and project['props'] = [{guid, name?, source?, track: {t: [[x, y,
+    actor 'cumAfter' ('AUTO' | 'NONE' | [layers]), project['customLocations'] = [CC object ids], and project['props'] = [{guid, name?, source?, track: {t: [[x, y,
     z] per frame], r: [[x, y, z, w] per frame]}}] (props held or placed: their own clips + animation_props_list)."""
     metas = metas if metas is not None else P.by_uid()
     name = (project.get('name') or '').strip() or 'My animation'
@@ -378,6 +392,9 @@ def animation_resources(project, metas=None, present=None):
             'negative_offset': hold / fps if hold else 0}
     if props_xml:
         anim['props'] = props_xml
+    custom = _custom_locations(project)
+    if custom:
+        anim['custom_locations'] = custom
     events = _check_events(project, len(actors_xml), checks)
     n_events = 0
     if events:

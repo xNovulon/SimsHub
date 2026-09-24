@@ -452,7 +452,8 @@ export function parse(text, { current = null } = {}) {
       if (SEPARATORS.has(t) || t === 'and' || t === 'with') return false;
       if (NEGATORS.has(t) && t !== 'less') return true;
       if (NEG_PHRASES.some(p => p.every((w, q) => toks[k - p.length + 1 + q] === w))) return true;
-      if (hits.some(x => x !== h && k >= x.i && k < x.i + x.n)) return false;
+      // another word of the sentence in between ends it - but not a filler like "too" or "now" ("not too fast")
+      if (hits.some(x => x !== h && x.e.slot !== 'cue' && k >= x.i && k < x.i + x.n)) return false;
       seen++;
     }
     return false;

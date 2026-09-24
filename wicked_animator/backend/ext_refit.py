@@ -228,10 +228,18 @@ def _object(place):
 
 
 def refit_places(q):
-    if q.get('place'):
-        return _object(q['place'])
+    try:
+        G.game_dir()                  # no game on this PC: say that (not a missing file deep inside)
+        if q.get('place'):
+            return _object(q['place'])
+        places = ww_places()
+    except FileNotFoundError as ex:
+        # no game on this PC (or WickedWhims' list of reference objects is missing): a plain 404, not a crash
+        if 'install not found' in str(ex):
+            raise LookupError(str(ex))
+        raise LookupError("WickedWhims' places could not be read from the game files (%s)." % (getattr(ex, 'filename', None) or ex))
     cc, status, note = _cc_rows()
-    return {'places': ww_places(), 'groups': GROUPS + ['My CC furniture'], 'cc': cc, 'cc_status': status, 'cc_note': note}
+    return {'places': places, 'groups': GROUPS + ['My CC furniture'], 'cc': cc, 'cc_status': status, 'cc_note': note}
 
 
 GET = {'refit_places': refit_places}

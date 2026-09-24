@@ -189,6 +189,38 @@
   .doc-top { gap: 18px; }
 }
 
+/* ------------------------------------------------------------------ tabs + Browse (doctorbrowse.js, R3-2) */
+.doc-tabs { margin: 0 0 14px; max-width: 420px; }
+.db-proof { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.45;
+  background: rgba(127, 178, 255, .08); border: 1px solid rgba(127, 178, 255, .26); }
+.db-proof.ok { background: rgba(61, 220, 132, .08); border-color: rgba(61, 220, 132, .3); }
+.db-proof > svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: #7fb2ff; }
+.db-proof.ok > svg { color: var(--plumbob, #3ddc84); }
+.db-proof b { display: block; font-size: 12.5px; }
+.db-proof small { color: var(--muted, #a39bb2); }
+.db .filters select { min-width: 0; }
+.db-bar { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; }
+.db-only { flex: none; width: 300px; }
+.db-count { margin: 0; }
+.db-list { display: flex; flex-direction: column; gap: 5px; max-height: 52vh; overflow: auto; padding-right: 2px; }
+.db-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 11px; background: var(--panel-2, #191522);
+  border: 1px solid transparent; transition: opacity var(--dur-2, .22s), border-color .12s; }
+.db-row:hover { border-color: var(--line-2, #332b40); }
+.db-row.busy { opacity: .55; pointer-events: none; }
+.db-row.is-off .db-t { opacity: .55; }
+.db-row.db-gone { opacity: .4; }
+.db-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.db-t b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-t small { font-size: 11.5px; color: var(--muted, #a39bb2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-t .db-file { color: var(--faint, #8b83a0); font-size: 10.5px; }
+.db-star { flex: none; color: var(--faint, #8b83a0); }
+.db-star.on { color: var(--warn, #fbbf24); }
+.db-star.on svg path { fill: currentColor; }
+.db-off { flex: none; min-width: 104px; }
+.db-off.on { color: var(--danger, #fb5471); border-color: rgba(251, 84, 113, .38); }
+.db-watch { flex: none; }
+.db-more { align-self: center; margin: 6px 0; }
+
 /* ------------------------------------------------------------------ reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .doc-radar.scanning .doc-sweep { animation: none !important; opacity: .55; }

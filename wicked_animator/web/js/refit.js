@@ -32,8 +32,12 @@ const APP_KIND = { bed: 'bed', seat: 'sofa', surface: 'table', water: 'tub', flo
 let _places = null;
 export function loadPlaces({ force = false } = {}) {
   if (!_places || force) {
-    _places = fetch('/api/refit_places').then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .catch(err => { _places = null; throw err; });
+    // a refusal keeps the server's own words ("The Sims 4 install not found...") for the window to show
+    _places = fetch('/api/refit_places').then(async r => {
+      if (r.ok) return r.json();
+      const body = await r.json().catch(() => ({}));
+      throw Object.assign(new Error(body.error || 'HTTP ' + r.status), { status: r.status });
+    }).catch(err => { _places = null; throw err; });
   }
   return _places;
 }
@@ -47,13 +51,43 @@ export async function allPlaces() {
 
 // The app's furniture entry for a place: its own for the ones it knows (bed, sofa...), added for the others so the
 // Scene step, the clipping check and Send to game name it and the stage shows its real object.
+// The object itself comes from /api/refit_places?place=<id> (the server's furniture_mesh only knows the app's own
+// places): that answer is put where the stage, placing.js and the clipping check look for it (app._furnInfo, by id).
 export function ensurePlace(app, row) {
   if (!row) return null;
   let def = (app.furniture || []).find(f => f.id === row.id);
-  if (def) return def;
-  def = { id: row.id, label: row.label, locations: row.location ? [row.location] : ['NONE'], kind: APP_KIND[row.kind] || 'table',
-    extra: true, refitKind: row.kind, cc: !!row.cc, objectId: row.object_id };
-  app.furniture.push(def);
+  if (!def) {
+    def = { id: row.id, label: row.label, locations: row.location ? [row.location] : ['NONE'], kind: APP_KIND[row.kind] || 'table',
+      extra: true, refitKind: row.kind, cc: !!row.cc, objectId: row.object_id };
+    app.furniture.push(def);
+  }
+  if (isExtra(row.id)) {
+    app._furnInfo = app._furnInfo instanceof Map ? app._furnInfo : new Map();
+    app._refitAsked = app._refitAsked || new Set();
+    if (!app._refitAsked.has(row.id)) {
+      app._refitAsked.add(row.id);
+      const ask = () => fetch('/api/refit_places?place=' + encodeURIComponent(row.id)).then(r => (r.ok ? r.json() : null)).catch(() => null);
+      // something may have asked furniture_mesh first (which doesn't know these places): its empty answer is replaced
+      const before = app._furnInfo.get(row.id);
+      const info = before ? Promise.resolve(before).then(v => (v && v.meshes ? v : ask())) : ask();
+      app._furnInfo.set(row.id, info);
+      if (app._furnInfoKnown instanceof Map) info.then(v => app._furnInfoKnown.set(row.id, v || null));
+    }
+  }
+  return def;
+}
+
+// An animation saved on one of the extra places (ww:... or cc:...): its place is added again when it is opened, and
+// the stage shows the real object. -> the place's entry, or null (not an extra place, or not on this PC any more)
+export async function restorePlace(app, project = app.store.project) {
+  const id = project && project.furniture;
+  if (!isExtra(id)) return null;
+  const known = (app.furniture || []).find(f => f.id === id);
+  const row = known ? { id, label: known.label, location: known.locations[0], kind: known.refitKind, cc: known.cc, object_id: known.objectId }
+    : await placeRow(id);
+  if (!row) return null;
+  const def = ensurePlace(app, row);
+  if (app.store.project === project && typeof app.buildFurniture === 'function') { app._furnId = null; app.buildFurniture(); }
   return def;
 }
 
