@@ -1,5 +1,5 @@
 // Home: start something new, open your animations, see your progressions.
-// The start grid never leaves holes: Magic is a 2 x 2 card, "Blank animation" is one wide card with five pills,
+// The start grid never leaves holes: Magic is a 2 x 2 card, "Blank animation" is one wide card,
 // and cards other parts of the app add (app.hooks.homeCards) fill whole rows. Going between Home and the editor is a
 // View Transition (the logo flies to the top bar; a clicked animation's picture grows into the stage).
 import { h, icon, confirmBox, contextMenu, toast, emitWA } from './ui.js';
@@ -40,17 +40,16 @@ export function hideHome(app, { from = null } = {}) {
 
 // The start cards: [{id, title, text, icon, onClick, big?, wide?, pills?}]
 function startCards(app) {
-  const blank = template => () => app.newScene(true, true, template, () => { hideHome(app); app.showStep('pose'); });
   const cards = [
     { id: 'magic', title: 'Magic Animation', badge: 'Beta', icon: 'wand', big: true, cls: 'magic-card',
       text: 'Pick a position and a place - one click gives you a complete animation: posed on the real furniture, moving, with physics, faces, claps and wet sounds. Ready to send to the game.',
       onClick: () => { hideHome(app); app.openMagic(); }, art: magicStrip(app) },
-    { id: 'blank', title: 'Blank animation', icon: 'blank', wide: true, text: 'Start from scratch - pick who is in it:',
-      pills: [['couple', 'Woman & man'], ['ff', 'Two women'], ['mm', 'Two men'], ['futa', 'Woman & futa'], ['solo', 'One sim']].map(([t, l]) => ({ label: l, onClick: blank(t) })) },
+    { id: 'blank', title: 'Blank animation', icon: 'blank', wide: true, text: 'Start from scratch with an empty scene - add the sims you want.',
+      onClick: () => app.newScene(true, true, 'empty', () => { hideHome(app); app.showStep('scene'); }) },
     { id: 'library', title: 'Start from an animation', icon: 'library', text: 'Pick any WickedWhims animation you have and make your own version of it.',
       onClick: () => { hideHome(app); app.showStep('library'); } },
     { id: 'tray', title: 'With my own sims', icon: 'couple', text: 'Load sims from your Tray with their body shape and skin.',
-      onClick: () => { app.newScene(true, true, 'couple', () => { hideHome(app); app.showStep('scene'); app.openTray(); }); } },
+      onClick: () => { app.newScene(true, true, 'empty', () => { hideHome(app); app.showStep('scene'); app.openTray(); }); } },
   ];
   // cards other parts of the app add (a failing one is skipped)
   for (const fn of (app.hooks && app.hooks.homeCards) || []) {

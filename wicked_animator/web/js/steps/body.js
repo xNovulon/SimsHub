@@ -19,7 +19,8 @@ export function renderBody(app, root) {
   const bodySeg = h('div', { class: 'seg-inline' }, Object.entries(BODY_TYPES).map(([k, bt]) =>
     h('button', { class: sim.frame === k ? 'on' : '', onclick: () => app.setSimBody(sim.id, k) }, bt.label)));
   root.append(section('Body', bodySeg,
-    v && v.hasPenis ? toggleRow('Erection', 'Hard or soft penis. WickedWhims switches it in the game by itself; this is for posing and aiming.', b.erect, on => set(x => { x.erect = on; })) : null,
+    v && v.hasPenis ? toggleRow('Erection', 'Hard or soft penis. WickedWhims switches it in the game by itself; this is for posing and aiming.', b.erect, on => set(x => { x.erect = on; if (!on) delete x.grow; })) : null,
+    v && v.hasPenis ? growRow(app, sim, b, set) : null,
     toggleRow('Tongue', 'WickedWhims\' tongue inside the mouth (for licking and oral).', b.tongue, on => set(x => { x.tongue = on; })),
     // the twist helpers follow the hand, arm and leg by themselves (a missing setting means on / off as below)
     toggleRow('Smooth wrists and shoulders', 'Wrists and shoulders twist softly with the hand and arm, like the game\'s own animations', b.twist !== false, on => set(x => { x.twist = on; })),
@@ -130,4 +131,34 @@ function otherBodies(app, sim, v) {
   const sec = section(['Try it on other bodies', t ? h('span', { class: 'count' }, 'trying') : null], ...kids);
   sec.classList.add('try-bodies');
   return sec;
+}
+
+// "Grows over time": soft until one time, fully hard at another, growing and rising in between (erection.js)
+function growRow(app, sim, b, set) {
+  const p = app.store.project, fps = p.fps || 30, len = p.length;
+  const secs = f => +(f / fps).toFixed(2);
+  const on = !!(b.grow && b.grow.to > b.grow.from);
+  const row = h('div', {}, toggleRow('Grows over time', on ? `Grows from ${secs(b.grow.from)} s, fully hard at ${secs(b.grow.to)} s - small and hanging before, rising as it grows (in the game too)` : 'Starts small and grows until the time you pick',
+    on, v => set(x => { if (v) { x.grow = { from: 0, to: Math.min(len - 1, Math.round(2 * fps)) }; x.erect = true; } else delete x.grow; }, 'Erection grows')));
+  if (!on) return row;
+  const num = (label, key, title) => {
+    const input = h('input', { type: 'number', min: 0, max: secs(len - 1), step: 0.1, value: secs(b.grow[key]), title });
+    input.onchange = () => {
+      const f = Math.max(0, Math.min(len - 1, Math.round((+input.value || 0) * fps)));
+      set(x => {
+        const g = { ...x.grow, [key]: f };
+        if (g.to <= g.from) { if (key === 'from') g.to = Math.min(len - 1, g.from + 1); else g.from = Math.max(0, g.to - 1); }
+        x.grow = g;
+      }, 'Erection timing');
+    };
+    return h('label', { class: 'field' }, h('span', {}, label), input);
+  };
+  row.append(h('div', { class: 'grid-2', style: { marginTop: '6px' } },
+    num('Starts growing at (s)', 'from', 'Small and hanging before this time'),
+    num('Fully hard at (s)', 'to', 'Hard from this time on'),
+    h('button', { class: 'btn small ghost', style: { gridColumn: '1 / -1' }, title: 'Starts growing where the playhead is now',
+      onclick: () => set(x => { const f = Math.round(app.store.frame); x.grow = { from: f, to: Math.max(f + 1, Math.min(len - 1, x.grow.to > f ? x.grow.to : f + 2 * fps)) }; }, 'Erection timing') }, 'Start at the playhead'),
+    h('button', { class: 'btn small ghost', style: { gridColumn: '1 / -1' }, title: 'Fully hard where the playhead is now',
+      onclick: () => set(x => { const f = Math.max(1, Math.round(app.store.frame)); x.grow = { from: Math.min(x.grow.from, f - 1), to: f }; }, 'Erection timing') }, 'Fully hard at the playhead')));
+  return row;
 }

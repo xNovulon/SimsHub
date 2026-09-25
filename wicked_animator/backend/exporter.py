@@ -64,7 +64,8 @@ def actor_channels(actor, frames, rig_key='au', hold=0):
         tr = tracks.get(b['name'], {})
         t = (tr.get('t') or [b['pos']])[:frames]
         r = _continuous((tr.get('r') or [b['rot']])[:frames])
-        for sub, vals, quat in ((1, t, False), (2, r, True), (3, [[1.0, 1.0, 1.0]], False)):
+        s = (tr.get('s') or [[1.0, 1.0, 1.0]])[:frames]          # scale: a growing erection's penis base
+        for sub, vals, quat in ((1, t, False), (2, r, True), (3, s, False)):
             if _constant(vals):
                 keys = [(0, list(vals[0]))]
             else:

@@ -28,6 +28,7 @@ import { applyFace, talkAt, mergeFace, blinkAt, followJaw, clampFace, keyedAmoun
 import { measure, applyOpen } from './openings.js';
 import { partsFor, simulate, applyFrame, defaultPhysics } from './physics.js';
 import { migrateProject } from './state.js';
+import { applyErection, hasGrow } from './erection.js';
 
 export function simBody(sim) {
   // per-sim automatic settings, with defaults for older projects
@@ -299,13 +300,13 @@ export class Pipeline {
   body(e, frame, all, useOverrides = true) {
     const p = this.project, { sim, v } = e;
     const b = simBody(sim);
-    v.setErect(b.erect);
     v.setTongue(b.tongue);
     // posing by hand shows the keys as they are (no follow-through): what the gizmo turns is what gets keyed
     const pose = this.editing === sim.id ? this.keyed(sim, frame, useOverrides) : this.lagged(sim, frame, useOverrides);
     v.resetPose();
     if (pose) v.setPose(pose);
     v.setFaceBones(this.keyedFace(sim, frame, useOverrides));
+    applyErection(v, b, frame);          // hard, soft, or growing between two times (erection.js)
     if (this.editing === sim.id) { this.pins(e, frame); return; }
     const ctx = { frame, length: p.length, fps: p.fps || 30, loop: p.loop, others: all.filter(x => x !== e) };
     for (const l of (sim.layers || []).filter(l => l.on)) if (!isLate(l)) applyLayer(v, l, ctx);
@@ -512,6 +513,8 @@ export class Pipeline {
     all.forEach((e, i) => {
       for (const b of rotBones) if (e.v.byName[b]) tracks[i][b] = { r: [] };
       for (const b of posBones) if (e.v.byName[b]) (tracks[i][b] = tracks[i][b] || {}).t = [];
+      // a growing erection scales the penis base (exporter: the bone's scale channel)
+      if (hasGrow(simBody(e.sim)) && e.v.byName.b__Penis_Base) (tracks[i].b__Penis_Base = tracks[i].b__Penis_Base || {}).s = [];
     });
     const openLog = all.map(() => []);
     const faceMouth = all.map(() => 0);     // the most any mouth-shaping face channel shows over the loop
@@ -523,6 +526,7 @@ export class Pipeline {
             const bone = e.v.byName[b];
             if (tr.r) tr.r.push(bone.quaternion.toArray());
             if (tr.t) tr.t.push(bone.position.toArray());
+            if (tr.s) tr.s.push(bone.scale.toArray());
           }
           openLog[i].push(this.lastOpen.get(e.sim.id));
           const face = this.lastFace.get(e.sim.id);

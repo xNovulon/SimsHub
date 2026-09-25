@@ -93,7 +93,7 @@ class App {
     // the app. Hooks run in the order they were registered.
     this.hooks = {
       afterApply: [], tick: [], frameSet: [], playing: [], bake: [], beforeBake: [], beforeSave: [], projectLoaded: [],
-      simRemoved: [], viewCreated: [], viewsSynced: [], furnitureBuilt: [], selection: [], keys: [],
+      simRemoved: [], viewCreated: [], viewsSynced: [], traySimAdded: [], furnitureBuilt: [], selection: [], keys: [],
       menus: { key: [], lane: [], sound: [], ruler: [] },
       exportChecks: [], soundOpts: [], bodyOverride: [], imported: [],
       sections: { scene: [], pose: [], motion: [], body: [], face: [], sounds: [], details: [], share: [] },
@@ -446,7 +446,8 @@ class App {
 
   // ---------------------------------------------------------------- scene building
   // template: 'couple' (female + male facing each other), 'solo', 'futa'
-  newScene(confirmFirst = true, ask = true, template = 'couple', done = null) {
+  // template: 'empty' (no sims - you add your own: the default), 'couple', 'ff', 'mm', 'futa' or 'solo'
+  newScene(confirmFirst = true, ask = true, template = 'empty', done = null) {
     const go = () => ask ? openNameDialog(this, (name, author) => build(name, author)) : build(null, null);
     const build = (name, author) => {
       const p = newProject();
@@ -456,9 +457,9 @@ class App {
       else if (template === 'futa') { p.sims.push(newSim(p, 'yf')); p.sims.push(newSim(p, 'yf_futa')); }
       else if (template === 'mm') { p.sims.push(newSim(p, 'ym')); p.sims.push(newSim(p, 'ym')); }
       else if (template === 'ff') { p.sims.push(newSim(p, 'yf')); p.sims.push(newSim(p, 'yf')); }
-      else { p.sims.push(newSim(p, 'yf')); p.sims.push(newSim(p, 'ym')); }
+      else if (template === 'couple') { p.sims.push(newSim(p, 'yf')); p.sims.push(newSim(p, 'ym')); }
       this.store.load(p);
-      this.store.selected.sim = p.sims[0].id;
+      this.store.selected.sim = p.sims[0] ? p.sims[0].id : null;
       this.playRange = null;
       this.pipeline.overrides.clear();
       this._lastPreset = null;
@@ -512,7 +513,8 @@ class App {
       // a Tray sim has its own body shape (loaded once, then kept)
       if (s.tray && !this.assets.bodies['tray:' + s.id]) this._loadTray(s);
       let bodyKey = s.tray && this.assets.bodies['tray:' + s.id] ? 'tray:' + s.id : s.frame;
-      let toneKey = s.tone || '';
+      // a Tray sim wears its own look on the skin (makeup, brows, eye colour, skin details, tattoos)
+      let toneKey = (s.tone || '') + (s.tray && s.tray.id ? `~${s.tray.id}:${s.tray.index || 0}` : '');
       // a feature may show another body for a while (trying an animation on other bodies): the first answer wins
       const over = this.runHook('bodyOverride', s).find(x => x && x.bodyKey);
       if (over && this.assets.bodies[over.bodyKey]) { bodyKey = over.bodyKey; if (over.toneKey !== undefined) toneKey = over.toneKey || ''; }
@@ -590,6 +592,7 @@ class App {
     v.resetPose();
     this.interact.moveHips(v, new THREE.Vector3((p.sims.length - 1) * 0.8 - 0.4, 0, 0));
     s.keys.push({ frame: Math.round(this.store.frame), ease: 'auto', pose: this._bodyPose(v) });
+    this.runHook('traySimAdded', s);
     this.refreshAll();
     toast(`${name} joined with their own body shape and skin. Swap them into a pose in step 2.`, 'ok');
   }
@@ -1859,7 +1862,6 @@ class App {
 
   removeSim(id) {
     const p = this.store.project;
-    if (p.sims.length === 1) return toast('Keep at least one sim.');
     this.store.checkpoint('Remove a sim');
     p.sims = p.sims.filter(s => s.id !== id);
     if (this.store.selected.sim === id) this.store.selected = { sim: p.sims[0] ? p.sims[0].id : null, bone: null };

@@ -2,7 +2,7 @@
 // The look (dome, grid, lighting looks, cinematic passes) comes from stage.js; adaptive quality steps down when
 // frames get slow and says so with a "Fast mode" chip (see polish.js).
 import * as THREE from 'three';
-import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { TransformControls } from './vendor/TransformControls.js';     // r160, rings turn like a dial (see the file)
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
