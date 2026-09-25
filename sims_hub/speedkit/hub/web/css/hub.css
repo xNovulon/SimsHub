@@ -207,6 +207,17 @@ h3.sec .n { color: var(--accent-ink); letter-spacing: 0; text-transform: none; f
 .note.warn { background: rgba(251, 191, 36, .07); border-color: rgba(251, 191, 36, .3); color: #feecb9; }
 .note.warn svg { color: var(--warn); }
 .note.ok { background: rgba(52, 211, 153, .07); border-color: rgba(52, 211, 153, .34); color: #cff7e7; }
+/* the CC browser's duplicate warning: one line that opens into its list */
+details.dupfold > summary { list-style: none; cursor: pointer; align-items: center; }
+details.dupfold > summary::-webkit-details-marker { display: none; }
+details.dupfold > summary svg { margin-top: 0; }
+.dupfold-t { flex: 1; min-width: 0; }
+.dupfold-chev { flex: none; width: 16px; height: 16px; background: currentColor; opacity: .7; transition: transform var(--t-med) var(--ease);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
+details.dupfold[open] .dupfold-chev { transform: rotate(180deg); }
+details.dupfold > summary:hover .dupfold-chev { opacity: 1; }
+.dupfold-list { max-height: 280px; overflow: auto; margin-top: 6px; }
 .note.ok svg { color: var(--ok); }
 .note.err { background: rgba(251, 84, 113, .09); border-color: rgba(251, 84, 113, .45); color: #ffd6dd; }
 .note.err svg { color: var(--danger); }

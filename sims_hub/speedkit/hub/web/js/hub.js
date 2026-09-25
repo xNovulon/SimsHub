@@ -591,6 +591,9 @@ function describeChange(j) {
   return { title, label, icon };
 }
 
+// the animator's download (opens in the default browser; the file installs itself)
+const ANIMATOR_DOWNLOAD = 'https://github.com/xNovulon/SimsHub/releases/latest/download/WickedAnimator.exe';
+
 function renderTools() {
   if (!S.status) return S.statusErr ? errorBlock(S.statusErr) : loadingBlock('Checking your game...');
   const s = st(), anim = s.animator || {}, g = s.game || {};
@@ -615,8 +618,10 @@ function renderTools() {
     <div class="two">
       <div class="card"><div class="card-head"><img class="anim-logo" src="img/animator.svg" alt=""><div class="grow"><h2>Novulon's Wicked Animator</h2>
         <p>Make WickedWhims animations and send them straight to your game.</p></div></div>
-        <div class="actions"><button class="btn primary" data-act="open" data-what="animator"${anim.installed === false ? ' disabled' : ''}>${ic('arrow')}Open Novulon's Wicked Animator</button></div>
-        ${anim.installed === false ? `<div class="note warn">${ic('warn')}<span>The Wicked Animator isn't installed on this PC.</span></div>` : ''}
+        <div class="actions">${anim.installed === false
+          ? `<a class="btn primary" href="${ANIMATOR_DOWNLOAD}" target="_blank" rel="noopener">${ic('arrow')}Get Novulon's Wicked Animator</a>`
+          : `<button class="btn primary" data-act="open" data-what="animator">${ic('arrow')}Open Novulon's Wicked Animator</button>`}</div>
+        ${anim.installed === false ? `<p class="muted" style="margin:8px 0 0">Not on this PC yet. It's free: open the download and it installs itself.</p>` : ''}
         <div class="note">${ic('bolt')}<div><b>Testing an animation?</b> Studio mode starts with only WickedWhims and your animations.
           <div style="margin-top:10px"><button class="btn small soft" data-act="play" data-target="studio"${canPlay() ? '' : ' disabled'}>${ic('play')}Play in Studio mode</button></div></div></div>
       </div>
@@ -1195,7 +1200,7 @@ function ccBuild() {
       else if (what === 'page') { CCB.page = Math.max(0, +b.dataset.page); ccLoad(); CCB.el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
       else if (what === 'scan') ccScan();
       else if (what === 'clear') ccClearFilters();
-      else if (what === 'showdups') { CCB.f.flag = 'duplicate'; CCB.page = 0; ccLoad(); }
+      else if (what === 'showdups') { e.preventDefault(); CCB.f.flag = 'duplicate'; CCB.page = 0; ccLoad(); }
       else if (what === 'aside') ccConfirmAside([...CCB.sel]);
       else if (what === 'unselect') { CCB.sel.clear(); ccDraw(); }
       return;
@@ -1234,13 +1239,17 @@ async function ccDupWarn() {
     const r = await call('cc?flag=duplicate&limit=200&sort=name');
     CCB.dups = { key, items: r.http === 200 && r.items ? r.items : [] };
   }
-  const items = CCB.dups.items, shown = items.slice(0, 8);
-  box.innerHTML = `<div class="note warn">${ic('warn')}<span><b>${num(n)} duplicate ${n === 1 ? 'file' : 'files'} found.</b>
+  const items = CCB.dups.items;
+  const open = box.querySelector('details') ? box.querySelector('details').open : false;   // stays as the user left it
+  // one line, folded: the list opens under it when asked for
+  box.innerHTML = `<details class="dupfold"${open ? ' open' : ''}>
+    <summary class="note warn">${ic('warn')}<span class="dupfold-t"><b>${num(n)} duplicate ${n === 1 ? 'file' : 'files'} found.</b>
       Each is fully inside another file, so it can go.</span>
-      <button class="btn small" data-cc="showdups">Show them</button></div>
-    <div class="items">${shown.map(i => `<div class="item">${ic('warn')}<span class="n" title="${esc(i.name)}">${esc(i.name)}</span>
+      <button class="btn small" data-cc="showdups">Show them</button><span class="dupfold-chev" aria-hidden="true"></span></summary>
+    <div class="items dupfold-list">${items.map(i => `<div class="item">${ic('warn')}<span class="n" title="${esc(i.name)}">${esc(i.name)}</span>
       <span class="r">also in <b>${esc(i.duplicate_of || 'another file')}</b></span></div>`).join('')}
-      ${items.length > shown.length ? `<div class="muted" style="padding:4px 2px">and ${num(n - shown.length)} more</div>` : ''}</div>`;
+      ${n > items.length ? `<div class="muted" style="padding:4px 2px">and ${num(n - items.length)} more</div>` : ''}</div>
+  </details>`;
 }
 
 function ccQuery(extra = {}) {
