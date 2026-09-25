@@ -260,6 +260,66 @@ class Creators(unittest.TestCase):
         self.assertIsNone(CB.guess_creator('broken.package'))
 
 
+# ------------------------------------------------------------------ duplicates among merged files
+P = [0xE100000000000000 + n for n in range(1, 9)]
+
+
+@unittest.skipIf(Image is None, 'Pillow is not installed')
+class MergedDuplicates(unittest.TestCase):
+    """Merges that share some of the same CC are not duplicates; a file is only marked when one other file holds all
+    of it with the same content, and never both of two identical files."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix='ccdup_')
+        sims = os.path.join(self.root, 'The Sims 4')
+        mods, parked = os.path.join(sims, 'Mods'), os.path.join(sims, 'Mods_parked')
+        part = lambda n, v=46: ((U.T_CASP, 0, P[n]), casp('yfTop_Part%d' % n, 6, v))
+        pkg(os.path.join(mods, 'merge_A.package'), [part(0), part(1), part(2)])
+        pkg(os.path.join(mods, 'merge_B.package'), [part(2), part(3), part(4)])       # shares part 2 with A
+        pkg(os.path.join(mods, 'X.package'), [part(2)])                                 # the shared mod on its own
+        pkg(os.path.join(parked, 'old_merge.package'), [part(0), part(1)])             # all of it is in A
+        pkg(os.path.join(mods, 'spread.package'), [part(0), part(3)])                  # half in A, half in B
+        pkg(os.path.join(mods, 'other_version.package'), [part(3), part(4, 50)])       # part 4 is another version
+        pkg(os.path.join(mods, 'twin_1.package'), [part(5), part(6)])
+        pkg(os.path.join(mods, 'twin_2.package'), [part(5), part(6)])                  # the same file twice
+        pkg(os.path.join(mods, 'with_tuning.package'), [part(0), ((TUNING_T, 0, 0x77), b'<I n="t"/>' * 8)])
+        pkg(os.path.join(mods, 'ScriptMod', 'companion.package'), [part(1)])           # beside a script mod
+        with open(os.path.join(mods, 'ScriptMod', 'mod.ts4script'), 'wb') as f:
+            f.write(b'PK' + bytes([3, 4]) + bytes(40))
+        self.data = os.path.join(self.root, 'data')
+        api.configure(sims=sims, db_path=os.path.join(self.data, 'library.sqlite'),
+                      refs_db=os.path.join(self.data, 'refs.sqlite'), game_ids_db=os.path.join(self.data, 'ids.sqlite'),
+                      check_game=False, game_clues=NO_GAME, remember_game=False, opener=lambda *a: None,
+                      companions_cache=os.path.join(self.data, 'comp.json'))
+        api._CC_PICS.clear()
+        r = api.cc_scan()
+        self.assertTrue(r['ok'], r)
+
+    def tearDown(self):
+        api.reset()
+        api._CC_PICS.clear()
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def test_merges(self):
+        dup = {i['name']: i['duplicate_of'] for i in api.cc_list(flag='duplicate', limit=200)['items']}
+        self.assertNotIn('merge_A.package', dup)
+        self.assertNotIn('merge_B.package', dup)                 # merges that share a mod are both needed
+        self.assertNotIn('spread.package', dup)                  # no single file holds all of it
+        self.assertNotIn('other_version.package', dup)           # same part, different content
+        self.assertNotIn('with_tuning.package', dup)             # its tuning is nowhere else
+        self.assertNotIn('companion.package', dup)               # a script mod's own package stays
+        self.assertIn(dup.get('X.package'), ('merge_A.package', 'merge_B.package'))
+        self.assertEqual(dup.get('old_merge.package'), 'merge_A.package')
+        self.assertEqual(len({'twin_1.package', 'twin_2.package'} & set(dup)), 1)
+        # removing every marked file keeps every part somewhere
+        names = {'merge_A.package': [0, 1, 2], 'merge_B.package': [2, 3, 4], 'X.package': [2], 'old_merge.package': [0, 1],
+                 'spread.package': [0, 3], 'other_version.package': [3, 4], 'twin_1.package': [5, 6], 'twin_2.package': [5, 6]}
+        kept = set().union(*(set(v) for k, v in names.items() if k not in dup))
+        self.assertEqual(kept, set(range(7)))
+        for name, of in dup.items():
+            self.assertNotIn(of, dup)                            # it names a file that stays
+
+
 # ------------------------------------------------------------------ the engine on a fake Sims 4 folder
 @unittest.skipIf(Image is None, 'Pillow is not installed')
 class Browser(unittest.TestCase):
@@ -343,11 +403,12 @@ class Browser(unittest.TestCase):
 
     def test_duplicates_and_broken(self):
         dup = self.items(flag='duplicate')
-        self.assertEqual(set(dup), {'Simstrouble_Braids.package', 'Copy of braids.package'})
+        # the copy is marked, the file it copies is not (removing every marked file never loses a part)
+        self.assertEqual(set(dup), {'Copy of braids.package'})
         self.assertEqual(dup['Copy of braids.package']['duplicate_of'], 'Simstrouble_Braids.package')
         self.assertEqual(set(self.items(flag='broken')), {'broken.package'})
         r = api.cc_list()
-        self.assertEqual(r['flags']['duplicate'], 2)
+        self.assertEqual(r['flags']['duplicate'], 1)
         self.assertEqual(r['flags']['broken'], 1)
 
     def test_pages(self):

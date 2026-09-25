@@ -54,6 +54,7 @@ BIG = U.BIG
 
 # ------------------------------------------------------------------------------------------ resource types
 T_CASP, T_THUM, T_TONE, T_OBJD, T_COBJ, T_OTHM = U.T_CASP, U.T_THUM, U.T_TONE, U.T_OBJD, U.T_COBJ, U.T_OTHM
+MERGE_LIST = 0x7FB6AD8A          # Sims 4 Studio's list of what went into a merge (tool metadata, not content)
 T_CWAL, T_CFLR, T_SMOD, T_SCUL, T_PELT = U.T_CWAL, U.T_CFLR, U.T_SMOD, U.T_SCUL, U.T_PELT
 T_CFEN = 0x0418FE2A            # fence
 T_CLIP = 0x6B20C4F3            # animation clip (poses, WickedWhims animations)
@@ -634,30 +635,100 @@ class CCIndex:
                             'values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', vals)
 
     def _flags(self, lib, chosen, skip_ids):
-        """dup_of: another file holds every CAS part / object this one has (the library index says so)."""
+        """dup_of: ONE other file holds every resource this one has (CAS parts, objects, tuning, pictures - everything
+        but Sims 4 Studio's merge list), with the same content, and that file is not marked itself - so removing every
+        file marked Duplicate never loses anything. Files in a folder with a script mod are never marked. A merge that only shares some
+        of its parts with other files is not a duplicate (the duplicate clean-up removes just those extra copies).
+        Of two files holding the same parts one stays unmarked: the one whose name doesn't look like a copy, then the
+        one in Mods, then the bigger one, then the one the game loads first."""
         db = lib.db
-        db.execute('drop table if exists temp.cc_skip')
-        db.execute('create temp table cc_skip(pkg integer primary key)')
-        db.executemany('insert or ignore into temp.cc_skip values(?)', ((i,) for i in skip_ids))
         rel_of = {p.id: p.rel for p in chosen.values()}
-        dup = {}
-        q = ('select r.pkg, count(*), sum(exists(select 1 from res r2 where r2.t = r.t and r2.g = r.g and r2.i = r.i '
-             'and r2.pkg != r.pkg and r2.comp != ? and r2.pkg not in (select pkg from temp.cc_skip))) '
-             'from res r where r.t in (?, ?) and r.comp != ? group by r.pkg')
-        for pkg, n, shared in db.execute(q, (DELETED, T_CASP, T_OBJD, DELETED)):
-            if pkg in rel_of and n and shared == n:
-                dup[pkg] = None
-        for pkg in list(dup)[:5000]:
-            row = db.execute('select r2.pkg, count(*) c from res r join res r2 on r2.t = r.t and r2.g = r.g and '
-                             'r2.i = r.i and r2.pkg != r.pkg where r.pkg = ? and r.t in (?, ?) and r.comp != ? and '
-                             'r2.comp != ? and r2.pkg not in (select pkg from temp.cc_skip) group by r2.pkg '
-                             'order by c desc limit 1', (pkg, T_CASP, T_OBJD, DELETED, DELETED)).fetchone()
-            if row and row[0] in rel_of:
-                dup[pkg] = rel_of[row[0]]
-        db.execute('drop table temp.cc_skip')
+        root_of = {p.id: p.root for p in chosen.values()}
+        first = next(iter(lib.roots), 'Mods')          # the folder the game loads (Mods before Mods_parked)
+        script_dirs = {(s.root, os.path.dirname(s.rel).lower()) for s in lib.scripts()}
+        where = [p.id for p in chosen.values() if p.id not in skip_ids
+                 and (p.root, os.path.dirname(p.rel).lower()) not in script_dirs]
+        keys, owners, loc = collections.defaultdict(set), collections.defaultdict(set), {}
+        for pkg, t, g, i, off, fsize, msize, comp in db.execute(
+                'select pkg, t, g, i, off, fsize, msize, comp from res where t in (?, ?) and comp != ?',
+                (T_CASP, T_OBJD, DELETED)):
+            if pkg in skip_ids or pkg not in rel_of:
+                continue
+            k = (t, g, i)
+            keys[pkg].add(k)
+            owners[k].add(pkg)
+            loc[(pkg, k)] = (off, fsize, msize, comp)
+        copy_like = re.compile(r'(^copy of |[ _-]copy\b|\(\d+\)\.package$| - copy)', re.I)
+        drop_first = sorted((p for p in where if keys.get(p)), key=lambda p: (
+            0 if copy_like.search(os.path.basename(rel_of[p])) else 1, 0 if root_of[p] != first else 1,
+            len(keys[p]), -p))
+        files = {}
+
+        def raw(pkg, k):
+            off, fsize, msize, comp = loc[(pkg, k)]
+            f = files.get(pkg)
+            if f is None:
+                if len(files) > 64:
+                    for x in files.values():
+                        x.close()
+                    files.clear()
+                f = files[pkg] = open(lib.path(root_of[pkg], rel_of[pkg]), 'rb')
+            f.seek(off)
+            return f.read(fsize), comp, msize
+
+        def same(a, b, k):
+            ra, rb = raw(a, k), raw(b, k)
+            if ra[0] == rb[0]:
+                return True
+            try:
+                from .hashing import data_digest
+                return data_digest(*ra) == data_digest(*rb)
+            except Exception:
+                return False
+
+        def rows(pkg):
+            return {(t, g, i): (off, fsize, msize, comp) for t, g, i, off, fsize, msize, comp in db.execute(
+                'select t, g, i, off, fsize, msize, comp from res where pkg = ? and comp != ? and t != ?',
+                (pkg, DELETED, MERGE_LIST))}
+
+        def holds_all(p, o):
+            """o has every resource of p, with the same content"""
+            mine, theirs = rows(p), rows(o)
+            if not set(mine) <= set(theirs):
+                return False
+            for k in mine:
+                loc[(p, k)], loc[(o, k)] = mine[k], theirs[k]
+                if not same(p, o, k):
+                    return False
+            return True
+
+        marked = {}
+        try:
+            for p in drop_first:
+                ks = keys[p]
+                if any(len(owners[k]) < 2 for k in ks):
+                    continue
+                holders = set.intersection(*(owners[k] for k in ks)) - {p} - set(marked)
+                for o in sorted(holders, key=lambda o: (0 if root_of[o] == first else 1, -len(keys[o]), o)):
+                    try:
+                        if holds_all(p, o):
+                            marked[p] = o
+                            break
+                    except OSError:
+                        continue
+        finally:
+            for x in files.values():
+                x.close()
+        # a file marked as the copy of one that is marked later: name the one that stays
+        for p in marked:
+            o, seen = marked[p], {p}
+            while o in marked and o not in seen:
+                seen.add(o)
+                o = marked[o]
+            marked[p] = o
         self.db.execute('update item set dup_of=null')
         self.db.executemany('update item set dup_of=? where relkey=?',
-                            [(other or '?', rel_of[pkg].lower()) for pkg, other in dup.items()])
+                            [(rel_of[o], rel_of[p].lower()) for p, o in marked.items()])
 
     def _usage(self, lib, chosen, refs, save_names):
         """used / used_by for every package: does a current save or the Tray reference one of its CAS parts, looks
