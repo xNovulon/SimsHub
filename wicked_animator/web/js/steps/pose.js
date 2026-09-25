@@ -119,7 +119,7 @@ export function renderPose(app, root) {
   // Magic: a card above the poses; on short screens a one-line bar under them instead, so two rows of poses fit
   const magic = compact => h('div', { class: 'magic-callout ' + (compact ? 'compact' : 'full') },
     compact ? h('div', { style: { flex: 1 } }, h('b', {}, 'Want it all done for you?'))
-      : h('div', { style: { flex: 1 } }, h('b', {}, 'Want it all done for you?'), h('span', {}, 'Magic Animation poses, moves and voices both sims in one click.')),
+      : h('div', { style: { flex: 1 } }, h('b', {}, 'Want it all done for you?'), h('span', {}, 'Magic Animation poses and moves both sims, with sound, in one click.')),
     h('button', { class: 'btn magic small', onclick: () => app.openMagic() }, icon('wand'), 'Magic'));
   root.append(magic(false));
   root.append(section('Ready poses', tabs, h('div', { style: { height: '10px' } }), h('div', { class: 'pose-search' }, search), chips, grid,

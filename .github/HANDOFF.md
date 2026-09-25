@@ -89,6 +89,12 @@ The animator redesign was stopped before anything was saved, so it has to be red
   Ask whether to remove that card or split the repository before doing either (installed apps update from this
   repository's paths).
 
+- Known issue: the clothes preview draws the outfit over the whole nude body, so a body can poke through tight or
+  thin clothes (the chest shows through a sweater). The game hides the body under clothes; the preview should hide
+  or shrink the covered body parts too.
+- README pictures come from shots.py-style runs against example data (Hub) and a test server (animator). Keep them
+  free of nudity and adult words: faces, clothed sims, the Hub.
+
 ## Checks
 **Hub** (from `sims_hub/`):
 
