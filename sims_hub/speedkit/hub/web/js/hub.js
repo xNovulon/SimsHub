@@ -7,7 +7,7 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ESC[c]);
 // "Buy me a coffee": the tip page. The button shows only once this is set (the page must be yours: never guess a name).
-const SUPPORT_URL = '';
+const SUPPORT_URL = 'https://www.buymeacoffee.com/novulon';
 
 const ic = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
