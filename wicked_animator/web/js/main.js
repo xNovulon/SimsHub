@@ -595,7 +595,8 @@ class App {
     s.keys.push({ frame: Math.round(this.store.frame), ease: 'auto', pose: this._bodyPose(v) });
     this.runHook('traySimAdded', s);
     this.refreshAll();
-    toast(`${name} joined with their own body shape and skin. Swap them into a pose in step 2.`, 'ok');
+    toast(`${name} is in the scene. Pick a pose for them in step 2.`, 'ok');
+    return s;
   }
 
   setTone(id, tone) { this.store.checkpoint(); this.store.sim(id).tone = tone; this.syncViews(); this.applyPoses(); this.refreshPanels(); }

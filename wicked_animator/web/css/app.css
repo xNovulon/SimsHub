@@ -793,3 +793,25 @@ img, a, svg { -webkit-user-drag: none; }
 .piece.off { opacity: .5; }
 .piece.off .piece-ic { background: var(--panel-4); color: var(--muted); }
 .piece.missing .piece-text small { color: var(--warn); }
+
+/* the Tray: children and teens are listed, locked, without a picture */
+.tile.tile-locked { opacity: .72; cursor: not-allowed; }
+.tile.tile-locked:hover { opacity: .9; }
+.tile .thumb.locked { display: grid; place-items: center; background: var(--panel-3); color: var(--muted); }
+.tile .thumb.locked svg { width: 34px; height: 34px; }
+.minor-note { display: flex; gap: 14px; align-items: flex-start; }
+.minor-note p { margin: 0 0 8px; line-height: 1.5; }
+.minor-ic { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: #ffc2de; }
+.minor-ic svg { width: 24px; height: 24px; }
+
+/* a Tray sim on its way in */
+.tray-loads { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 4; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.tray-loading { display: flex; align-items: center; gap: 12px; min-width: 260px;
+  padding: 10px 16px 10px 10px; border-radius: 14px; background: var(--glass, rgba(17, 14, 24, .9)); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+.tray-loading img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: var(--panel-3); }
+.tray-loading b { display: block; font-size: 13.5px; }
+.tray-loading .grow { flex: 1; min-width: 0; }
+.tray-loading small { color: var(--muted); font-size: 12px; }
+.tray-loading .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .15); border-top-color: var(--accent, #ff4f9a); animation: tray-spin .8s linear infinite; }
+@keyframes tray-spin { to { transform: rotate(360deg); } }
+html.reduce-motion .tray-loading .spin { animation-duration: 2.4s; }

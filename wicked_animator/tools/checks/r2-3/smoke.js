@@ -25,7 +25,7 @@ const L = require('./lib');
       let picked = null;
       const n0 = app.store.project.sims.length;
       // (this PC's Tray has adult women only: a female body lists them all, a male body lists none)
-      const genders = (await (await fetch('/api/tray')).json()).flatMap(hh => hh.sims.map(x => x.gender));
+      const genders = (await (await fetch('/api/tray')).json()).flatMap(hh => hh.sims.filter(x => x.allowed).map(x => x.gender));
       d.openTrayDialog(app, { pick: x => { picked = x; }, frame: 'yf', title: 'Pick' });
       await new Promise(res => setTimeout(res, 2000));
       const tiles = [...document.querySelectorAll('.backdrop:not(.leaving) .tile')];

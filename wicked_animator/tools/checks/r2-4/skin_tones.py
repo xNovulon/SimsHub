@@ -107,7 +107,7 @@ def main():
         code, body, _ = get(port, 'tray')
         households = json.loads(body.decode('utf-8')) if code == 200 else []
         sims = [(hh['id'], s['index'], ('%s %s' % (s.get('first', ''), s.get('last', ''))).strip(), s.get('gender'))
-                for hh in households for s in hh['sims']]
+                for hh in households for s in hh['sims'] if s.get('allowed')]
         import trayfmt
         adults_offline = sum(1 for hh in trayfmt.list_households() for s in hh['sims']
                              if s['age'] in ADULT and s['species'] == 'human')

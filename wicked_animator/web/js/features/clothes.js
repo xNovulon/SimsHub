@@ -100,13 +100,15 @@ export function install(app) {
   };
 
   // a Tray sim arrives wearing the outfit it was saved in, accessories and all (part of adding it, no undo step)
+  // (app.trayDressing: sim id -> a promise that settles once the outfit is on, for the Tray's loading card)
   add('traySimAdded', s => {
-    C.outfitList(app, { kind: 'tray', tray: s.tray.id, index: s.tray.index || 0 }).then(list => {
+    const done = C.outfitList(app, { kind: 'tray', tray: s.tray.id, index: s.tray.index || 0 }).then(list => {
       const live = app.store.sim(s.id);
       if (!live || live.clothes || !list.current || !list.items.some(o => o.key === list.current)) return;
       live.clothes = { outfit: list.current };
-      C.reloadClothes(app, s.id).then(() => { shown(live); refreshRemover(); });
+      return C.reloadClothes(app, s.id).then(() => { shown(live); refreshRemover(); });
     }).catch(err => console.warn('clothes', err.message));
+    (app.trayDressing = app.trayDressing || new Map()).set(s.id, done);
   });
 
   // ---------------------------------------------------------------- the clothes remover

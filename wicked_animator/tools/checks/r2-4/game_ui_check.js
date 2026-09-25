@@ -588,7 +588,7 @@ const check = (name, ok, detail) => { rows.push({ name, ok: !!ok, detail }); con
     const out = [], C = (n, ok, d) => out.push([n, !!ok, d]);
     const app = window.app, S = window.__r24;
     const hh = await (await fetch('/api/tray')).json();
-    const pick = g => { for (const x of hh) for (const s of x.sims) if (s.gender === g) return [x, s]; return null; };
+    const pick = g => { for (const x of hh) for (const s of x.sims) if (s.allowed && s.gender === g) return [x, s]; return null; };
     const got = [];
     S.couple({ template: 'solo' });
     for (const g of ['female', 'male']) {

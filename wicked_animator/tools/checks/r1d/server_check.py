@@ -457,7 +457,7 @@ def check_server(port, log_path):
     # plan 2.7 duty: a Tray sim brings its game voice (read-only on the user's Tray; skipped when it has no sims)
     c, _, b = req(port, '/api/tray')
     hh = js(b) if c == 200 else None
-    first = next(((h['id'], s['index']) for h in (hh or []) for s in h.get('sims', [])), None)
+    first = next(((h['id'], s['index']) for h in (hh or []) for s in h.get('sims', []) if s.get('allowed')), None)
     if first:
         c, _, b = req(port, '/api/tray_sim?tray=%s&index=%d' % first)
         s = js(b) or {}

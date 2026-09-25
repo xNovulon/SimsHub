@@ -172,7 +172,7 @@ export function openVersions(app) {
 
   api.tray().then(households => {
     tray.innerHTML = '';
-    const adults = (households || []).flatMap(hh => (hh.sims || []).map(s => ({ ...s, hh })));
+    const adults = (households || []).flatMap(hh => (hh.sims || []).filter(s => s.allowed).map(s => ({ ...s, hh })));   // children and teens are listed locked
     if (!adults.length) { tray.append(h('div', { class: 'hint' }, 'No adult sims in your Tray yet.')); return; }
     const who = h('select', { 'aria-label': 'Which sim of the animation' }, p.sims.map(s => h('option', { value: s.id }, s.label)));
     const body = h('select', { 'aria-label': 'Tray sim' }, adults.map((s, i) => h('option', { value: i }, `${s.name || 'Sim'} (${s.hh.name || 'household'})`)));

@@ -58,15 +58,22 @@ def _is_adult(s):
     return s.get('species', 'human') == 'human' and s.get('age') in ADULT_AGES
 
 
+MINOR_AGES = ('baby', 'infant', 'toddler', 'child', 'teen')
+
+
 def _tray_households():
-    """Households with at least one adult human sim, listing ONLY those sims (index = position in the household,
-    which /api/tray_sim takes). Children, teens and pets never leave the server."""
+    """Households with at least one human sim. Adult sims are listed in full (index = position in the household,
+    which /api/tray_sim takes). Children and teens are listed only as locked entries - a first name and an age
+    group, nothing that can load them (no id, no index, no picture) - so the page can say why they can't be used.
+    Pets are not listed."""
     import trayfmt
     out, ids = [], set()
     for hh in trayfmt.list_households():
         sims = [dict(s, index=i, allowed=True) for i, s in enumerate(hh['sims']) if _is_adult(s)]
-        if sims:
-            out.append({'id': hh['id'], 'name': hh['name'], 'sims': sims})
+        minors = [{'first': s.get('first') or '', 'age': s.get('age'), 'allowed': False}
+                  for s in hh['sims'] if s.get('species', 'human') == 'human' and s.get('age') in MINOR_AGES]
+        if sims or minors:
+            out.append({'id': hh['id'], 'name': hh['name'], 'sims': sims + minors})
             ids |= {trayfmt.to_int(s['sim_id']) for s in sims}
     _adult_sims.clear()
     _adult_sims.update(ids)
