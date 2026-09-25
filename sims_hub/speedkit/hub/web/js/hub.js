@@ -651,9 +651,7 @@ function renderTools() {
     <div class="card" style="margin-top:16px"><div class="card-head"><div class="ic pink">${ic('undo')}</div><div class="grow"><h2>Recent changes</h2>
       <p>What the Hub changed, newest first. The newest can be undone.</p></div>
       <button class="btn" data-act="undo"${next && !noChange ? '' : ' disabled'}>${ic('undo')}Undo last change</button></div>
-      ${changes}</div>
-    <div class="note" style="margin-top:16px">${ic('info')}<span><b>Want to look at the project?</b> The Hub and Wicked Animator are open source.
-      <a href="https://github.com/xNovulon/SimsHub" target="_blank" rel="noopener">View them on GitHub</a>.</span></div>`;
+      ${changes}</div>`;
 }
 
 // ------------------------------------------------------------------------------------------ data loading

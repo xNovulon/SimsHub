@@ -819,7 +819,3 @@ html.reduce-motion .tray-loading .spin { animation-duration: 2.4s; }
 /* "Buy me a coffee" on Home */
 .btn.coffee { color: #ffe2b8; border-color: rgba(251, 191, 36, .35); background: rgba(251, 191, 36, .08); text-decoration: none; }
 .btn.coffee:hover { background: rgba(251, 191, 36, .16); border-color: rgba(251, 191, 36, .6); }
-
-/* the GitHub line at the bottom of Home */
-.home-gh { margin: 26px 0 0; color: var(--muted); font-size: 13px; }
-.home-gh a { color: var(--text); font-weight: 700; }
