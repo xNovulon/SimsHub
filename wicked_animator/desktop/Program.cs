@@ -439,12 +439,12 @@ sealed class MainForm : Form
             }
             if (status?.Kind == "ok" && status.Build < Engine.CurrentBuild())
             {
-                _splash.SetStatus("Updating the studio...");
+                _splash.SetStatus("Updating...");
                 if (await Engine.StopStale(status.Pid)) status = null;
             }
             if (status == null)
             {
-                _splash.SetStatus("Starting the studio...");
+                _splash.SetStatus("Starting...");
                 _python = await PythonSetup.Ensure(say);
                 if (_python == null) { NoPython(); return; }
                 _engine.Start(_python);
@@ -453,7 +453,7 @@ sealed class MainForm : Form
             }
 
             // 2. the window's web view
-            _splash.SetStatus("Opening the stage...");
+            _splash.SetStatus("Opening...");
             var env = _env = await CreateEnvironment(say);
             if (env == null) return;
             _ = _web.Handle;                // the view needs its handle (the window stays hidden until loaded)
@@ -484,7 +484,7 @@ sealed class MainForm : Form
                 EngineFailed("The animator's engine stopped while starting.");
                 return false;
             }
-            if (secs > 6) _splash.SetStatus("Getting your mods ready - the first start can take a minute...");
+            if (secs > 6) _splash.SetStatus("Starting...");
             if (secs > 180)
             {
                 EngineFailed("The animator's engine did not answer in time.");

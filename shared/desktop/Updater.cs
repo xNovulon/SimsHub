@@ -124,7 +124,7 @@ public static class Updater
         Directory.CreateDirectory(stage);
         var staged = new Dictionary<string, string>();
         int done = 0;
-        void Say() => status(todo.Count == 1 ? "Downloading an update..." : $"Downloading ({done} of {todo.Count} files)...");
+        void Say() => status("Updating...");
         Say();
         using (var gate = new SemaphoreSlim(8))
         {
@@ -147,7 +147,7 @@ public static class Updater
         }
 
         // put them in place
-        status("Putting the new files in place...");
+        status("Updating...");
         var backup = Path.Combine(Dir, "backup", DateTime.Now.ToString("yyyy-MM-dd_HHmmss"));
         bool complete = true;
         int changed = 0;
@@ -201,8 +201,8 @@ public static class Updater
         var url = ReleaseUrl(B.ReleaseAsset);
         try
         {
-            status("Downloading the new version...");
-            await Ui.Download(http, url, tmp, p => status($"Downloading the new version ({p:P0})..."));
+            status("Updating...");
+            await Ui.Download(http, url, tmp);
             var data = await File.ReadAllBytesAsync(tmp);
             var got = Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
             if (got != want) { Log($"the downloaded {B.ReleaseAsset} is not the published one yet ({got[..12]}) - next start"); return null; }

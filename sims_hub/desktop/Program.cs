@@ -369,18 +369,18 @@ sealed class MainForm : Form
             if (status?.Kind == "ok" && !status.Busy && await Engine.StopOther(status.Pid)) status = null;
             if (status == null)
             {
-                say("Starting the Hub...");
+                say("Starting...");
                 _python = await PythonSetup.Ensure(say);
                 if (_abandoned || IsDisposed) return;
                 if (_python == null) { NoPython(); return; }
-                say("Starting the Hub...");
+                say("Starting...");
                 _engine.Start(_python);
                 _waiting = true;
                 try { if (!await WaitForEngine()) return; } finally { _waiting = false; }
             }
 
             // 2. the window's web view (WebView2 is installed first on a PC without it)
-            say("Opening the Hub...");
+            say("Opening...");
             var env = await WebViewHost.Create("", say);
             _ = _web.Handle;                // the view needs its handle (the window stays hidden until loaded)
             await _web.EnsureCoreWebView2Async(env);

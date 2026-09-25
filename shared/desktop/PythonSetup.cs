@@ -36,14 +36,14 @@ public static class PythonSetup
         var py = await Task.Run(Usable);
         if (py == null)
         {
-            status("Installing Python (first start only, a minute or two)...");
+            status("Installing Python...");
             await Install(status);
             py = await Task.Run(Usable);
             if (py == null) { Log("no Python 3.10+ after installing"); return null; }
         }
         if (Brand.Current.PythonPackages.Length > 0)
         {
-            status("Adding what the app needs to Python (first start only)...");
+            status("Setting up...");
             await Task.Run(() => AddPackages(py));
         }
         return await Task.Run(Find) ?? py;
@@ -174,8 +174,8 @@ public static class PythonSetup
         try
         {
             using var http = Ui.Web(TimeSpan.FromMinutes(15));
-            await Ui.Download(http, InstallerUrl, setup, p => status($"Downloading Python ({p:P0})..."));
-            status("Installing Python (first start only, a minute or two)...");
+            await Ui.Download(http, InstallerUrl, setup);
+            status("Installing Python...");
             var r = await Task.Run(() => Ui.RunHidden(setup, new[] {
                 "/quiet", "InstallAllUsers=0", "PrependPath=1", "Include_launcher=1", "InstallLauncherAllUsers=0",
                 "Include_test=0", "Include_doc=0", "Shortcuts=0", "AssociateFiles=0" }, TimeSpan.FromMinutes(15)));
@@ -188,7 +188,7 @@ public static class PythonSetup
         // python.org unreachable or its installer failed: Windows' own package manager
         var winget = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "WindowsApps", "winget.exe");
         if (!File.Exists(winget)) { Log("winget is not on this PC"); return; }
-        status("Installing Python with Windows' installer (first start only)...");
+        status("Installing Python...");
         try
         {
             var r = await Task.Run(() => Ui.RunHidden(winget, new[] {

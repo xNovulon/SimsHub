@@ -54,7 +54,7 @@ public static class Setup
         var target = b.InstallDir;
         bool fresh = !b.IsAppFolder(target);
         Ui.Log("setup.log", $"{(fresh ? "installing" : "updating")} {b.Name} in {target} (opened from {Environment.ProcessPath})");
-        status(fresh ? "Installing..." : "Getting the newest version...");
+        status(fresh ? "Installing..." : "Updating...");
         await Task.Run(() => Updater.Run(target, status, program: false));
         if (!b.IsAppFolder(target))
         {

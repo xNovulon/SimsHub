@@ -43,7 +43,7 @@ public static class WebViewHost
         SetLoader();
         if (!RuntimeInstalled())
         {
-            status("Installing Microsoft Edge WebView2 (first start only)...");
+            status("Installing WebView2...");
             await InstallRuntime(status);
             if (!RuntimeInstalled()) throw new WebView2RuntimeNotFoundException();
         }
