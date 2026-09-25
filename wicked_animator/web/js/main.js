@@ -287,7 +287,7 @@ class App {
 
     const legacy = localStorageGet('autosave', null);        // read before the blank scene below clears it
     const legacyState = localStorageGet('autosaveState', {});
-    this.newScene(false, false);
+    this.newScene(false, false, 'empty');               // the app opens on an empty scene: you add your own sims
     this.timeline.fit();
     this.showStep('scene');
     if (this.tlView === 'curves') this.setTimelineView('curves', { quiet: true });
@@ -446,8 +446,9 @@ class App {
 
   // ---------------------------------------------------------------- scene building
   // template: 'couple' (female + male facing each other), 'solo', 'futa'
-  // template: 'empty' (no sims - you add your own: the default), 'couple', 'ff', 'mm', 'futa' or 'solo'
-  newScene(confirmFirst = true, ask = true, template = 'empty', done = null) {
+  // template: 'empty' (no sims - you add your own; what the app starts with and the Home cards use), 'couple' (the
+  // default for code that doesn't say), 'ff', 'mm', 'futa' or 'solo'
+  newScene(confirmFirst = true, ask = true, template = 'couple', done = null) {
     const go = () => ask ? openNameDialog(this, (name, author) => build(name, author)) : build(null, null);
     const build = (name, author) => {
       const p = newProject();

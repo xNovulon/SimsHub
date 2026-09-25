@@ -35,7 +35,8 @@ export function simBody(sim) {
   sim.body = sim.body || {};
   const b = sim.body;
   if (b.erect === undefined) b.erect = true;
-  if (!b.open) b.open = { on: true, vagina: true, anus: true, mouth: true };
+  // lipPull: new sims have it; sims saved before it existed keep their animation exactly as it was (off)
+  if (!b.open) b.open = { on: true, vagina: true, anus: true, mouth: true, lipPull: true };
   if (!b.physics) b.physics = defaultPhysics(sim.frame);
   if (!b.talk) b.talk = { mouth: true };
   if (b.tongue === undefined) b.tongue = true;
@@ -422,7 +423,7 @@ export class Pipeline {
       this.lastOpen.set(e.sim.id, res[i]);
       if (o.on && this.editing !== e.sim.id) for (const [hole, r] of Object.entries(res[i])) {
         if (o[hole] === false) continue;
-        const pull = hole === 'mouth' && o.lipPull !== false ? this.lipPull(e.sim.id, frame) : 0;
+        const pull = hole === 'mouth' && o.lipPull === true ? this.lipPull(e.sim.id, frame) : 0;
         applyOpen(e.v, hole, r.open, pull ? { ...r, pull } : r);
       }
       followJaw(e.v);
@@ -481,7 +482,7 @@ export class Pipeline {
     const all = this.entries();
     const plan = all.map(e => ({ e, parts: partsFor(e.v, simBody(e.sim).physics) })).filter(x => x.parts.length);
     this.phys.clear();
-    const mouthOn = all.map(e => { const o = simBody(e.sim).open; return o.on && o.mouth !== false && o.lipPull !== false; });
+    const mouthOn = all.map(e => { const o = simBody(e.sim).open; return o.on && o.mouth !== false && o.lipPull === true; });
     if (!plan.length && !mouthOn.some(Boolean)) { this.mouthDepth.clear(); return; }
     const depth = all.map(() => new Float32Array(n));
     const saved = this.editing; this.editing = null;

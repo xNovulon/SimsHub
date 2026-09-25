@@ -39,7 +39,7 @@ export function renderBody(app, root) {
     const state = now && now.open > 0.02 ? `${pct(Math.min(1, now.open))} open${now.by ? ' · ' + now.by : ''}${now.depth > 0.004 ? ` · ${(now.depth * 100).toFixed(1)} cm in` : ''}` : 'closed';
     holes.append(toggleRow(info.label, state, o[key] !== false && o.on, on => set(x => { x.open[key] = on; if (on) x.open.on = true; })));
     if (key === 'mouth' && o.on && o.mouth !== false) holes.append(toggleRow('Lips pull along', 'The lips cling to what is in the mouth: they stretch out as it pulls back and tuck in as it goes in',
-      o.lipPull !== false, on => set(x => { x.open.lipPull = on; })));
+      o.lipPull === true, on => set(x => { x.open.lipPull = on; })));
   }
   root.append(section('Holes open by themselves', h('div', { class: 'hint', style: { marginTop: 0 } }, 'When a penis, finger or tongue comes close or goes in, the vagina, anus and mouth open around it - sized to what goes in. Switch one off for animations like kissing the tip, where the mouth should stay closed.'),
     toggleRow('Automatic opening', o.on ? 'On for this sim' : 'Off - holes stay as posed', o.on, on => set(x => { x.open.on = on; })), holes));
