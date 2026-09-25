@@ -6,6 +6,9 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ESC[c]);
+// "Buy me a coffee": the tip page. The button shows only once this is set (the page must be yours: never guess a name).
+const SUPPORT_URL = '';
+
 const ic = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''} aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const isNum = n => n !== null && n !== undefined && n !== '' && !isNaN(Number(n));
@@ -1748,7 +1751,15 @@ Object.assign(TITLES, care.TITLES);
 Object.assign(DONE, care.DONE);
 Object.assign(KIND, care.KIND);
 
+function showCoffee() {
+  const a = document.getElementById('btn-coffee');
+  if (!a || !/^https:\/\//.test(SUPPORT_URL)) return;
+  a.href = SUPPORT_URL;
+  a.classList.remove('hidden');
+}
+
 (async function start() {
+  showCoffee();
   route();
   await refreshStatus(true);
   const cur = await call('task/current');

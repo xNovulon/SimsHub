@@ -805,3 +805,12 @@ details.more.why p { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; li
 body { -webkit-user-select: none; user-select: none; }
 input, textarea, select, [contenteditable], pre, code, kbd, .path, .selectable, .tech, details.tech { -webkit-user-select: text; user-select: text; }
 img, a, svg { -webkit-user-drag: none; }
+
+/* "Buy me a coffee" in the top bar */
+.coffee-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px 0 11px; border-radius: 999px; font-weight: 700;
+  font-size: var(--fs-sm); color: #ffe2b8; background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .35); text-decoration: none;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast); }
+.coffee-btn svg { width: 17px; height: 17px; }
+.coffee-btn:hover { background: rgba(251, 191, 36, .18); border-color: rgba(251, 191, 36, .6); transform: translateY(-1px); }
+.coffee-btn.hidden { display: none; }
+@media (max-width: 900px) { .coffee-btn span { display: none; } .coffee-btn { padding: 0 9px; } }

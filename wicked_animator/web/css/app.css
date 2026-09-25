@@ -815,3 +815,7 @@ img, a, svg { -webkit-user-drag: none; }
 .tray-loading .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .15); border-top-color: var(--accent, #ff4f9a); animation: tray-spin .8s linear infinite; }
 @keyframes tray-spin { to { transform: rotate(360deg); } }
 html.reduce-motion .tray-loading .spin { animation-duration: 2.4s; }
+
+/* "Buy me a coffee" on Home */
+.btn.coffee { color: #ffe2b8; border-color: rgba(251, 191, 36, .35); background: rgba(251, 191, 36, .08); text-decoration: none; }
+.btn.coffee:hover { background: rgba(251, 191, 36, .16); border-color: rgba(251, 191, 36, .6); }
