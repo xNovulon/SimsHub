@@ -112,6 +112,7 @@ export class Pipeline {
     this.phys = new Map();          // sim id -> simulated offsets
     this.physKey = '';
     this.lastOpen = new Map();      // sim id -> openings measured at the shown frame
+    this.mouthDepth = new Map();    // sim id -> how deep something is in the mouth on every frame (the lips' pull)
     this.lastFace = new Map();      // sim id -> the face shown at that frame (keys + talking + blinking), or null
     this.editing = null;            // sim id being posed by hand: its motion layers, openings and physics pause
     this.overrides = new Map();     // sim id -> {frame, pose?, faceBones?}: posed but not keyed yet (auto key off)
@@ -413,15 +414,32 @@ export class Pipeline {
 
   // Openings. Every consumer reads world positions through getWorldPosition / skinPointWorld, which bring their
   // own bone chain up to date, so the whole skeleton's matrices are not recomputed here.
-  openings(all) {
+  // frame: the lips pull along with what moves in the mouth (see lipPull), from the depths the last simulate() saw.
+  openings(all, frame = null) {
     const res = measure(all);
     all.forEach((e, i) => {
       const o = simBody(e.sim).open;
       this.lastOpen.set(e.sim.id, res[i]);
-      if (o.on && this.editing !== e.sim.id) for (const [hole, r] of Object.entries(res[i])) if (o[hole] !== false) applyOpen(e.v, hole, r.open, r);
+      if (o.on && this.editing !== e.sim.id) for (const [hole, r] of Object.entries(res[i])) {
+        if (o[hole] === false) continue;
+        const pull = hole === 'mouth' && o.lipPull !== false ? this.lipPull(e.sim.id, frame) : 0;
+        applyOpen(e.v, hole, r.open, pull ? { ...r, pull } : r);
+      }
       followJaw(e.v);
     });
     return res;
+  }
+
+  // -1..1: the lips cling to what is in the mouth - positive while it pulls back out (they stretch forward), negative
+  // while it pushes in (they tuck in a little). From the change in depth around the frame (20 cm/s = fully).
+  lipPull(simId, frame) {
+    const d = this.mouthDepth.get(simId), p = this.project;
+    if (!d || frame === null || frame === undefined || d.length < 3) return 0;
+    const n = d.length, f = Math.round(frame);
+    const at = k => d[p.loop ? ((k % n) + n) % n : Math.max(0, Math.min(n - 1, k))];
+    if (!(at(f) > 0.004)) return 0;
+    const speed = (at(f + 2) - at(f - 2)) / 4 * (p.fps || 30);
+    return THREE.MathUtils.clamp(-speed / 0.2, -0.6, 1);
   }
 
   // ---------------------------------------------------------------- the whole frame
@@ -432,7 +450,7 @@ export class Pipeline {
     this.holdsAll(all, frame);                                    // pass B: holds first,
     for (const e of all) this.late(e, frame, all, false);         // then the rest,
     this.holdsAfter(all, frame);                                  // and holds on parts that moved since
-    this.openings(all);
+    this.openings(all, frame);
     if (physics) {
       const p = this.project;
       for (const e of all) if (this.editing !== e.sim.id) applyFrame(e.v, this.phys.get(e.sim.id), frame, p.length, p.loop);
@@ -463,7 +481,9 @@ export class Pipeline {
     const all = this.entries();
     const plan = all.map(e => ({ e, parts: partsFor(e.v, simBody(e.sim).physics) })).filter(x => x.parts.length);
     this.phys.clear();
-    if (!plan.length) return;
+    const mouthOn = all.map(e => { const o = simBody(e.sim).open; return o.on && o.mouth !== false && o.lipPull !== false; });
+    if (!plan.length && !mouthOn.some(Boolean)) { this.mouthDepth.clear(); return; }
+    const depth = all.map(() => new Float32Array(n));
     const saved = this.editing; this.editing = null;
     try {
       const samples = plan.map(() => new Array(n));
@@ -472,7 +492,8 @@ export class Pipeline {
         this.holdsAll(all, k);
         for (const e of all) this.late(e, k, all, false);
         this.holdsAfter(all, k);
-        this.openings(all);
+        const res = this.openings(all, k);
+        res.forEach((r, i) => { depth[i][k] = r.mouth ? r.mouth.depth : 0; });
         plan.forEach((x, i) => {
           const s = {};
           for (const part of x.parts) for (const bone of part.bones) {
@@ -483,6 +504,17 @@ export class Pipeline {
         });
       }
       plan.forEach((x, i) => this.phys.set(x.e.sim.id, simulate(x.parts, samples[i], p.fps || 30, !!p.loop)));
+      // the measured depth jitters from frame to frame: smoothed, so the lips move with the strokes, not the jitter
+      const smooth = d => d.map((_, k) => {
+        let sum = 0, w = 0;
+        for (let j = -3; j <= 3; j++) {
+          const q = p.loop ? ((k + j) % n + n) % n : Math.max(0, Math.min(n - 1, k + j));
+          const wt = 4 - Math.abs(j);
+          sum += d[q] * wt; w += wt;
+        }
+        return sum / w;
+      });
+      this.mouthDepth = new Map(all.map((e, i) => [e.sim.id, smooth(depth[i])]));
     } finally { this.editing = saved; }
   }
 

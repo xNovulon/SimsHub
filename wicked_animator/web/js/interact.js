@@ -63,6 +63,8 @@ export class Interaction {
     this.pickers = [];             // fn(event, 'down' | 'click' | 'hover') -> true: used (tried before mesh picking)
     this.dragHold = null;          // {simId, limb}: a held limb being dragged (its hold waits until it is dropped)
     this.groupTurn = null;         // Whole back / Neck & head: the chain's turns when the drag started
+    this.multi = [];               // Ctrl+click: more parts of the same sim that move with the selected one [{simId, bone}]
+    this.multiStart = null;        // ...and where they were when the drag started
 
     const c = this.vp.canvas;
     // a press on a hand, foot or hips dot (Drag tool) drags it freely in the screen plane - before the gizmo sees the
@@ -103,6 +105,7 @@ export class Interaction {
       const sim = a && a.kind === 'limb' && this.app.store.sim(a.simId);
       this.dragHold = sim && isHold(sim.pins && sim.pins[a.limb]) ? { simId: a.simId, limb: a.limb } : null;
       this.groupTurn = a && a.kind === 'bone' && !a.face ? this.beginGroupTurn(this.views().get(a.simId), a.bone) : null;
+      this.multiStart = a && a.kind === 'bone' && this.multi.length ? this.beginMulti(this.views().get(a.simId), a) : null;
     });
     gz.addEventListener('objectChange', () => this._gizmoChange());
     this._fadeFacingArrows(gz);
@@ -113,6 +116,7 @@ export class Interaction {
         return;
       }
       this.groupTurn = null;
+      this.multiStart = null;
       // a hand or foot dropped on a partner (within 4 cm of the skin) holds on; a held one dragged away lets go
       if (a && a.kind === 'limb') {
         try { Holds.tryHold(this.app, a.simId, a.limb, { maxDist: 0.04, fromDrag: true, pointer: this.lastPointer }); } catch (err) { console.error('hold:', err); }
@@ -430,6 +434,8 @@ export class Interaction {
     if (this.faceOn) {
       const d = this._pickDot(e);
       if (d) {
+        if (this._ctrlPick(e, d.simId, d.bone, true)) return;
+        this.multi = [];
         this.app.store.selected = { sim: d.simId, bone: d.bone };
         this.selectFaceBone(d.simId, d.bone);
         this.app.emitSelection();
@@ -447,13 +453,15 @@ export class Interaction {
     }
     const hit = this.vp.pick(e, this._meshes());
     if (!hit) {
-      if (this.tool !== 'move') { this.vp.gizmo.detach(); this.active = null; this.app.store.selected.bone = null; this.app.emitSelection(); }
+      if (this.tool !== 'move') { this.multi = []; this.vp.gizmo.detach(); this.active = null; this.app.store.selected.bone = null; this.app.emitSelection(); }
       return;
     }
     const view = hit.object.userData.sim;
     const simId = this.app.idOf(view);
     const boneIdx = K.controllableIndex(view.rig, view.boneAtHit(hit), this._pickMode(view, e));
     const name = view.bones[boneIdx].name;
+    if ((this.tool === 'rotate' || this.tool === 'face') && this._ctrlPick(e, simId, name, K.isFace(name))) return;
+    this.multi = [];
     this.app.store.selected = { sim: simId, bone: name };
     if (this.tool === 'rotate' || this.tool === 'face') {
       // a face part (the jaw and the tongue even in the body pick mode) gets the face gizmo
@@ -462,6 +470,51 @@ export class Interaction {
     } else if (this.tool === 'move') this.selectPlace(simId);
     else this.refreshHandles();
     this.app.emitSelection();
+  }
+
+  // Ctrl+click on another part of the sim being posed (a body part with a body part, a face part with a face part):
+  // add it to the parts that move together, or take it out again. true when the click was used that way.
+  _ctrlPick(e, simId, bone, face) {
+    const a = this.active;
+    if (!(e.ctrlKey || e.metaKey) || !a || a.kind !== 'bone' || a.simId !== simId || !!a.face !== !!face) return false;
+    const v = this.views().get(simId);
+    if (!v || !v.bone(bone)) return false;
+    if (bone === a.bone) return true;
+    // a part the selected one hangs from would move it twice (the gizmo turns it as well): not added
+    for (let p = v.bone(a.bone).parent; p; p = p.parent) if (p.name === bone) {
+      this.app.hud(`${K.label(bone)} already moves ${K.label(a.bone)} - pick it first, then Ctrl+click the others`);
+      return true;
+    }
+    const k = this.multi.findIndex(x => x.bone === bone);
+    if (k >= 0) this.multi.splice(k, 1); else this.multi.push({ simId, bone });
+    const n = this.multi.length + 1;
+    this.app.hud(n > 1 ? `${n} parts selected - they turn and move together (Ctrl+click adds or removes one)` : `${K.label(a.bone)} selected`);
+    this.placeHandles();
+    return true;
+  }
+
+  // The Ctrl+click parts at the start of a drag, parents first; the selected part's own start too.
+  beginMulti(v, a) {
+    if (!v || !v.bone(a.bone)) return null;
+    const depth = b => { let d = 0; for (let p = b.parent; p; p = p.parent) d++; return d; };
+    const items = this.multi.filter(x => x.simId === a.simId && v.bone(x.bone) && x.bone !== a.bone)
+      .map(x => ({ bone: x.bone, q: spaceQuat(v, v.bone(x.bone)), pos: v.bone(x.bone).position.clone(), d: depth(v.bone(x.bone)) }))
+      .sort((x, y) => x.d - y.d);
+    return items.length ? { q: spaceQuat(v, v.bone(a.bone)), pos: v.bone(a.bone).position.clone(), items } : null;
+  }
+
+  // The selected part moved: the others move the same way - turned by the same turn about their own joint, or moved
+  // by the same step with the arrows. -> the names of the parts it changed.
+  applyMulti(v, bone, M) {
+    const b = v.bone(bone);
+    if (this.vp.gizmo.mode === 'translate') {
+      const d = b.position.clone().sub(M.pos);
+      for (const it of M.items) v.bone(it.bone).position.copy(it.pos).add(d);
+    } else {
+      const delta = spaceQuat(v, b).multiply(M.q.clone().invert());
+      for (const it of M.items) setSpaceQuat(v, v.bone(it.bone), delta.clone().multiply(it.q));
+    }
+    return M.items.map(it => it.bone);
   }
 
   // Picking something to pose stops playback first, so the pose being changed is the one on screen and the
@@ -601,10 +654,15 @@ export class Interaction {
       if (a.face) {
         // each face part stops at its safe range (hold Alt to go further); Symmetry poses the other side too
         if (!this.app.altDown && K.clampFaceBone(v, a.bone, K.faceLimits(a.bone))) this.flashLimit(a.bone);
+        if (this.multiStart) for (const n of this.applyMulti(v, a.bone, this.multiStart)) {
+          if (!this.app.altDown && K.clampFaceBone(v, n, K.faceLimits(n))) this.flashLimit(n);
+          if (this.app.mirrorEdit) this.app.mirrorLive(a.simId, n);
+        }
         if (this.app.mirrorEdit) this.app.mirrorLive(a.simId, a.bone);
       } else {
         if (a.bone === 'b__Pelvis__' && this.hipTurn) this.applyHipTurn(v, this.hipTurn);
-        const touched = this.groupTurn ? this.applyGroupTurn(v, a.bone, this.groupTurn) : [a.bone];
+        const touched = [...(this.groupTurn ? this.applyGroupTurn(v, a.bone, this.groupTurn) : [a.bone])];
+        if (this.multiStart) touched.push(...this.applyMulti(v, a.bone, this.multiStart));
         // fingers, elbows, knees, the back, neck and head stop at their natural limits (Alt goes past them)
         let hit = false;
         if (this.limitsOn() && !this.app.altDown) for (const n of touched) if (clampToLimits(v, v.bone(n))) hit = true;

@@ -143,5 +143,20 @@ export function applyOpen(v, hole, amount, info = null) {
     move('b__R_Mouth__', 0, 0.0025 * w, 0.0045 * w);
     move('b__L_Cheek__', 0, 0, -0.0015 * w);
     move('b__R_Cheek__', 0, 0, 0.0015 * w);
+    // the lips cling to what is in the mouth (info.pull, pipeline.lipPull): pulled forward along it on the way out,
+    // tucked in a little on the way in; the cheeks hollow while it pulls
+    const pull = (info && info.pull) || 0;
+    if (pull) {
+      const f = (pull > 0 ? 0.007 : 0.0035) * pull * Math.min(1, w);
+      move('b__UpLip__', 0, f, 0);
+      move('b__LoLip__', 0, 1.1 * f, 0);
+      move('b__L_UpLip__', 0, 0.75 * f, 0);
+      move('b__R_UpLip__', 0, 0.75 * f, 0);
+      move('b__L_LoLip__', 0, 0.8 * f, 0);
+      move('b__R_LoLip__', 0, 0.8 * f, 0);
+      move('b__L_Mouth__', 0, 0.4 * f, 0);
+      move('b__R_Mouth__', 0, 0.4 * f, 0);
+      if (pull > 0) { move('b__L_Cheek__', 0, 0, -0.0025 * pull); move('b__R_Cheek__', 0, 0, 0.0025 * pull); }
+    }
   }
 }
