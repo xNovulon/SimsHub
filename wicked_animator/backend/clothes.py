@@ -357,21 +357,14 @@ def _part_base(casp_inst):
            'meshes': meshes, 'texture': None, 'cache': key,
            'unknown_bones': sorted({'0x%08x' % h for g in geoms for h in (g.get('bone_hashes') or []) if h not in rig_index})}
     if not meshes:
-        # only a stand-in GEOM, or none: the game paints this part on the skin (tights, socks, most gloves)
+        # only a stand-in GEOM, or none: the game paints this part on the skin (tights, socks, most gloves) - its
+        # texture comes along, so the preview can paint it on the skin too
         out['painted'] = listed > 0 or not casp.get('geoms')
+        _write_texture(out, casp, pkg_path, key)
         out['seconds'] = round(time.time() - t0, 3)
         _remember(_mem, key, out, 64)
         return out
-    tgi = (casp.get('textures') or {}).get('diffuse')
-    if tgi:
-        try:
-            raw = hair._texture_bytes(tgi, pkg_path)
-            if raw:
-                name = 'clothes_%s.png' % key
-                hair._write_png(texfmt.decode(raw), os.path.join(CACHE, name))
-                out['texture'] = name
-        except Exception as ex:
-            out['texture_error'] = str(ex)
+    _write_texture(out, casp, pkg_path, key)
     out['seconds'] = round(time.time() - t0, 3)
     tmp = jpath + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
@@ -379,6 +372,22 @@ def _part_base(casp_inst):
     os.replace(tmp, jpath)
     _remember(_mem, key, out, 64)
     return out
+
+
+def _write_texture(out, casp, pkg_path, key):
+    """The part's diffuse (an overlay laid out like the skin picture) as a PNG in the cache: out['texture']."""
+    import texfmt
+    tgi = (casp.get('textures') or {}).get('diffuse')
+    if not tgi:
+        return
+    try:
+        raw = hair._texture_bytes(tgi, pkg_path)
+        if raw:
+            name = 'clothes_%s.png' % key
+            hair._write_png(texfmt.decode(raw), os.path.join(CACHE, name))
+            out['texture'] = name
+    except Exception as ex:
+        out['texture_error'] = str(ex)
 
 
 def _mesh(g, rig_index, fb):

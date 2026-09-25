@@ -107,7 +107,7 @@ function fetchPart(app, casp, shape) {
   const key = `${casp}@${shape.shape_tray || ''}:${shape.shape_index ?? ''}`;
   if (!app._clothesParts.has(key)) {
     const p = json('/api/clothes_part?' + q({ casp, ...shape })).then(data => {
-      if (!data || !data.meshes || !data.meshes.length || !data.texture) return { data, texture: null };
+      if (!data || !data.texture || (!(data.meshes && data.meshes.length) && !data.painted)) return { data, texture: null };
       return new Promise(res => {
         _texLoader.load('/api/clothes_tex?file=' + encodeURIComponent(data.texture), tex => {
           tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
@@ -145,17 +145,21 @@ export async function loadClothes(app, v, s) {
   if (stale()) return 0;
   v.removeParts('clothes');
   const info = { label: outfit.label, shown: 0, missing: [], painted: [] };
+  const painted = [];                   // pieces the game paints on the skin (tights...): their pictures
   for (const p of outfit.parts || []) if (p.origin === null && !off.has(p.casp)) info.missing.push(partName(p));
   results.forEach((r, i) => {
     const p = parts[i], d = r && r.data;
     if (!d || d.origin === null || d.error) { info.missing.push(partName(p)); return; }
-    if (!d.meshes || !d.meshes.length) { if (d.painted) info.painted.push(d.name || partName(p)); return; }
+    if (!d.meshes || !d.meshes.length) { if (d.painted) (r.texture ? painted : info.painted).push(r.texture || d.name || partName(p)); return; }
     const before = (v.parts || []).length;
     v.addPart(d, r.texture, { role: 'clothes', soft: false, offset: 1, color: '#8a8fa3', info: { kind: d.kind || p.kind, casp: d.casp } });
     if ((v.parts || []).length > before) info.shown++;
   });
   v.clothesInfo = info;
-  await paintOnSkin(app, v, s, results.map(r => r && r.texture).filter(Boolean), key);
+  if (!(await paintOnSkin(app, v, s, painted, key))) {
+    // nothing to paint them on (no garment with a body mesh): say so, as before
+    for (const t of painted) info.painted.push(((results.find(r => r && r.texture === t) || {}).data || {}).name || 'a piece');
+  }
   applyVisibility(app);
   return info.shown;
 }
@@ -163,19 +167,22 @@ export async function loadClothes(app, v, s) {
 // As in the game, a garment is painted onto the sim's own skin picture: its texture is a see-through layer over the
 // skin (the arms of a top, the neck of a dress are skin), so the garment pieces draw the skin with every garment on
 // top of it, and the bare body under them is hidden (applyVisibility). Hats and accessories keep their own picture.
-async function paintOnSkin(app, v, s, textures, key) {
+// painted: the pictures of pieces the game paints on the skin (tights): they go on first, under the garments.
+// -> true when the garments were painted on the skin.
+async function paintOnSkin(app, v, s, painted, key) {
   const worn = (v.parts || []).filter(m => m.userData.role === 'clothes' && BODY.includes(m.userData.kind));
-  if (!worn.length) return;
+  if (!worn.length) return false;
   try { await app.skinReady(s.frame, v.toneKey !== undefined ? v.toneKey : (s.tone || '')); } catch { /* plain look below */ }
-  if (v.clothesKey !== key || app.simViews.get(s.id) !== v) return;
+  if (v.clothesKey !== key || app.simViews.get(s.id) !== v) return false;
   const skin = v.material && v.material.map && v.material.map.image;
-  if (!skin || !(skin.naturalWidth || skin.width)) return;           // no skin picture: garments keep their own look
+  if (!skin || !(skin.naturalWidth || skin.width)) return false;     // no skin picture: garments keep their own look
   const W = skin.naturalWidth || skin.width, H = skin.naturalHeight || skin.height;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const g = canvas.getContext('2d');
   g.drawImage(skin, 0, 0, W, H);
   // in the preview's order (outfit, top, bottom, tights, socks, shoes), each garment's layer over the skin
+  for (const t of painted) if (t && t.image) g.drawImage(t.image, 0, 0, W, H);
   const layers = worn.map(m => m.material.map).filter((t, i, a) => t && t.image && a.indexOf(t) === i);
   for (const t of layers) g.drawImage(t.image, 0, 0, W, H);
   const tex = new THREE.CanvasTexture(canvas);
@@ -187,6 +194,7 @@ async function paintOnSkin(app, v, s, textures, key) {
     m.material.alphaTest = 0;            // the skin fills in what the garment leaves open
     m.material.needsUpdate = true;
   }
+  return true;
 }
 
 export function reloadClothes(app, simId) {
