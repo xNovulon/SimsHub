@@ -213,7 +213,7 @@ async function studioFlow(page, logs) {
 async function offline(logs) {
   // load normally (three.js comes from its CDN in index.html - the app shell, not capture), then cut every request
   // that does not go to 127.0.0.1 and use capture from start to finish
-  const { browser, page } = await H.open(port, { query: 'captureMock=1', intercept: false });
+  const { browser, page } = await H.open(port, { query: 'captureMock=1', intercept: false, scene: 'couple' });
   const outside = [], shell = [];
   let strict = false;
   page.on('request', r => { const u = r.url(); if (!/^(https?:\/\/127\.0\.0\.1[:/]|data:|blob:)/.test(u)) (strict ? outside : shell).push(u); });
@@ -253,14 +253,14 @@ async function offline(logs) {
   const t0 = Date.now();
   try {
     if ([3, 4, 5, 6].some(want)) {
-      const { browser, page, logs } = await H.open(port, {});
+      const { browser, page, logs } = await H.open(port, { scene: 'couple' });
       const which = [3, 4, 5, 6].filter(want);
       const res = await runInPage(page, which);
       for (const r of res) row(r.name, r.ok, r.detail);
       await browser.close();
     }
     if (want(7)) {
-      const { browser, page, logs } = await H.open(port, { query: 'captureMock=1' });
+      const { browser, page, logs } = await H.open(port, { query: 'captureMock=1', scene: 'couple' });
       try { await studioFlow(page, logs); } catch (e) { row('7 studio flow', false, String(e && e.stack || e)); await shot(page, 'studio_error.png').catch(() => {}); }
       // the first-time download panel (the real reader is not installed): shown, never clicked
       await page.evaluate(() => { window.__captureMock = false; });

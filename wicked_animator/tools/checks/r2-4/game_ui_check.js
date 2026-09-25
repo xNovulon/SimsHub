@@ -162,7 +162,7 @@ const check = (name, ok, detail) => { rows.push({ name, ok: !!ok, detail }); con
     return { checks: out };
   });
 
-  // ------------------------------------------------------------------ 4. Magic cowgirl: voice notes on both sims, voice=fa / voice=ma
+  // ------------------------------------------------------------------ 4. Magic cowgirl: no voices from Magic; voices added after play as voice=fa / voice=ma
   requests.length = 0;
   const magic = await run('4 magic voices', async () => {
     const out = [], C = (n, ok, d) => out.push([n, !!ok, d]);
@@ -175,10 +175,11 @@ const check = (name, ok, detail) => { rows.push({ name, ok: !!ok, detail }); con
     app.setPlaying(false); app.showcase && app.showcase(false);
     const p = app.store.project, F = p.sims.find(s => s.frame !== 'ym'), M = p.sims.find(s => s.frame === 'ym');
     const v = s => (s.sounds || []).filter(x => x.kind === 'voice');
-    const byMagic = v(M).length > 0;
-    // (the male voice set in the recipe is R2-2's magic.js change; until it lands he gets WooHoo lines here)
-    if (!byMagic) app.randomVoices(M.id, 'woohoo', 2, { quiet: true });
-    C('Magic cowgirl: voice notes on her' + (byMagic ? ' and him' : ' (him: added here, R2-2 recipe pending)'), ok && v(F).length > 0 && v(M).length > 0, { her: v(F).map(x => x.name), him: v(M).map(x => x.name), magicGaveHimVoices: byMagic });
+    // Magic adds no voices (looped lines sounded wrong); the player adds them in the Sounds step
+    C('Magic cowgirl: made, with no voice notes on either sim', ok && v(F).length === 0 && v(M).length === 0, { her: v(F).map(x => x.name), him: v(M).map(x => x.name) });
+    app.randomVoices(F.id, 'woohoo', 2, { quiet: true });
+    app.randomVoices(M.id, 'woohoo', 2, { quiet: true });
+    C('voices added in the Sounds step go on both', v(F).length > 0 && v(M).length > 0, { her: v(F).map(x => x.name), him: v(M).map(x => x.name) });
     app.audio.setMuted(false);
     app.setFrame(0);
     app.setPlaying(true);

@@ -10,7 +10,7 @@ const rows = [];
 const C = (name, ok, detail) => { rows.push({ name, ok: !!ok, detail }); };
 
 (async () => {
-  const { browser, page, logs } = await H.open(PORT, { w: 1366, h: 768 });
+  const { browser, page, logs } = await H.open(PORT, { w: 1366, h: 768, scene: 'couple' });
   await page.evaluate(async () => {
     document.getElementById('home').classList.add('hidden');
     for (let i = 0; i < 100 && !(app.posePresets && app.posePresets.length); i++) await new Promise(r => setTimeout(r, 100));

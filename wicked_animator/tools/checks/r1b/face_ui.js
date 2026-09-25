@@ -87,7 +87,7 @@ async function helpers(page) {
 
 (async () => {
   const t0 = Date.now();
-  const { browser, page, logs, writes } = await H.open(PORT, { w: 1366, h: 768 });
+  const { browser, page, logs, writes } = await H.open(PORT, { w: 1366, h: 768, scene: 'couple' });
   await helpers(page);
 
   // ================================================================ 1. plug-in points
@@ -709,7 +709,7 @@ async function helpers(page) {
       await H.shot(pg, path.join(OUT, `face_lid_rings_${tag}.png`));
     };
     await shotsFor(page, '1366');
-    const big = await H.open(PORT, { w: 1920, h: 1080 });
+    const big = await H.open(PORT, { w: 1920, h: 1080, scene: 'couple' });
     await helpers(big.page);
     await shotsFor(big.page, '1920');
     await big.page.evaluate(() => {

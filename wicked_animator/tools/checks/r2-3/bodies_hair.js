@@ -182,11 +182,11 @@ const TRAY = {
         const mean = centres.reduce((a, c) => a.add(c), new THREE.Vector3()).multiplyScalar(1 / centres.length);
         const drift = Math.max(...centres.map(c => c.distanceTo(mean)));
         // does it sit on the head? its top 2 cm below to 8 cm above the crown
-        out.push({ kind: x.kind, name: v.hairName, parts: v.parts.length, drift, fit: fits.get(x.sim.id), ms: v.hairMs });
+        out.push({ kind: x.kind, name: v.hairName, parts: v.parts.filter(m => m.userData.role === 'hair').length, drift, fit: fits.get(x.sim.id), ms: v.hairMs });
       }
       const vm = app.simViews.get(miss.id);
       app.applyPoses();
-      return { out, missing: { parts: (vm.parts || []).length, hairKey: vm.hairKey } };
+      return { out, missing: { parts: (vm.parts || []).filter(m => m.userData.role === 'hair').length, hairKey: vm.hairKey } };   // (a Tray sim arrives dressed: count its hair only)
     }, TRAY);
     for (const h of hair.out) {
       rows.push([`${h.kind} hair on a Tray sim: its top sits on the crown (-2 to +8 cm)`, h.parts > 0 && h.fit >= -0.02 && h.fit <= 0.08, `${(h.name || '').slice(0, 44)} · ${h.parts} meshes · top ${h.fit !== undefined ? (h.fit * 100).toFixed(1) : '-'} cm from the crown`]);

@@ -120,7 +120,7 @@ function makeProxy() {
 }
 
 async function open(port, { w = 1366, h = 768, reducedMotion = false, intercept = true, extraWrites = [], allow = [], memory = false,
-  url = '/', query = '', headless = 'new', timeout = 180000, args = [], beforeLoad = null } = {}) {
+  url = '/', query = '', headless = 'new', timeout = 180000, args = [], beforeLoad = null, scene = null } = {}) {
   port = +port;
   if (REFUSED.has(port)) throw new Error(`port ${port} belongs to someone else (the user's app, the Sims Hub or the verifier)`);
   const base = `http://127.0.0.1:${port}`;
@@ -245,6 +245,8 @@ async function open(port, { w = 1366, h = 768, reducedMotion = false, intercept 
   const sep = url.includes('?') ? '&' : '?';
   await page.goto(`${base}${url}${sep}slot=test${query ? '&' + query : ''}`, { waitUntil: 'domcontentloaded', timeout });
   await page.waitForSelector('#loading.done', { timeout }).catch(() => logs.push({ type: 'harness', text: 'the app never became ready (#loading.done)' }));
+  // the app opens on an empty scene; scene: 'couple' starts the check from the ready-made couple instead
+  if (scene) await page.evaluate(t => { if (!app.store.project.sims.length) app.newScene(false, false, t); }, scene).catch(e => logs.push({ type: 'harness', text: 'no ' + scene + ' scene: ' + e.message }));
   return { browser, page, logs, writes, passed, memory: mem, proxy: proxy.stats, base };
 }
 

@@ -194,7 +194,8 @@ def main():
             page.keyboard.press('Control+z')
             time.sleep(0.3)
             undone = page.evaluate("app.store.project.sims.map(s => s.keys.length)")
-            row('3. one Ctrl+Z takes it back', undone == before, '%s -> %s' % (after['keys'], undone))
+            # an empty scene gets a sim for the moves: Ctrl+Z takes the moves back and leaves it in its starting pose
+            row('3. one Ctrl+Z takes it back', undone == (before or [1]), '%s -> %s' % (after['keys'], undone))
 
             # 4. Ctrl+K
             page.keyboard.press('Control+k')
