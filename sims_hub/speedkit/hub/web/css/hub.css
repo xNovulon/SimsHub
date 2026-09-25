@@ -781,3 +781,9 @@ details.more[open] > :not(summary) { animation: rise .3s var(--ease) both; }
 
 /* a short "why" or "how to" that stays folded until asked for */
 details.more.why p { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; max-width: 72ch; }
+
+/* a program, not a web page: app text and pictures can't be highlighted or dragged out; what you may want to copy
+   (text boxes, file paths, error details) still can */
+body { -webkit-user-select: none; user-select: none; }
+input, textarea, select, [contenteditable], pre, code, kbd, .path, .selectable, .tech, details.tech { -webkit-user-select: text; user-select: text; }
+img, a, svg { -webkit-user-drag: none; }

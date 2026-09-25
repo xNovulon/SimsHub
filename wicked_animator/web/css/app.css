@@ -774,3 +774,9 @@ html.reduce-motion #app { transition: none; }
 .remover-sim { border: 1px solid var(--line-2); border-radius: 12px; padding: 10px 12px; }
 .remover-name { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .remover-name .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* a program, not a web page: app text and pictures can't be highlighted or dragged out; what you may want to copy
+   (text boxes, file paths, error details) still can */
+body { -webkit-user-select: none; user-select: none; }
+input, textarea, select, [contenteditable], pre, code, kbd, .path, .selectable, .tech, details.tech { -webkit-user-select: text; user-select: text; }
+img, a, svg { -webkit-user-drag: none; }

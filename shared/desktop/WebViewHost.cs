@@ -3,6 +3,7 @@
 // this Windows user; no administrator needed) before the window opens.
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Web.WebView2.Core;
 
@@ -13,6 +14,28 @@ public static class WebViewHost
     const string LoaderVersion = "1.0.3179.45";
     const string RuntimeSetupUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";   // Microsoft's Evergreen bootstrapper
     static bool _loaderSet;
+
+    // Right-click like a program, not a browser: no browser menu anywhere ("Open link in new window", "Save link
+    // as"...); in a text box only Cut, Copy, Paste and Select all. The page's own menus (the animator's timeline and
+    // bones) still open: they handle the right-click before this is asked.
+    static readonly string[] TextMenu = { "cut", "copy", "paste", "selectAll" };
+
+    public static void AppMenus(CoreWebView2 w)
+    {
+        w.Settings.AreDefaultContextMenusEnabled = true;
+        w.ContextMenuRequested += (_, e) =>
+        {
+            if (!e.ContextMenuTarget.IsEditable)
+            {
+                e.Handled = true;
+                return;
+            }
+            foreach (var item in e.MenuItems.ToList())
+                if (!TextMenu.Contains(item.Name)) e.MenuItems.Remove(item);
+            while (e.MenuItems.Count > 0 && e.MenuItems[0].Kind == CoreWebView2ContextMenuItemKind.Separator) e.MenuItems.RemoveAt(0);
+            if (e.MenuItems.Count == 0) e.Handled = true;
+        };
+    }
 
     // Throws WebView2RuntimeNotFoundException when the runtime is missing and could not be installed.
     public static async Task<CoreWebView2Environment> Create(string browserArgs, Action<string> status)

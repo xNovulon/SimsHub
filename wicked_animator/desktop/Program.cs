@@ -523,7 +523,7 @@ sealed class MainForm : Form
     void Configure(CoreWebView2 w)
     {
         var s = w.Settings;
-        s.AreDefaultContextMenusEnabled = false;     // right-drag looks around; the app has its own menus
+        WebViewHost.AppMenus(w);                     // no browser right-click menu; right-drag looks around, the app has its own menus
         s.AreDevToolsEnabled = _devtools;
         s.IsStatusBarEnabled = false;
         s.IsZoomControlEnabled = false;              // Ctrl+wheel must not zoom the whole app

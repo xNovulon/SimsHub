@@ -64,6 +64,7 @@ import json
 import os
 import re
 import sys
+import time
 from collections import namedtuple
 
 from .library import SIMS, game_running
@@ -1416,7 +1417,8 @@ def switch(profile, dry_run=True, lib=None, sims=SIMS, home=None, fastpack_dir=N
         pack_info = _ensure_pack(fm, P, lib, dry_run, update_pack, check_game, progress, refs, fam)
     try:
         plan = _plan_and_run(profile, P, doc, lib, fm, keep, keep_source, verdicts, companions_cache, pack_info,
-                             pack_before, dry_run, running, check_game, scan, mods_switch_path, slot, save_info)
+                             pack_before, dry_run, running, check_game, scan, mods_switch_path, slot, save_info,
+                             progress=progress)
         if not dry_run and plan.get('journal') and (pack_info or {}).get('brought_home'):
             # undo_switch of this switch also puts back the packs that were brought home for the update
             _annotate_journal(P.home, plan['journal'], 'packs_brought_home', pack_info['brought_home'])
@@ -1462,8 +1464,10 @@ def _read_save_info(P, slot):
 
 
 def _plan_and_run(profile, P, doc, lib, fm, keep, keep_source, verdicts, companions_cache, pack_info, pack_before,
-                  dry_run, running, check_game, scan, mods_switch_path, slot=None, save_info=None):
+                  dry_run, running, check_game, scan, mods_switch_path, slot=None, save_info=None, progress=None):
     sims, home, fastpack_dir = P.sims, P.home, P.fastpack
+    if progress:
+        progress('mods', None, 'Working out which mod files to load')
     inv = inventory(P)
     before = current(sims=sims, home=home, fastpack_dir=fastpack_dir, keep=keep, mods_switch_path=mods_switch_path, _inv=inv)
     plan = _build_plan(profile, P, inv, doc, lib if profile != 'full' else None, fm, keep, keep_source, verdicts,
@@ -1503,7 +1507,7 @@ def _plan_and_run(profile, P, doc, lib, fm, keep, keep_source, verdicts, compani
         extra = {'save_slot': slot, 'pack_dir': P.save_dir(slot), 'save_name': info.get('name'),
                  'save_slot_id': info.get('slot_id'), 'save_guid': info.get('guid'),
                  'installed_nowhere': _installed_nowhere(P.save_dir(slot), 'savepack.json')}
-    return _public(_execute(plan, P, inv, doc, lib, check_game, scan, extra))
+    return _public(_execute(plan, P, inv, doc, lib, check_game, scan, extra, progress=progress))
 
 
 def _installed_nowhere(pack_dir, manifest):
@@ -1546,7 +1550,7 @@ def _quarantine_thumbcache(P, profile, check_game):
     return tj.id
 
 
-def _execute(plan, P, inv, doc, lib, check_game, scan, extra=None):
+def _execute(plan, P, inv, doc, lib, check_game, scan, extra=None, progress=None):
     """Carry out a plan inside one 'profile' journal; undo it automatically if a step fails (Ctrl+C
     included). The thumbnail cache, when the loaded CC changes, goes first through its own journal."""
     profile = plan['profile']
@@ -1569,9 +1573,16 @@ def _execute(plan, P, inv, doc, lib, check_game, scan, extra=None):
     staging = os.path.join(P.home, 'staging', j.id)
     try:
         with j:
-            for mv in plan['moves']:
+            # moving thousands of files takes minutes: say how far it is (at most twice a second)
+            total, last = len(plan['moves']), 0.0
+            for n, mv in enumerate(plan['moves']):
+                if progress and time.time() - last > 0.5:
+                    last = time.time()
+                    progress('mods', n / max(1, total), 'Moving mod files: %s of %s' % (format(n, ','), format(total, ',')))
                 j.move(mv['src'], mv['dst'])
                 done.append((mv['op'], mv['rel']))
+            if progress:
+                progress('mods', None, 'Checking the Mods folder')
             for s in plan['special']:
                 if s['op'] == 'quarantine':
                     j.quarantine(s['src'])

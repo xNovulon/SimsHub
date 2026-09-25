@@ -429,7 +429,9 @@ sealed class MainForm : Form
         s.IsPasswordAutosaveEnabled = false;
         s.IsGeneralAutofillEnabled = false;
         s.IsSwipeNavigationEnabled = false;
+        s.IsPinchZoomEnabled = false;                // a touchpad pinch must not zoom the whole app
         s.IsBuiltInErrorPageEnabled = false;
+        WebViewHost.AppMenus(w);                     // no browser right-click menu
         _web.AllowExternalDrop = false;
         _ = w.AddScriptToExecuteOnDocumentCreatedAsync(
             $"window.novulonDesktop = {{ app: 'hub', version: '{App.Version}', commit: '{Brand.Current.Commit ?? ""}' }};");
