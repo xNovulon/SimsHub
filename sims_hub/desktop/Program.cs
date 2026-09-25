@@ -73,8 +73,14 @@ static class App
         Application.EnableVisualStyles();                 // before any dialog (TaskDialog needs them)
         Application.SetCompatibleTextRenderingDefault(false);
         ShowMessage = Native.RegisterWindowMessage("Novulon.SimsHub.Show");
+        if (Setup.FinishUpdate(args)) return;             // a new program putting itself in place after an update
 
         var single = new Mutex(true, MutexName, out bool owned);
+        if (!owned && Setup.EndStaleCopy())
+        {
+            try { owned = single.WaitOne(TimeSpan.FromSeconds(5)); }
+            catch (AbandonedMutexException) { owned = true; }
+        }
         if (!owned)
         {
             // already open: bring that window to the front (and let it take the foreground)
@@ -346,7 +352,7 @@ sealed class MainForm : Form
             if (ready.Failed) { Quit(); return; }
             if (ready.Launch != null)
             {
-                Setup.SetLaunch(ready.Launch);           // Main opens it once this program has ended
+                Setup.SetLaunch(ready);                  // Main opens it once this program has ended
                 Quit(); return;
             }
             App.Root = ready.Root;

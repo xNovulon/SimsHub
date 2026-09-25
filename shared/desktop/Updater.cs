@@ -39,9 +39,14 @@ public static class Updater
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true, WriteIndented = true,
     };
 
-    // Restart: the program itself was replaced - open the new one. Changed: files replaced or removed.
-    public record Result(bool Restart, int Changed);
-    static readonly Result Nothing = new(false, 0);
+    // Staged: a new program is ready there - open it, and it puts itself in place (Setup.FinishUpdate).
+    // Changed: files replaced or removed.
+    public record Result(string Staged, int Changed);
+    static readonly Result Nothing = new(null, 0);
+
+    // Where a new program waits until the running one has ended. The running program's own file is never swapped:
+    // it is a single-file program that reads parts of itself from that file while it runs.
+    public static string StagedPath => Path.Combine(Dir, B.ExeName);
 
     // What the folder has from GitHub: the commit, each file's git hash (to tell your own edits apart), and the
     // program's hash (size|time|sha256, so it is only worked out again when the program changes).
@@ -79,8 +84,8 @@ public static class Updater
             int changed = 0;
             if (commit != null && commit != state.Commit)
                 changed = await Files(http, root, commit, state, status);
-            bool restart = program && await Program(http, root, state, status);
-            return new Result(restart, changed);
+            var staged = program ? await Program(http, root, state, status) : null;
+            return new Result(staged, changed);
         }
         catch (Exception ex)
         {
@@ -181,14 +186,15 @@ public static class Updater
     }
 
     // -------------------------------------------------------------- 2. the program
-    // The published build, when this program is a different one: downloaded, checked, swapped in.
-    static async Task<bool> Program(HttpClient http, string root, State state, Action<string> status)
+    // The published build, when this program is a different one: downloaded, checked and put in StagedPath.
+    // -> the staged program, or null.
+    static async Task<string> Program(HttpClient http, string root, State state, Action<string> status)
     {
         var self = Environment.ProcessPath;
         var installed = Path.Combine(root, B.ExeName);
-        if (self == null || !SamePath(self, installed)) return false;   // e.g. a developer's build folder
+        if (self == null || !SamePath(self, installed)) return null;    // e.g. a developer's build folder
         var want = await PublishedSha(http);
-        if (want == null || want == ExeSha(self, state)) return false;  // offline, none published yet, or this one
+        if (want == null || want == ExeSha(self, state)) return null;   // offline, none published yet, or this one
 
         Log($"a new {B.ExeName} is published ({want[..12]})");
         var tmp = Path.Combine(Dir, "new.exe");
@@ -199,22 +205,20 @@ public static class Updater
             await Ui.Download(http, url, tmp, p => status($"Downloading the new version ({p:P0})..."));
             var data = await File.ReadAllBytesAsync(tmp);
             var got = Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
-            if (got != want) { Log($"the downloaded {B.ReleaseAsset} is not the published one yet ({got[..12]}) - next start"); return false; }
+            if (got != want) { Log($"the downloaded {B.ReleaseAsset} is not the published one yet ({got[..12]}) - next start"); return null; }
             if (data.AsSpan().IndexOf(Encoding.Unicode.GetBytes(B.Marker)) < 0)
             {
                 Log($"not replacing {B.ExeName}: the published one cannot update itself");
-                return false;
+                return null;
             }
-            File.Move(self, self + ".old", true);               // a running program can't be overwritten, but can be moved aside
-            File.Move(tmp, self, true);
-            Log($"{B.ExeName} updated");
-            return true;
+            File.Move(tmp, StagedPath, true);
+            Log($"the new {B.ExeName} is ready; it goes in place once this one has ended");
+            return StagedPath;
         }
         catch (Exception ex)
         {
             Log($"could not update {B.ExeName}: {ex.Message}");
-            if (!File.Exists(self) && File.Exists(self + ".old")) File.Move(self + ".old", self);   // put it back
-            return false;
+            return null;
         }
         finally { try { File.Delete(tmp); } catch { } }
     }
@@ -383,10 +387,12 @@ public static class Updater
         catch { }
     }
 
-    // the program moved aside by the last update (it could not be removed while it ran)
+    // the program moved aside by the last update, and the new one that put itself in place (they could not be
+    // removed while they ran)
     static void RemoveOldExe()
     {
         try { var p = Environment.ProcessPath; if (p != null && File.Exists(p + ".old")) File.Delete(p + ".old"); } catch { }
+        try { if (File.Exists(StagedPath) && !SamePath(StagedPath, Environment.ProcessPath ?? "")) File.Delete(StagedPath); } catch { }
     }
 
     // A git checkout of this repository (a .git folder here or above, pointing at it)
@@ -418,5 +424,5 @@ public static class Updater
         File.Move(tmp, StatePath, true);
     }
 
-    static void Log(string line) => Ui.Log(Path.Combine("update", "update.log"), line);
+    public static void Log(string line) => Ui.Log(Path.Combine("update", "update.log"), line);
 }

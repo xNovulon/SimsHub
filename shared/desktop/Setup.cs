@@ -5,18 +5,22 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Novulon.Desktop;
 
 public static class Setup
 {
-    // Root: the app's folder. Launch: start this program instead once this one has ended (see RunLaunch).
-    // Failed: the app can't open (the user was told why).
-    public record Ready(string Root, string Launch, bool Failed);
+    // Root: the app's folder. Launch: start this program instead once this one has ended (see RunLaunch), with
+    // LaunchArgs in front of this program's own. Failed: the app can't open (the user was told why).
+    public record Ready(string Root, string Launch, bool Failed, string[] LaunchArgs = null);
 
+    const string FinishArg = "--finish-update";
     static string _launch;
+    static string[] _launchArgs = Array.Empty<string>();
     static string LogFile => Path.Combine(Brand.Current.DataDir, "setup.log");
 
     // The app's folder this program belongs to: the folder it is in, or one above it (a developer's build folder).
@@ -40,7 +44,10 @@ public static class Setup
         {
             var up = await Task.Run(() => Updater.Run(root, status));
             b.Commit = Updater.InstalledCommit();
-            return new Ready(root, up.Restart ? Environment.ProcessPath : null, false);
+            // a new program: it takes this one's place once this one has ended, then opens
+            if (up.Staged != null)
+                return new Ready(root, up.Staged, false, new[] { FinishArg, Environment.ProcessPath, Environment.ProcessId.ToString() });
+            return new Ready(root, null, false);
         }
 
         // opened from a download: install (or update) the app in its usual place, then open that copy
@@ -75,7 +82,11 @@ public static class Setup
     }
 
     // After this program has ended (and let go of the app's single-instance lock): open the program Prepare named.
-    public static void SetLaunch(string exe) => _launch = exe;
+    public static void SetLaunch(Ready ready)
+    {
+        _launch = ready.Launch;
+        _launchArgs = ready.LaunchArgs ?? Array.Empty<string>();
+    }
 
     public static void RunLaunch(string[] args)
     {
@@ -83,10 +94,86 @@ public static class Setup
         try
         {
             var psi = new ProcessStartInfo(_launch) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(_launch) };
+            foreach (var a in _launchArgs) psi.ArgumentList.Add(a);
             foreach (var a in args) psi.ArgumentList.Add(a);
             Process.Start(psi);
         }
         catch (Exception ex) { Ui.Fatal("The app was updated", "Open it again to use the new version.\n\n" + ex.Message); }
+    }
+
+    // The first thing Main does. Opened as "<new program> --finish-update <app's program> <pid> [args]" by the program
+    // it replaces: waits for that one to end, puts itself in its place, opens it there and ends. -> true: Main returns.
+    public static bool FinishUpdate(string[] args)
+    {
+        if (args.Length < 3 || args[0] != FinishArg) return false;
+        var target = args[1];
+        var rest = args.Skip(3).ToArray();
+        try
+        {
+            try { using var old = Process.GetProcessById(int.Parse(args[2])); old.WaitForExit(30000); }
+            catch (ArgumentException) { /* already ended */ }
+            Exception last = null;
+            for (int i = 0; i < 40; i++)
+            {
+                try
+                {
+                    // the old program is moved aside, not deleted: if anything goes wrong it goes back
+                    if (File.Exists(target)) File.Move(target, target + ".old", true);
+                    File.Copy(Environment.ProcessPath, target, true);
+                    last = null;
+                    break;
+                }
+                catch (Exception ex) { last = ex; Thread.Sleep(250); }   // still closing, or a virus scanner has it open
+            }
+            if (last != null)
+            {
+                Updater.Log($"could not put the new {Brand.Current.ExeName} in place: {last.Message}");
+                if (!File.Exists(target) && File.Exists(target + ".old")) File.Move(target + ".old", target);
+            }
+            else Updater.Log($"{Brand.Current.ExeName} updated");
+        }
+        catch (Exception ex) { Updater.Log("update not finished: " + ex.Message); }
+        try
+        {
+            var psi = new ProcessStartInfo(target) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(target) };
+            foreach (var a in rest) psi.ArgumentList.Add(a);
+            Process.Start(psi);
+        }
+        catch (Exception ex) { Ui.Fatal("The app was updated", "Open it again to use the new version.\n\n" + ex.Message); }
+        return true;
+    }
+
+    // Another copy holds the app's lock. A copy that started before this program's file was written is an old
+    // program that replaced its own file in an update and could not go on (the updater before this one did that):
+    // it is ended, so the app opens. -> true when one was ended.
+    public static bool EndStaleCopy()
+    {
+        try
+        {
+            var self = Environment.ProcessPath;
+            if (self == null) return false;
+            var written = File.GetLastWriteTime(self);
+            bool ended = false;
+            foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(self)))
+            {
+                using (p)
+                {
+                    try
+                    {
+                        if (p.Id == Environment.ProcessId || p.StartTime >= written) continue;
+                        if (!Updater.SamePath(p.MainModule?.FileName ?? "", self)) continue;
+                        var started = p.StartTime;
+                        p.Kill();
+                        p.WaitForExit(5000);
+                        ended = true;
+                        Ui.Log("setup.log", $"ended an old copy left from an update (started {started:HH:mm:ss})");
+                    }
+                    catch { /* not ours to end, or already gone */ }
+                }
+            }
+            return ended;
+        }
+        catch { return false; }
     }
 
     // This program goes into the app's folder when there is none there yet, or when it is the newest published build
