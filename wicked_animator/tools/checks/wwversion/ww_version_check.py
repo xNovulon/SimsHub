@@ -12,6 +12,7 @@ scan (doctor.scan) to see the card among the others. Nothing outside %TEMP% (and
 Prints a PASS/FAIL table, exits 1 when anything fails.
 """
 import os
+import re
 import shutil
 import struct
 import sys
@@ -44,7 +45,7 @@ def row(name, ok, detail=''):
 
 def make(name, ww=True, note=None, note_time=None, log=None, log_time=None, script_time=None, mods=True, twice=False):
     """A fake 'The Sims 4' folder. note: text of last_version_control.ww; log: the version the log's start line says."""
-    root = os.path.join(BASE, name, 'The Sims 4')
+    root = os.path.join(BASE, re.sub(r'[^A-Za-z0-9 _.-]', '_', name), 'The Sims 4')     # a case name like 'scan: very old' is not a Windows folder name
     os.makedirs(root)
     if mods:
         os.makedirs(os.path.join(root, 'Mods', 'scripts'))
