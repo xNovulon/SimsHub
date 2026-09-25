@@ -18,7 +18,7 @@ const A = await import(webUrl('js/animation.js'));
 const { makeRig } = await import('./lib/rig.mjs');
 
 const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
-const read = f => fs.readFileSync(path.join(DIR, f), 'utf8');
+const read = f => fs.readFileSync(path.join(DIR, f), 'utf8').replace(/\r\n/g, '\n');   // git may check the samples out with Windows line endings
 const rows = [];
 const row = (name, ok, detail = '') => { rows.push({ name, ok: !!ok, detail }); return ok; };
 const deg = r => (r * 180) / Math.PI;
