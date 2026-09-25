@@ -15,7 +15,7 @@ flagged account. Don't use it.
 | Branch | State |
 | --- | --- |
 | `main` | Live. This is what users and auto-updates get. |
-| `next` | `main` plus the animator's clothing preview. It's merged but hasn't been tested together with the rest. It is one commit on top of `main`. |
+| `next` | Released: its clothing preview is in `main`. Nothing left on it. |
 | `wip/fbx-import` | FBX motion-file import. Unfinished. Builds on `next`. |
 | `wip/hub-translations` | Hub in 6 languages. Unfinished: Spanish was started, the rest isn't done. Builds on `next`. |
 | `wip/animator-translations` | Animator in 6 languages. Unfinished. Builds on `next`. It has unresolved conflict markers in `wicked_animator/web/js/dialogs/export.js`, `dialogs/tray.js`, `share.js` and `steps/body.js`. |
@@ -36,9 +36,7 @@ The animator redesign was stopped before anything was saved, so it has to be red
 - `wicked_animator/data/ww_example_objects.json` is WickedWhims' list of places, uploaded by the owner. Keep it.
 
 ## Next steps, in order
-1. **Check `next`, then release it.**
-   - Run every check listed below.
-   - If they pass, update `main` to `next`. It's a fast-forward: `git push origin next:main`.
+1. Done: `next` is released into `main`.
 2. **Finish FBX import** (`wip/fbx-import`).
    - Plan: load the file with three.js's FBXLoader, sample the joints' world positions for each frame, and feed
      them through the same path the BVH import uses (`web/js/capture/bvh.js`, `web/js/mocapfile.js`).
@@ -59,8 +57,17 @@ The animator redesign was stopped before anything was saved, so it has to be red
      polished timeline, dialogs and motion that respects reduced-motion.
    - Use CSS and small changes to the markup. Keep ids and data attributes as they are.
    - The Hub redesign (`sims_hub/speedkit/hub/web/css/hub.css`) is the style reference.
-6. **Update the README screenshot** (`.github/assets/sims-hub-home.png`) once the text and design are final.
-7. **The owner tests in the game.** These were only tested without The Sims 4:
+6. **Ideas from research** (what players and Blender animators ask for that the apps don't have yet):
+   - Hub: a Tray checker that lists the CC a saved household or lot uses and what is missing, before it's placed.
+   - Hub: an update checker for script mods the player tracks (a link per mod, flagged when a newer file is out).
+   - Animator: check that the Details step covers every WickedWhims tuning field creators edit by hand (actor
+     offsets, naked type per actor, climax and PULLED_OUT events).
+7. **Update the README screenshot** (`.github/assets/sims-hub-home.png`) once the text and design are final.
+8. **The owner tests in the game.** These were only tested without The Sims 4:
+   - Magic's claps and wet sounds (placed on each stroke's deepest moment; Magic adds no voices)
+   - a growing erection (the penis base's scale channel: does the game play bone scale?)
+   - lips pulling along in oral animations
+   - Tray sims' makeup and outfits, the clothes remover
    - own sounds
    - the "Fit hands to each sim's body" switch
    - the clothes preview
