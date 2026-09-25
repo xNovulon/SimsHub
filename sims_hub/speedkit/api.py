@@ -31,6 +31,7 @@ import sys
 import threading
 import time
 import traceback
+import zipfile
 
 from . import library as L
 from . import journal as J
@@ -72,6 +73,8 @@ DEFAULTS = {
     'max_package_bytes': 1_900_000_000,
     'prune': True,                       # keep only the newest previous pack copy in the quarantine
     'processes': True,                   # preflight looks at other programs' memory
+    'find_places': None,                 # [(place, folder), ...] "Find missing CC" also searches (tests use
+                                          # temp folders); None = the user's real Downloads and Desktop
 }
 _cfg = dict(DEFAULTS)
 _lock = threading.RLock()
@@ -652,7 +655,8 @@ def _title(j):
         return 'Changed the graphics settings'
     return {'caches': 'Cleared the game caches', 'merge': 'Combined mod files', 'inbox': 'Installed new downloads',
             'dedup': 'Removed duplicate copies', 'usedpack': 'Made the used-CC pack', 'unmerge': 'Unmerged a merged file',
-            'setaside': 'Set CC files aside'}.get(kind, 'Changed %s' % kind)
+            'setaside': 'Set CC files aside',
+            'restore': 'Installed missing CC found on this PC'}.get(kind, 'Changed %s' % kind)
 
 
 def _disk():
@@ -1679,10 +1683,47 @@ def _cc_thumbs():
     return CB.ThumbCache(_cc_paths()[1])
 
 
+_SHELL_FOLDERS_KEY = r'Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'
+_DOWNLOADS_GUID = '{374DE290-123F-4565-9164-39C4925E467B}'      # Downloads has no plain name in the registry
+
+
+def _known_folder(value, fallbacks):
+    """One Windows known folder (its User Shell Folders registry value, %-expanded), or the first fallback
+    that exists, or the first fallback when none do."""
+    if os.name == 'nt':
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _SHELL_FOLDERS_KEY) as k:
+                raw, _ = winreg.QueryValueEx(k, value)
+            p = os.path.expandvars(raw) if raw else ''
+            if p and os.path.isdir(p):
+                return p
+        except OSError:
+            pass
+    for p in fallbacks:
+        if p and os.path.isdir(p):
+            return p
+    return fallbacks[0] if fallbacks else None
+
+
+def _find_places():
+    """Where "Find missing CC" also looks besides the safe copies and the Inbox: the user's Downloads and
+    Desktop. Overridable with the 'find_places' setting (tests point it at temp folders)."""
+    override = _cfg['find_places']
+    if override is not None:
+        return [(place, folder) for place, folder in override]
+    home = os.path.expanduser('~')
+    downloads = _known_folder(_DOWNLOADS_GUID, [os.path.join(home, 'Downloads')])
+    desktop = _known_folder('Desktop', [os.path.join(home, 'Desktop'), os.path.join(home, 'OneDrive', 'Desktop')])
+    return [(place, folder) for place, folder in (('Downloads', downloads), ('Desktop', desktop)) if folder]
+
+
 def _cc_side_places():
-    """Where CC that is not in Mods may still be: the Hub's safe copies (every journal home) and the Inbox."""
+    """Where CC that is not in Mods may still be: the Hub's safe copies (every journal home), the Inbox, and
+    the user's Downloads and Desktop (including .package files inside .zip archives there)."""
     places = [('safe copies', os.path.join(h, 'quarantine')) for h in _journal_homes()]
     places.append(('Inbox', _inbox_path()))
+    places += _find_places()
     return places
 
 
@@ -1695,7 +1736,9 @@ def _cc_extra(more=()):
 
     def old_caches():
         out = []
-        for _, q in _cc_side_places()[:-1]:
+        for place, q in _cc_side_places():
+            if place != 'safe copies':
+                continue
             for dp, dn, fn in os.walk(q):
                 out += [os.path.join(dp, n) for n in fn if n.lower() == 'localthumbcache.package']
 
@@ -1974,21 +2017,17 @@ class _SideLookup:
         return self.idx.side_find(instances)
 
 
-@_safe
-def save_cc(slot, progress=None):
-    """The CC one save uses ('tray': the households and lots in the game's library): the installed CC files with
-    their pictures, the CC per household and sim, and the CC it uses that is installed nowhere (by id - and by
-    name when a copy is in the safe copies or the Inbox). Read-only. Returns {'ok', 'slot', 'name', 'household',
-    'counts', 'files', 'households', 'missing', 'index'}."""
+def _cc_usage(slot, tell):
+    """(True, {'slot', 'name', 'household', 'rep', 'state'}) or (False, an {'ok': False, 'message'} to return
+    as-is): the CC usage report for one save or the Tray (ccbrowser.usage_report's raw shape), shared by
+    save_cc and cc_install_found."""
     from . import ccbrowser as CB
-    tell = _Progress(progress)
-    tell('read', None, 'Reading what this save uses')
     played, name, household = None, None, None
     if slot == 'tray':
         refs = U.load_refs(_saves(), _tray(), _cfg['refs_db'])
         tray_srcs = [s for s in refs.sources if s.kind not in ('save', 'backup')]
         if not tray_srcs:
-            return {'ok': False, 'message': 'The in-game library has no households or lots yet.'}
+            return False, {'ok': False, 'message': 'The in-game library has no households or lots yet.'}
         sub = U.Refs(tray_srcs, {s.fp: refs.by_fp[s.fp] for s in tray_srcs if s.fp in refs.by_fp},
                      {s.fp: refs.sims.get(s.fp, []) for s in tray_srcs}, {}, False)
         name = 'In-game library'
@@ -1996,18 +2035,18 @@ def save_cc(slot, progress=None):
         try:
             slot = S.slot_name(slot)
         except S.SaveError:
-            return {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
+            return False, {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
         path = os.path.join(_saves(), slot + '.save')
         if not os.path.isfile(path):
-            return {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
+            return False, {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
         try:
             if _run_lock.locked():          # a Play is running: use what is known, parse nothing
                 sub = S.save_refs(U.load_refs(_saves(), _tray(), _cfg['refs_db']), slot)
             else:
                 sub = S.scan_one(_saves(), slot, _cfg['refs_db'])
         except S.SaveError:
-            return {'ok': False, 'message': 'This save could not be read just now (the game may be saving it). '
-                                            'Try again in a minute.'}
+            return False, {'ok': False, 'message': 'This save could not be read just now (the game may be saving '
+                                                    'it). Try again in a minute.'}
         try:
             h = S.read_header(path)
             played, name, household = h.get('household_id'), h.get('name'), h.get('household')
@@ -2032,6 +2071,22 @@ def save_cc(slot, progress=None):
     finally:
         idx.close()
         lib.close()
+    return True, {'slot': slot, 'name': name or slot, 'household': household, 'rep': rep, 'state': state}
+
+
+@_safe
+def save_cc(slot, progress=None):
+    """The CC one save uses ('tray': the households and lots in the game's library): the installed CC files with
+    their pictures, the CC per household and sim, and the CC it uses that is installed nowhere (by id - and by
+    name, place and (for a copy inside a .zip) archive name when a copy turns up in the safe copies, the Inbox,
+    Downloads or Desktop). Read-only. Returns {'ok', 'slot', 'name', 'household', 'counts', 'files',
+    'households', 'missing', 'index'}."""
+    tell = _Progress(progress)
+    tell('read', None, 'Reading what this save uses')
+    ok, data = _cc_usage(slot, tell)
+    if not ok:
+        return data
+    rep = data['rep']
     files = []
     for f in rep['files']:
         view = _cc_view(f['item'])
@@ -2042,11 +2097,144 @@ def save_cc(slot, progress=None):
                               {'kind': 'object', 'id': f['first_object']} if f['first_object'] else None),
                       'sims': f['sims'], 'sims_count': f['sims_count']})
     missing = [dict(m, what=CC_MISSING_KINDS.get(m['kind'], 'CC'),
-                    found=[{'place': x['place'], 'name': x['name'], 'creator': x['creator']} for x in m['found']])
+                    found=[{'place': x['place'], 'name': x['name'], 'path': x['path'], 'creator': x['creator'],
+                            'zip': x.get('zip')} for x in m['found']])
                for m in rep['missing']]
-    return {'ok': True, 'slot': slot, 'name': name or slot, 'household': household, 'counts': rep['counts'],
-            'files': files, 'households': rep['households'], 'missing': missing, 'index': state,
-            'message': '' if files or missing else 'This save uses no CC.'}
+    return {'ok': True, 'slot': data['slot'], 'name': data['name'], 'household': data['household'],
+            'counts': rep['counts'], 'files': files, 'households': rep['households'], 'missing': missing,
+            'index': data['state'], 'message': '' if files or missing else 'This save uses no CC.'}
+
+
+FOUND_FOLDER = 'Found by Sims Hub'                 # <Mods>\Found by Sims Hub\...: where cc_install_found writes
+
+
+def _cc_free_name(dest_dir, taken, source_name):
+    """A '<name>.package' not already in `taken` or on disk in dest_dir (never overwrites). The base name goes
+    through manifest.sanitize_name, so a name with unsafe characters, a reserved Windows device name (CON,
+    NUL, COM1...) or an unsafe length still lands as a real, creatable file."""
+    from . import manifest
+    base = manifest.sanitize_name(source_name)
+    name = base + '.package'
+    n = 2
+    while name.lower() in taken or os.path.exists(os.path.join(dest_dir, name)):
+        name = '%s (%d).package' % (base, n)
+        n += 1
+    return name
+
+
+def _cc_extract(found, tmp_path):
+    """Write one save_cc 'found' entry's bytes to tmp_path: a plain copy, or (found['path'] holding a
+    '<zip path>|<inner path>') the named entry read out of the zip - its inner path is only ever used to look
+    the entry up inside the zip, never to write anywhere, so it cannot write outside tmp_path. The zip copy is
+    bounded to CB.SIDE_ZIP_MAX_BYTES regardless of what the entry's own header claims, the same as indexing
+    (ccbrowser.side_update). True on success."""
+    from . import ccbrowser as CB
+    path = found.get('path') or ''
+    try:
+        if '|' in path:
+            zpath, inner = path.split('|', 1)
+            with zipfile.ZipFile(zpath) as zf, zf.open(inner) as src, open(tmp_path, 'wb') as dst:
+                total = 0
+                while True:
+                    chunk = src.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > CB.SIDE_ZIP_MAX_BYTES:
+                        raise ValueError('zip entry larger than expected')
+                    dst.write(chunk)
+        else:
+            shutil.copy2(path, tmp_path)
+        return True
+    except Exception as e:
+        _log_error('cc_install_found.extract', e)
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        return False
+
+
+@_safe
+def cc_install_found(slot, progress=None):
+    """Install into Mods a copy of every CC file this save (or the Tray) is missing that save_cc's 'missing'
+    found in the safe copies, the Inbox, Downloads or Desktop: one copy of each distinct found file, into
+    <Mods>\\Found by Sims Hub\\<name> (a free name if one is taken), as one undoable change (a Journal of kind
+    'restore'). Copies, never moves, the source; refuses while the game runs or another change runs; never
+    installs a script mod (only .package files - plain or inside a .zip - are ever found). A later run installs
+    nothing more for CC this already resolved. Returns {'ok', 'message', 'journal', 'installed': [file names],
+    'left': the number of missing items that turned up nowhere at all}."""
+    tell = _Progress(progress)
+    nothing = {'ok': False, 'journal': None, 'installed': [], 'left': 0}
+    if _game_running():
+        return dict(nothing, message='The Sims 4 is running. Close the game first, then try again.')
+    tell('read', None, 'Reading what this save uses')
+    # read-only (like save_cc): worked out before the lock, so it never mistakes this call's own lock for a
+    # Play/Prepare in progress (which would make it read stale, maybe empty, cached refs instead)
+    ok, data = _cc_usage(slot, tell)
+    if not ok:
+        return dict(nothing, message=data['message'])
+    missing = data['rep']['missing']
+    left = sum(1 for m in missing if not m['found'])
+    todo, seen_src = [], set()
+    for m in missing:
+        for f in m['found']:
+            if not f.get('path') or f['path'] in seen_src:
+                continue
+            seen_src.add(f['path'])
+            todo.append(f)
+    if not todo:
+        return dict(nothing, message='No missing CC was found in the safe copies, the Inbox, Downloads or '
+                                     'Desktop.', left=left)
+    with _run_lock:
+        dest_dir = os.path.join(_mods(), FOUND_FOLDER)
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            taken = {n.lower() for n in os.listdir(dest_dir)}
+        except OSError as e:
+            return dict(nothing, message=_plain(e), left=left)
+        note = 'installed %d missing CC file%s found on this PC: %s' % (
+            len(todo), '' if len(todo) == 1 else 's',
+            ', '.join(f['name'] for f in todo[:5]) + (' ...' if len(todo) > 5 else ''))
+        installed, journal_id = [], None
+        try:
+            with J.Journal('restore', note, home=_home(), sims=_sims(), check_game=_cfg['check_game']) as j:
+                journal_id = j.id
+                for n, f in enumerate(todo):
+                    tell('install', round(n / len(todo), 3), 'Installing %s' % f['name'])
+                    dest_name = _cc_free_name(dest_dir, taken, f['name'])
+                    tmp = os.path.join(dest_dir, '.new-%d-%d-%d.package' % (os.getpid(), threading.get_ident(), n))
+                    if not _cc_extract(f, tmp):
+                        continue
+                    try:
+                        j.put_new(tmp, os.path.join(dest_dir, dest_name))
+                    except J.JournalError as e:
+                        _log_error('cc_install_found.put_new', e)
+                        try:
+                            os.remove(tmp)
+                        except OSError:
+                            pass
+                        continue
+                    taken.add(dest_name.lower())
+                    installed.append(dest_name)
+        except J.JournalError as e:
+            return dict(nothing, message=_plain(e), left=left)
+        if installed:
+            try:
+                lib2 = _library()
+                try:
+                    lib2.scan()
+                finally:
+                    lib2.close()
+            except Exception as e:
+                _log_error('cc_install_found.rescan', e)
+    _cache.clear()
+    if not installed:
+        return dict(nothing, message='Nothing could be installed.', journal=journal_id, left=left)
+    msg = ('Installed %d file%s found on this PC into Mods\\%s. "Undo last change" on the Tools page removes '
+           'them again.' % (len(installed), '' if len(installed) == 1 else 's', FOUND_FOLDER))
+    tell('done', 1.0, msg)
+    return {'ok': True, 'message': msg, 'journal': journal_id, 'installed': installed, 'left': left}
 
 
 # ------------------------------------------------------------------------------------------ finding the game

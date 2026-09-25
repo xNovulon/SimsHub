@@ -112,6 +112,7 @@ def reset():
     with _lock:
         STATE = _initial_state()
         _cc_reset()
+        _CC_INSTALLED.clear()
 
 
 def _run(progress, steps):
@@ -242,6 +243,8 @@ def undo_last(progress=None):
             STATE['profile'] = {'name': 'full', 'save_slot': None, 'label': 'Full Start - all CC is loaded'}
         if last['kind'] == 'setaside':
             _cc_restore(last['id'])
+        if last['kind'] == 'restore':
+            _cc_uninstall_found(last['id'])
     on_undo(last)                    # patch day / save backups (stub_care.py)
     return {'ok': True, 'message': 'Undid the change from %s.' % last['when'].replace('T', ' '), 'journal': last['id']}
 
@@ -839,6 +842,16 @@ def _cc_restore(jid):
     STATE['library']['packages'] += len(back)
 
 
+def _cc_uninstall_found(jid):
+    """undo_last of a 'restore' change (cc_install_found): those files come back out of Mods\\Found by Sims Hub,
+    and the save goes back to showing them as missing."""
+    info = _CC_RESTORE.pop(jid, None)
+    if not info:
+        return
+    _CC_INSTALLED[info['slot']] = max(0, _CC_INSTALLED.get(info['slot'], 0) - info['count'])
+    STATE['library']['packages'] -= info['count']
+
+
 def cc_open(item_id):
     it = _cc_find(item_id)
     if not it:
@@ -856,6 +869,27 @@ _CC_SIMS = {
     'tray': [('Pancakes', False, ['Eliza Pancakes', 'Bob Pancakes']), ('Caliente', False, ['Nina Caliente'])],
 }
 
+# "Find missing CC" (docs/hub_contract.md): found copies for a save's missing CC, one from each place the Hub
+# looks - safe copies, Inbox, Downloads (inside a zip) and the Desktop. save_cc() hands these out to the first
+# few missing items; cc_install_found() consumes them from the front as they are "installed", so a fresh save_cc
+# shows fewer missing (and fewer found) each time.
+_QUARANTINE_DIR = r'C:\Users\basim\Documents\Electronic Arts\The Sims 4\SpeedKit\safe copies'
+_INBOX_DIR = r'C:\Users\basim\Documents\Electronic Arts\The Sims 4\SpeedKit\Inbox'
+_DOWNLOADS_ZIP = r'C:\Users\basim\Downloads\Wingssims_HairPack.zip'
+_DESKTOP_DIR = r'C:\Users\basim\Desktop'
+_CC_FINDS = [
+    {'place': 'safe copies', 'name': 'Trillyke_Earrings_Hoops.package', 'creator': 'Trillyke', 'zip': None,
+     'path': _QUARANTINE_DIR + '\\Trillyke_Earrings_Hoops.package'},
+    {'place': 'Inbox', 'name': '[Sentate] Aurora Top.package', 'creator': 'Sentate', 'zip': None,
+     'path': _INBOX_DIR + '\\[Sentate] Aurora Top.package'},
+    {'place': 'Downloads', 'name': 'Wingssims_Braids_03.package', 'creator': 'Wingssims', 'zip': 'Wingssims_HairPack.zip',
+     'path': _DOWNLOADS_ZIP + '|Wingssims_Braids_03.package'},
+    {'place': 'Desktop', 'name': 'Peacemaker_Sofa_02.package', 'creator': 'Peacemaker', 'zip': None,
+     'path': _DESKTOP_DIR + '\\Peacemaker_Sofa_02.package'},
+]
+_CC_INSTALLED = {}   # slot -> how many of _CC_FINDS a "cc_install_found" already used up
+_CC_RESTORE = {}      # journal id -> {'slot', 'count'}, so undo_last can put the count back
+
 
 def save_cc(slot, progress=None):
     """The CC one example save uses, per sim, and the CC it misses ('tray': the in-game library)."""
@@ -863,6 +897,7 @@ def save_cc(slot, progress=None):
         save = next((s for s in STATE['saves'] if s['slot'] == slot), None)
         items = [it for it in CC['items'] if it['kind'] == 'package' and it['category'] not in ('gameplay', 'poses')
                  and not it['broken']]
+        installed_n = _CC_INSTALLED.get(slot, 0)
     if slot != 'tray' and save is None:
         return {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed."}
     if progress:
@@ -893,11 +928,11 @@ def save_cc(slot, progress=None):
             h['sims'].append({'name': sname, 'role': 'sim', 'files': worn, 'parts': len(worn) + rnd.randint(0, 6),
                               'missing': 0})
         households.append(h)
-    n_missing = (save.get('cc_missing') or 0) if save else 4
+    base_missing = (save.get('cc_missing') or 0) if save else 4
+    n_missing = max(0, base_missing - installed_n)
     everyone = [(h['name'], s) for h in households for s in h['sims']]
     missing = []
-    finds = [[{'place': 'safe copies', 'name': 'Trillyke_Earrings_Hoops.package', 'creator': 'Trillyke'}],
-             [{'place': 'Inbox', 'name': '[Sentate] Aurora Top.package', 'creator': 'Sentate'}]]
+    finds = _CC_FINDS[installed_n:]
     for k in range(n_missing):
         kind = 'object' if k % 6 == 5 else 'look' if k % 9 == 7 else 'cas'
         inst = 0xDEAD000000000000 + rnd.randint(1, 1 << 40)
@@ -910,12 +945,47 @@ def save_cc(slot, progress=None):
         missing.append({'id': '%016X' % inst, 'key': '%08X:00000000:%016X' % (t, inst), 'kind': kind,
                         'what': _CC_MISSING_KINDS[kind], 'sims': sorted(s['name'] for _, s in wearers),
                         'sims_count': len(wearers), 'households': sorted({hn for hn, _ in wearers}),
-                        'found': finds[k] if k < len(finds) else []})
+                        'found': [copy.deepcopy(finds[k])] if k < len(finds) else []})
     for h in households:
         h['sims'].sort(key=lambda s: (-s['missing'], -s['parts'], s['name']))
     counts = {'files': len(files), 'parts': sum(f['parts'] for f in files), 'objects': sum(f['objects'] for f in files),
-              'looks': 0, 'missing': len(missing), 'sims': sum(len(h['sims']) for h in households)}
+              'looks': 0, 'missing': len(missing), 'sims': sum(len(h['sims']) for h in households),
+              'found': sum(1 for m in missing if m['found'])}
     name = 'In-game library' if slot == 'tray' else save['name']
     return {'ok': True, 'slot': slot, 'name': name, 'household': save.get('household') if save else None,
             'counts': counts, 'files': files, 'households': households, 'missing': missing, 'index': _cc_state(),
             'message': ''}
+
+
+def cc_install_found(slot, progress=None):
+    """Copies one found file for each of this save's missing CC items into Mods\\Found by Sims Hub, through a
+    'restore' journal (undoable). Never downloads anything - only what save_cc() already found on this PC."""
+    bad = _busy()
+    if bad:
+        return dict(bad, journal=None, installed=[], left=0)
+    with _lock:
+        save = next((s for s in STATE['saves'] if s['slot'] == slot), None)
+    if slot != 'tray' and save is None:
+        return {'ok': False, 'message': "That save wasn't found. It may have been deleted or renamed.",
+                'journal': None, 'installed': [], 'left': 0}
+    with _lock:
+        installed_n = _CC_INSTALLED.get(slot, 0)
+    base_missing = (save.get('cc_missing') or 0) if save else 4
+    remaining = max(0, base_missing - installed_n)
+    to_install = _CC_FINDS[installed_n:][:remaining]
+    if not to_install:
+        return {'ok': True, 'message': 'Nothing here was found on this PC to install.', 'journal': None,
+                'installed': [], 'left': remaining}
+    _run(progress, [('check', 'Making sure the game is closed')] +
+         [('copy', 'Copying %s' % f['name']) for f in to_install])
+    names = [f['name'] for f in to_install]
+    jid = _journal('restore', 'installed %d CC file%s found on this PC: %s'
+                   % (len(names), '' if len(names) == 1 else 's', ', '.join(names)))
+    with _lock:
+        _CC_INSTALLED[slot] = installed_n + len(names)
+        _CC_RESTORE[jid] = {'slot': slot, 'count': len(names)}
+        STATE['library']['packages'] += len(names)
+    left = remaining - len(names)
+    return {'ok': True, 'message': r'Installed %d file%s into Mods\Found by Sims Hub.'
+                                    % (len(names), '' if len(names) == 1 else 's'),
+            'journal': jid, 'installed': names, 'left': left}

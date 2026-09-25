@@ -358,7 +358,7 @@ function renderSaves() {
       <div class="when">${ic('clock')}Played ${esc(ago(s.last_played))}${current ? ' <span class="chip ok" style="margin-left:4px">Set up now</span>' : ''}</div>
       <div class="facts"><span class="chip">${ic('users')}${plural(s.sims, 'sim')}</span><span class="chip">${ic('lot')}${plural(s.lots, 'lot')}</span>
         ${isNum(s.cc_parts) ? `<span class="chip hot">${ic('shirt')}${num(s.cc_parts)} CC items</span>` : ''}
-        ${isNum(s.cc_missing) && s.cc_missing > 0 ? `<span class="chip warn" title="CC this save uses that isn't in your Mods folder any more">${ic('warn')}${num(s.cc_missing)} missing</span>` : ''}</div>
+        ${isNum(s.cc_missing) && s.cc_missing > 0 ? `<button type="button" class="chip warn linkish-chip" data-act="save-cc" data-slot="${esc(s.slot)}" data-tab="missing" title="CC this save uses that isn't in your Mods folder any more - click to see what's missing">${ic('warn')}${num(s.cc_missing)} missing</button>` : ''}</div>
       <div class="extra">${s.problem ? `${ic('warn')}${esc(s.problem)}` : extra}</div>
       ${care.saveLine(s)}
       ${saveCcButton(s)}
@@ -566,6 +566,7 @@ const KIND = {
   merge: ['Tidied your CC into fewer files', 'layers'], settings: ['Changed the graphics', 'image'], caches: ["Cleared the game's caches", 'broom'],
   fastpack: ['Prepared Quick Start', 'bolt'], savepack: ['Prepared a save to play', 'bolt'], usedpack: ["Prepared your saves' CC", 'bolt'],
   install: ['Updated the SpeedKit Monitor', 'gauge'], monitor: ['Updated the SpeedKit Monitor', 'gauge'], cleanup: ['Removed extra copies of CC', 'broom'],
+  restore: ['Installed missing CC found on this PC', 'download'],
 };
 const kindOf = k => KIND[k] || ['A change', 'spark'];
 // the same rule as the engine's undo_last: finished (or failed) changes, not the small helper steps of a switch
@@ -735,7 +736,8 @@ async function runTask(action, args = {}, opts = {}) {
 async function watchTask(id, opts) {
   S.taskId = id;
   renderTop(); render();
-  const ov = Overlay(opts.action ? (TITLES[opts.action] || (() => 'Working...'))(opts.args || {}) : 'Working...');
+  const ov = Overlay(opts.action ? (TITLES[opts.action] || (() => 'Working...'))(opts.args || {}) : 'Working...',
+    { onClose: opts.afterClose });
   let view = null, misses = 0;
   for (;;) {
     const v = await call('task/' + encodeURIComponent(id));
@@ -779,7 +781,7 @@ async function watchTask(id, opts) {
   return view;
 }
 
-function Overlay(title) {
+function Overlay(title, { onClose } = {}) {
   const root = $('#overlay-root');
   root.innerHTML = `<div class="overlay"><div class="task" role="dialog" aria-modal="true" aria-live="polite">
     <div class="top"><div class="big"><div class="spinner"></div></div><div class="grow"><h2></h2><p class="now">Getting started...</p></div></div>
@@ -790,7 +792,9 @@ function Overlay(title) {
   let finished = false;
   const onKey = e => { if (finished && (e.key === 'Escape' || e.key === 'Enter')) { e.preventDefault(); close(); } };
   document.addEventListener('keydown', onKey);
-  function close() { document.removeEventListener('keydown', onKey); root.innerHTML = ''; render(); }
+  // a task some other UI (e.g. a save's CC window) wants to pick back up once this closes gets onClose: it runs
+  // after the overlay is gone, so anything it opens is never covered by it (#modal-root sits above #overlay-root)
+  function close() { document.removeEventListener('keydown', onKey); root.innerHTML = ''; render(); if (onClose) onClose(); }
   function row(key) {
     let r = rows.get(key);
     if (!r) {
@@ -1136,10 +1140,10 @@ const CCB = {
 
 // everything that needs a hook in the rest of the app
 AFTER_RENDER.push(() => { if (S.page === 'library') ccMount(); });
-Object.assign(TITLES, { cc_scan: () => 'Sorting CC files', cc_set_aside: () => 'Setting CC files aside' });
-Object.assign(DONE, { cc_scan: () => 'CC files sorted', cc_set_aside: () => 'Files set aside' });
+Object.assign(TITLES, { cc_scan: () => 'Sorting CC files', cc_set_aside: () => 'Setting CC files aside', cc_install_found: () => 'Installing the CC found on this PC' });
+Object.assign(DONE, { cc_scan: () => 'CC files sorted', cc_set_aside: () => 'Files set aside', cc_install_found: () => 'CC installed' });
 KIND.setaside = ['Set CC files aside', 'folder'];
-Object.assign(ACTS, { 'save-cc': btn => ccSaveModal(btn.dataset.slot) });
+Object.assign(ACTS, { 'save-cc': btn => ccSaveModal(btn.dataset.slot, btn.dataset.tab) });
 
 // the Library page's spot for the browser (renderLibrary puts it right under the page title)
 const ccSlot = () => '<div id="cc-slot"></div>';
@@ -1535,10 +1539,11 @@ const trayCcCard = () => `<div class="card cc-tray"><div class="card-head"><div 
   <p>The CC your library households and lots use, and what's missing.</p></div>
   <button class="btn" data-act="save-cc" data-slot="tray">${ccIc('hanger')}View CC</button></div></div>`;
 const CC_KIND_ICON = { cas: 'top', object: 'buildbuy', look: 'skin' };
+const CC_FOUND_PLACE = { 'safe copies': 'In the safe copies', Inbox: 'In the Inbox', Downloads: 'In Downloads', Desktop: 'On the Desktop' };
 
-function ccSaveModal(slot) {
+function ccSaveModal(slot, openTab) {
   const save = slot === 'tray' ? { name: 'In-game library' } : (saveBySlot(slot) || { name: slot });
-  const X = { tab: 'files', data: null, more: 60 };
+  const X = { tab: openTab || 'files', data: null, more: 60 };
   const m = modal(`<header><div class="ic">${ccIc('hanger')}</div><div class="grow"><h2></h2><p>Loading...</p></div>
     <button class="icon-btn" data-x title="Close">${ic('x')}</button></header>
     <div class="cc-tabs hidden" role="tablist"></div><div class="body"><div class="saves-loading"><div class="spinner sm"></div>Reading the CC this save uses. Large saves take a moment.</div></div>`, { wide: true });
@@ -1576,15 +1581,22 @@ function ccSaveModal(slot) {
         </details>`).join('');
     } else {
       const miss = d.missing || [];
+      const foundN = c.found || 0;
+      const missN = c.missing || miss.length;
+      const cantChange = busy() || gameRunning();
       body.innerHTML = `<div class="note">${ic('info')}<span>Saves store only an ID number for each CC item. A name is shown only when a copy of the file
-          is found in the safe copies or the Inbox; a picture only when the game's thumbnail cache still has one.</span></div>
+          is found in the safe copies, Inbox, Downloads or Desktop folder (including inside .zip files); a picture only when the game's thumbnail cache still has one.</span></div>
         ${!miss.length ? `<div class="note ok">${ic('check')}<span>Nothing is missing. Every CC item this ${slot === 'tray' ? 'library' : 'save'} uses is installed.</span></div>`
-          : `<div class="cc-missing">${miss.slice(0, X.more).map(x => `<div class="cc-miss">
+          : `${foundN > 0
+              ? `<div class="cc-found-bar"><div><b>${num(foundN)} of ${num(missN)}</b> found on this PC</div>
+                  <button class="btn primary small" data-install-found${cantChange ? ' disabled' : ''}>${ic('download')}Install the ${num(foundN)} found</button></div>`
+              : `<div class="note">${ic('info')}<span>None of this save's missing CC is on this PC. Saves keep only an ID number for each item, so it can't be looked up online. Downloading it again (a .zip in Downloads is fine) and opening this list again finds it.</span></div>`}
+            <div class="cc-missing">${miss.slice(0, X.more).map(x => `<div class="cc-miss">
               <div class="cc-mpic">${x.kind !== 'look' ? `<img src="/api/cc/pic/${x.kind === 'object' ? 'object' : 'cas'}/${x.id}" alt="" loading="lazy" data-cat="${CC_KIND_ICON[x.kind]}">` : `<div class="cc-ph">${ccIc(CC_KIND_ICON[x.kind])}</div>`}</div>
               <div class="grow"><b>${esc(x.what)}</b>
                 <div class="cc-id"><code>${esc(x.id)}</code><button class="icon-btn" data-copy="${esc(x.key)}" title="Copy its full ID (type, group and number)">${ccIc('copy')}</button></div>
                 ${x.sims && x.sims.length ? `<span class="muted">Worn by ${x.sims.slice(0, 4).map(esc).join(', ')}${x.sims_count > 4 ? ` and ${num(x.sims_count - 4)} more` : ''}</span>` : x.kind === 'object' ? '<span class="muted">Placed on a lot</span>' : ''}
-                ${x.found && x.found.length ? x.found.map(f => `<div class="cc-found">${ic('check')}<span>${f.place === 'Inbox' ? 'In the Inbox' : 'In the safe copies'}: <b>${esc(f.name)}</b>${f.creator ? ` <span class="muted">(creator guessed from the file name: ${esc(f.creator)})</span>` : ''}</span></div>`).join('')
+                ${x.found && x.found.length ? x.found.map(f => `<div class="cc-found">${ic('check')}<span>${esc(CC_FOUND_PLACE[f.place] || f.place)}: <b>${esc(f.name)}</b>${f.zip ? ` <span class="muted">(inside ${esc(f.zip)})</span>` : ''}${f.creator ? ` <span class="muted">(creator guessed from the file name: ${esc(f.creator)})</span>` : ''}</span></div>`).join('')
                   : '<div class="cc-found none">Not found on this PC. Only the ID is known.</div>'}</div></div>`).join('')}</div>
             ${miss.length > X.more ? `<div class="actions" style="justify-content:center"><button class="btn small" data-more>Show more (${num(miss.length - X.more)} left)</button></div>` : ''}`}`;
     }
@@ -1597,6 +1609,22 @@ function ccSaveModal(slot) {
     if (cp) {
       try { await navigator.clipboard.writeText(cp.dataset.copy); toast('Copied: ' + cp.dataset.copy, 'ok'); }
       catch { toast(cp.dataset.copy); }
+      return;
+    }
+    const inst = e.target.closest('[data-install-found]');
+    if (inst) {
+      if (inst.disabled) return;
+      const n = (X.data && X.data.counts && X.data.counts.found) || 0;
+      if (!n) return;
+      m.close();
+      const yes = await confirmBox({
+        title: `Install ${num(n)} CC files?`,
+        text: `They are copied into <span class="path">Mods\\Found by Sims Hub</span> from where they were found. The originals stay where they are, and <b>Undo last change</b> takes them out again.`,
+        ok: `Install ${num(n)}`, cancel: 'Not now',
+      });
+      // the window reopens once the "Installed" overlay is dismissed, not before: #modal-root sits above
+      // #overlay-root, so opening it any earlier would cover the overlay and trap it on screen
+      if (yes) runTask('cc_install_found', { slot }, { afterClose: () => ccSaveModal(slot, 'missing') });
       return;
     }
     const card = e.target.closest('[data-file]');
@@ -1614,7 +1642,7 @@ function ccSaveModal(slot) {
       return;
     }
     X.data = r;
-    if (slot !== 'tray' && r.counts && r.counts.missing && !r.counts.files) X.tab = 'missing';
+    if (!openTab && slot !== 'tray' && r.counts && r.counts.missing && !r.counts.files) X.tab = 'missing';
     draw();
     const note = (r.index || {}).state !== 'ready' ? `<span class="hint">Sort CC files on the Library page to show categories here.</span>` : '<span class="hint">Click a CC file to open its folder.</span>';
     const foot = document.createElement('footer');

@@ -548,14 +548,17 @@ class Handler(BaseHTTPRequestHandler):
 #   GET  /api/cc/pic/<cas|object>/<16 hex digits>   the picture of one CAS part / object by its id (same rules)
 #   GET  /api/saves/<slot>/cc[?refresh=1]           api.save_cc(slot) ('tray' = the in-game library), cached 60 s
 #   POST /api/cc/open {"id"}           api.cc_open(id): the file's folder in Explorer
-#   tasks: 'cc_scan' (sort the CC into categories), 'cc_set_aside' {"ids": [...]} and 'cc_unmerge' {"id"} (undoable)
-CC_ACTIONS = {'cc_scan': 'sorting CC files', 'cc_set_aside': 'setting CC files aside', 'cc_unmerge': 'unmerging a merged file'}
+#   tasks: 'cc_scan' (sort the CC into categories), 'cc_set_aside' {"ids": [...]}, 'cc_unmerge' {"id"} and
+#          'cc_install_found' {"slot"} (install the CC that save's 'missing' found on this PC) - all undoable
+CC_ACTIONS = {'cc_scan': 'sorting CC files', 'cc_set_aside': 'setting CC files aside',
+              'cc_unmerge': 'unmerging a merged file', 'cc_install_found': 'installing missing CC'}
 ACTIONS.update(CC_ACTIONS)
-TAKES_PROGRESS.update({'cc_scan', 'cc_set_aside', 'cc_unmerge', 'save_cc'})
+TAKES_PROGRESS.update({'cc_scan', 'cc_set_aside', 'cc_unmerge', 'save_cc', 'cc_install_found'})
 CC_TTL = 60.0
 CC_WORD = re.compile(r'^[a-z_]{1,40}$')
 CC_HEX = re.compile(r'^[0-9A-Fa-f]{1,16}$')
 CC_SORTS = ('name', 'newest', 'biggest', 'folder', 'category')
+CC_SLOT_RE = re.compile(r'^Slot_[0-9A-Fa-f]{8}$')
 
 
 def _cc_ids(args):
@@ -571,8 +574,15 @@ def _cc_id(args):
         raise BadRequest('Pick the file to unmerge first.')
 
 
-TASK_ARGS = {'cc_set_aside': {'ids'}, 'cc_unmerge': {'id'}}    # task action -> the details it takes (check_args)
-TASK_CHECKS = {'cc_set_aside': _cc_ids, 'cc_unmerge': _cc_id}  # task action -> a check of those details
+def _cc_slot(args):
+    slot = args.get('slot')
+    if slot != 'tray' and not (isinstance(slot, str) and CC_SLOT_RE.match(slot)):
+        raise BadRequest('Pick a save first.')
+
+
+# task action -> the details it takes (check_args) / a check of those details
+TASK_ARGS = {'cc_set_aside': {'ids'}, 'cc_unmerge': {'id'}, 'cc_install_found': {'slot'}}
+TASK_CHECKS = {'cc_set_aside': _cc_ids, 'cc_unmerge': _cc_id, 'cc_install_found': _cc_slot}
 
 
 def _cc_text(q, name, most):

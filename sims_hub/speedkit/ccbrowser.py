@@ -25,8 +25,9 @@ real library parsed with this layout; research/dupes and lagdrivers/dbstats for 
     byte 0x18 when it follows the JFIF segment). decode_image() handles all three (and DDS via Pillow).
   * A save stores only ID numbers of the CC its sims wear and its lots use (speedkit.usedpack). EA's CAS part
     and object ids are all below 2^32; a bigger id that is neither in the library nor in the game is CC that
-    is installed nowhere. Its name is only known when a copy turns up in the Hub's safe copies (quarantine)
-    or the Inbox; its picture only when the game's thumbnail cache still has it.
+    is installed nowhere. Its name is only known when a copy turns up in the Hub's safe copies (quarantine),
+    the Inbox, Downloads or Desktop (side_update/side_find - a .zip there is looked inside too, by its
+    .package entries); its picture only when the game's thumbnail cache still has it.
 
 Nothing here writes to Mods, Mods_parked, saves or Tray, except set_aside(), which moves files out of Mods into
 the safe copies through a Journal (undoable, refuses while the game runs, never touches script mods).
@@ -41,6 +42,7 @@ import sqlite3
 import struct
 import threading
 import time
+import zipfile
 
 from .dbpf import Package, read_entries, open_shared, decompress, DELETED
 from .library import signed64, unsigned64
@@ -51,6 +53,7 @@ THUMB_VERSION = 1              # bump when picture making changes: every picture
 THUMB_SIZE = 256               # longest side of a cached picture, in pixels
 SAMPLE_CASP = 12               # CAS parts read per file to decide its categories
 BIG = U.BIG
+SIDE_ZIP_MAX_BYTES = 512 * 1024 * 1024   # .package entries in a .zip bigger than this (uncompressed) are skipped
 
 # ------------------------------------------------------------------------------------------ resource types
 T_CASP, T_THUM, T_TONE, T_OBJD, T_COBJ, T_OTHM = U.T_CASP, U.T_THUM, U.T_TONE, U.T_OBJD, U.T_COBJ, U.T_OTHM
@@ -496,6 +499,7 @@ create table if not exists side_file(id integer primary key, path text unique, s
                                      place text, name text);
 create table if not exists side_res(file integer, t integer, i integer);
 create index if not exists side_res_i on side_res(i);
+create table if not exists side_zip(path text primary key, size integer, mtime real);
 """
 
 SORTS = {'name': 'lower(name), id', 'newest': 'mtime desc, id', 'biggest': 'size desc, id',
@@ -865,51 +869,125 @@ class CCIndex:
         self.set_meta('generation', int(self.meta('generation', 0) or 0) + 1)
         self.db.commit()
 
-    # ---------------------------------------------------------------- side folders (safe copies, Inbox)
+    # ---------------------------------------------------------------- side folders (safe copies, Inbox, Downloads, Desktop)
+    def _side_res(self, cur, entries):
+        self.db.executemany('insert into side_res values(?,?,?)',
+                            [(cur.lastrowid, e.t, signed64(e.i)) for e in entries])
+
+    @staticmethod
+    def _like_prefix(s):
+        return s.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+
     def side_update(self, places, limit=20000):
-        """Index the .package files under each (place, folder): which CAS parts / objects / pictures they hold.
-        Unchanged files are not read again. Returns the number of files indexed."""
-        seen = set()
+        """Index the .package files under each (place, folder), including each .package entry inside a .zip
+        there (directory entries ignored, entries over 512 MB uncompressed skipped, a broken zip skipped
+        quietly): which CAS parts / objects / pictures they hold. A zip entry is stored as one row whose path
+        is '<zip path>|<inner path>' (the inner path is never used to write anywhere - only its basename, kept
+        separately as the row's plain display name). Unchanged files, and unchanged zips (by size + mtime),
+        are not read again. Returns the number of files and zip archives looked at."""
+        seen, seen_entries = set(), set()
         count = 0
         for place, folder in places:
             if not folder or not os.path.isdir(folder):
                 continue
             for dp, dn, fn in os.walk(folder):
                 for name in fn:
-                    if not name.lower().endswith('.package') or count >= limit:
-                        continue
-                    count += 1
-                    path = os.path.join(dp, name)
-                    try:
-                        st = os.stat(path)
-                    except OSError:
-                        continue
-                    seen.add(path)
-                    row = self.db.execute('select id, size, mtime from side_file where path=?', (path,)).fetchone()
-                    if row and row[1] == st.st_size and abs(row[2] - st.st_mtime) < 1e-3:
-                        continue
-                    if row:
-                        self.db.execute('delete from side_res where file=?', (row[0],))
-                        self.db.execute('delete from side_file where id=?', (row[0],))
-                    try:
-                        with open_shared(path) as f:
-                            entries = [e for e in read_entries(f) if e.comp != DELETED and e.t in (
-                                T_CASP, T_OBJD, T_COBJ, T_TONE, T_SCUL, T_SMOD, T_PELT)]
-                    except Exception:
-                        entries = []
-                    cur = self.db.execute('insert into side_file(path, size, mtime, place, name) values(?,?,?,?,?)',
-                                          (path, st.st_size, st.st_mtime, place, name))
-                    self.db.executemany('insert into side_res values(?,?,?)',
-                                        [(cur.lastrowid, e.t, signed64(e.i)) for e in entries])
+                    low = name.lower()
+                    if low.endswith('.package'):
+                        if count >= limit:
+                            continue
+                        count += 1
+                        path = os.path.join(dp, name)
+                        try:
+                            st = os.stat(path)
+                        except OSError:
+                            continue
+                        seen.add(path)
+                        row = self.db.execute('select id, size, mtime from side_file where path=?', (path,)).fetchone()
+                        if row and row[1] == st.st_size and abs(row[2] - st.st_mtime) < 1e-3:
+                            continue
+                        if row:
+                            self.db.execute('delete from side_res where file=?', (row[0],))
+                            self.db.execute('delete from side_file where id=?', (row[0],))
+                        try:
+                            with open_shared(path) as f:
+                                entries = [e for e in read_entries(f) if e.comp != DELETED and e.t in (
+                                    T_CASP, T_OBJD, T_COBJ, T_TONE, T_SCUL, T_SMOD, T_PELT)]
+                        except Exception:
+                            entries = []
+                        cur = self.db.execute('insert into side_file(path, size, mtime, place, name) values(?,?,?,?,?)',
+                                              (path, st.st_size, st.st_mtime, place, name))
+                        self._side_res(cur, entries)
+                    elif low.endswith('.zip'):
+                        zpath = os.path.join(dp, name)
+                        try:
+                            zst = os.stat(zpath)
+                        except OSError:
+                            continue
+                        seen.add(zpath)
+                        prefix = self._like_prefix(zpath + '|')
+                        zrow = self.db.execute('select size, mtime from side_zip where path=?', (zpath,)).fetchone()
+                        if zrow and zrow[0] == zst.st_size and abs(zrow[1] - zst.st_mtime) < 1e-3:
+                            for (p,) in self.db.execute("select path from side_file where path like ? escape '\\'",
+                                                        (prefix,)):
+                                seen_entries.add(p)
+                            continue
+                        old_ids = self.db.execute("select id from side_file where path like ? escape '\\'",
+                                                  (prefix,)).fetchall()
+                        for fid, in old_ids:
+                            self.db.execute('delete from side_res where file=?', (fid,))
+                        self.db.execute("delete from side_file where path like ? escape '\\'", (prefix,))
+                        try:
+                            zf = zipfile.ZipFile(zpath)
+                        except Exception:
+                            zf = None
+                        if zf is not None:
+                            try:
+                                for info in zf.infolist():
+                                    if info.is_dir() or not info.filename.lower().endswith('.package'):
+                                        continue
+                                    if info.file_size > SIDE_ZIP_MAX_BYTES or count >= limit:
+                                        continue
+                                    count += 1
+                                    inner = info.filename.replace('\\', '/')
+                                    disp = os.path.basename(inner) or inner
+                                    vpath = '%s|%s' % (zpath, info.filename)
+                                    try:
+                                        with zf.open(info) as zsrc:
+                                            # bounded regardless of what info.file_size claims: a crafted zip
+                                            # can declare a small size and still decompress to much more
+                                            data = zsrc.read(SIDE_ZIP_MAX_BYTES + 1)
+                                        if len(data) > SIDE_ZIP_MAX_BYTES:
+                                            continue
+                                        entries = [e for e in read_entries(io.BytesIO(data)) if e.comp != DELETED and
+                                                  e.t in (T_CASP, T_OBJD, T_COBJ, T_TONE, T_SCUL, T_SMOD, T_PELT)]
+                                    except Exception:
+                                        continue
+                                    cur = self.db.execute(
+                                        'insert or replace into side_file(path, size, mtime, place, name) '
+                                        'values(?,?,?,?,?)', (vpath, zst.st_size, zst.st_mtime, place, disp))
+                                    self._side_res(cur, entries)
+                                    seen_entries.add(vpath)
+                            except Exception:                # a zip that trips up mid-read: keep what was read
+                                pass
+                            finally:
+                                zf.close()
+                        self.db.execute('insert or replace into side_zip(path, size, mtime) values(?,?,?)',
+                                        (zpath, zst.st_size, zst.st_mtime))
         for fid, path in self.db.execute('select id, path from side_file').fetchall():
-            if path not in seen:
+            alive = (path in seen_entries) if '|' in path else (path in seen)
+            if not alive:
                 self.db.execute('delete from side_res where file=?', (fid,))
                 self.db.execute('delete from side_file where id=?', (fid,))
+        for zpath, in self.db.execute('select path from side_zip').fetchall():
+            if zpath not in seen:
+                self.db.execute('delete from side_zip where path=?', (zpath,))
         self.db.commit()
         return len(seen)
 
     def side_find(self, instances):
-        """{instance: [(path, place, name, t)]} for the instances found in the side folders."""
+        """{instance: [(path, place, name, t)]} for the instances found in the side folders (path is a plain
+        file path, or '<zip path>|<inner path>' for a copy found inside a .zip there)."""
         out = collections.defaultdict(list)
         inst = list(instances)
         for n in range(0, len(inst), 500):
@@ -1211,14 +1289,16 @@ def usage_report(lib, refs, game=None, idx=None, played_household=None, skip=Non
     households = sorted(hh.values(), key=lambda h: (not h['played'], h['name'] == 'Mannequins', h['name'].lower()))
     for h in households:
         h['sims'].sort(key=lambda s: (-s['missing'], -s['parts'], s['name'].lower()))
-    # what is known about missing CC
+    # what is known about missing CC (also in Downloads / Desktop, plain or inside a .zip - side.side_find)
     found = side.side_find(missing) if (side is not None and missing) else {}
     miss_out = []
     for v, m in sorted(missing.items(), key=lambda kv: (-len(miss_sims.get(kv[0], ())), kv[1]['kind'], kv[0])):
         places = []
         for path, place, name, t in found.get(v, ()):
             if (place, name) not in [(x['place'], x['name']) for x in places]:
-                places.append({'place': place, 'name': name, 'path': path, 'creator': guess_creator(name)})
+                zip_name = os.path.basename(path.split('|', 1)[0]) if '|' in path else None
+                places.append({'place': place, 'name': name, 'path': path, 'creator': guess_creator(name),
+                               'zip': zip_name})
         miss_out.append({'id': _hex(v), 'key': '%08X:00000000:%s' % (m['t'], _hex(v)), 'kind': m['kind'],
                          'sims': sorted(miss_sims.get(v, ()))[:12], 'sims_count': len(miss_sims.get(v, ())),
                          'households': sorted(miss_hh.get(v, ()))[:6], 'found': places[:3]})
@@ -1233,7 +1313,7 @@ def usage_report(lib, refs, game=None, idx=None, played_household=None, skip=Non
                           'sims': sorted(f['sims'])[:8], 'sims_count': len(f['sims'])})
     counts = {'files': len(out_files), 'parts': sum(1 for v in parts if v in part_file),
               'objects': len(objs_found), 'looks': sum(1 for v in looks if v in part_file),
-              'missing': len(miss_out), 'sims': n_sims}
+              'missing': len(miss_out), 'sims': n_sims, 'found': sum(1 for m in miss_out if m['found'])}
     return {'files': out_files, 'households': households, 'missing': miss_out, 'counts': counts}
 
 

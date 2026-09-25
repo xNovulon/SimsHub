@@ -202,10 +202,17 @@ cc_set_aside(ids, progress=None) -> {'ok', 'message', 'journal', 'done': [names]
     # a task: files out of Mods into the safe copies (journal kind 'setaside', undo_last puts them back)
 cc_open(item_id) -> {'ok', 'message'}                              # the file's folder, file selected
 save_cc(slot, progress=None) -> {'ok', 'slot', 'name', 'household', 'counts': {'files', 'parts', 'objects', 'looks',
-                                 'missing', 'sims'}, 'files': [...], 'households': [...], 'missing': [...], 'index'}
+                                 'missing', 'sims', 'found'}, 'files': [...], 'households': [...], 'missing': [...],
+                                 'index'}
     # slot 'tray' = the in-game library. missing: [{'id', 'key' ('TTTTTTTT:00000000:IIIIIIIIIIIIIIII'), 'kind':
-    # 'cas'|'object'|'look', 'what', 'sims', 'households', 'found': [{'place': 'safe copies'|'Inbox', 'name',
-    # 'creator'}]}] - a name only when a copy is found; otherwise only the ID is known.
+    # 'cas'|'object'|'look', 'what', 'sims', 'households', 'found': [{'place': 'safe copies'|'Inbox'|'Downloads'|
+    # 'Desktop', 'name', 'path', 'creator', 'zip': the archive's name, or None for a plain file}]}] - a name only
+    # when a copy is found (also inside a .zip in Downloads/Desktop); otherwise only the ID is known. counts.found:
+    # missing items with at least one found copy.
+cc_install_found(slot, progress=None) -> {'ok', 'message', 'journal', 'installed': [names], 'left'}
+    # a task: installs one copy of each file save_cc's 'missing' found on this PC into Mods\Found by Sims Hub
+    # (journal kind 'restore', undo_last puts them back); never downloads anything, never a script mod. left:
+    # missing items that turned up nowhere at all.
 ```
 
 ## speedkit/hub/ (owned by the APP agent)
@@ -234,7 +241,8 @@ save_cc(slot, progress=None) -> {'ok', 'slot', 'name', 'household', 'counts': {'
   - (added) CC browser: `GET /api/cc?...` (cc_list), `GET /api/cc/item/<id>`, `GET /api/cc/thumb/<id>?v=` and
     `GET /api/cc/pic/<cas|object>/<hex id>` (image bytes, 404 without a picture), `GET /api/saves/<slot>/cc`
     (save_cc, cached 60 s, waits for tasks other than the CC sort), `POST /api/cc/open {"id"}`; tasks
-    `cc_scan` and `cc_set_aside {"ids": [...]}` (docs/ccbrowser.md)
+    `cc_scan`, `cc_set_aside {"ids": [...]}`, `cc_unmerge {"id"}` and `cc_install_found {"slot"}` (installs the
+    CC found by save_cc's 'missing' on this PC) (docs/ccbrowser.md)
   - Binds only to 127.0.0.1; rejects requests whose Host/Origin is not local.
 - Launcher `Start Novulon's Sims Hub.bat` in the project root, modelled on
   `C:\Users\basim\Tools\sims4_animator\Start Wicked Animator.bat` (start server once, open Chrome/Edge `--app`).

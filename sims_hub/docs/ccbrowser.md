@@ -105,8 +105,17 @@ parses the save only if it changed since the Saves page last read it) and matche
   are neither in the library nor in the game (the research found EA's IDs all below 2^32; without the game folder
   that rule alone decides). Each shows its ID (and full type:group:instance key to copy), who wears it, and -
   only when a copy is found - its file name and a guessed creator: in the safe copies (every journal home's
-  quarantine) or in the Inbox. Those folders are indexed only when a save really misses CC
-  (`CCIndex.side_update`, cached by file size/mtime). A picture shows when the game's thumbnail cache still has one.
+  quarantine), the Inbox, Downloads or the Desktop, including `.package` files inside a `.zip` there. Those
+  folders are indexed only when a save really misses CC (`CCIndex.side_update`, cached by file size/mtime for a
+  plain file, by size+mtime of the whole `.zip` for what is inside one). A picture shows when the game's
+  thumbnail cache still has one.
+
+`api.cc_install_found(slot)` (task `cc_install_found`) installs one copy of each file `save_cc`'s 'missing' found
+on this PC into `Mods\Found by Sims Hub` through one `Journal('restore', ...)` - `journal.put_new()` for each
+file, always as a `.package` (never a script mod) and never overwriting a name already there. Copies, never
+moves, the source; refuses while the game runs; a later run installs nothing more for CC this already resolved.
+**Undo last change** removes the installed files again. Nothing here ever downloads anything - only files
+already on the PC are looked at.
 
 Objects are listed for the whole save (object IDs are not stored per lot), and lot walls/floors are not decoded.
 

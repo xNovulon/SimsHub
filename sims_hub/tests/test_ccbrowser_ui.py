@@ -217,6 +217,48 @@ class CCBrowserUI(unittest.TestCase):
         self.page.wait_for_selector('.cc-wide .cc-card')
         self.assertIn('in-game library', self.page.inner_text('.cc-wide header'))
 
+    def test_missing_chip_installs_found_cc(self):
+        # the "N missing" chip opens the save's CC window straight on the Missing tab
+        self.page.goto(self.base + '/#saves')
+        chip = '.chip.warn[data-slot="Slot_00000003"][data-tab="missing"]'
+        self.page.wait_for_selector(chip)
+        self.assertIn('37 missing', self.page.inner_text(chip))
+        self.page.click(chip)
+        self.page.wait_for_selector('.cc-tabs [data-tab="missing"].on')
+        self.page.wait_for_selector('.cc-found-bar')
+        bar = self.page.inner_text('.cc-found-bar')
+        self.assertIn('4 of 37', bar)
+        self.assertIn('found on this PC', bar)
+        self.assertIn('Install the 4 found', bar)
+        text = self.page.inner_text('.cc-wide .body')
+        self.assertIn('safe copies, Inbox, Downloads or Desktop', text)
+        self.assertIn('In Downloads', text)
+        self.assertIn('Wingssims_HairPack.zip', text)
+        self.assertIn('On the Desktop', text)
+
+        # it asks first, then runs the task and reloads the window with fewer missing
+        self.page.click('.cc-found-bar [data-install-found]')
+        self.page.wait_for_selector('.modal [data-yes]')
+        modal_text = self.page.inner_text('.modal')
+        self.assertIn('Install 4 CC files?', modal_text)
+        self.assertIn('Found by Sims Hub', modal_text)
+        self.assertIn('Undo last change', modal_text)
+        self.page.click('.modal [data-yes]')
+        self.page.wait_for_selector('.task footer:not(.hidden) [data-close]', timeout=20000)
+        self.assertIn('Installed 4 files', self.page.inner_text('.task'))
+        self.page.click('.task [data-close]')
+        self.page.wait_for_selector('.cc-tabs [data-tab="missing"].on')
+        self.page.wait_for_function('() => (document.querySelector(".cc-wide header p") || {}).textContent.includes("33 missing")')
+        after = self.page.inner_text('.cc-wide .body')
+        self.assertIsNone(self.page.query_selector('.cc-found-bar'))     # nothing left to install
+        self.assertIn("None of this save's missing CC is on this PC", after)
+
+        # Recent changes on the Tools page names the new journal
+        self.page.keyboard.press('Escape')
+        self.page.goto(self.base + '/#tools')
+        self.page.wait_for_selector('.change.next')
+        self.assertIn('Installed missing CC found on this PC', self.page.inner_text('.change.next'))
+
 
 if __name__ == '__main__':
     unittest.main()
