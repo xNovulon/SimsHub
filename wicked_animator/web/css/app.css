@@ -758,17 +758,6 @@ html.reduce-motion #app { transition: none; }
 .ctx-menu { max-width: 380px; }
 .ctx-menu button { height: auto; min-height: 32px; padding-top: 5px; padding-bottom: 5px; line-height: 1.3; }
 
-/* the clothes remover: one row per piece with its switch; the whole scene in a dialog */
-.pieces { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
-.pieces-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
-.pieces-head b { font-size: 12px; }
-.pieces-btns { display: flex; flex-wrap: wrap; gap: 4px; }
-.piece { display: grid; grid-template-columns: auto minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 8px; padding: 4px 6px; border-radius: 7px; cursor: pointer; }
-.piece:hover { background: var(--panel-3); }
-.piece .piece-name { font-size: 12px; white-space: nowrap; }
-.piece small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.piece.off .piece-name { color: var(--muted); text-decoration: line-through; }
-.piece.missing { opacity: .6; }
 .remover { display: flex; flex-direction: column; gap: 14px; max-height: 62vh; overflow: auto; }
 .remover-all { display: flex; flex-wrap: wrap; gap: 6px; }
 .remover-sim { border: 1px solid var(--line-2); border-radius: 12px; padding: 10px 12px; }
@@ -780,3 +769,26 @@ html.reduce-motion #app { transition: none; }
 body { -webkit-user-select: none; user-select: none; }
 input, textarea, select, [contenteditable], pre, code, kbd, .path, .selectable, .tech, details.tech { -webkit-user-select: text; user-select: text; }
 img, a, svg { -webkit-user-drag: none; }
+
+/* the clothes remover: a card with what is worn, then every piece with its icon and switch */
+.pieces { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.pieces-card { padding: 12px; border-radius: 14px; background: linear-gradient(135deg, rgba(255, 79, 154, .10), rgba(139, 92, 246, .10)); border: 1px solid rgba(255, 79, 154, .28); display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
+.pieces-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pieces-head b { display: block; font-size: 13.5px; }
+.pieces-head small { color: var(--muted); font-size: 11.5px; }
+.pieces-meter { flex: 1; max-width: 110px; height: 6px; border-radius: 99px; background: var(--panel-4); overflow: hidden; }
+.pieces-meter i { display: block; height: 100%; width: calc(var(--on) * 100%); background: var(--grad); border-radius: 99px; transition: width .25s; }
+.pieces-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.pieces-btns .btn svg { width: 14px; height: 14px; }
+.pieces-group { display: flex; justify-content: space-between; align-items: center; margin: 10px 2px 2px; font-size: 10.5px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
+.pieces-group span { font-weight: 700; letter-spacing: 0; }
+.piece { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 11px; border: 1px solid transparent; transition: background .15s, opacity .15s, border-color .15s; }
+.piece:hover { background: var(--panel-3); border-color: var(--line-2); }
+.piece-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: #ffc2de; }
+.piece-ic svg { width: 19px; height: 19px; }
+.piece-text { min-width: 0; display: flex; flex-direction: column; }
+.piece-text b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.piece-text small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.piece.off { opacity: .5; }
+.piece.off .piece-ic { background: var(--panel-4); color: var(--muted); }
+.piece.missing .piece-text small { color: var(--warn); }

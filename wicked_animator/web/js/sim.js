@@ -237,14 +237,31 @@ export class Sim {
     return new THREE.Vector3(...best).applyMatrix4(rw[id].clone().invert());
   }
 
-  // WickedWhims' soft and hard penis are two meshes on the same bones; show one.
+  // WickedWhims' soft and hard penis are two meshes on the same bones; show one (none under clothes).
   setErect(on) {
     this.erect = !!on;
     const hasHard = this.meshes.some(m => m.userData.role === 'penis_hard');
+    const under = this.covered && this.covered.has('bottom');
     for (const m of this.meshes) {
-      if (m.userData.role === 'penis_hard') m.visible = this.erect;
-      if (m.userData.role === 'penis_soft') m.visible = !this.erect || !hasHard;
+      if (m.userData.role === 'penis_hard') m.visible = this.erect && !under;
+      if (m.userData.role === 'penis_soft') m.visible = (!this.erect || !hasHard) && !under;
     }
+  }
+
+  // Body pieces a worn garment replaces, as in the game: a top or outfit takes the place of the bare upper body, a
+  // bottom or outfit the lower body (and the penis), shoes the feet. roles: a Set of 'top' | 'bottom' | 'feet'.
+  // Hidden pieces still count for clicks, openings and physics - only drawing stops.
+  setCovered(roles) {
+    const next = roles && roles.size ? new Set(roles) : null;
+    const key = next ? [...next].sort().join() : '';
+    if (key === (this._coveredKey || '')) return;
+    this._coveredKey = key;
+    this.covered = next;
+    for (const m of this.meshes) {
+      const r = m.userData.role;
+      if (r === 'top' || r === 'bottom' || r === 'feet') m.visible = !(next && next.has(r));
+    }
+    this.setErect(this.erect);
   }
 
   setTongue(on) { for (const m of this.meshes) if (m.userData.role === 'tongue') m.visible = !!on; }

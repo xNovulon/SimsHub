@@ -4,12 +4,41 @@
 // picture shows it), and the clothes remover lists every piece each sim wears to take them off one by one or all at
 // once. Everything plugs in through app.hooks, ui.addIcon and
 // ui.addToolbarButton. Clothes are for the preview only: nothing about them goes into the exported animation.
-import { h, toast, addIcon, addToolbarButton, section, toggleRow, modal } from '../ui.js';
+import { h, icon, toast, addIcon, addToolbarButton, section, toggle, toggleRow, modal } from '../ui.js';
 import * as C from '../clothes.js';
 
+const S = 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
 const ICONS = {
   // a coat hanger
   hanger: '<path d="M12 7.2V6.6a1.9 1.9 0 1 1 1.9-1.9M12 7.2 3.4 13.6c-.9.7-.4 2.1.7 2.1h15.8c1.1 0 1.6-1.4.7-2.1L12 7.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  // the clothes remover's pieces
+  'pc-top': `<path d="M8.5 4 4 6.5l1.8 4 2.2-1V20h8V9.5l2.2 1 1.8-4L15.5 4a3.5 3.5 0 0 1-7 0z" ${S}/>`,
+  'pc-full': `<path d="M9 3.5h6l-.6 4 3.6 12.5H6L9.6 7.5z M9.6 7.5h4.8" ${S}/>`,
+  'pc-bottom': `<path d="M6.5 4h11l1 16h-4.5l-2-10-2 10H5.5z M6.5 7.5h11" ${S}/>`,
+  'pc-shoes': `<path d="M3.5 15.5V9l4 1.5 2.5 2.5 6.5 1.5c2 .5 4 1.5 4 3.5H3.5z M3.5 17.5h17" ${S}/>`,
+  'pc-socks': `<path d="M8 3.5h6v8l2.8 3.2a3 3 0 0 1-4.3 4.2L8 14z M8 7h6" ${S}/>`,
+  'pc-tights': `<path d="M7 3.5h10l-.8 17h-3.4L12 10l-.8 10.5H7.8z" ${S}/>`,
+  'pc-hat': `<path d="M4 16.5c0-5 3.6-9 8-9s8 4 8 9 M2.5 16.5h19 M12 7.5V5.5" ${S}/>`,
+  'pc-glasses': `<circle cx="7" cy="14" r="3.5" ${S}/><circle cx="17" cy="14" r="3.5" ${S}/><path d="M10.5 13.5c1-.8 2-.8 3 0M3.5 13 2.5 9M20.5 13l1-4" ${S}/>`,
+  'pc-earrings': `<path d="M9 3.5a3 3 0 0 1 3 3v2" ${S}/><circle cx="12" cy="14" r="4" ${S}/><circle cx="12" cy="14" r="1.2" fill="currentColor"/>`,
+  'pc-necklace': `<path d="M4 4c1 7 4 11 8 11s7-4 8-11" ${S}/><path d="M12 15l-2.2 3L12 21l2.2-3z" ${S}/>`,
+  'pc-ring': `<circle cx="12" cy="14.5" r="5.5" ${S}/><path d="M9.5 6.5 12 3.5l2.5 3L12 9z" ${S}/>`,
+  'pc-bracelet': `<ellipse cx="12" cy="12" rx="8" ry="5" ${S}/><ellipse cx="12" cy="12" rx="5.5" ry="2.8" ${S}/>`,
+  'pc-piercing': `<circle cx="12" cy="12" r="5" ${S}/><circle cx="12" cy="7" r="1.6" fill="currentColor"/>`,
+  'pc-gloves': `<path d="M7 20v-7L5 9.5a1.4 1.4 0 0 1 2.4-1.4L9 10.5V5a1.5 1.5 0 0 1 3 0v4.5V4a1.5 1.5 0 0 1 3 0v6V6a1.5 1.5 0 0 1 3 0v9c0 3-2 5-5 5z" ${S}/>`,
+  'pc-other': `<path d="M12 3.5 20 8v8l-8 4.5L4 16V8z" ${S}/>`,
+};
+// which icon a piece gets (by its body type, then its kind)
+const PIECE_ICON = t => {
+  const n = t.body_type_name || '';
+  if (/GLASSES/.test(n)) return 'pc-glasses';
+  if (/EARRINGS/.test(n)) return 'pc-earrings';
+  if (/NECKLACE/.test(n)) return 'pc-necklace';
+  if (/FINGER/.test(n)) return 'pc-ring';
+  if (/WRIST/.test(n)) return 'pc-bracelet';
+  if (/_RING_/.test(n)) return 'pc-piercing';
+  if (/GLOVES/.test(n)) return 'pc-gloves';
+  return 'pc-' + ({ full: 'full', top: 'top', bottom: 'bottom', shoes: 'shoes', socks: 'socks', tights: 'tights', hat: 'hat' }[t.kind] || 'other');
 };
 const HIDE_KEY = 'wa.clothesHidden';
 const readHidden = () => { try { return localStorage.getItem(HIDE_KEY) === '1'; } catch { return false; } };
@@ -138,7 +167,7 @@ export function install(app) {
 // ---------------------------------------------------------------- the Body step's Clothes row
 function clothesSection(app, sim, v, setHidden) {
   const cur = sim.clothes && typeof sim.clothes === 'object' ? sim.clothes : null;
-  const body = h('div', {}, h('div', { class: 'hint', style: { marginTop: 0 } }, 'Check clipping with an outfit on. ' + EXPORT_NOTE));
+  const body = h('div', {}, h('div', { class: 'hint', style: { marginTop: 0 } }, 'Dress a sim to check clipping. Clothes never go into the exported animation.'));
   const chips = h('div', { class: 'chips clothes-chips' });
   chips.append(h('button', { class: 'chipbtn' + (!cur ? ' on' : ''), 'data-clothes': 'none', onclick: () => app.setClothes(sim.id, null) }, 'None'));
   body.append(chips);
@@ -174,9 +203,9 @@ function clothesSection(app, sim, v, setHidden) {
   if (cur && (!info || info.loading)) note = 'Loading the clothes…';
   else if (cur && info && info.error) note = `No clothes shown: ${info.error}`;
   else if (cur && info) {
-    const bits = [`${info.label || 'Outfit'}: ${info.shown} part${info.shown === 1 ? '' : 's'} shown.`];
-    if (info.missing.length) bits.push(`Not installed: ${info.missing.join(', ')}.`);
-    if (info.painted.length) bits.push(`Painted on the skin in the game, not shown here: ${info.painted.join(', ')}.`);
+    const bits = [];
+    if (info.missing.length) bits.push(`${info.missing.length} ${info.missing.length === 1 ? 'piece isn\'t' : 'pieces aren\'t'} installed on this PC.`);
+    if (info.painted.length) bits.push(`${info.painted.map(n => shortName(n) || 'A piece').join(', ')}: painted on the skin in the game, not shown here.`);
     if ((app.store.project.events || []).some(e => e.type === 'UNDRESS' && e.sim === sim.id)) bits.push('Undress moments take the matching parts off while it plays.');
     note = bits.join(' ');
   }
@@ -190,28 +219,46 @@ function clothesSection(app, sim, v, setHidden) {
 
 // ---------------------------------------------------------------- the clothes remover's lists
 // A readable name from a CAS part name: the creator prefix, the age/gender code and the date stamp go.
-const shortName = n => String(n || '').replace(/^.*?_(?=[yaeptc][fmu][A-Z])/, '').replace(/^[yaeptc][fmu](?=[A-Z])/, '')
-  .replace(/_\d{12,}.*$/, '').replace(/_/g, ' ').trim().slice(0, 48);
+// "Mably_yfBody_LingerieCorsetLaceSides_SolidBlue_2025..." -> "Lingerie Corset Lace Sides · Solid Blue"
+const CAS_WORD = /^(Acc|Body|Top|Bottom|Shoes|Hair|Hat|Makeup|Skin|Detail)(?=[A-Z]|$)/;
+const shortName = n => {
+  const bits = String(n || '').replace(/^.*?_(?=[yaeptc][fmu][A-Z])/, '').replace(/^[yaeptc][fmu](?=[A-Z])/, '')
+    .replace(/_\d{12,}.*$/, '').split(/[_ ]+/).filter(Boolean);
+  if (bits.length > 1 && CAS_WORD.test(bits[0])) bits[0] = bits[0].replace(CAS_WORD, '');
+  const words = bits.map(b => b.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, '$1 $2').trim()).filter(Boolean);
+  return words.join(' · ').slice(0, 60);
+};
 
-// One sim's pieces with a switch each, and Take off clothes / Take off everything / Put all back.
+// One sim's pieces: what it wears now (a bar), Take off clothes / Take off everything / Put all back, and every piece
+// with its icon, a readable name and a switch - clothes first, then hats and accessories.
 function pieceList(app, sim) {
   const box = h('div', { class: 'pieces' }, h('div', { class: 'hint' }, 'Reading the clothes…'));
   C.piecesOf(app, sim).then(pc => {
     box.replaceChildren();
     if (!pc) { box.append(h('div', { class: 'hint' }, 'Wearing nothing.')); return; }
-    const worn = pc.parts.filter(p => p.on).length;
-    box.append(h('div', { class: 'pieces-head' }, h('b', {}, `${pc.label}: ${worn} of ${pc.parts.length} on`),
+    const worn = pc.parts.filter(p => p.on).length, all = pc.parts.length;
+    const set = (p, on) => app.setPiecesOff(sim.id, pc.parts.filter(x => (x === p ? !on : !x.on)).map(x => x.casp));
+    box.append(h('div', { class: 'pieces-card' },
+      h('div', { class: 'pieces-head' }, h('div', {}, h('b', {}, pc.label), h('small', {}, `${worn} of ${all} ${all === 1 ? 'piece' : 'pieces'} on`)),
+        h('div', { class: 'pieces-meter', style: { '--on': (all ? worn / all : 0).toFixed(3) } }, h('i'))),
       h('div', { class: 'pieces-btns' },
-        h('button', { class: 'btn small', title: 'Accessories and hats stay on', disabled: !pc.parts.some(p => p.on && C.isClothing(p)), onclick: () => app.undress(sim.id, 'clothes') }, 'Take off clothes'),
+        h('button', { class: 'btn small', title: 'Hats and accessories stay on', disabled: !pc.parts.some(p => p.on && C.isClothing(p)), onclick: () => app.undress(sim.id, 'clothes') }, icon('hanger'), 'Take off clothes'),
         h('button', { class: 'btn small', disabled: !worn, onclick: () => app.undress(sim.id, 'all') }, 'Take off everything'),
-        h('button', { class: 'btn small ghost', disabled: worn === pc.parts.length, onclick: () => app.undress(sim.id, 'none') }, 'Put all back'))));
-    for (const p of pc.parts) {
-      const missing = p.origin === null;
-      box.append(h('label', { class: 'piece' + (p.on ? '' : ' off') + (missing ? ' missing' : ''), title: p.name || null },
-        h('input', { type: 'checkbox', checked: p.on, onchange: e => app.setPiecesOff(sim.id, pc.parts.filter(x => (x === p ? !e.target.checked : !x.on)).map(x => x.casp)) }),
-        h('span', { class: 'piece-name' }, C.pieceLabel(p)),
-        h('small', {}, missing ? 'not installed' : shortName(p.name))));
-    }
+        h('button', { class: 'btn small ghost', disabled: worn === all, onclick: () => app.undress(sim.id, 'none') }, icon('undo'), 'Put all back'))));
+    const group = (title, list) => {
+      if (!list.length) return;
+      box.append(h('div', { class: 'pieces-group' }, title, h('span', {}, `${list.filter(p => p.on).length}/${list.length}`)));
+      for (const p of list) {
+        const missing = p.origin === null;
+        const sw = toggle(p.on, on => set(p, on));
+        box.append(h('div', { class: 'piece' + (p.on ? '' : ' off') + (missing ? ' missing' : ''), title: p.name || null },
+          h('span', { class: 'piece-ic' }, icon(PIECE_ICON(p))),
+          h('span', { class: 'piece-text' }, h('b', {}, C.pieceLabel(p)), h('small', {}, missing ? 'Not installed on this PC' : shortName(p.name) || 'Custom content')),
+          sw));
+      }
+    };
+    group('Clothes', pc.parts.filter(p => C.isClothing(p)));
+    group('Hats and accessories', pc.parts.filter(p => !C.isClothing(p)));
   }).catch(err => { box.replaceChildren(h('div', { class: 'hint' }, 'Could not read the clothes: ' + err.message)); });
   return box;
 }

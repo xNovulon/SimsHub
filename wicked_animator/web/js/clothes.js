@@ -9,6 +9,8 @@ import * as THREE from 'three';
 
 // what an undress moment takes off (WickedWhims' naked types -> the part kinds clothes.py gives)
 const BODY = ['full', 'top', 'bottom', 'tights', 'socks', 'shoes'];
+// the bare body piece a garment kind replaces (Sim.setCovered)
+const COVERS = { full: ['top', 'bottom'], top: ['top'], bottom: ['bottom'], shoes: ['feet'] };
 export const UNDRESS = {
   TOP: ['top', 'full'], TOP_UNDERWEAR: ['top', 'full'],
   BOTTOM: ['bottom', 'full', 'tights'], BOTTOM_UNDERWEAR: ['bottom', 'full', 'tights'],
@@ -124,7 +126,7 @@ export async function loadClothes(app, v, s) {
   const spec = clothesSpecOf(app, s), key = specKey(spec);
   if (v.clothesKey === key) return v.clothesInfo ? v.clothesInfo.shown : 0;
   v.clothesKey = key;
-  if (!spec) { v.removeParts('clothes'); v.clothesInfo = null; return 0; }
+  if (!spec) { v.removeParts('clothes'); v.clothesInfo = null; if (v.setCovered) v.setCovered(null); return 0; }
   v.clothesInfo = { loading: true, shown: 0, missing: [], painted: [] };
   const stale = () => v.clothesKey !== key || app.simViews.get(s.id) !== v;
   let outfit;
@@ -132,11 +134,11 @@ export async function loadClothes(app, v, s) {
     const list = await outfitList(app, spec.list);
     outfit = list.items.find(o => o.key === spec.pick) || null;
   } catch (err) {
-    if (!stale()) { v.removeParts('clothes'); v.clothesInfo = { error: err.message, shown: 0, missing: [], painted: [] }; }
+    if (!stale()) { v.removeParts('clothes'); v.setCovered && v.setCovered(null); v.clothesInfo = { error: err.message, shown: 0, missing: [], painted: [] }; }
     return 0;
   }
   if (stale()) return 0;
-  if (!outfit) { v.removeParts('clothes'); v.clothesInfo = { error: 'That outfit is not there any more.', shown: 0, missing: [], painted: [] }; return 0; }
+  if (!outfit) { v.removeParts('clothes'); v.setCovered && v.setCovered(null); v.clothesInfo = { error: 'That outfit is not there any more.', shown: 0, missing: [], painted: [] }; return 0; }
   const off = new Set(spec.off);
   const parts = (outfit.parts || []).filter(p => p.origin !== null && !off.has(p.casp));   // origin null: not installed
   const results = await Promise.all(parts.map(p => fetchPart(app, p.casp, spec.shape)));
@@ -153,8 +155,38 @@ export async function loadClothes(app, v, s) {
     if ((v.parts || []).length > before) info.shown++;
   });
   v.clothesInfo = info;
+  await paintOnSkin(app, v, s, results.map(r => r && r.texture).filter(Boolean), key);
   applyVisibility(app);
   return info.shown;
+}
+
+// As in the game, a garment is painted onto the sim's own skin picture: its texture is a see-through layer over the
+// skin (the arms of a top, the neck of a dress are skin), so the garment pieces draw the skin with every garment on
+// top of it, and the bare body under them is hidden (applyVisibility). Hats and accessories keep their own picture.
+async function paintOnSkin(app, v, s, textures, key) {
+  const worn = (v.parts || []).filter(m => m.userData.role === 'clothes' && BODY.includes(m.userData.kind));
+  if (!worn.length) return;
+  try { await app.skinReady(s.frame, v.toneKey !== undefined ? v.toneKey : (s.tone || '')); } catch { /* plain look below */ }
+  if (v.clothesKey !== key || app.simViews.get(s.id) !== v) return;
+  const skin = v.material && v.material.map && v.material.map.image;
+  if (!skin || !(skin.naturalWidth || skin.width)) return;           // no skin picture: garments keep their own look
+  const W = skin.naturalWidth || skin.width, H = skin.naturalHeight || skin.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const g = canvas.getContext('2d');
+  g.drawImage(skin, 0, 0, W, H);
+  // in the preview's order (outfit, top, bottom, tights, socks, shoes), each garment's layer over the skin
+  const layers = worn.map(m => m.material.map).filter((t, i, a) => t && t.image && a.indexOf(t) === i);
+  for (const t of layers) g.drawImage(t.image, 0, 0, W, H);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  if (v._clothesSkin) v._clothesSkin.dispose();
+  v._clothesSkin = tex;
+  for (const m of worn) {
+    m.material.map = tex;
+    m.material.alphaTest = 0;            // the skin fills in what the garment leaves open
+    m.material.needsUpdate = true;
+  }
 }
 
 export function reloadClothes(app, simId) {
@@ -170,8 +202,15 @@ export function applyVisibility(app, frame = app.store.frame) {
   const p = app.store.project;
   for (const s of p.sims) {
     const v = app.simViews.get(s.id);
-    if (!v || !v.parts || !v.parts.length) continue;
+    if (!v) continue;
+    if (!v.parts || !v.parts.length) { if (v.setCovered) v.setCovered(null); continue; }
     const off = app.clothesHidden ? null : hiddenKinds(p.events, s.id, Math.floor(frame));
-    for (const m of v.parts) if (m.userData.role === 'clothes') m.visible = !!off && !off.has(m.userData.kind);
+    const covered = new Set();
+    for (const m of v.parts) {
+      if (m.userData.role !== 'clothes') continue;
+      m.visible = !!off && !off.has(m.userData.kind);
+      if (m.visible && m.material && m.material.alphaTest === 0) for (const r of COVERS[m.userData.kind] || []) covered.add(r);
+    }
+    if (v.setCovered) v.setCovered(covered);
   }
 }
