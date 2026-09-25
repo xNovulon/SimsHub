@@ -78,12 +78,12 @@ static class App
         Application.EnableVisualStyles();                 // before any dialog (TaskDialog needs them)
         Application.SetCompatibleTextRenderingDefault(false);
         ShowMessage = Native.RegisterWindowMessage("Novulon.WickedAnimator.Show");
-        if (Setup.FinishUpdate(args)) return;             // a new program putting itself in place after an update
+        if (Setup.FinishUpdate(args, MutexName)) return;             // a new program putting itself in place after an update
 
         var single = new Mutex(true, MutexName, out bool owned);
         if (!owned && Setup.EndStaleCopy())
         {
-            try { owned = single.WaitOne(TimeSpan.FromSeconds(5)); }
+            try { owned = single.WaitOne(TimeSpan.FromSeconds(15)); }
             catch (AbandonedMutexException) { owned = true; }
         }
         if (!owned)

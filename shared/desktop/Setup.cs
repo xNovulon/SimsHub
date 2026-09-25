@@ -103,44 +103,87 @@ public static class Setup
 
     // The first thing Main does. Opened as "<new program> --finish-update <app's program> <pid> [args]" by the program
     // it replaces: waits for that one to end, puts itself in its place, opens it there and ends. -> true: Main returns.
-    public static bool FinishUpdate(string[] args)
+    // It holds the app's lock (mutexName) while it works, so opening the app meanwhile can't start a copy from the
+    // file being replaced.
+    public static bool FinishUpdate(string[] args, string mutexName)
     {
         if (args.Length < 3 || args[0] != FinishArg) return false;
         var target = args[1];
         var rest = args.Skip(3).ToArray();
+        var run = target;                                 // what is opened at the end
+        // (a handle on the lock alone makes a copy opened meanwhile step back; it is closed before the app opens)
+        var lockApp = new Mutex(false, mutexName);
+        bool locked = false;
         try
         {
-            try { using var old = Process.GetProcessById(int.Parse(args[2])); old.WaitForExit(30000); }
-            catch (ArgumentException) { /* already ended */ }
-            Exception last = null;
-            for (int i = 0; i < 40; i++)
+            // 1. the old program ends (it lets go of the lock first, just before it opens this one)
+            if (!WaitForExit(args[2], TimeSpan.FromMinutes(2)))
             {
-                try
-                {
-                    // the old program is moved aside, not deleted: if anything goes wrong it goes back
-                    if (File.Exists(target)) File.Move(target, target + ".old", true);
-                    File.Copy(Environment.ProcessPath, target, true);
-                    last = null;
-                    break;
-                }
-                catch (Exception ex) { last = ex; Thread.Sleep(250); }   // still closing, or a virus scanner has it open
+                Updater.Log($"the old {Brand.Current.ExeName} did not end: the update waits for the next start");
+                return true;
             }
-            if (last != null)
+            try { locked = lockApp.WaitOne(TimeSpan.FromSeconds(30)); }
+            catch (AbandonedMutexException) { locked = true; }
+            if (!locked)
             {
-                Updater.Log($"could not put the new {Brand.Current.ExeName} in place: {last.Message}");
-                if (!File.Exists(target) && File.Exists(target + ".old")) File.Move(target + ".old", target);
+                // the app was opened again meanwhile: that copy updates itself next time
+                Updater.Log($"{Brand.Current.ExeName} was opened meanwhile: the update waits for the next start");
+                return true;
             }
-            else Updater.Log($"{Brand.Current.ExeName} updated");
+            // 2. the new program is copied next to the old one first, so the old one is only touched once the new
+            //    one is complete; the old one is moved aside (not deleted) and comes back if anything goes wrong
+            var fresh = target + ".new";
+            bool placed = Retry(() => File.Copy(Environment.ProcessPath, fresh, true), out var err)
+                && Retry(() => { if (File.Exists(target)) File.Move(target, target + ".old", true); }, out err)
+                && Retry(() => File.Move(fresh, target, true), out err);
+            if (placed) Updater.Log($"{Brand.Current.ExeName} updated");
+            else
+            {
+                Updater.Log($"could not put the new {Brand.Current.ExeName} in place: {err?.Message}");
+                if (!File.Exists(target) && File.Exists(target + ".old")) Retry(() => File.Move(target + ".old", target), out _);
+                try { File.Delete(fresh); } catch { }
+            }
+            // never nothing to open: the old program, wherever it is now
+            if (!File.Exists(target) && File.Exists(target + ".old")) run = target + ".old";
         }
         catch (Exception ex) { Updater.Log("update not finished: " + ex.Message); }
+        finally
+        {
+            if (locked) try { lockApp.ReleaseMutex(); } catch { }
+            lockApp.Dispose();
+        }
         try
         {
-            var psi = new ProcessStartInfo(target) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(target) };
+            var psi = new ProcessStartInfo(run) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(target) };
             foreach (var a in rest) psi.ArgumentList.Add(a);
             Process.Start(psi);
         }
         catch (Exception ex) { Ui.Fatal("The app was updated", "Open it again to use the new version.\n\n" + ex.Message); }
         return true;
+    }
+
+    // true once the process has ended (or was never there)
+    static bool WaitForExit(string pid, TimeSpan limit)
+    {
+        try
+        {
+            using var old = Process.GetProcessById(int.Parse(pid));
+            return old.WaitForExit((int)limit.TotalMilliseconds);
+        }
+        catch (ArgumentException) { return true; }        // already ended
+        catch (FormatException) { return true; }
+    }
+
+    // a file step, tried for up to 10 s (a program still closing, or a virus scanner looking at the new file)
+    static bool Retry(Action step, out Exception error)
+    {
+        error = null;
+        for (int i = 0; i < 40; i++)
+        {
+            try { step(); error = null; return true; }
+            catch (Exception ex) { error = ex; Thread.Sleep(250); }
+        }
+        return false;
     }
 
     // Another copy holds the app's lock. A copy that started before this program's file was written is an old
