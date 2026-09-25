@@ -48,7 +48,7 @@ function startCards(app) {
       onClick: () => app.newScene(true, true, 'empty', () => { hideHome(app); app.showStep('scene'); }) },
     { id: 'library', title: 'Start from an animation', icon: 'library', text: 'Pick any WickedWhims animation you have and make your own version of it.',
       onClick: () => { hideHome(app); app.showStep('library'); } },
-    { id: 'tray', title: 'With my own sims', icon: 'couple', text: 'Load sims from your Tray, looking the way they do in your game: body, skin, makeup, hair and outfit.',
+    { id: 'tray', title: 'With my own sims', icon: 'couple', text: 'Load sims from your Tray with their own look and outfit.',
       onClick: () => { app.newScene(true, true, 'empty', () => { hideHome(app); app.showStep('scene'); app.openTray(); }); } },
   ];
   // cards other parts of the app add (a failing one is skipped)

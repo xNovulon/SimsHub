@@ -23,7 +23,11 @@ async function openApp(opts = {}) {
   return o;
 }
 const toEditor = page => page.evaluate(() => { const b = [...document.querySelectorAll('#home button')].find(x => /editor|Continue/.test(x.textContent)); if (b) b.click(); else document.getElementById('home').classList.add('hidden'); });
-const presets = page => page.waitForFunction(() => window.app && window.app.posePresets && window.app.posePresets.length, { timeout: 60000 });
+// the poses are loaded, and the scene has the couple (the app itself opens on an empty scene)
+const presets = async page => {
+  await page.waitForFunction(() => window.app && window.app.posePresets && window.app.posePresets.length, { timeout: 60000 });
+  await page.evaluate(() => { if (!window.app.store.project.sims.length) window.app.newScene(false, false, 'couple'); });
+};
 
 // ------------------------------------------------------------------------------------------------ 1. splash
 async function checkSplash() {
