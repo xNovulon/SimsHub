@@ -37,8 +37,12 @@ files that can take many minutes.
 
 **Quick Start** looks at your saves and your in-game library, works out which CC is actually used, and starts the game
 with just that. Your sims and lots look exactly the same, and the game gets to the main menu in a fraction of the time.
-The rest of your CC isn't deleted. It's moved to a side folder for that session and comes back the moment you pick
-**Full Start**, which loads everything for building and browsing in Create a Sim.
+The rest of your CC isn't deleted. It's moved to a side folder (`Mods_parked`, right next to your Mods folder) for
+that session and comes back the moment you pick **Full Start**, which loads everything for building and browsing in
+Create a Sim.
+
+A simple way to use it: pick **Quick Start** when you just want to play, and **Full Start** when you want to make a
+new sim or build with all your CC.
 
 The Hub times every start, so you can see how much time you're saving.
 
@@ -66,8 +70,8 @@ to remove. Merged files can be split back into the files that went into them.
 Start a single save with only the CC that save needs, which is the fastest start there is. You can also see which CC
 each save uses, what's missing from it, and which saves are getting big.
 
-Backups of your saves are kept outside the game's folder, and one is made automatically before the Hub changes
-anything after a game update.
+Backups of your saves go in a folder the game never reads, and one is made automatically before the Hub changes
+anything after a game update. Restoring one is a single click.
 
 </td>
 </tr>
@@ -174,6 +178,17 @@ See each piece a sim is wearing, and take pieces off one at a time or all at onc
   you can select several body parts and move them together.
 - **Smooth loops.** Easing curves, ghost frames, motion trails and tools to make a loop join up without a jump.
 
+### Your first animation in a few minutes
+
+1. Open Wicked Animator and click **Magic Animation** on the home screen.
+2. Pick a position, where it happens and how fast it should be, then press **Make it**. Both sims are posed and
+   moving, with sounds.
+3. Play it and change whatever you like: drag a hand, move a key on the timeline, add voices in the Sounds step.
+4. Give it a name in the Details step.
+5. Press **Send to game**, then start The Sims 4. It's in WickedWhims with your other animations.
+
+When you want more control, start with **Blank animation** instead and build it pose by pose.
+
 ### Getting it into the game
 
 Press **Send to game** and the animation is written into your Mods folder as a WickedWhims animation, ready the next
@@ -195,6 +210,66 @@ If Windows says "Windows protected your PC", click **More info**, then **Run any
 by independent creators.
 
 **You'll need:** Windows 10 or 11 (64-bit) and The Sims 4 on PC.
+
+## Questions people ask
+
+#### Does the game need to be running?
+
+No, and it's better if it isn't. The Hub only changes your Mods folder while the game is closed. Wicked Animator
+doesn't need the game running either, but The Sims 4 has to be installed, because the app uses the game's own bodies
+and sounds.
+
+#### Can the Hub break or delete my CC?
+
+It never deletes anything. Quick Start only moves unused CC aside, clean-ups move files to a safe-keeping folder, and
+**Undo last change** puts everything back the way it was. Script mods are never merged or changed.
+
+#### Why doesn't Create a Sim show all my CC?
+
+You're probably in Quick Start, which only loads the CC your saves use. Close the game and start it again with
+**Full Start** to get everything.
+
+#### My animation doesn't show up in the game
+
+Check that WickedWhims is installed and up to date, and that mods are turned on in the game (Game Options, Other:
+Enable Custom Content and Mods, and Script Mods Allowed). Then open **Check my game** on Wicked Animator's home
+screen. It looks through your Mods folder and your WickedWhims settings and tells you what's in the way.
+
+#### Can I share what I make?
+
+Yes. In the Share step, press **Export a mod**. You get one file you can upload anywhere, and other players only need
+WickedWhims to use it. You can put several animations in one mod.
+
+#### Can I use the sims from my game?
+
+Yes. Any adult sim saved to your in-game Library can be loaded into Wicked Animator with their own look.
+
+#### How do updates work?
+
+Each time you open an app, it checks for a newer version and updates itself before it starts. Updates never touch
+your saves, your animations or your settings.
+
+#### Do I need to install anything else?
+
+No. The first start sets up what the app needs. If your PC doesn't have Python yet, the app installs it for your
+Windows user only, so you don't need administrator rights.
+
+## Where your files are
+
+| What | Folder |
+|---|---|
+| CC set aside by Quick Start | `Documents\Electronic Arts\The Sims 4\Mods_parked` |
+| Save backups made by the Hub | `Documents\Electronic Arts\The Sims 4\SpeedKit\save_backups` |
+| Files set aside by clean-ups | `Documents\Electronic Arts\The Sims 4\SpeedKit` (or a `SpeedKit Quarantine` folder on another drive when space is low) |
+| Animations sent to the game | `Documents\Electronic Arts\The Sims 4\Mods\FitStudio\MyAnimations` |
+| Your animation projects | `Documents\Electronic Arts\The Sims 4\saves\FitStudio` |
+| Animations packaged for sharing | `Documents\Wicked Animator Exports` |
+| The apps themselves | `Tools\sims4_speedkit` and `Tools\sims4_animator` in your user folder |
+
+## Removing an app
+
+If you use Quick Start, open the Hub and pick **Full Start** once first, so all your CC is back in Mods. Then delete
+the app's folder (see above) and its desktop shortcut. Your saves, CC and animations stay where they are.
 
 ## Something not working?
 
