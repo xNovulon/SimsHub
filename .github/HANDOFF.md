@@ -76,6 +76,19 @@ The animator redesign was stopped before anything was saved, so it has to be red
    - patch-day detection
    - Better Exceptions report parsing
 
+## Notes from the last session
+- Run the Hub checks with The Sims 4 closed: the end-to-end tests see the real game and refuse to change files while
+  it runs (15 extra failures). These fail on the original code too, and have nothing to do with the game: the batch
+  fix and care test modules don't import, test_api Flow/Refusals, and the Hub screenshot tests. The animator's
+  wired/backend_check "without a game" checks and wwversion (a ':' in a temp folder name) fail on any PC with the
+  game.
+- The owner asked for "a normal app, not a browser". Both apps are Windows programs that draw with WebView2; the
+  browser menu, text highlighting, dragging and pinch zoom are turned off. A native rewrite was not started.
+- The owner asked for the animator to be "separated from Sims Hub". They are separate programs (own folder, exe,
+  updater, data folder, port); the only link is the Hub's Tools card that opens the animator, with Studio mode.
+  Ask whether to remove that card or split the repository before doing either (installed apps update from this
+  repository's paths).
+
 ## Checks
 **Hub** (from `sims_hub/`):
 
