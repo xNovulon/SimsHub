@@ -48,8 +48,8 @@ def _initial():
                  'can_set_aside': True},
          'how': 'mentioned', 'also': [], 'count': 3, 'first': _ago(days=1, hours=5), 'last': _ago(hours=5),
          'files': ['lastUIException.txt'], 'where': '',
-         'details': 'Where: UI:CASPanel\n\nError: Error #1009: Cannot access a property or method of a null object '
-                    'reference.\n\tat widgets.CASPanel::ClothingPicker/onItemSelected()', 'source': 'ui', 'new': True,
+         'details': 'Where: UI:PhotoStudio\n\nError: Error #1009: Cannot access a property or method of a null object '
+                    'reference.\n\tat widgets.PhotoStudio::PosePicker/onItemSelected()', 'source': 'ui', 'new': True,
          'set_aside': False},
         {'id': 'c3', 'kind': 'script', 'error': "TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'",
          'mod': None, 'how': None, 'also': [], 'count': 1, 'first': _ago(days=6), 'last': _ago(days=6),

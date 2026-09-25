@@ -146,7 +146,7 @@ class Flow(Tree):
         man = F.read_manifest(os.path.join(self.sims, 'SpeedKit', 'fastpack'))
         self.assertEqual(st['library']['cas_now'], man['cas_parts']['fast'])
         js = st['journals']
-        self.assertEqual(js[0]['title'], 'Switched to Fast mode')
+        self.assertEqual(js[0]['title'], 'Switched to Quick Start')
         self.assertTrue(js[0]['undoable'] and js[0]['next_undo'])
         self.assertEqual(sum(1 for j in js if j['next_undo']), 1)
         self.assertIn('Made the fast pack', [j['title'] for j in js])
@@ -289,7 +289,7 @@ class Refusals(Tree):
         api.configure(game=None, game_clues=TG.no_clues(), home=os.path.join(self.root, 'nogame_home'))
         r = api.play('fast')
         self.assertFalse(r['ok'])
-        self.assertIn("can't find The Sims 4", r['message'])
+        self.assertIn("wasn't found on this PC", r['message'])
         self.assertFalse(api.status()['game']['found'])
 
     def test_graphics_without_rules_and_inbox_and_cleanup(self):

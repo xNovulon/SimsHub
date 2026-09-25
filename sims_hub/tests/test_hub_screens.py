@@ -174,7 +174,7 @@ class HubScreens(unittest.TestCase):
         stub_api.HOLD, stub_api.HOLD_AT = threading.Event(), 3
         hub.start('play', {'target': 'fast'})
         try:
-            self.check('task_running', '/#home', (1440, 1000), ['Starting Quick Start', 'Updating the SpeedKit Monitor'])
+            self.check('task_running', '/#home', (1440, 1000), ['Starting with Quick Start', 'Updating the SpeedKit Monitor'])
         finally:
             stub_api.HOLD.set()
         for _ in range(200):

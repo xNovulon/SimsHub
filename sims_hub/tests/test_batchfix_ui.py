@@ -100,20 +100,22 @@ class BatchFixUI(unittest.TestCase):
         self.page.goto(self.base + '#tools')
         p = self.page
         p.wait_for_selector('#care-batchfix .bf-fix', timeout=15000)
+        # How to fix and the Why note are folded; open them (not the file lists, checked below)
+        p.evaluate("document.querySelectorAll('#care-batchfix details').forEach(d => { if (!/^Show the/.test(d.querySelector('summary').textContent.trim())) d.open = true; })")
         card = p.inner_text('#care-batchfix')
-        for words in ('CC that may need a Sims 4 Studio fix', 'CC files are never changed here',
+        for words in ('CC that may need a Sims 4 Studio fix', 'Your files are never changed here',
                       '10 CC files may need a Sims 4 Studio batch fix', 'Update Sliders (Werewolf Patch)',
                       'Update Eye Colors for Infants (Infants Patch)', 'Disable Shoes for Werewolves',
                       'Disallow CC for Default Garment', 'Update CAS CC Pets Patch',
                       'Tools › Content Management › Batch Fixes › CAS › Update Sliders (Werewolf Patch)',
-                      'Sims 4 Studio keeps a copy of each file it changes', 'May need',
-                      'parked by Quick Start or one-save mode'):
+                      'Sims 4 Studio keeps a copy of each file it changes', 'What "may need" means',
+                      'parked by Quick Start'):
             self.assertIn(words, card)
         self.assertEqual(p.locator('#care-batchfix .bf-fix').count(), 5)
         # the files are folded away; opening shows them with their reason
         sliders = p.locator('#care-batchfix .bf-fix[data-fix="sliders_werewolf"]')
-        self.assertFalse(sliders.locator('details').evaluate('d => d.open'))
-        sliders.locator('summary').click()
+        self.assertFalse(sliders.locator('details').last.evaluate('d => d.open'))
+        sliders.locator('summary:has-text("Show the")').click()
         rows = sliders.inner_text()
         self.assertIn('Obscurus_NoseShape_Sliders.package', rows)
         self.assertIn('All 4 sliders use the format from before the June 2022 game update', rows)
