@@ -1,6 +1,9 @@
 # Databases & Heavy Cache files (exceed GitHub limits)
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
 *.db
 *.pickle
 *.pkl

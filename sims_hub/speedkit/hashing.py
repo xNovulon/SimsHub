@@ -45,6 +45,7 @@ import zlib
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from . import dbconn
 from .dbpf import NONE, ZLIB, REFPACK, DELETED, refpack_decompress
 from .library import PROJECT, signed64, unsigned64
 
@@ -109,7 +110,7 @@ class HashCache:
     def __init__(self, path=None):
         self.path = path or DEFAULT_CACHE
         os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
-        self.db = sqlite3.connect(self.path)
+        self.db = dbconn.connect(self.path)
         self.db.executescript(SCHEMA)
 
     def lookup(self, rel, size, mtime):

@@ -35,6 +35,7 @@ import sqlite3
 import time
 from urllib.request import pathname2url
 
+from . import dbconn
 from .dbpf import read_entries, DELETED
 from .library import PROJECT, signed64, unsigned64
 
@@ -162,7 +163,7 @@ class GameIndex:
         self.db_path = db
         self.game_dir = game_dir
         os.makedirs(os.path.dirname(os.path.abspath(db)), exist_ok=True)
-        self.db = sqlite3.connect(db, uri=True)
+        self.db = dbconn.connect(db, uri=True)
         self.db.executescript(SCHEMA)
 
     def scan(self, verbose=False):

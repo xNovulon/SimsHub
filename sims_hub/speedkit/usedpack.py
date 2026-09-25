@@ -70,6 +70,7 @@ import time
 
 import numpy as np
 
+from . import dbconn
 from .dbpf import PackageWriter, DBPFError, read_entries, decompress, DELETED
 from .library import SIMS, Library, game_running, signed64, unsigned64
 from .journal import Journal, JournalError, undo
@@ -619,7 +620,7 @@ def _unpack_ids(blob):
 
 def _open_refs_db(cache_db):
     os.makedirs(os.path.dirname(os.path.abspath(cache_db)), exist_ok=True)
-    db = sqlite3.connect(cache_db)
+    db = dbconn.connect(cache_db)
     db.executescript(REFS_SCHEMA)
     row = db.execute("select v from meta where k='scanner'").fetchone()
     if not row or row[0] != SCANNER_VERSION:        # the patterns changed: every cached parse is outdated
@@ -924,7 +925,7 @@ def load_game_ids(game_dir=GAME_DIR, cache_db=DEFAULT_GAME_DB, refresh=False):
                                 % game_dir)
     fp = hashlib.blake2b(repr((GAME_CACHE_VERSION, listing)).encode(), digest_size=16).hexdigest()
     os.makedirs(os.path.dirname(os.path.abspath(cache_db)), exist_ok=True)
-    db = sqlite3.connect(cache_db)
+    db = dbconn.connect(cache_db)
     db.executescript(GAME_SCHEMA)
     row = db.execute("select v from meta where k='fingerprint'").fetchone()
     if row and row[0] == fp and not refresh:

@@ -63,8 +63,9 @@ def signed64(i):
 
 def main(db_path=DEFAULT_DB):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    for f in (db_path, db_path + '-wal', db_path + '-shm'):     # the Hub keeps it in WAL: its log goes too
+        if os.path.exists(f):
+            os.remove(f)
     db = sqlite3.connect(db_path)
     db.executescript("""
         create table pkg(id integer primary key, root text, rel text, size integer, mtime real, n integer, err text);

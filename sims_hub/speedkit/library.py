@@ -10,9 +10,10 @@ Facts this module relies on (research/research_results.json, loadorder + its rev
 Mods_parked mirrors Mods paths (another tool parks files there and puts them back at the same place),
 so the "full" library is Mods + Mods_parked laid over each other at the same relative paths.
 """
-import os, sqlite3, subprocess, time
+import os, sqlite3, subprocess, threading, time
 from collections import namedtuple
 
+from . import dbconn
 from .dbpf import read_entries, open_shared, DELETED
 
 SIMS = os.path.join(os.path.expanduser('~'), 'Documents', 'Electronic Arts', 'The Sims 4')
@@ -82,12 +83,24 @@ def game_running():
         return True
 
 
+# One scan at a time in this process: a second one waits for the first (then finds little to do) instead of both
+# writing at once. A scan stays one transaction, so nothing ever sees a half-updated library; readers see the
+# library as it was until the scan commits (WAL). Everyday use waits up to dbconn's 60 s for a lock; only a scan
+# waits longer (SCAN_WAIT, for another scan to finish), and it says so when even that runs out.
+_SCAN_LOCK = threading.Lock()
+SCAN_WAIT = 900
+
+
+class StillScanning(RuntimeError):
+    """Another scan of the mods has been running for longer than SCAN_WAIT."""
+
+
 class Library:
     def __init__(self, db_path=DEFAULT_DB, roots=None):
         self.db_path = db_path
         self.roots = dict(roots or ROOTS)
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        self.db = sqlite3.connect(db_path)
+        self.db = dbconn.connect(db_path)
         self.db.executescript(SCHEMA)
 
     def path(self, root, rel):
@@ -96,6 +109,19 @@ class Library:
     # ---------------------------------------------------------------- scanning
     def scan(self, verbose=False):
         """Bring the index up to date. Only packages whose size or mtime changed are re-read."""
+        if not _SCAN_LOCK.acquire(timeout=SCAN_WAIT):
+            raise StillScanning('Your mods are still being read. Try again in a few minutes.')
+        try:
+            # a scan may wait long for another writer (e.g. another program on the same file); reads stay quick
+            self.db.execute('pragma busy_timeout=%d' % (SCAN_WAIT * 1000))
+            try:
+                return self._scan(verbose)
+            finally:
+                self.db.execute('pragma busy_timeout=%d' % int(dbconn.DEFAULT_TIMEOUT * 1000))
+        finally:
+            _SCAN_LOCK.release()
+
+    def _scan(self, verbose=False):
         t0 = time.time()
         known = {(r, rel): (pid, size, mtime) for pid, r, rel, size, mtime in
                  self.db.execute('select id, root, rel, size, mtime from pkg')}
@@ -239,6 +265,7 @@ class Library:
         out = {}
         for t, g, i, p, pid, fs, ms, c in self.db.execute(q, (DELETED, DELETED)):
             out.setdefault((t, g, unsigned64(i)), []).append((p, pid, fs, ms, c))
+        self.db.commit()                   # ends the read, so the library file's log can be tidied up (WAL)
         for v in out.values():
             v.sort()
         return out
