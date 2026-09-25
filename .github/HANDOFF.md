@@ -33,6 +33,11 @@ The animator redesign was stopped before anything was saved, so it has to be red
   - New `.exe` builds come from the release tagged `apps`, which also holds a `.sha256` file per program.
   - `.github/workflows/build-apps.yml` builds and publishes both programs whenever a `desktop/` folder,
     `shared/desktop` or an app icon changes.
+  - The programs are single-file .NET apps that read parts of themselves from their own file while they run, so a
+    running program's file must never be swapped. A new build waits in `%LOCALAPPDATA%\<app>\update\`; the old
+    program ends and opens it with `--finish-update`, and it puts itself in place (`Setup.FinishUpdate`). Builds
+    before 7202e4a swapped their own file and got stuck with an empty "Something went wrong"; `Setup.EndStaleCopy`
+    ends such a copy when the app is opened again.
 - `wicked_animator/data/ww_example_objects.json` is WickedWhims' list of places, uploaded by the owner. Keep it.
 
 ## Next steps, in order
