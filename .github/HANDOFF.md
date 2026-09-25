@@ -78,10 +78,10 @@ The animator redesign was stopped before anything was saved, so it has to be red
 
 ## Notes from the last session
 - Run the Hub checks with The Sims 4 closed: the end-to-end tests see the real game and refuse to change files while
-  it runs (15 extra failures). These fail on the original code too, and have nothing to do with the game: the batch
-  fix and care test modules don't import, test_api Flow/Refusals, and the Hub screenshot tests. The animator's
-  wired/backend_check "without a game" checks and wwversion (a ':' in a temp folder name) fail on any PC with the
-  game.
+  it runs. With the game closed, all Hub tests pass (tests/__init__.py keeps another library's "tests" package from
+  hiding the folder). The animator's contact check has 3 failures that are the test's own geometry (an arm can't reach
+  35 cm; the kiss preset adds no holds), and wired/backend_check's two "without a game" rows need a PC without the
+  game at a guessed install path.
 - The owner asked for "a normal app, not a browser". Both apps are Windows programs that draw with WebView2; the
   browser menu, text highlighting, dragging and pinch zoom are turned off. A native rewrite was not started.
 - The owner asked for the animator to be "separated from Sims Hub". They are separate programs (own folder, exe,
@@ -89,9 +89,8 @@ The animator redesign was stopped before anything was saved, so it has to be red
   Ask whether to remove that card or split the repository before doing either (installed apps update from this
   repository's paths).
 
-- Known issue: the clothes preview draws the outfit over the whole nude body, so a body can poke through tight or
-  thin clothes (the chest shows through a sweater). The game hides the body under clothes; the preview should hide
-  or shrink the covered body parts too.
+- Clothes are drawn like the game: garments and painted pieces (tights) are painted onto the sim's skin picture and
+  the bare body piece a garment replaces is hidden (Sim.setCovered, clothes.js paintOnSkin).
 - README pictures come from shots.py-style runs against example data (Hub) and a test server (animator). Keep them
   free of nudity and adult words: faces, clothed sims, the Hub.
 
