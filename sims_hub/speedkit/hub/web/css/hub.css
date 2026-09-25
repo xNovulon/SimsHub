@@ -814,3 +814,6 @@ img, a, svg { -webkit-user-drag: none; }
 .coffee-btn:hover { background: rgba(251, 191, 36, .18); border-color: rgba(251, 191, 36, .6); transform: translateY(-1px); }
 .coffee-btn.hidden { display: none; }
 @media (max-width: 900px) { .coffee-btn span { display: none; } .coffee-btn { padding: 0 9px; } }
+
+/* links inside notes */
+.note a { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
