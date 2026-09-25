@@ -24,6 +24,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import string
 import subprocess
 import sys
@@ -204,8 +205,12 @@ def _safe(fn):
     def wrapper(*a, **kw):
         try:
             return fn(*a, **kw)
+        except L.StillScanning as e:          # not a fault: another scan is still reading the mods
+            return {'ok': False, 'message': str(e)}
         except Exception as e:
             _log_error(fn.__name__, e)
+            if isinstance(e, sqlite3.OperationalError) and 'locked' in str(e).lower():
+                return {'ok': False, 'message': 'Another program is using your CC list right now. Try again in a moment.'}
             out = {'ok': False, 'message': 'Something went wrong: %s' % _plain(e)}
             return out
     return wrapper
@@ -1717,6 +1722,10 @@ def _cc_view(row):
     used_by = json.loads(row['used_by']) if row.get('used_by') else []
     pic = _cc_token('%s|%s|%s|%s' % (row['rel'], row['size'], row['mtime'], row['thumb'])) if row.get('thumb') else None
     dup = row.get('dup_of')
+    try:
+        extra = json.loads(row['extra']) if row.get('extra') else {}
+    except ValueError:
+        extra = {}
     return {'id': row['id'], 'name': row['name'], 'rel': row['rel'], 'folder': row['folder'] or '',
             'creator': row['creator'], 'kind': row['kind'], 'category': row['category'],
             'category_label': CB.CATEGORY_LABELS.get(row['category'], 'Other'),
@@ -1724,6 +1733,8 @@ def _cc_view(row):
             'part_name': row['part_name'], 'size_mb': round((row['size'] or 0) / 1e6, 2),
             'modified': datetime.datetime.fromtimestamp(row['mtime'] or 0).isoformat(timespec='seconds'),
             'cas_parts': row['n_cas'] or 0, 'objects': row['n_obj'] or 0, 'pic': pic,
+            'merged': bool(extra.get('merged')), 'walls': extra.get('walls', 0), 'floors': extra.get('floors', 0),
+            'fences': extra.get('fences', 0),
             'in_mods': row['root'] == 'Mods', 'used': None if row['used'] is None else bool(row['used']),
             'used_by': used_by, 'broken': row['broken'],
             'duplicate_of': (os.path.basename(dup) if dup != '?' else 'another file') if dup else None}

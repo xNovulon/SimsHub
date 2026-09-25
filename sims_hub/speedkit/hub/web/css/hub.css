@@ -698,6 +698,7 @@ details.more[open] > :not(summary) { animation: rise .3s var(--ease) both; }
 .cc-badge { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: rgba(11, 10, 16, .82); border: 1px solid var(--line-2); color: var(--text-2); letter-spacing: .2px; }
 .cc-badge.bad { color: #ffc2cd; border-color: rgba(251, 84, 113, .6); }
 .cc-badge.dup { color: #feecb9; border-color: rgba(251, 191, 36, .5); }
+.cc-badge.merged { color: #e3d4ff; border-color: rgba(168, 85, 247, .55); }
 .cc-meta { padding: 9px 11px 11px; min-width: 0; border-top: 1px solid var(--line); }
 .cc-meta b { display: block; font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cc-meta span { display: block; color: var(--faint); font-size: var(--fs-2xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -481,7 +481,7 @@ _CC_CATEGORIES = [
     ('hair', 'Hair'), ('hat', 'Hats'), ('top', 'Tops'), ('bottom', 'Bottoms'), ('fullbody', 'Full outfits'),
     ('shoes', 'Shoes'), ('accessory', 'Accessories'), ('makeup', 'Makeup'), ('eyes', 'Eyes & brows'),
     ('skin', 'Skin & tattoos'), ('cas_other', 'Other CAS'), ('pets', 'Pets'), ('sliders', 'Sliders & presets'),
-    ('buildbuy', 'Build/Buy objects'), ('walls', 'Walls & floors'), ('poses', 'Poses & animations'),
+    ('buildbuy', 'Furniture & objects'), ('walls', 'Walls & floors'), ('poses', 'Poses & animations'),
     ('gameplay', 'Gameplay mods'), ('script', 'Script mods'), ('other', 'Other'),
 ]
 _CC_LABELS = dict(_CC_CATEGORIES)
@@ -644,11 +644,16 @@ def _cc_items():
                 'pic': None if (hue is None or (cas and k % 9 == 8)) else 'p%d' % n, 'in_mods': k % 11 != 10,
                 'used': None if cat in ('script', 'gameplay', 'poses') else k % 3 != 2,
                 'used_by': [], 'broken': None, 'duplicate_of': None,
+                'merged': False, 'walls': 0, 'floors': 0, 'fences': 0,
             })
     saves = ['Wicked Nights', 'Legacy Challenge', 'San Myshuno Apartment Life with a Very Long Save Name', 'Build Test']
     for it in items:
         if it['used']:
             it['used_by'] = sorted({saves[(it['id'] * 7 + j) % 4] for j in range(1 + it['id'] % 3)})
+    # one merged file: mostly outfits, with some floors and walls inside (listed under both)
+    m = next(x for x in items if x['category'] == 'fullbody' and x['name'].startswith('['))
+    m.update(name='Everyday set (merged).package', rel='%s/Everyday set (merged).package' % m['folder'], merged=True,
+             cats=['fullbody', 'top', 'walls'], cas_parts=240, walls=8, floors=12, size_mb=64.5)
     # a few files that hold the same CC as another file, and two damaged ones
     groups = {}
     for it in items:

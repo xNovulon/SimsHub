@@ -54,8 +54,9 @@ The Hub times every start, so you can see how much time you're saving.
 
 <img src=".github/assets/hub-library.png" alt="The CC browser" width="100%">
 
-Every CC file you have, sorted into hair, tops, shoes, makeup, Build/Buy and more, each with its picture. Search by
-name, creator or folder, and find CC that none of your saves use.
+Every CC file you have, sorted into hair, tops, shoes, makeup, furniture, animations and more, each with its
+picture. Search by name, creator or folder, and find CC that none of your saves use. Merged files are marked, and
+show up under every kind of CC they hold.
 
 If a file is an exact copy of something another file already has, the Hub tells you which one, so you know it's safe
 to remove. Merged files can be split back into the files that went into them.

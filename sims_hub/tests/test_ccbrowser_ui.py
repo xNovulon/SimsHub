@@ -171,7 +171,7 @@ class CCBrowserUI(unittest.TestCase):
         card = self.page.query_selector('#cc-browser .cc-card:not(:has(.cc-badge:has-text("Put away")))')
         card.click()
         self.page.wait_for_selector('.cc-detail')
-        self.assertIn('Build/Buy', self.page.inner_text('.cc-facts'))
+        self.assertIn('Furniture & objects', self.page.inner_text('.cc-facts'))
         self.page.click('.modal [data-aside]')
         self.page.wait_for_selector('.modal [data-yes]')
         self.assertIn('Undo last change', self.page.inner_text('.modal'))

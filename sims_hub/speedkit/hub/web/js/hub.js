@@ -1244,7 +1244,7 @@ async function ccDupWarn() {
   // one line, folded: the list opens under it when asked for
   box.innerHTML = `<details class="dupfold"${open ? ' open' : ''}>
     <summary class="note warn">${ic('warn')}<span class="dupfold-t"><b>${num(n)} duplicate ${n === 1 ? 'file' : 'files'} found.</b>
-      Each is fully inside another file, so it can go.</span>
+      Some are merged in another file.</span>
       <button class="btn small" data-cc="showdups">Show them</button><span class="dupfold-chev" aria-hidden="true"></span></summary>
     <div class="items dupfold-list">${items.map(i => `<div class="item">${ic('warn')}<span class="n" title="${esc(i.name)}">${esc(i.name)}</span>
       <span class="r">also in <b>${esc(i.duplicate_of || 'another file')}</b></span></div>`).join('')}
@@ -1376,6 +1376,22 @@ function ccDraw() {
 
 const ccThumb = it => it && it.pic ? `/api/cc/thumb/${it.id}?v=${encodeURIComponent(it.pic)}` : '';
 
+// What a card says a file is. A merged file listed under another of its categories says what it has of that
+// category ("31 floors, 38 walls inside"), not its main one ("Full outfit").
+function ccWhat(it) {
+  const main = it.body && it.body !== it.category_label ? it.body : it.category_label;
+  const want = CCB.f.category;
+  if (!want || want === it.category) return it.merged ? `Merged · ${main}` : main;
+  const n = (k, one, many) => it[k] ? `${num(it[k])} ${it[k] === 1 ? one : many}` : '';
+  const inside = want === 'walls' ? [n('floors', 'floor', 'floors'), n('walls', 'wall', 'walls'), n('fences', 'fence', 'fences')].filter(Boolean).join(', ')
+    : want === 'buildbuy' ? n('objects', 'object', 'objects')
+    : (CC_CAS_KEYS.has(want) && it.cas_parts) ? `${(CC_CAT_LABEL[want] || 'CAS').toLowerCase()} among ${num(it.cas_parts)} CAS parts` : '';
+  return `${it.merged ? 'Merged' : main}${inside ? ` · ${inside} inside` : ''}`;
+}
+const CC_CAS_KEYS = new Set(['hair', 'hat', 'top', 'bottom', 'fullbody', 'shoes', 'accessory', 'makeup', 'eyes', 'skin', 'cas_other', 'pets']);
+const CC_CAT_LABEL = { hair: 'Hair', hat: 'Hats', top: 'Tops', bottom: 'Bottoms', fullbody: 'Full outfits', shoes: 'Shoes', accessory: 'Accessories',
+  makeup: 'Makeup', eyes: 'Eyes & brows', skin: 'Skin & tattoos', cas_other: 'Other CAS', pets: 'Pets' };
+
 function ccCard(it) {
   const src = ccThumb(it), sel = CCB.sel.has(it.id);
   const badges = [];
@@ -1383,7 +1399,8 @@ function ccCard(it) {
   if (it.duplicate_of) badges.push(`<span class="cc-badge dup" title="Everything in it is also in ${esc(it.duplicate_of)}">Duplicate</span>`);
   if (it.used === false) badges.push(`<span class="cc-badge" title="Not used by any save or in-game library household">Not used</span>`);
   if (!it.in_mods) badges.push(`<span class="cc-badge" title="Moved out of Mods by Quick Start or one-save mode; back with Full Start">Put away</span>`);
-  const sub = [it.body && it.body !== it.category_label ? it.body : it.category_label, it.creator || it.folder].filter(Boolean).join(' · ');
+  if (it.merged) badges.push(`<span class="cc-badge merged" title="Many CC files merged into one">Merged</span>`);
+  const sub = [ccWhat(it), it.creator || it.folder].filter(Boolean).join(' · ');
   return `<div class="cc-card${sel ? ' selected' : ''}" data-id="${it.id}" data-cat="${esc(it.category)}" tabindex="0" title="${esc(it.rel || it.name)}">
     <div class="cc-pic">${src ? `<img src="${src}" alt="" loading="lazy" decoding="async" data-cat="${esc(it.category)}">` : `<div class="cc-ph">${ccIc(it.category)}</div>`}
       ${it.kind === 'script' ? '' : `<label class="cc-check" title="Select"><input type="checkbox" data-cc-sel="${it.id}"${sel ? ' checked' : ''} aria-label="Select ${esc(it.name)}"></label>`}
@@ -1450,7 +1467,9 @@ async function ccDetails(id) {
     r.creator ? ['Creator (guessed from the file name)', r.creator] : null,
     ['Folder', r.folder || 'Mods (not in a folder)'],
     r.cas_parts ? ['Create a Sim items', num(r.cas_parts)] : null,
-    r.objects ? ['Build/Buy objects', num(r.objects)] : null,
+    r.objects ? ['Furniture & objects', num(r.objects)] : null,
+    r.walls || r.floors || r.fences ? ['Walls, floors & fences', [r.walls ? plural(r.walls, 'wall') : '', r.floors ? plural(r.floors, 'floor') : '', r.fences ? plural(r.fences, 'fence') : ''].filter(Boolean).join(', ')] : null,
+    r.merged ? ['Merged file', 'Yes - many CC files in one'] : null,
     ['Size', r.size_mb >= 1 ? `${r.size_mb.toFixed(1)} MB` : `${Math.max(1, Math.round(r.size_mb * 1000))} KB`],
     ['Changed', dayTime(r.modified)],
   ].filter(Boolean);

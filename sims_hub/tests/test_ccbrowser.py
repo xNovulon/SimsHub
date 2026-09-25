@@ -187,6 +187,90 @@ def assert_plain(test, text):
         test.assertNotRegex(text or '', r'(?i)(?<![\w.])%s(?!\w)' % w, text)
 
 
+# ------------------------------------------------------------------ a merged file
+class MergedFile(unittest.TestCase):
+    """A merged file (Sims 4 Studio's merge list inside) that is mostly outfits but also holds floors and walls: it is
+    marked Merged, counts what it holds, and is listed under each of its categories."""
+
+    def test_merged_file_is_marked_and_counts_its_build_items(self):
+        from speedkit import library as L
+        d = tempfile.mkdtemp(prefix='sk_merged_')
+        try:
+            mods = os.path.join(d, 'Mods')
+            parts = [((U.T_CASP, 0, 0xE1000000000000A0 + k), casp('yfBody_Set%d' % k, 5)) for k in range(8)]
+            build = [((U.T_CFLR, 0, 0xF1000000000000B0 + k), b'cflr' * 8) for k in range(2)]
+            build += [((U.T_CWAL, 0, 0xF2000000000000C0 + k), b'cwal' * 8) for k in range(3)]
+            pkg(os.path.join(mods, 'Everyday merge.package'), parts + build + [((0x7FB6AD8A, 0, 1), b'merge list')])
+            pkg(os.path.join(mods, 'Plain dress.package'), [((U.T_CASP, 0, DRESS), casp('yfBody_Venus', 5))])
+            lib = L.Library(os.path.join(d, 'library.sqlite'), roots={'Mods': mods})
+            try:
+                lib.scan()
+                by = {os.path.basename(p.rel): p for p in lib.packages()}
+                m = CB.classify(lib, by['Everyday merge.package'])
+                plain = CB.classify(lib, by['Plain dress.package'])
+            finally:
+                lib.close()
+            self.assertTrue(m['merged'])
+            self.assertEqual((m['walls'], m['floors'], m['fences']), (3, 2, 0))
+            self.assertEqual(m['category'], 'fullbody')                 # mostly outfits
+            self.assertIn('walls', m['cats'])                          # and listed under Walls & floors too
+            self.assertFalse(plain['merged'])
+            self.assertEqual((plain['walls'], plain['floors']), (0, 0))
+            # what the Hub shows: the flag and counts reach the details and the cards
+            view = api._cc_view({'id': 1, 'name': 'Everyday merge.package', 'rel': 'Everyday merge.package', 'folder': '',
+                                 'creator': None, 'kind': 'package', 'category': 'fullbody', 'cats': 'fullbody,walls',
+                                 'body': 'Full outfit', 'part_name': None, 'size': 1000, 'mtime': 0, 'n_cas': 4,
+                                 'n_obj': 0, 'thumb': '', 'root': 'Mods', 'used': None, 'used_by': None,
+                                 'broken': None, 'dup_of': None,
+                                 'extra': json.dumps({'merged': True, 'walls': 3, 'floors': 2})})
+            self.assertEqual((view['merged'], view['walls'], view['floors'], view['fences']), (True, 3, 2, 0))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_merged_animation_pack_is_listed_under_poses_and_animations(self):
+        from speedkit import library as L
+        d = tempfile.mkdtemp(prefix='sk_anims_')
+        try:
+            mods = os.path.join(d, 'Mods')
+            clips = [((CB.T_CLIP, 0, 0xC1000000000000D0 + k), b'clip' * 16) for k in range(30)]
+            extra = [((U.T_OBJD, 0, 0xB2000000000000E1), b'objd' * 20),                        # a prop
+                     ((U.T_CASP, 0, 0xE3000000000000F1), casp('yfBody_Robe', 5)),               # an outfit for it
+                     ((TUNING_T, 0, 0x5678), b'<I n="anim"/>' * 10), ((0x7FB6AD8A, 0, 1), b'merge list')]
+            pkg(os.path.join(mods, 'WW_Animations_merged.package'), clips + extra)
+            lib = L.Library(os.path.join(d, 'library.sqlite'), roots={'Mods': mods})
+            try:
+                lib.scan()
+                info = CB.classify(lib, lib.packages()[0])
+            finally:
+                lib.close()
+            self.assertEqual(info['category'], 'poses')
+            self.assertTrue(info['merged'])
+            self.assertIn('buildbuy', info['cats'])          # the prop still counts, second
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_an_old_index_gets_the_new_column(self):
+        import sqlite3
+        d = tempfile.mkdtemp(prefix='sk_oldidx_')
+        try:
+            path = os.path.join(d, 'ccbrowser.sqlite')
+            old = sqlite3.connect(path)
+            old.execute('create table item(id integer primary key, kind text, root text, rel text, relkey text unique, '
+                        'name text, folder text, creator text, size integer, mtime real, category text, cats text, '
+                        'body text, part_name text, n_res integer, n_cas integer, n_obj integer, thumb text, '
+                        'broken text, dup_of text, used integer, used_by text, version integer)')
+            old.commit()
+            old.close()
+            idx = CB.CCIndex(path)
+            try:
+                cols = {r[1] for r in idx.db.execute('pragma table_info(item)')}
+            finally:
+                idx.close()
+            self.assertIn('extra', cols)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
 # ------------------------------------------------------------------ unit parts
 @unittest.skipIf(Image is None, 'Pillow is not installed')
 class Pictures(unittest.TestCase):

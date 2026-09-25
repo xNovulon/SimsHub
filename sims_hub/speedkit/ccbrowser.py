@@ -46,7 +46,7 @@ from .dbpf import Package, read_entries, open_shared, decompress, DELETED
 from .library import signed64, unsigned64
 from . import usedpack as U
 
-INDEX_VERSION = 3              # bump when classification changes: every file is looked at again
+INDEX_VERSION = 4              # bump when classification changes: every file is looked at again (4: merged, walls)
 THUMB_VERSION = 1              # bump when picture making changes: every picture is made again
 THUMB_SIZE = 256               # longest side of a cached picture, in pixels
 SAMPLE_CASP = 12               # CAS parts read per file to decide its categories
@@ -57,6 +57,7 @@ T_CASP, T_THUM, T_TONE, T_OBJD, T_COBJ, T_OTHM = U.T_CASP, U.T_THUM, U.T_TONE, U
 MERGE_LIST = 0x7FB6AD8A          # Sims 4 Studio's list of what went into a merge (tool metadata, not content)
 T_CWAL, T_CFLR, T_SMOD, T_SCUL, T_PELT = U.T_CWAL, U.T_CFLR, U.T_SMOD, U.T_SCUL, U.T_PELT
 T_CFEN = 0x0418FE2A            # fence
+T_MERGE_LIST = 0x7FB6AD8A      # Sims 4 Studio's list of the files merged into this one
 T_CLIP = 0x6B20C4F3            # animation clip (poses, WickedWhims animations)
 T_PRESET = 0xEAA32ADD          # CAS preset
 T_THUM_BB, T_THUM_2, T_THUM_3, T_PNG = 0x5B282D45, 0x9C925813, 0xCD9DE247, 0x2F7D0004
@@ -73,7 +74,7 @@ CATEGORIES = [
     ('hair', 'Hair'), ('hat', 'Hats'), ('top', 'Tops'), ('bottom', 'Bottoms'), ('fullbody', 'Full outfits'),
     ('shoes', 'Shoes'), ('accessory', 'Accessories'), ('makeup', 'Makeup'), ('eyes', 'Eyes & brows'),
     ('skin', 'Skin & tattoos'), ('cas_other', 'Other CAS'), ('pets', 'Pets'), ('sliders', 'Sliders & presets'),
-    ('buildbuy', 'Build/Buy objects'), ('walls', 'Walls & floors'), ('poses', 'Poses & animations'),
+    ('buildbuy', 'Furniture & objects'), ('walls', 'Walls & floors'), ('poses', 'Poses & animations'),
     ('gameplay', 'Gameplay mods'), ('script', 'Script mods'), ('other', 'Other'),
 ]
 CATEGORY_LABELS = dict(CATEGORIES)
@@ -487,7 +488,7 @@ create table if not exists item(
     id integer primary key, kind text, root text, rel text, relkey text unique, name text, folder text,
     creator text, size integer, mtime real, category text, cats text, body text, part_name text,
     n_res integer, n_cas integer, n_obj integer, thumb text, broken text, dup_of text, used integer,
-    used_by text, version integer);
+    used_by text, version integer, extra text);
 create index if not exists item_cat on item(category);
 create index if not exists item_folder on item(folder);
 create index if not exists item_creator on item(creator);
@@ -511,6 +512,11 @@ def _connect(path):
     except sqlite3.Error:
         pass
     db.executescript(SCHEMA)
+    # an index from before 'extra' (merged file, walls/floors/fences inside) gets the column; the version bump
+    # then fills it in as every file is looked at again
+    if 'extra' not in {r[1] for r in db.execute('pragma table_info(item)')}:
+        db.execute('alter table item add column extra text')
+        db.commit()
     return db
 
 
@@ -620,19 +626,20 @@ class CCIndex:
 
     def _upsert(self, p, info):
         k = p.rel.lower()
+        extra = {k2: info[k2] for k2 in ('merged', 'walls', 'floors', 'fences') if info.get(k2)}
         vals = ('package', p.root, p.rel, k, os.path.basename(p.rel), folder_of(p.rel), guess_creator(p.rel),
                 p.size, p.mtime, info['category'], ','.join(info['cats']), info.get('body'), info.get('part_name'),
                 info['n_res'], info['n_cas'], info['n_obj'], info.get('thumb') or '', info.get('broken'),
-                INDEX_VERSION)
+                INDEX_VERSION, json.dumps(extra) if extra else None)
         row = self.db.execute('select id from item where relkey=?', (k,)).fetchone()
         if row:
             self.db.execute('update item set kind=?, root=?, rel=?, relkey=?, name=?, folder=?, creator=?, size=?, '
                             'mtime=?, category=?, cats=?, body=?, part_name=?, n_res=?, n_cas=?, n_obj=?, thumb=?, '
-                            'broken=?, version=? where id=?', vals + (row[0],))
+                            'broken=?, version=?, extra=? where id=?', vals + (row[0],))
         else:
             self.db.execute('insert into item(kind, root, rel, relkey, name, folder, creator, size, mtime, category, '
-                            'cats, body, part_name, n_res, n_cas, n_obj, thumb, broken, version) '
-                            'values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', vals)
+                            'cats, body, part_name, n_res, n_cas, n_obj, thumb, broken, version, extra) '
+                            'values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', vals)
 
     def _flags(self, lib, chosen, skip_ids):
         """dup_of: ONE other file holds every resource this one has (CAS parts, objects, tuning, pictures - everything
@@ -951,6 +958,8 @@ def classify(lib, p):
         (p.id, DELETED))]
     out['n_cas'] = types[T_CASP]
     out['n_obj'] = types[T_OBJD]
+    out['merged'] = bool(types[T_MERGE_LIST])
+    out['walls'], out['floors'], out['fences'] = types[T_CWAL], types[T_CFLR], types[T_CFEN]
     cats = collections.Counter()
     if types[T_CASP]:
         rows = db.execute('select g, i, off, fsize, msize, comp from res where pkg=? and t=? and comp != ? '
@@ -972,9 +981,12 @@ def classify(lib, p):
             except OSError:
                 infos = []
         body_names = collections.Counter()
+        # each sampled part stands for its share of all the file's CAS parts, so a big merge's outfits weigh what
+        # they really are against its floors or objects (which are counted in full)
+        share = types[T_CASP] / max(1, len(infos))
         for i, info in infos:
             cat, bname = body_category(info.get('body_type') if info else None)
-            cats[cat] += 1
+            cats[cat] += share
             if info and info.get('body_type'):
                 body_names[bname] += 1
         if not infos:
@@ -1012,10 +1024,14 @@ def classify(lib, p):
         cats['walls'] += types[T_CWAL] + types[T_CFLR] + types[T_CFEN] + (1 if not cats else 0)
         if not out['thumb']:
             out['thumb'] = _pick_thumb(pics, set(), CAS_PICS + OBJECT_PICS)
+    # animations count whatever else the file holds: a merged animation pack often carries props, outfits or
+    # tuning too, and still belongs under Poses & animations (weighted by its number of clips, like the rest)
+    if types[T_CLIP]:
+        cats['poses'] += types[T_CLIP]
+        if not out['thumb']:
+            out['thumb'] = _pick_thumb(pics, set(), ANY_PICS)
     if not cats:
-        if types[T_CLIP]:
-            cats['poses'] += 1
-        elif any(t not in ASSET_TYPES for t in types):
+        if any(t not in ASSET_TYPES for t in types):
             cats['gameplay'] += 1
         else:
             cats['other'] += 1
