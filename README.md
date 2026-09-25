@@ -57,74 +57,30 @@ Requires the WickedWhims mod. For adults (18+).
   <img src=".github/assets/sims-hub-home.png" alt="Sims Hub home screen" width="85%">
 </p>
 
-- **Faster loading.** Start the game with only the CC your saves use. Nothing is deleted; the rest is set aside for
-  that session only.
+- **Faster loading.** Start the game with only the CC your saves use. Nothing is deleted.
 - **Less lag, same graphics.** Fixes the settings that slow the game down while keeping maximum quality.
 - **Tidy downloads.** New downloads are sorted and merged automatically; script mods are never touched.
-- **Duplicate cleaner.** Finds identical copies of CC and checks the game still loads exactly the same content.
+- **Duplicate cleaner.** Removes identical copies of CC, merged files included. Your game looks the same.
+- **Unmerge.** Splits a merged file back into the files that went into it.
 - **CC browser.** Every CC file with its picture and category, searchable, with what each save uses and what is missing.
 - **After game updates.** Lists script mods older than the update and can set them aside until they are fixed.
 - **Error reports.** Reads the game's error files and names the mod that caused each error.
 - **Save backups.** Back up and restore saves, and see which saves are growing large.
 - **Load-time tracking.** Shows how long the game takes to load in each mode and the time saved.
-- **Safe by design.** Every change can be undone, and nothing changes while the game is running.
+- **Everything can be undone.**
 
 ## Installation
 
-1. Download the app you want using the buttons above.
-2. Open the downloaded file.
-3. On first start the app installs itself, adds Desktop and Start Menu shortcuts, and sets up everything it needs,
-   including Python and Microsoft Edge WebView2 if they are missing. This takes a minute or two.
+1. Download the app you want with the buttons above, and open it.
+2. The first start sets everything up and adds shortcuts. It takes a minute or two.
 
-**Requirements:** Windows 10 or 11 (64-bit), The Sims 4 on PC, and an internet connection for the first start.
+If Windows shows "Windows protected your PC", select **More info**, then **Run anyway**.
 
-## Updates
+**Needs:** Windows 10 or 11 (64-bit) and The Sims 4 on PC.
 
-The apps update themselves. Each time you open one, it checks this repository for a newer version and installs it
-before starting. Your animations, poses, saves and settings are never touched by an update.
+## Something wrong?
 
-## Safety
-
-- **Built in the open.** Every download is compiled from the code in this repository by
-  [GitHub Actions](https://github.com/xNovulon/SimsHub/actions/workflows/build-apps.yml), and each file has a
-  published SHA-256 checksum on the [release page](https://github.com/xNovulon/SimsHub/releases/tag/apps).
-- **Runs on your PC.** The apps only go online to check for updates and to download what they need to run.
-- **Windows SmartScreen.** Because the apps are not code-signed, Windows may show "Windows protected your PC" the first
-  time. Select **More info**, then **Run anyway**.
-
-## Support
-
-If something doesn't work, each app keeps logs you can include in a report:
-
-| App | Log folder |
-| --- | --- |
-| Wicked Animator | `%LOCALAPPDATA%\NovulonWickedAnimator` |
-| Sims Hub | `%LOCALAPPDATA%\NovulonSimsHub` |
-
-Paste the path into the File Explorer address bar to open it, then
-[open an issue](https://github.com/xNovulon/SimsHub/issues/new) describing what happened.
-
-<details>
-<summary><b>For developers</b></summary>
-
-<br>
-
-| Folder | Contents |
-| --- | --- |
-| `wicked_animator/` | Python engine (`backend/`), web interface (`web/`), Windows app (`desktop/`), checks (`tools/`) |
-| `sims_hub/` | Python engine (`speedkit/`, interface in `speedkit/hub/`), in-game mod (`ingame/`), Windows app (`desktop/`), tests |
-| `shared/desktop/` | Code both Windows apps share: installing, updating, Python and WebView2 setup, the splash screen |
-
-- **Releasing:** push to `main`. Installed apps pick up changed files the next time they open. Changes to a
-  `desktop/` folder trigger a new build on the [apps release](https://github.com/xNovulon/SimsHub/releases/tag/apps),
-  and installed apps replace themselves with it.
-- **What users receive:** each app's folder, excluding files only developers need (`desktop/`, `tools/`, `tests/`,
-  `research/`, `docs/`, `branding/`). The lists are in each app's `desktop/Program.cs`.
-- **Local work:** a `git clone` never updates itself. Build an app with `desktop\build.ps1`, or run an engine directly
-  (`python backend\server.py`, `python -m speedkit.hub`). Set `WICKED_NO_UPDATE=1` or `SIMS_HUB_NO_UPDATE=1` to turn
-  updates off.
-
-</details>
+[Open an issue](https://github.com/xNovulon/SimsHub/issues/new) and say what happened.
 
 ---
 

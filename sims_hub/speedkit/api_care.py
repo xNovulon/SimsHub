@@ -93,8 +93,7 @@ def patch_day():
         msg = 'The date of the last game update is not known yet. Game updates are tracked from now on.'
     elif info['updated']:
         msg = ('The Sims 4 was updated%s. %s' % (' to %s' % info['version'] if info.get('version') else '',
-               ('%d script mod%s older than the update. An older file does not prove a mod is broken, but these are the '
-                'first ones to check. They can be set aside until they are updated.' % (n, ' is' if n == 1 else 's are'))
+               ('%d script mod%s older than the update. Check these first.' % (n, ' is' if n == 1 else 's are'))
                if n else 'All script mods are newer than the update.'))
     else:
         msg = ('%d script mod%s older than the latest game update.' % (n, ' is' if n == 1 else 's are')) if n else \

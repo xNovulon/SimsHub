@@ -35,11 +35,11 @@ export function patchLine(sum) {
 
 function steps(fx) {
   const path = (fx.menu || []).map(esc).join(' › ');
-  return `<ol class="bf-steps">
+  return `<details class="more"><summary>How to fix</summary><ol class="bf-steps">
     <li>Close The Sims 4.</li>
-    <li>Open Sims 4 Studio (a recent version) and choose <b>${path}</b>.</li>
-    <li>Pick your Mods folder when asked. Sims 4 Studio keeps a copy of each file it changes.</li>
-    <li>Come back here and press <b>Check again</b>.</li></ol>`;
+    <li>In Sims 4 Studio, choose <b>${path}</b>.</li>
+    <li>Pick your Mods folder. Sims 4 Studio keeps a copy of each file it changes.</li>
+    <li>Come back and press <b>Check again</b>.</li></ol></details>`;
 }
 
 function fileRow(f) {
@@ -52,10 +52,10 @@ function fileRow(f) {
 function fixBlock(fx) {
   const canAside = (fx.files || []).filter(f => f.in_mods && !f.set_aside).length;
   const parked = fx.parked ? `<div class="note warn">${ic('warn')}<span>${H.plural(fx.parked, 'of these files is', 'of these files are')}
-    parked by Quick Start or one-save mode. Get Full Start ready first, so every file is in the Mods folder when the fix runs.</span></div>` : '';
+    parked by Quick Start. Switch to Full Start before running the fix.</span></div>` : '';
   return `<div class="bf-fix" data-fix="${esc(fx.id)}">
     <div class="top"><div class="ci">${ic('spark')}</div><div class="grow"><b>${esc(fx.name)}</b>
-      <span>${esc(fx.problem)} ${esc(fx.update)}</span></div>
+      <span title="${esc(fx.update)}">${esc(fx.problem)}</span></div>
       <span class="chip warn">${H.plural(fx.count, 'file')}</span></div>
     ${steps(fx)}${parked}
     <details class="more"><summary>Show the ${H.plural(fx.count, 'file')}${fx.set_aside ? ` (${fx.set_aside} set aside)` : ''}</summary>
@@ -77,15 +77,13 @@ export function card() {
       <span>Checked ${H.plural(r.files_checked, 'file')} · ${esc(H.ago(r.scanned))}</span></div></div>`;
     if (fixes.length) {
       body += `<div class="bf-fixes">${fixes.map(fixBlock).join('')}</div>
-        <div class="note">${ic('info')}<span>"May need" means that a file matches a problem a batch fix is known for. It does not prove
-        that the item looks wrong in your game. Setting a file aside deletes nothing; it can be put back under "After a game update",
-        or the change can be undone.</span></div>`;
+        <details class="more why"><summary>What "may need" means</summary><p>The file matches a problem a batch fix is known for.
+        It may still look fine in your game. Setting a file aside deletes nothing.</p></details>`;
     }
   }
   const scanned = r && r.ok && r.scanned;
   return `<div class="card" id="care-batchfix" data-care="batchfix"><div class="card-head"><div class="ic blue">${ic('spark')}</div><div class="grow">
-      <h2>CC that may need a Sims 4 Studio fix</h2><p>Some game updates change how the game reads CC. Sims 4 Studio's batch fixes update the files.
-      This check reads your CC files, lists the ones that match a known problem, and names the fix to run. CC files are never changed here.</p></div>
+      <h2>CC that may need a Sims 4 Studio fix</h2><p>Finds CC that needs a batch fix, and names the fix. Your files are never changed here.</p></div>
       <button class="btn${scanned ? '' : ' primary'}" data-act="bf-scan"${noChange() ? ' disabled' : ''}>${ic(scanned ? 'refresh' : 'search')}${scanned ? 'Check again' : 'Check my CC'}</button></div>
       ${body}</div>`;
 }

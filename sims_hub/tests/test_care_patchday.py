@@ -122,7 +122,7 @@ class Detection(Base):
         self.assertEqual(len(r['older']), 3)
         self.assertIn('WickedWhims/TURBODRIVER_WickedWhims_Scripts.ts4script', [o['rel'] for o in r['older']])
         self.assertIn('was updated', r['message'])
-        self.assertIn('does not prove a mod is broken', r['message'])
+        self.assertIn('Check these first', r['message'])
         self.assertTrue(api.patch_seen()['ok'])
         self.assertFalse(api.patch_day()['game']['updated'])
 

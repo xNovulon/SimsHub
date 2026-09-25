@@ -134,7 +134,7 @@ class CareUI(unittest.TestCase):
         p = self.page
         p.wait_for_selector('[data-care="patch-banner"]', timeout=10000)
         self.assertIn('The Sims 4 was updated', p.inner_text('[data-care="patch-banner"]'))
-        self.assertIn('4 script mods are older than the latest game update', p.inner_text('[data-care="patch-banner"]'))
+        self.assertIn('4 script mods are older than this update', p.inner_text('[data-care="patch-banner"]'))
         self.assertIn('2 new game errors', p.inner_text('[data-care="errors-banner"]'))
         savings = p.inner_text('[data-care="savings"]')
         for words in ('How long the game takes to load', 'Quick Start', 'Full Start', 'about 6 min less per start than Full Start'):
@@ -154,7 +154,7 @@ class CareUI(unittest.TestCase):
         p = self.page
         p.wait_for_selector('#care-patch [data-care-pick]', timeout=10000)
         card = p.inner_text('#care-patch')
-        for words in ('After a game update', 'MCCC', 'Kuttoe', 'does not prove that a mod is broken', 'SET ASIDE FOR NOW',
+        for words in ('After a game update', 'MCCC', 'Kuttoe', 'Is my mod broken?', 'SET ASIDE FOR NOW',
                       'Srsly Pack'):
             self.assertIn(words, card)
         self.assertEqual(p.locator('#care-patch [data-care-pick]').count(), 4)

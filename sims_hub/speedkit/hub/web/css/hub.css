@@ -778,3 +778,6 @@ details.more[open] > :not(summary) { animation: rise .3s var(--ease) both; }
   .skel::after, .cc-pic::before, .bar-track i::after, .play.fast .go::after, .state-card.running .big-dot::after { display: none; }
   .cc-pic img { opacity: 1; transform: none; }
 }
+
+/* a short "why" or "how to" that stays folded until asked for */
+details.more.why p { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; max-width: 72ch; }

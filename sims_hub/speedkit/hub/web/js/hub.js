@@ -239,13 +239,13 @@ function renderHome() {
     top += `<div class="play-row">
       <button class="play fast" data-act="play" data-target="fast"${off}>
         <div class="top"><div class="pic">${ic('bolt-fill')}</div><div class="t">Quick Start</div></div>
-        <div class="d">Starts the game with only the custom content (CC) your sims and lots use. It loads much faster, and your sims look exactly the same.</div>
+        <div class="d">Only the CC your sims and lots use. Much faster, and they look the same.</div>
         <div class="m">${fastMeta.join('')}</div>
         <span class="go">${ic('play')}</span>
       </button>
       <button class="play all" data-act="play" data-target="full"${off}>
         <div class="top"><div class="pic">${ic('stack')}</div><div class="t">Full Start</div></div>
-        <div class="d">Starts the game with all of your custom content. Use this to build, or to browse all your CC in Create a Sim.</div>
+        <div class="d">All your CC. Best for building and for Create a Sim.</div>
         <div class="m">${fullMeta.join('')}</div>
         <span class="go">${ic('play')}</span>
       </button></div>`;
@@ -330,7 +330,7 @@ function statCards() {
 // -------------------------------------------------------------------------------- Saves
 function renderSaves() {
   const head = `<div class="page-head"><div class="grow"><h1>Your <span>saves</span></h1>
-    <p>Play one save, and only the CC that save uses is loaded. It's the fastest way to start.</p></div>
+    <p>Play one save with only the CC it uses. The fastest start there is.</p></div>
     <button class="btn" data-act="saves-refresh"${S.savesLoading ? ' disabled' : ''}>${ic('refresh')}Look again</button></div>`;
   if (!S.saves) {
     return head + (S.savesLoading || !S.status ? `<div class="saves-loading"><div class="spinner"></div><div><b>Looking at your saves...</b>
@@ -393,7 +393,7 @@ function renderLibrary() {
 
     <div class="lib-more">
     <div class="card"><div class="card-head"><div class="ic">${ic('download')}</div><div class="grow"><h2>Add new downloads</h2>
-      <p>Put the CC and mods you download into this folder. Press <b>Add to game</b>, and the Hub puts them in the right place, the safe way.</p></div></div>
+      <p>Drop new CC and mods in this folder, then press <b>Add to game</b>.</p></div></div>
       <div class="path-box">${ic('folder', 'fold')}<span class="path">${esc((ib && ib.inbox_path) || 'Finding your Inbox folder...')}</span>
         <button class="btn small" data-act="open" data-what="inbox">${ic('folder')}Open folder</button></div>
       ${inboxBody}
@@ -402,7 +402,7 @@ function renderLibrary() {
     </div>
 
     <div class="card"><div class="card-head"><div class="ic pink">${ic('broom')}</div><div class="grow"><h2>Free up space</h2>
-      <p>Some CC is stored more than once. The Hub can remove the extra copies. Your game looks exactly the same, and you can undo it on the Tools page.</p></div></div>
+      <p>Removes extra copies of the same CC. Your game looks the same, and it can be undone.</p></div></div>
       ${plan && plan.ok ? `<div class="plan"><div><b>${planSize(plan)}</b><span>can be freed</span></div><div><b>${num(plan.copies)}</b><span>extra copies</span></div>
         <div><b>${num((plan.rewritten || 0) + (plan.removed || 0))}</b><span>files made smaller or removed</span></div></div>` : ''}
       ${plan && plan.ok ? dupFilesNote(plan) : ''}
@@ -411,7 +411,7 @@ function renderLibrary() {
     </div>
 
     <div class="card"><div class="card-head"><div class="ic violet">${ic('doc')}</div><div class="grow"><h2>Library report</h2>
-      <p>One page with an overview of your CC, your saves and the CC they use, your graphics settings, memory and how fast the game starts.</p></div></div>
+      <p>Your CC, saves, graphics and start times on one page.</p></div></div>
       <div class="actions"><button class="btn" data-act="report"${busy() ? ' disabled' : ''}>${ic('doc')}Open library report</button></div>
     </div>
     </div>`;
@@ -442,19 +442,19 @@ function renderPerformance() {
   const good = tuned || gfx.state === 'stock';
   const gState = `<div class="gfx-state ${good ? 'good' : gfx.can_tune ? 'bad' : ''}"><div class="dot">${ic(good ? 'check' : 'warn')}</div>
     <div><b>${esc(tuned ? 'Max Quality, lag fixed' : gfx.label || 'Not known yet')}</b>
-    <span>${tuned ? 'Everything still looks like your max graphics - only the settings that caused lag were fixed.'
-      : gfx.can_tune ? 'Your graphics file asks for more than the game can handle smoothly. One click fixes it and keeps max quality.'
+    <span>${tuned ? 'Still max graphics. Only the settings that caused lag were fixed.'
+      : gfx.can_tune ? 'It asks for more than the game can handle. One click fixes it and keeps max quality.'
       : gfx.state === 'stock' ? "You use the game's own graphics settings. There's nothing to fix." : ''}</span></div></div>`;
   const details = (gfx.details || []).length ? `<ul class="details">${gfx.details.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : '';
   let tableHtml = '';
   if (table.length) {
-    tableHtml = `<div class="table-wrap"><table class="t"><thead><tr><th>What it controls</th><th>Game's own</th>
+    tableHtml = `<details class="more"><summary>See what changes</summary><div class="table-wrap"><table class="t"><thead><tr><th>What it controls</th><th>Game's own</th>
       <th>${tuned ? 'Before the fix' : 'Your file now'}</th><th>${tuned ? 'Now' : 'With the fix'}</th></tr></thead><tbody>
       ${table.map(r => {
         const [what, why] = GFX[r.prop] || GFX[r.setting] || [r.prop ? r.setting : words(r.setting), ''];
         return `<tr><td><span class="what">${esc(what)}</span>${why ? `<span class="why">${esc(why)}</span>` : ''}</td>
           <td class="num">${esc(r.stock)}</td><td class="num before">${esc(r.before)}</td><td class="num after">${esc(r.after)}</td></tr>`;
-      }).join('')}</tbody></table></div>`;
+      }).join('')}</tbody></table></div></details>`;
   } else if (S.graphicsLoading) {
     tableHtml = `<div class="saves-loading" style="padding:16px 4px"><div class="spinner sm"></div>Reading your graphics settings...</div>`;
   }
@@ -466,21 +466,21 @@ function renderPerformance() {
       <p>Faster loading and less lag, with the same max graphics.</p></div></div>
 
     <div class="card"><div class="card-head"><div class="ic">${ic('image')}</div><div class="grow"><h2>Graphics</h2>
-      <p>Your graphics settings file decides how good the game looks, and how much it lags.</p></div></div>
+      <p>How good the game looks, and how much it lags.</p></div></div>
       ${gState}${details}${gActions ? `<div class="actions">${gActions}</div>` : ''}${tableHtml}</div>
 
     <div class="card"><div class="card-head"><div class="ic blue">${ic('clock')}</div><div class="grow"><h2>How long the game takes to start</h2>
-      <p>Timed by the SpeedKit Monitor every time you play: from pressing Play to the main menu.</p></div></div>
+      <p>Every start, from Play to the main menu.</p></div></div>
       ${loadTimes()}</div>
 
     <div class="card"><div class="card-head"><div class="ic green">${ic('gauge')}</div><div class="grow"><h2>Find what makes your game lag</h2>
-      <p>The SpeedKit Monitor has a lag meter built in. It shows which mods slow your game down.</p></div>
+      <p>A lag meter that names the mods slowing your game down.</p></div>
       ${mon.installed ? `<span class="chip ok">${ic('check')}Installed</span>` : ''}</div>
       <ol class="steps">
         <li><div><b>Load your game and go to a lot</b><span>Play the way you usually do, where it feels slow.</span></div></li>
         <li><div><b>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd></b><span>The cheat box opens at the top of the screen.</span></div></li>
         <li><div><b>Type <code class="cheat">speedkit.lag</code> and press <kbd>Enter</kbd></b><span>Then keep playing normally for one minute.</span></div></li>
-        <li><div><b>Read the result</b><span>A message in the game names the 5 mods that slow it down the most. A full report is saved in your reports folder.</span></div></li>
+        <li><div><b>Read the result</b><span>The game names the 5 mods that slow it down most. A full report goes to your reports folder.</span></div></li>
       </ol>
       <div class="note">${ic('info')}<span>Want a longer test? Type <code class="cheat">speedkit.lag 120</code> to measure for 2 minutes.</span></div>
       ${mon.installed ? '' : `<div class="note warn">${ic('warn')}<span>The lag meter isn't in your game yet. It's added the next time you press Play.</span></div>`}
@@ -493,10 +493,10 @@ function loadTimes() {
   const avg = list => list.length ? list.reduce((a, r) => a + Number(r.launch_to_menu_s), 0) / list.length : null;
   const fast = avg(rows.filter(r => FASTISH.has(r.profile))), full = avg(rows.filter(r => !FASTISH.has(r.profile)));
   const tiles = [
-    `<div class="tile"><div class="lbl"><i class="sw" style="background:var(--fast)"></i>Fast start, on average</div><b>${fast === null ? '—' : dur(fast)}</b></div>`,
+    `<div class="tile"><div class="lbl"><i class="sw" style="background:var(--fast)"></i>Quick Start, on average</div><b>${fast === null ? '—' : dur(fast)}</b></div>`,
     `<div class="tile"><div class="lbl"><i class="sw" style="background:var(--full)"></i>Full Start, on average</div><b>${full === null ? '—' : dur(full)}</b></div>`,
     fast && full && full > fast
-      ? `<div class="tile hero"><div class="lbl">${ic('bolt')}Fast start is</div><b>${(full / fast).toFixed(1).replace(/\.0$/, '')}x faster</b></div>`
+      ? `<div class="tile hero"><div class="lbl">${ic('bolt')}Quick Start is</div><b>${(full / fast).toFixed(1).replace(/\.0$/, '')}x faster</b></div>`
       : `<div class="tile"><div class="lbl">${ic('clock')}Starts timed</div><b>${num(rows.length)}</b></div>`,
   ];
   return `<div class="tiles">${tiles.join('')}</div>
@@ -617,7 +617,7 @@ function renderTools() {
         <p>Make WickedWhims animations and send them straight to your game.</p></div></div>
         <div class="actions"><button class="btn primary" data-act="open" data-what="animator"${anim.installed === false ? ' disabled' : ''}>${ic('arrow')}Open Novulon's Wicked Animator</button></div>
         ${anim.installed === false ? `<div class="note warn">${ic('warn')}<span>The Wicked Animator isn't installed on this PC.</span></div>` : ''}
-        <div class="note">${ic('bolt')}<div><b>Testing an animation?</b> Studio mode starts the game with only WickedWhims and your animations - the quickest start there is.
+        <div class="note">${ic('bolt')}<div><b>Testing an animation?</b> Studio mode starts with only WickedWhims and your animations.
           <div style="margin-top:10px"><button class="btn small soft" data-act="play" data-target="studio"${canPlay() ? '' : ' disabled'}>${ic('play')}Play in Studio mode</button></div></div></div>
       </div>
       <div class="card"><div class="card-head"><div class="ic green"><svg viewBox="0 0 24 36" style="width:17px;height:26px" aria-hidden="true"><use href="#i-bob"/></svg></div>
@@ -640,7 +640,7 @@ function renderTools() {
     </div>
     ${care.toolsSections()}
     <div class="card" style="margin-top:16px"><div class="card-head"><div class="ic pink">${ic('undo')}</div><div class="grow"><h2>Recent changes</h2>
-      <p>Everything the Hub changed in your game folders, newest first. You can undo the newest change.</p></div>
+      <p>What the Hub changed, newest first. The newest can be undone.</p></div>
       <button class="btn" data-act="undo"${next && !noChange ? '' : ' disabled'}>${ic('undo')}Undo last change</button></div>
       ${changes}</div>`;
 }
@@ -1153,7 +1153,7 @@ function ccBuild() {
   el.className = 'card cc';
   el.id = 'cc-browser';
   el.innerHTML = `<div class="card-head"><div class="ic">${ccIc('hanger')}</div><div class="grow"><h2>CC browser</h2>
-      <p>All CC files, sorted into categories with pictures. Select a file to see its location and the saves that use it.</p></div>
+      <p>All your CC, with pictures. Click a file for details.</p></div>
       <div class="cc-head-right"></div></div>
     <div class="cc-progress hidden"><div class="spinner sm"></div><div class="grow"><b>Sorting CC files...</b><span class="cc-ptext"></span>
       <div class="bar-track indet"><i style="width:0"></i></div></div></div>
@@ -1219,7 +1219,7 @@ function dupFilesNote(plan) {
     return `<div class="item">${ic('warn')}<span class="n" title="${esc(f.folder + '/' + f.name)}">${esc(f.name)}</span>
       <span class="r">${num(f.copies)} extra ${f.copies === 1 ? 'copy' : 'copies'}${f.whole ? ' · everything in it is also in other files, so the whole file is set aside' : ''}${mods}</span></div>`;
   };
-  return `<div class="note warn">${ic('warn')}<span>Duplicates found in ${num((plan.rewritten || 0) + (plan.removed || 0))} files. The extra copies go, one copy of everything stays.</span></div>
+  return `<div class="note warn">${ic('warn')}<span>Duplicates in ${num((plan.rewritten || 0) + (plan.removed || 0))} files. The extras go, one copy of each stays.</span></div>
     <div class="items">${shown.map(row).join('')}${more > 0 ? `<div class="muted" style="padding:4px 2px">and ${num(more)} more files</div>` : ''}</div>`;
 }
 
@@ -1236,7 +1236,7 @@ async function ccDupWarn() {
   }
   const items = CCB.dups.items, shown = items.slice(0, 8);
   box.innerHTML = `<div class="note warn">${ic('warn')}<span><b>${num(n)} duplicate ${n === 1 ? 'file' : 'files'} found.</b>
-      Each one is completely inside another file, so it can go without losing anything. The file named after it stays.</span>
+      Each is fully inside another file, so it can go.</span>
       <button class="btn small" data-cc="showdups">Show them</button></div>
     <div class="items">${shown.map(i => `<div class="item">${ic('warn')}<span class="n" title="${esc(i.name)}">${esc(i.name)}</span>
       <span class="r">also in <b>${esc(i.duplicate_of || 'another file')}</b></span></div>`).join('')}
@@ -1336,8 +1336,8 @@ function ccDraw() {
   if (!ready) {
     grid.innerHTML = `<div class="cc-empty"><div class="ic">${ccIc('all')}</div><div>
       <h3>CC files not sorted yet</h3>
-      <p>Sorting reads every CC file once, finds its picture and assigns a category: hair, tops, shoes, makeup, Build/Buy and more. Duplicates, damaged files and CC that no save uses are marked too.</p>
-      <p class="muted">The first run takes a few minutes for a large library. Game files are not changed.</p>
+      <p>Finds each file's picture and category, and marks duplicates and damaged files.</p>
+      <p class="muted">A few minutes the first time. Nothing is changed.</p>
       <button class="btn primary" data-cc="scan"${busy() ? ' disabled' : ''}>${ic('search')}Sort CC files</button></div></div>`;
     pager.innerHTML = count.innerHTML = '';
     ccDrawSel();
@@ -1504,7 +1504,7 @@ async function ccConfirmAside(ids, name = '') {
 // --------------------------------------------------------------- Saves: the CC one save uses
 const saveCcButton = s => `<button class="btn small ghost cc-save-btn" data-act="save-cc" data-slot="${esc(s.slot)}">${ccIc('hanger')}View CC${isNum(s.cc_missing) && s.cc_missing > 0 ? ' and missing items' : ''}</button>`;
 const trayCcCard = () => `<div class="card cc-tray"><div class="card-head"><div class="ic violet">${ic('users')}</div><div class="grow"><h2>In-game library households</h2>
-  <p>CC used by the households and lots saved in the in-game library, including missing items.</p></div>
+  <p>The CC your library households and lots use, and what's missing.</p></div>
   <button class="btn" data-act="save-cc" data-slot="tray">${ccIc('hanger')}View CC</button></div></div>`;
 const CC_KIND_ICON = { cas: 'top', object: 'buildbuy', look: 'skin' };
 

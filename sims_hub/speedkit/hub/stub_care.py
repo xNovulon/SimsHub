@@ -125,8 +125,7 @@ def _msg_patch(c):
     n = len(c['older'])
     if c['game']['updated']:
         return ('The Sims 4 was updated to %s. %s' % (c['game']['version'],
-                ("%d script mods are older than the update. An older file does not prove a mod is broken, but these are "
-                 "the first ones to check. They can be set aside until they are updated." % n) if n else
+                ("%d script mods are older than the update. Check these first." % n) if n else
                 'All script mods are newer than the update.'))
     return ('%d script mods are older than the latest game update.' % n) if n else \
         'All script mods are newer than the latest game update.'

@@ -57,7 +57,7 @@ export function homeBanner() {
     const n = (p.older || []).length;
     out.push(`<div class="care-banner" data-care="patch-banner"><div class="ic warn">${ic('warn')}</div><div class="grow">
       <b>The Sims 4 was updated${p.game.version ? ` (${esc(p.game.version)})` : ''}</b>
-      <span>${n ? `${H.plural(n, 'script mod')} ${n === 1 ? 'is' : 'are'} older than the latest game update. Game updates often break script mods.`
+      <span>${n ? `${H.plural(n, 'script mod')} ${n === 1 ? 'is' : 'are'} older than this update.`
         : 'All script mods are newer than the latest game update.'}</span>${bf.patchLine(p.batch_fixes)}</div>
       ${n ? `<a class="btn small primary" href="#tools" data-care-scroll="care-patch">${ic('search')}Review script mods</a>` : ''}
       <button class="btn small ghost" data-act="care-patch-seen">Dismiss</button></div>`);
@@ -98,7 +98,7 @@ export function homeSavings() {
   }
   return `<h3 class="sec">Loading times</h3>
     <div class="card care-load" data-care="savings"><div class="card-head"><div class="ic blue">${ic('clock')}</div><div class="grow">
-      <h2>How long the game takes to load</h2><p>Time from pressing Play to the main menu, plus loading the save. Measured by the SpeedKit Monitor; typical value per mode.</p></div></div>
+      <h2>How long the game takes to load</h2><p>From Play to the main menu, plus loading the save.</p></div></div>
       ${body}</div>`;
 }
 
@@ -137,8 +137,7 @@ export function savesSection() {
         : `<div class="empty" style="padding:12px 2px 0">No backups yet. A backup copies the saves; it never changes them.</div>`);
   }
   return `<div class="card care-backups" style="margin-top:22px" data-care="backups"><div class="card-head"><div class="ic green">${ic('shield')}</div><div class="grow">
-      <h2>Save backups</h2><p>Copies of every save, stored outside the game's folders. The newest ${h && h.keep ? h.keep : 5} backups are kept,
-      and one is made automatically before patch-day changes. Save contents are never changed.</p></div>
+      <h2>Save backups</h2><p>Copies of your saves, kept outside the game. The newest ${h && h.keep ? h.keep : 5} are kept.</p></div>
       <button class="btn primary" data-act="care-backup"${noChange() ? ' disabled' : ''}>${ic('shield')}Back up now</button></div>
       ${body}</div>`;
 }
@@ -172,8 +171,8 @@ function patchCard() {
     const listBlock = older.length ? `<div class="care-list">${rows}</div>
       <div class="actions"><button class="btn primary" data-act="care-aside" data-care-count${n && !noChange() ? '' : ' disabled'}>${ic('pause')}Set these aside until they're updated${n ? ` (${n})` : ''}</button>
         <button class="btn ghost small" data-act="care-pick-all">${n === older.length ? 'Select none' : 'Select all'}</button></div>
-      <div class="note">${ic('info')}<span>An older file does not prove that a mod is broken, and a newer file does not prove that it is fixed. Setting a mod aside
-        deletes nothing: the game stops loading it until it is put back or the change is undone.</span></div>` : '';
+      <details class="more why"><summary>Is my mod broken?</summary><p>Not always. Older doesn't prove broken, and newer doesn't prove fixed.
+        Setting a mod aside deletes nothing: the game just stops loading it until you put it back.</p></details>` : '';
     body = status + (older.length ? (g.updated ? listBlock
       : `<details class="more care-more"><summary>Show the ${H.plural(older.length, 'script mod')} older than the last update</summary>${listBlock}</details>`) : '');
     if (aside.length) {
@@ -184,7 +183,7 @@ function patchCard() {
     }
   }
   return `<div class="card" id="care-patch" data-care="patch"><div class="card-head"><div class="ic warn">${ic('pause')}</div><div class="grow">
-      <h2>After a game update</h2><p>Game updates often break script mods until their creators release updates. Script mods older than the latest game update are listed here.</p></div>
+      <h2>After a game update</h2><p>Script mods that may break after the update.</p></div>
       <button class="btn small ghost" data-act="care-refresh" title="Look again">${ic('refresh')}</button></div>${body}</div>`;
 }
 
@@ -212,13 +211,13 @@ function errorsCard() {
   else {
     const all = e.errors || [], fresh = all.filter(g => g.new), old = all.filter(g => !g.new);
     body = `<div class="care-status${fresh.length ? ' hot' : ''}">${ic(fresh.length ? 'bug' : 'check')}<div><b>${esc(e.message)}</b>
-      <span>${all.length ? 'Newest first. Repeated errors are shown once, with how often they happened.' : 'Error reports written by the game are read here.'}</span></div></div>`;
+      ${all.length ? '' : '<span>No errors from the game so far.</span>'}</div></div>`;
     if (fresh.length) body += `<div class="care-errors">${fresh.map(errorRow).join('')}</div>`;
     if (old.length) body += `<details class="more care-more"><summary>Errors marked as seen (${old.length})</summary><div class="care-errors">${old.map(errorRow).join('')}</div></details>`;
     if (fresh.length) body += `<div class="actions"><button class="btn small" data-act="care-errors-seen">${ic('check')}Mark as seen</button></div>`;
   }
   return `<div class="card" id="care-errors" data-care="errors"><div class="card-head"><div class="ic pink">${ic('bug')}</div><div class="grow">
-      <h2>Which mod caused this error?</h2><p>The game writes an error report when something goes wrong. Each error is matched to the mod behind it, where possible.</p></div>
+      <h2>Which mod caused this error?</h2><p>Game errors, and the mod behind each one.</p></div>
       <button class="btn small ghost" data-act="care-refresh" title="Look again">${ic('refresh')}</button></div>${body}</div>`;
 }
 
