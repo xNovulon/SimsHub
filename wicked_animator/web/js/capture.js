@@ -95,8 +95,8 @@ class Preview3D {
     const v = new Sim(app.assets.rig, body, { color: s.color, skin: s.skin });
     v.setErect && v.setErect(s.body ? s.body.erect !== false : true);
     try {
-      app.applySkin && app.applySkin(v, s.frame, s.tone || '');
-      app.skinReady && app.skinReady(s.frame, s.tone || '').then(() => { if (this.vs && this.vs.includes(v)) { v.material.needsUpdate = true; this.render(); } });
+      app.applySkin && app.applySkin(v, s.frame, (main && main.toneKey) ?? (s.tone || ''));
+      app.skinReady && app.skinReady(s.frame, (main && main.toneKey) ?? (s.tone || '')).then(() => { if (this.vs && this.vs.includes(v)) { v.material.needsUpdate = true; this.render(); } });
     } catch { /* plain skin colour */ }
     this.scene.add(v.group);
     v.simId = simId;

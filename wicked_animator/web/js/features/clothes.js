@@ -1,8 +1,10 @@
 // Clothes in the preview (to check clipping with outfits): the Body step's Clothes row for each sim (None, the Tray
 // sim's own outfits by category, or a few basic outfits), a view button that hides everyone's clothes, and undress
-// moments taking parts off while the animation plays. Everything plugs in through app.hooks, ui.addIcon and
+// moments taking parts off while the animation plays. A Tray sim arrives in the outfit it was saved in (as its Tray
+// picture shows it), and the clothes remover lists every piece each sim wears to take them off one by one or all at
+// once. Everything plugs in through app.hooks, ui.addIcon and
 // ui.addToolbarButton. Clothes are for the preview only: nothing about them goes into the exported animation.
-import { h, toast, addIcon, addToolbarButton, section, toggleRow } from '../ui.js';
+import { h, toast, addIcon, addToolbarButton, section, toggleRow, modal } from '../ui.js';
 import * as C from '../clothes.js';
 
 const ICONS = {
@@ -68,6 +70,48 @@ export function install(app) {
     if (app.step === 'body') app.renderStep();
   };
 
+  // a Tray sim arrives wearing the outfit it was saved in, accessories and all (part of adding it, no undo step)
+  add('traySimAdded', s => {
+    C.outfitList(app, { kind: 'tray', tray: s.tray.id, index: s.tray.index || 0 }).then(list => {
+      const live = app.store.sim(s.id);
+      if (!live || live.clothes || !list.current || !list.items.some(o => o.key === list.current)) return;
+      live.clothes = { outfit: list.current };
+      C.reloadClothes(app, s.id).then(() => { shown(live); refreshRemover(); });
+    }).catch(err => console.warn('clothes', err.message));
+  });
+
+  // ---------------------------------------------------------------- the clothes remover
+  // off: the pieces of the sim's outfit taken off. undress: 'clothes' takes off the clothes (accessories and hats
+  // stay), 'all' everything, 'none' puts it all back on.
+  app.setPiecesOff = (simId, off) => {
+    const s = app.store.sim(simId);
+    if (!s || !s.clothes || typeof s.clothes !== 'object') return;
+    app.store.checkpoint();
+    const next = { ...s.clothes, off: [...new Set(off)] };
+    if (!next.off.length) delete next.off;
+    s.clothes = next;
+    app.store.setDirty(true);
+    C.reloadClothes(app, simId).then(() => { if (app.step === 'body') app.renderStep(); refreshRemover(); });
+    if (app.step === 'body') app.renderStep();
+    refreshRemover();
+  };
+  app.undress = async (simId, what = 'clothes') => {
+    const s = app.store.sim(simId);
+    const pieces = s && await C.piecesOf(app, s).catch(() => null);
+    if (!pieces) return;
+    app.setPiecesOff(simId, what === 'none' ? [] : pieces.parts.filter(p => what === 'all' || C.isClothing(p)).map(p => p.casp));
+  };
+  let remover = null;
+  function refreshRemover() {
+    if (!remover || !remover.isConnected) { remover = null; return; }
+    remover.replaceChildren(...removerRows(app));
+  }
+  app.openClothesRemover = () => {
+    remover = h('div', { class: 'remover' }, ...removerRows(app));
+    modal({ title: 'Clothes remover', text: 'Every piece each sim wears. ' + EXPORT_NOTE, body: remover, wide: true,
+      buttons: [{ label: 'Done', kind: 'primary' }], onClose: () => { remover = null; } });
+  };
+
   add('sections.body', (a, root) => {
     const sim = a.store.sim();
     if (!sim) return;
@@ -81,6 +125,8 @@ export function install(app) {
     return [
       { group: 'Bodies', id: 'clothes', label: 'Clothes', icon: 'hanger', sub: 'show an outfit to check clipping', words: 'clothes outfit dress dressed wear clothing cas preview clipping',
         when: () => !!sim, run: () => { a.showStep('body'); setTimeout(() => document.querySelector('.clothes-row')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80); } },
+      { group: 'Bodies', id: 'clothes-remover', label: 'Clothes remover', icon: 'hanger', sub: 'every piece each sim wears - take them off', words: 'clothes remover undress naked nude strip take off pieces accessories',
+        when: () => a.store.project.sims.length > 0, run: () => a.openClothesRemover() },
       { group: 'View', id: 'hide-clothes', label: a.clothesHidden ? 'Show clothes' : 'Hide clothes', icon: 'hanger', sub: 'every sim, in the view only', words: 'clothes outfit naked nude hide show',
         run: () => setHidden(!a.clothesHidden) },
     ];
@@ -135,7 +181,53 @@ function clothesSection(app, sim, v, setHidden) {
     note = bits.join(' ');
   }
   if (note) { status.textContent = note; body.append(status); }
+  if (cur) body.append(pieceList(app, sim));
+  if (app.store.project.sims.length > 1) body.append(h('button', { class: 'btn small ghost', style: { marginTop: '8px' }, onclick: () => app.openClothesRemover() }, 'Clothes remover for everyone…'));
   body.append(toggleRow('Hide everyone\'s clothes', 'In the view only', !!app.clothesHidden, on => setHidden(on, { quiet: true })));
   Promise.allSettled(pending).then(() => sec.classList.add('ready'));
   return sec;
+}
+
+// ---------------------------------------------------------------- the clothes remover's lists
+// A readable name from a CAS part name: the creator prefix, the age/gender code and the date stamp go.
+const shortName = n => String(n || '').replace(/^.*?_(?=[yaeptc][fmu][A-Z])/, '').replace(/^[yaeptc][fmu](?=[A-Z])/, '')
+  .replace(/_\d{12,}.*$/, '').replace(/_/g, ' ').trim().slice(0, 48);
+
+// One sim's pieces with a switch each, and Take off clothes / Take off everything / Put all back.
+function pieceList(app, sim) {
+  const box = h('div', { class: 'pieces' }, h('div', { class: 'hint' }, 'Reading the clothes…'));
+  C.piecesOf(app, sim).then(pc => {
+    box.replaceChildren();
+    if (!pc) { box.append(h('div', { class: 'hint' }, 'Wearing nothing.')); return; }
+    const worn = pc.parts.filter(p => p.on).length;
+    box.append(h('div', { class: 'pieces-head' }, h('b', {}, `${pc.label}: ${worn} of ${pc.parts.length} on`),
+      h('div', { class: 'pieces-btns' },
+        h('button', { class: 'btn small', title: 'Accessories and hats stay on', disabled: !pc.parts.some(p => p.on && C.isClothing(p)), onclick: () => app.undress(sim.id, 'clothes') }, 'Take off clothes'),
+        h('button', { class: 'btn small', disabled: !worn, onclick: () => app.undress(sim.id, 'all') }, 'Take off everything'),
+        h('button', { class: 'btn small ghost', disabled: worn === pc.parts.length, onclick: () => app.undress(sim.id, 'none') }, 'Put all back'))));
+    for (const p of pc.parts) {
+      const missing = p.origin === null;
+      box.append(h('label', { class: 'piece' + (p.on ? '' : ' off') + (missing ? ' missing' : ''), title: p.name || null },
+        h('input', { type: 'checkbox', checked: p.on, onchange: e => app.setPiecesOff(sim.id, pc.parts.filter(x => (x === p ? !e.target.checked : !x.on)).map(x => x.casp)) }),
+        h('span', { class: 'piece-name' }, C.pieceLabel(p)),
+        h('small', {}, missing ? 'not installed' : shortName(p.name))));
+    }
+  }).catch(err => { box.replaceChildren(h('div', { class: 'hint' }, 'Could not read the clothes: ' + err.message)); });
+  return box;
+}
+
+// Every sim in the scene: its outfit's pieces (or a word on how to dress it), and buttons for everyone.
+function removerRows(app) {
+  const sims = app.store.project.sims;
+  const rows = [h('div', { class: 'remover-all' },
+    h('button', { class: 'btn small', onclick: () => sims.forEach(s => app.undress(s.id, 'clothes')) }, "Take off everyone's clothes"),
+    h('button', { class: 'btn small', onclick: () => sims.forEach(s => app.undress(s.id, 'all')) }, 'Everyone naked'),
+    h('button', { class: 'btn small ghost', onclick: () => sims.forEach(s => app.undress(s.id, 'none')) }, 'Dress everyone again'))];
+  for (const s of sims) {
+    const wear = s.clothes && typeof s.clothes === 'object';
+    rows.push(h('div', { class: 'remover-sim' },
+      h('div', { class: 'remover-name' }, h('span', { class: 'dot', style: { background: s.color || '#888' } }), s.label || 'Sim'),
+      wear ? pieceList(app, s) : h('div', { class: 'hint' }, `Wearing nothing. Pick an outfit in the Body step to dress ${s.label || 'this sim'}.`)));
+  }
+  return rows;
 }

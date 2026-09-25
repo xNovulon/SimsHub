@@ -38,7 +38,12 @@ export const api = {
   status: () => j('/api/status'),
   rig: key => j(`/api/rig?key=${key}`),
   body: frame => j(`/api/body?frame=${frame}`),
-  skinUrl: (frame, tone = '') => `/api/skin?frame=${frame}${tone ? '&tone=' + tone : ''}`,
+  // tone: a skin tone, or 'tone~tray:index' for a Tray sim's skin with its own look (makeup, brows, tattoos...)
+  skinUrl: (frame, tone = '') => {
+    const [t, look] = String(tone || '').split('~');
+    const [tray, index] = (look || '').split(':');
+    return `/api/skin?frame=${frame}${t ? '&tone=' + t : ''}${tray ? `&tray=${encodeURIComponent(tray)}&index=${+index || 0}` : ''}`;
+  },
   tones: () => j('/api/tones'),
   furniture: () => j('/api/furniture'),
   library: (q = {}) => j('/api/library?' + new URLSearchParams(q)),

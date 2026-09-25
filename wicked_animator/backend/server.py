@@ -229,7 +229,15 @@ class Handler(BaseHTTPRequestHandler):
             # never an error: a skin tone that isn't installed (custom content that is gone) or can't be read gets a
             # stand-in - X-Skin-Tone says 'real' or 'standin', X-Skin-Tone-Used which tone is shown
             import skintex
-            path, info = skintex.skin_for(q.get('frame', 'yf'), q.get('tone') or None)
+            # tray + index: that Tray sim's own look (makeup, brows, eye colour, skin details, tattoos) painted on too
+            look = None
+            if q.get('tray'):
+                try:
+                    import trayfmt
+                    look = trayfmt.look_parts(q['tray'], int(q.get('index', 0)))
+                except Exception:
+                    traceback.print_exc()
+            path, info = skintex.skin_for(q.get('frame', 'yf'), q.get('tone') or None, look=look)
             ti = skintex.tone_info(info)
             with open(path, 'rb') as f:
                 data = f.read()
@@ -340,7 +348,7 @@ class Handler(BaseHTTPRequestHandler):
             data = trayfmt.sim_thumbnail(q['sim'])
             if not data:
                 return self._error(404, 'no picture')
-            return self._send(200, data, 'image/jpeg', cache=True)
+            return self._send(200, data, 'image/png' if data[1:4] == b'PNG' else 'image/jpeg', cache=True)
         if route == 'tray_sim':
             return self._send(200, _json(self._tray_sim(q['tray'], int(q.get('index', 0)))))
         if route == 'features':

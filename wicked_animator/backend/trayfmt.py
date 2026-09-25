@@ -427,13 +427,35 @@ def sim_data_message(tray_id, sim_index):
     return fam.family_account.sim[sim_index]
 
 
+def with_alpha(jpg):
+    """A Tray picture with its own transparency: the game keeps a grey PNG mask in the JPEG's 'ALFA' segment (without
+    it the blurred, zoomed render behind the sim shows). -> PNG bytes (RGBA), or the JPEG as it is when there is no
+    mask or it can't be read."""
+    i = jpg.find(b'ALFA', 0, 64)
+    if i < 0:
+        return jpg
+    try:
+        from PIL import Image
+        n = struct.unpack_from('>I', jpg, i + 4)[0]
+        mask = Image.open(io.BytesIO(jpg[i + 8:i + 8 + n])).convert('L')
+        im = Image.open(io.BytesIO(jpg)).convert('RGB')
+        if mask.size != im.size:
+            mask = mask.resize(im.size, Image.BILINEAR)
+        im.putalpha(mask)
+        out = io.BytesIO()
+        im.save(out, 'PNG', optimize=False)
+        return out.getvalue()
+    except Exception:
+        return jpg
+
+
 def sim_thumbnail(sim_id):
-    """JPEG bytes of a sim's gallery picture (.sgi), or None."""
+    """Picture bytes of a sim's gallery picture (.sgi): PNG with its transparency (with_alpha), or JPEG; None if none."""
     entries = _tray_files().get(('sgi', to_int(sim_id)))
     if not entries:
         return None
     with open(sorted(entries)[0][1], 'rb') as f:
-        return decode_tray_image(f.read())
+        return with_alpha(decode_tray_image(f.read()))
 
 
 def household_thumbnail(tray_id, large=True):
@@ -467,6 +489,32 @@ def _part_info(inst, resolve):
                 out['name'] = morph.casp_name(morph.PART_INDEX.read(morph.T_CASP, inst))
             except Exception:
                 pass
+    return out
+
+
+# The parts of a sim's look the game paints on the skin: makeup, brows, eye colour, facial hair, skin details, tattoos,
+# scars, nails, body hair. Occult parts, the teeth and the head are left out.
+_LOOK = re.compile(r'^(FACIAL_HAIR|LIPS_TICK|EYE_SHADOW|EYE_LINER|BLUSH|FACEPAINT|EYEBROWS|EYECOLOR|EYECOLOR_SECONDARY|'
+                   r'EYELASHES|SKINDETAIL_.*|TATTOO_.*|SKIN_OVERLAY|FOREARM_SCAR|ACNE|FINGERNAIL|TOENAIL|BODYFRECKLES|'
+                   r'BODYHAIR_.*|BODYSCAR_.*|SCARFACE|BIRTHMARK.*|MOLE.*|STRETCHMARKS_.*)$')
+LOOK_EYECOLOR = 35
+
+
+def look_parts(tray_id, sim_index):
+    """The CAS parts of a Tray sim's look that are painted on the skin, from the outfit it was saved in (the one its
+    Tray picture shows; the everyday outfit when that one is not stored). -> [{casp_instance, body_type,
+    body_type_name}] in the outfit's order, each part once."""
+    s = household_sims(tray_id)['sims'][sim_index]
+    outfits = s['outfits']
+    cur = s['current_outfit']
+    outfit = next((o for o in outfits if o['category'] == cur['category'] and o['index'] == cur['index']), None)         or next((o for o in outfits if o['category'] == 'EVERYDAY'), None) or (outfits[0] if outfits else None)
+    out, seen = [], set()
+    for p in (outfit or {}).get('parts', []):
+        name = BODY_TYPES.get(p['body_type'], '')
+        if not _LOOK.match(name) or p['casp_instance'] in seen or to_int(p['casp_instance']) == 0:
+            continue
+        seen.add(p['casp_instance'])
+        out.append({'casp_instance': p['casp_instance'], 'body_type': p['body_type'], 'body_type_name': name})
     return out
 
 

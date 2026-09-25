@@ -347,11 +347,44 @@ def _fill_transparent(rgba):
 
 
 # ------------------------------------------------------------------ main entry points
+def _load_part(key, ww=True):
+    """load_casp(), or - for custom content in Mods (a Tray sim's own makeup, tattoos...) - the CAS part from the
+    part index hair and clothes read from, with its package's path ('pkg_path') so its textures are found there."""
+    c = load_casp(key, ww=ww)
+    if c or isinstance(key, (str, dict)):
+        return c
+    try:
+        import morph
+        row = morph.PART_INDEX.find(casptex.T_CASP, key)
+        if row is None:
+            return None
+        c = casptex.parse_casp(morph.PART_INDEX.read(casptex.T_CASP, key))
+    except Exception:
+        traceback.print_exc()
+        return None
+    path = morph.PART_INDEX.paths[int(row['pkg'])]
+    c['instance'] = key
+    c['package'] = os.path.basename(path)
+    c['pkg_path'] = path
+    return c
+
+
+def casptex_int(v):
+    try:
+        return int(v, 16) if isinstance(v, str) else int(v)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _pkgs(p):
+    return (p['pkg_path'],) if p.get('pkg_path') else ()
+
+
 def _part_list(frame, part_casps, ww, eyes):
     if part_casps is None:
         parts = [c for _, c in default_parts(frame, ww)]
     else:
-        parts = [c for c in (load_casp(k, ww=ww) for k in part_casps) if c]
+        parts = [c for c in (_load_part(k, ww=ww) for k in part_casps) if c]
     if eyes:
         ec = eye_part(eyes if isinstance(eyes, str) else 'Brown', ww)
         if ec and all(p['instance'] != ec['instance'] for p in parts):
@@ -366,7 +399,7 @@ def _atlas_key(frame, parts, tone_inst, size, ww, opaque, tone_sig=None):
         for p in parts:
             tgi = p['textures'].get(key)
             if tgi:
-                hit = Resources.texture_entry(tgi[2], ww)
+                hit = _texture_entry(tgi[2], ww, _pkgs(p))
                 sig.append(os.path.basename(hit[1]) + ':%X' % hit[2]['pos'] if hit else None)
     if tone_sig is not None:            # a CC / pack tone: its package too (base-game tones keep their old keys)
         sig.append(tone_sig)
@@ -499,12 +532,12 @@ def build_atlas(frame, parts, tone_inst, size=1024, ww=True, opaque=True, info=N
     for p in sorted(others, key=lambda p: (-p['composition'], p['sort_layer'])):
         sh = p['textures'].get('shadow')
         if sh:
-            tex = texture(sh[2], W, ww)
+            tex = texture(sh[2], W, ww, _pkgs(p))
             if tex is not None and tex[:, :, 3].any():
                 _over(out, _shadow_layer(tex))
                 layers.append(('shadow', p['name']))
         tgi = p['textures'].get('diffuse')
-        tex = texture(tgi[2], W, ww) if tgi else None
+        tex = texture(tgi[2], W, ww, _pkgs(p)) if tgi else None
         if tex is None or not tex[:, :, 3].any():
             continue
         op = 1.0
@@ -765,12 +798,23 @@ def _flat_skin(size=1024):
     return fn
 
 
-def skin_for(frame='yf', tone=None, size=1024, ww=True):
+def skin_for(frame='yf', tone=None, size=1024, ww=True, look=None):
     """The skin atlas PNG to show for a body frame and a skin tone -> (path, info as resolve_tone()). Never raises:
     a tone that isn't installed or can't be read gets a stand-in (info['status'] == 'standin'); a build that fails
     falls back to the nearest base-game tone, then the default tone, then a plain skin-coloured picture.
-    frame: an adult body frame (yf, ym, yf_futa, ...); anything else shows 'yf'."""
+    frame: an adult body frame (yf, ym, yf_futa, ...); anything else shows 'yf'.
+    look: a Tray sim's own painted parts (trayfmt.look_parts(): makeup, brows, eye colour, skin details, tattoos) on
+    top of the nude body; one that is not installed is left out. With its own eye colour the default brown goes."""
     frame = frame if isinstance(frame, str) and _FRAME_OK.match(frame) else 'yf'
+    parts, eyes = None, 'Brown'
+    if look:
+        parts = [c['instance'] for _, c in default_parts(frame, ww)]
+        for p in look:
+            inst = casptex_int(p['casp_instance'])
+            if inst and inst not in parts:
+                parts.append(inst)
+                if p.get('body_type') == 35:                # EYECOLOR
+                    eyes = None
     try:
         info = resolve_tone(tone, size, ww)
     except Exception:
@@ -778,7 +822,7 @@ def skin_for(frame='yf', tone=None, size=1024, ww=True):
         info = {'asked': str(tone or ''), 'used': DEFAULT_TONE, 'status': 'standin', 'source': 'default',
                 'reason': 'missing', 'package': None}
     try:
-        return skin_atlas_path(frame, tone_inst=info['used'], size=size, ww=ww), info
+        return skin_atlas_path(frame, parts, tone_inst=info['used'], size=size, ww=ww, eyes=eyes), info
     except Exception:
         traceback.print_exc()
     tried = {info['used']}
@@ -795,7 +839,7 @@ def skin_for(frame='yf', tone=None, size=1024, ww=True):
             continue
         tried.add(inst)
         try:
-            path = skin_atlas_path(frame, tone_inst=inst, size=size, ww=ww)
+            path = skin_atlas_path(frame, parts, tone_inst=inst, size=size, ww=ww, eyes=eyes)
         except Exception:
             traceback.print_exc()
             continue

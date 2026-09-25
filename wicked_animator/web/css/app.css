@@ -565,7 +565,7 @@ body:has(#modal-root .backdrop:not(.leaving)) #toasts { opacity: 0; visibility: 
 }
 
 /* ---------------------------------------------------------------- Velvet Stage layout (R1-C) */
-/* Home: Magic is a 2 x 2 card, "Blank animation" a wide card with five pills; nothing leaves a hole */
+/* Home: Magic is a 2 x 2 card, "Blank animation" a wide card; nothing leaves a hole */
 .home-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-flow: row dense; }
 .start.big { grid-column: span 2; grid-row: span 2; }
 .start.wide { grid-column: span 2; }
@@ -757,3 +757,20 @@ html.reduce-motion #app { transition: none; }
 /* context menus: a long line wraps instead of spilling out of its row */
 .ctx-menu { max-width: 380px; }
 .ctx-menu button { height: auto; min-height: 32px; padding-top: 5px; padding-bottom: 5px; line-height: 1.3; }
+
+/* the clothes remover: one row per piece with its switch; the whole scene in a dialog */
+.pieces { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+.pieces-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.pieces-head b { font-size: 12px; }
+.pieces-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+.piece { display: grid; grid-template-columns: auto minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 8px; padding: 4px 6px; border-radius: 7px; cursor: pointer; }
+.piece:hover { background: var(--panel-3); }
+.piece .piece-name { font-size: 12px; white-space: nowrap; }
+.piece small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.piece.off .piece-name { color: var(--muted); text-decoration: line-through; }
+.piece.missing { opacity: .6; }
+.remover { display: flex; flex-direction: column; gap: 14px; max-height: 62vh; overflow: auto; }
+.remover-all { display: flex; flex-wrap: wrap; gap: 6px; }
+.remover-sim { border: 1px solid var(--line-2); border-radius: 12px; padding: 10px 12px; }
+.remover-name { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.remover-name .dot { width: 10px; height: 10px; border-radius: 50%; }

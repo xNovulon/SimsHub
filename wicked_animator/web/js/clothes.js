@@ -3,7 +3,7 @@
 // skinned to the skeleton in the view. Preview only: clothes never go into the exported animation.
 //
 // A sim's choice is sim.clothes: none (undefined / null / false, as before), {outfit: 'EVERYDAY:0'} (a Tray sim's
-// own outfit) or {basic: 'underwear'}. Undress moments on the timeline hide the parts they take off while the
+// own outfit) or {basic: 'underwear'}, with off: [casp, ...] for the pieces taken off (the clothes remover). Undress moments on the timeline hide the parts they take off while the
 // playhead is past them; app.clothesHidden hides every sim's clothes.
 import * as THREE from 'three';
 
@@ -19,6 +19,20 @@ export const UNDRESS = {
 // how a part without a CAS part name is called in the Body step's note
 const KIND_LABEL = { full: 'outfit', top: 'top', bottom: 'bottom', tights: 'tights', socks: 'socks', shoes: 'shoes', hat: 'hat', accessory: 'accessory' };
 const partName = p => p.name || KIND_LABEL[p.kind] || 'a part';
+
+// What a piece is, in words (the clothes remover's list): body type -> label
+const PIECE = {
+  HAT: 'Hat', FULL_BODY: 'Outfit', UPPER_BODY: 'Top', LOWER_BODY: 'Bottom', SHOES: 'Shoes', TIGHTS: 'Tights', SOCKS: 'Socks',
+  CUMMERBUND: 'Belt', EARRINGS: 'Earrings', GLASSES: 'Glasses', NECKLACE: 'Necklace', GLOVES: 'Gloves',
+  WRIST_LEFT: 'Left bracelet', WRIST_RIGHT: 'Right bracelet', LIP_RING_LEFT: 'Lip piercing (left)', LIP_RING_RIGHT: 'Lip piercing (right)',
+  NOSE_RING_LEFT: 'Nose piercing (left)', NOSE_RING_RIGHT: 'Nose piercing (right)', BROW_RING_LEFT: 'Brow piercing (left)',
+  BROW_RING_RIGHT: 'Brow piercing (right)', INDEX_FINGER_LEFT: 'Ring (left index finger)', INDEX_FINGER_RIGHT: 'Ring (right index finger)',
+  RING_FINGER_LEFT: 'Ring (left ring finger)', RING_FINGER_RIGHT: 'Ring (right ring finger)', MIDDLE_FINGER_LEFT: 'Ring (left middle finger)',
+  MIDDLE_FINGER_RIGHT: 'Ring (right middle finger)', ATTACHMENT_BACK: 'On the back',
+};
+export const pieceLabel = p => PIECE[p.body_type_name] || KIND_LABEL[p.kind] || 'Piece';
+// clothes (what "Take off clothes" removes) vs. accessories and hats (kept on unless taken off one by one)
+export const isClothing = p => BODY.includes(p.kind);
 
 const json = async url => {
   const r = await fetch(url);
@@ -46,16 +60,29 @@ function shapeOf(app, s) {
   return s.tray && s.tray.id ? { shape_tray: s.tray.id, shape_index: s.tray.index || 0 } : {};
 }
 
-// -> {list: {kind, ...}, pick, shape} or null (no clothes)
+// -> {list: {kind, ...}, pick, shape, off: [casp]} or null (no clothes)
 export function clothesSpecOf(app, s) {
   const c = s && s.clothes;
   if (!c || typeof c !== 'object') return null;
-  if (c.outfit && s.tray && s.tray.id) return { list: { kind: 'tray', tray: s.tray.id, index: s.tray.index || 0 }, pick: c.outfit, shape: shapeOf(app, s) };
-  if (c.basic) return { list: { kind: 'basic', frame: s.frame === 'ym' ? 'ym' : 'yf' }, pick: c.basic, shape: shapeOf(app, s) };
+  const off = Array.isArray(c.off) ? c.off : [];
+  if (c.outfit && s.tray && s.tray.id) return { list: { kind: 'tray', tray: s.tray.id, index: s.tray.index || 0 }, pick: c.outfit, shape: shapeOf(app, s), off };
+  if (c.basic) return { list: { kind: 'basic', frame: s.frame === 'ym' ? 'ym' : 'yf' }, pick: c.basic, shape: shapeOf(app, s), off };
   return null;
 }
 const listKey = l => (l.kind === 'tray' ? `t:${l.tray}:${l.index}` : `b:${l.frame}`);
-export const specKey = sp => (sp ? `${listKey(sp.list)}|${sp.pick}|${sp.shape.shape_tray || ''}:${sp.shape.shape_index ?? ''}` : '');
+export const specKey = sp => (sp ? `${listKey(sp.list)}|${sp.pick}|${sp.shape.shape_tray || ''}:${sp.shape.shape_index ?? ''}|${[...sp.off].sort().join(',')}` : '');
+
+// The pieces a sim's chosen outfit has, each with on (still worn) -> {label, parts: [{casp, kind, body_type_name, name,
+// origin, on}]} or null (wearing nothing)
+export async function piecesOf(app, s) {
+  const spec = clothesSpecOf(app, s);
+  if (!spec) return null;
+  const list = await outfitList(app, spec.list);
+  const outfit = list.items.find(o => o.key === spec.pick);
+  if (!outfit) return null;
+  const off = new Set(spec.off);
+  return { label: outfit.label, parts: (outfit.parts || []).map(p => ({ ...p, on: !off.has(p.casp) })) };
+}
 
 // The outfits a sim can wear (one request per Tray sim / body for the session): [{key, label, parts}]
 export function outfitList(app, list) {
@@ -110,12 +137,13 @@ export async function loadClothes(app, v, s) {
   }
   if (stale()) return 0;
   if (!outfit) { v.removeParts('clothes'); v.clothesInfo = { error: 'That outfit is not there any more.', shown: 0, missing: [], painted: [] }; return 0; }
-  const parts = (outfit.parts || []).filter(p => p.origin !== null);             // origin null: not installed
+  const off = new Set(spec.off);
+  const parts = (outfit.parts || []).filter(p => p.origin !== null && !off.has(p.casp));   // origin null: not installed
   const results = await Promise.all(parts.map(p => fetchPart(app, p.casp, spec.shape)));
   if (stale()) return 0;
   v.removeParts('clothes');
   const info = { label: outfit.label, shown: 0, missing: [], painted: [] };
-  for (const p of outfit.parts || []) if (p.origin === null) info.missing.push(partName(p));
+  for (const p of outfit.parts || []) if (p.origin === null && !off.has(p.casp)) info.missing.push(partName(p));
   results.forEach((r, i) => {
     const p = parts[i], d = r && r.data;
     if (!d || d.origin === null || d.error) { info.missing.push(partName(p)); return; }
