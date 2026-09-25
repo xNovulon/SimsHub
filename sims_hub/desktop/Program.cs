@@ -456,6 +456,7 @@ sealed class MainForm : Form
         };
         w.PermissionRequested += (_, e) =>
             e.State = IsOwn(e.Uri) ? CoreWebView2PermissionState.Allow : CoreWebView2PermissionState.Deny;
+        WebViewHost.QuietDownloads(w);               // a file the page saves goes to Downloads, no browser download panel
         w.DocumentTitleChanged += (_, _) =>
         {
             var t = w.DocumentTitle;

@@ -37,6 +37,13 @@ public static class WebViewHost
         };
     }
 
+    // A file the page saves (e.g. "Share my poses") goes straight to the Downloads folder, as the page says, without
+    // the browser's download panel.
+    public static void QuietDownloads(CoreWebView2 w)
+    {
+        w.DownloadStarting += (_, e) => { e.Handled = true; };
+    }
+
     // Throws WebView2RuntimeNotFoundException when the runtime is missing and could not be installed.
     public static async Task<CoreWebView2Environment> Create(string browserArgs, Action<string> status)
     {

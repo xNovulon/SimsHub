@@ -135,7 +135,7 @@ export async function recordVideo(app, opts = {}) {
     modal({
       title: 'Your video is ready',
       body: h('div', {}, hero, h('div', { class: 'success' }, icon('check'), h('div', {}, h('b', {}, `${seconds.toFixed(1)} s with sound · ${((r.bytes || blob.size) / 1048576).toFixed(1)} MB`), h('div', { class: 'path' }, r.path || ''))),
-        h('video', { src: URL.createObjectURL(blob), controls: true, autoplay: true, loop: true, style: { width: '100%', borderRadius: '12px', marginTop: '10px', background: '#000' } })),
+        h('video', { src: URL.createObjectURL(blob), controls: true, controlsList: 'nodownload noplaybackrate noremoteplayback', disablePictureInPicture: true, autoplay: true, loop: true, style: { width: '100%', borderRadius: '12px', marginTop: '10px', background: '#000' } })),
       buttons: [{ label: 'Open the folder', onClick: () => { if (r.folder) api.reveal(r.folder); return false; } }, { label: 'Done', kind: 'primary' }],
     });
     celebrateAt(hero, { delay: 480 });

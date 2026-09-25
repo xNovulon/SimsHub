@@ -80,7 +80,8 @@ export class FlyControls {
       // hide and lock the cursor once it really is a drag, so you can keep turning all the way round
       if (!this._locked && Math.hypot(e.clientX - this._lookStart[0], e.clientY - this._lookStart[1]) > 3) {
         this._locked = true;
-        try { const r = this.dom.requestPointerLock?.(); r && r.catch && r.catch(() => {}); } catch { /* not allowed here */ }
+        // the desktop app only hides the cursor: a pointer lock would show the web view's own "press Esc" notice
+        if (!window.wickedDesktop) try { const r = this.dom.requestPointerLock?.(); r && r.catch && r.catch(() => {}); } catch { /* not allowed here */ }
         this.dom.style.cursor = 'none';
       }
       this.euler.y -= e.movementX * LOOK;

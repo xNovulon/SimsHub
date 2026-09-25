@@ -559,6 +559,7 @@ sealed class MainForm : Form
             // the app's own page may use the camera/microphone (capture), clipboard and so on
             e.State = IsOwn(e.Uri) ? CoreWebView2PermissionState.Allow : CoreWebView2PermissionState.Deny;
         };
+        WebViewHost.QuietDownloads(w);               // a file the page saves goes to Downloads, no browser download panel
         w.DocumentTitleChanged += (_, _) =>
         {
             var t = w.DocumentTitle;
