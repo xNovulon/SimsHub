@@ -79,9 +79,18 @@ The animator redesign was stopped before anything was saved, so it has to be red
 ## Notes from the last session
 - Run the Hub checks with The Sims 4 closed: the end-to-end tests see the real game and refuse to change files while
   it runs. With the game closed, all Hub tests pass (tests/__init__.py keeps another library's "tests" package from
-  hiding the folder). The animator's contact check has 3 failures that are the test's own geometry (an arm can't reach
-  35 cm; the kiss preset adds no holds), and wired/backend_check's two "without a game" rows need a PC without the
-  game at a guessed install path.
+  hiding the folder). wired/backend_check's two "without a game" rows need a PC without the game at a guessed
+  install path.
+- Animator checks that depend on the PC, not the code:
+  - r2-2/contact: its kiss rows depend on which WickedWhims kiss animation `cache/poses_v6.json` was built from
+    (the player's own Mods). With "Addicted to Her" it's 59/0; with the OLL "Sweet/Tender Kiss" the kiss gets no
+    hand holds and 3 rows fail. Delete the cache file to rebuild it.
+  - r2-1/editing check 1: at 1366x768 the timeline is 106 px tall and the second sim's lane is half out of view, so
+    the box drag misses it. It fails the same way on the pushed version.
+  - r1d/capture steps 7 and 8: the stand-in video stays at 0% "read" in headless Chrome, and the step times out.
+    Same on the pushed version. Steps 3-6, 7a-7c and 7i pass.
+- The animator opens on an empty scene. Checks that expect the couple pass `scene: 'couple'` to `harness.open`
+  (or call `app.newScene(false, false, 'couple')`).
 - The owner asked for "a normal app, not a browser". Both apps are Windows programs that draw with WebView2; the
   browser menu, text highlighting, dragging and pinch zoom are turned off. A native rewrite was not started.
 - The owner asked for the animator to be "separated from Sims Hub". They are separate programs (own folder, exe,
@@ -89,6 +98,8 @@ The animator redesign was stopped before anything was saved, so it has to be red
   Ask whether to remove that card or split the repository before doing either (installed apps update from this
   repository's paths).
 
+- Lip pull when sucking is on for new sims only (`body.open.lipPull === true`); sims saved before it keep it off so
+  old projects bake the same.
 - Clothes are drawn like the game: garments and painted pieces (tights) are painted onto the sim's skin picture and
   the bare body piece a garment replaces is hidden (Sim.setCovered, clothes.js paintOnSkin).
 - README pictures come from shots.py-style runs against example data (Hub) and a test server (animator). Keep them
