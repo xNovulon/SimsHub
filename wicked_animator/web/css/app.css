@@ -594,6 +594,7 @@ div.start { cursor: default; }
   background: var(--glass, rgba(17, 14, 24, .82)); border: 1px solid var(--line-2); box-shadow: var(--shadow); text-align: center; }
 .vp-empty b { font-size: 17px; }
 .vp-empty p { margin: 4px 0 14px; color: var(--muted); }
+.vp-empty .vp-tray { margin-top: 8px; }
 
 /* adaptive quality chip ("Fast mode · Full quality") */
 .fast-chip { position: absolute; left: 14px; top: 62px; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 11px; border-radius: 999px;

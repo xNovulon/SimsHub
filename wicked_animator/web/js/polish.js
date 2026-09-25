@@ -426,7 +426,8 @@ function installEmptyStage(app) {
     if (card) return;
     const tile = (frame, label) => h('button', { class: 'add-tile', onclick: () => app.addSim(frame) }, icon('user'), label);
     card = h('div', { class: 'vp-empty' }, h('b', {}, 'Add a sim'), h('p', {}, 'Who is in this animation?'),
-      h('div', { class: 'add-grid' }, tile('yf', 'Female'), tile('ym', 'Male'), tile('yf_futa', 'Female + penis')));
+      h('div', { class: 'add-grid' }, tile('yf', 'Female'), tile('ym', 'Male'), tile('yf_futa', 'Female + penis')),
+      app.openTray ? h('button', { class: 'btn block vp-tray', onclick: () => app.openTray() }, icon('folder'), 'Use a sim from my Tray') : null);
     $('viewport-wrap').append(card);
   };
   let t = 0;

@@ -8,7 +8,7 @@ const FRAME_OF = { male: 'ym', female: 'yf' };
 export async function openTrayDialog(app, { pick = null, frame = null, title = null } = {}) {
   const body = h('div', {}, h('div', { class: 'hint' }, 'Reading your Tray...'));
   const dlg = modal({ title: title || 'Use a sim from my Tray',
-    text: pick ? 'Adults only. Your animation doesn\'t change - you only see it on their body for a while.' : 'Adults only. The sim comes in with their body shape, skin and hair; their outfits can be shown in the Body step.',
+    text: pick ? 'Adults only. Your animation doesn\'t change - you only see it on their body for a while.' : 'Adults only. The sim comes in looking the way they do in your game: body, skin, makeup, hair and outfit. Clothes can be taken off in the Body step.',
     body, wide: true, buttons: [{ label: 'Close', kind: 'ghost' }] });
   let households;
   try { households = await api.tray(); } catch (e) { body.innerHTML = ''; body.append(h('div', { class: 'warn-box' }, 'Could not read the Tray: ' + e.message)); return; }
