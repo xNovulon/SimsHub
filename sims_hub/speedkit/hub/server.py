@@ -548,10 +548,10 @@ class Handler(BaseHTTPRequestHandler):
 #   GET  /api/cc/pic/<cas|object>/<16 hex digits>   the picture of one CAS part / object by its id (same rules)
 #   GET  /api/saves/<slot>/cc[?refresh=1]           api.save_cc(slot) ('tray' = the in-game library), cached 60 s
 #   POST /api/cc/open {"id"}           api.cc_open(id): the file's folder in Explorer
-#   tasks: 'cc_scan' (sort the CC into categories) and 'cc_set_aside' {"ids": [...]} (undoable)
-CC_ACTIONS = {'cc_scan': 'sorting CC files', 'cc_set_aside': 'setting CC files aside'}
+#   tasks: 'cc_scan' (sort the CC into categories), 'cc_set_aside' {"ids": [...]} and 'cc_unmerge' {"id"} (undoable)
+CC_ACTIONS = {'cc_scan': 'sorting CC files', 'cc_set_aside': 'setting CC files aside', 'cc_unmerge': 'unmerging a merged file'}
 ACTIONS.update(CC_ACTIONS)
-TAKES_PROGRESS.update({'cc_scan', 'cc_set_aside', 'save_cc'})
+TAKES_PROGRESS.update({'cc_scan', 'cc_set_aside', 'cc_unmerge', 'save_cc'})
 CC_TTL = 60.0
 CC_WORD = re.compile(r'^[a-z_]{1,40}$')
 CC_HEX = re.compile(r'^[0-9A-Fa-f]{1,16}$')
@@ -565,8 +565,14 @@ def _cc_ids(args):
         raise BadRequest('Pick the files to set aside first.')
 
 
-TASK_ARGS = {'cc_set_aside': {'ids'}}           # task action -> the details it takes (check_args)
-TASK_CHECKS = {'cc_set_aside': _cc_ids}         # task action -> a check of those details
+def _cc_id(args):
+    i = args.get('id')
+    if not isinstance(i, int) or isinstance(i, bool) or not 0 < i < 2 ** 53:
+        raise BadRequest('Pick the file to unmerge first.')
+
+
+TASK_ARGS = {'cc_set_aside': {'ids'}, 'cc_unmerge': {'id'}}    # task action -> the details it takes (check_args)
+TASK_CHECKS = {'cc_set_aside': _cc_ids, 'cc_unmerge': _cc_id}  # task action -> a check of those details
 
 
 def _cc_text(q, name, most):

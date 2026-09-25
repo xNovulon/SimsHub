@@ -646,7 +646,7 @@ def _title(j):
             return 'Changed the game options'
         return 'Changed the graphics settings'
     return {'caches': 'Cleared the game caches', 'merge': 'Combined mod files', 'inbox': 'Installed new downloads',
-            'dedup': 'Removed duplicate copies', 'usedpack': 'Made the used-CC pack',
+            'dedup': 'Removed duplicate copies', 'usedpack': 'Made the used-CC pack', 'unmerge': 'Unmerged a merged file',
             'setaside': 'Set CC files aside'}.get(kind, 'Changed %s' % kind)
 
 
@@ -1424,6 +1424,7 @@ def cleanup_plan(progress=None):
     lib, plan = _dedup_plan(tell)
     try:
         s = plan.summary()
+        files = _dup_files(plan)
     finally:
         lib.close()
     gb = _gb(s['stored_bytes_dropped'])
@@ -1432,7 +1433,32 @@ def cleanup_plan(progress=None):
            % (s['copies_dropped'], _size_text(s['stored_bytes_dropped'])))
     return {'ok': True, 'message': msg, 'copies': s['copies_dropped'], 'gb': gb,
             'mb': round((s['stored_bytes_dropped'] or 0) / 1e6, 1),
-            'rewritten': s['packages_rewritten'], 'removed': s['packages_quarantined']}
+            'rewritten': s['packages_rewritten'], 'removed': s['packages_quarantined'], 'files': files}
+
+
+def _dup_files(plan, limit=60):
+    """The files the clean-up would change, most extra copies first: [{name, folder, copies, mb, whole, mods}].
+    whole: every resource in it is also in other files (the whole file is set aside); mods: for a Sims 4 Studio
+    merge, the merged mods the extra copies came from (by its merge list), most first."""
+    from . import manifest
+    out = []
+    for pp in plan.actions()[:limit]:
+        if pp.action not in ('quarantine', 'rewrite'):
+            continue
+        mods = []
+        if pp.has_manifest:
+            try:
+                data = manifest.read_payload(pp.path)
+                if data:
+                    dropped = {(t, g, i & 0xFFFFFFFFFFFFFFFF) for t, g, i, *_ in pp.drop}
+                    hits = [(len(keys & dropped), name) for name, keys in manifest.sources_of(data).items()]
+                    mods = [os.path.basename(n) for c, n in sorted(hits, key=lambda x: -x[0]) if c][:12]
+            except Exception:
+                mods = []
+        out.append({'name': os.path.basename(pp.rel), 'folder': '%s/%s' % (pp.root, os.path.dirname(pp.rel)) if
+                    os.path.dirname(pp.rel) else pp.root, 'copies': len(pp.drop),
+                    'mb': round(pp.drop_bytes / 1e6, 1), 'whole': pp.action == 'quarantine', 'mods': mods})
+    return out
 
 
 def _size_text(n):
@@ -1744,6 +1770,17 @@ def cc_item(item_id):
     roots = _roots()
     view['path'] = CB.locate(roots, row['root'], row['rel']) or os.path.join(roots.get(row['root'], _mods()),
                                                                               row['rel'].replace('/', os.sep))
+    # a merged file: the files that went into it (from its merge list), for the details window and Unmerge
+    view['merge'] = None
+    if row.get('kind') == 'package' and os.path.exists(view['path']):
+        try:
+            from . import unmerge
+            m = unmerge.info(view['path'])
+            if m['merged']:
+                names = [(s['folder'] + '/' if s['folder'] else '') + s['name'] for s in m['sources']]
+                view['merge'] = {'count': len(names), 'names': names[:400], 'unlisted': m['unlisted']}
+        except Exception as e:
+            _log_error('cc_item merge', e)
     return dict(view, ok=True)
 
 
@@ -1864,6 +1901,36 @@ def cc_set_aside(ids, progress=None):
                                                 'it was' if len(refused) == 1 else 'they were')
     tell('done', 1.0, msg)
     return {'ok': True, 'message': msg, 'journal': r['journal'], 'done': r['done'], 'refused': refused}
+
+
+@_safe
+def cc_unmerge(id, progress=None):          # noqa: A002 (the task passes "id")
+    """Split a merged CC file back into the files that went into it (speedkit.unmerge), next to it in a folder
+    '<name> (unmerged)'. One change that 'Undo last change' reverses. Returns {'ok', 'message', 'journal', 'folder',
+    'files'}."""
+    from . import unmerge
+    tell = _Progress(progress)
+    info = cc_item(id)
+    if not info.get('ok'):
+        return info
+    if _game_running():
+        return {'ok': False, 'message': 'The Sims 4 is running. Close the game first, then try again.'}
+    if not info.get('merge'):
+        return {'ok': False, 'message': "This file has no merge list, so it can't be split back into the files that "
+                                        "went into it."}
+    tell('unmerge', 0.0, 'Unmerging %s' % info['name'])
+    with _run_lock:
+        try:
+            r = unmerge.unmerge(info['path'], sims=_sims(), journal_home=_home(), check_game=_cfg['check_game'],
+                                progress=lambda k, n, total, name: tell('unmerge', n / max(1, total), 'Writing %s' % name))
+        except unmerge.UnmergeError as e:
+            return {'ok': False, 'message': "Nothing was changed: %s." % str(e).rstrip('.')}
+    _cache.clear()
+    n = len(r['written'])
+    msg = ('Unmerged %s into %d files, in the folder "%s". The merged file is kept safe - "Undo last change" on '
+           'the Tools page puts it back.' % (info['name'], n, os.path.basename(r['folder'])))
+    tell('done', 1.0, msg)
+    return {'ok': True, 'message': msg, 'journal': r['journal'], 'folder': r['folder'], 'files': n}
 
 
 @_safe

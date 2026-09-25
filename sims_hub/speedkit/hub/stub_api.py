@@ -655,7 +655,7 @@ def _cc_items():
         groups.setdefault((it['category'], it['creator']), []).append(it)
     for cat in ('hair', 'fullbody', 'buildbuy'):
         a, b = next(g for (c, _), g in groups.items() if c == cat and len(g) > 1)[:2]
-        a['duplicate_of'], b['duplicate_of'] = b['name'], a['name']
+        b['duplicate_of'] = a['name']          # the copy is marked, the file it copies is not
     for cat, k, why in (('shoes', 3, "This file is damaged: the game can't read it."), ('gameplay', 1, 'This file is empty.')):
         it = [x for x in items if x['category'] == cat][k]
         it.update(broken=why, pic=None, used=None if cat == 'gameplay' else False)

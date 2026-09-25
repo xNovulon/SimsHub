@@ -724,13 +724,13 @@ class PlainWords(unittest.TestCase):
                               'launch_to_menu_s': 100, 'lot_load_s': None}],
               'journals': [{'when': '2026-09-24T08:00:00', 'kind': 'profile', 'state': 'committed',
                             'note': 'switch to fast: park 5 files (0.7 GB), restore 0 files (0.0 GB)',
-                            'title': 'Switched to Fast mode'}]}
+                            'title': 'Switched to Quick Start'}]}
         saves = [{'slot': 'Slot_00000016', 'name': 'My Saved Game 21', 'pack': {'state': 'fresh'}}]
         table = [{'setting': 'Mirror fade distance', 'stock': '1.3', 'before': '120', 'after': '2.6'}]
         html = report.build(st, saves, table)
         text = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', re.sub(r'<style>.*?</style>', ' ', html, flags=re.S)))
         self.assertEqual(plain_problems([text]), [], INSIDE_WORDS.findall(text))
-        for want in ('Switched to Fast mode', 'Done', 'Studio mode', 'Main menu', 'One save', 'ready'):
+        for want in ('Switched to Quick Start', 'Done', 'Studio mode', 'Main menu', 'One save', 'ready'):
             self.assertIn(want, text)
         self.assertNotIn('committed', text)
         self.assertNotIn('park 5 files', text)
@@ -1097,7 +1097,7 @@ class Story(unittest.TestCase):
         self.assertEqual(st['graphics']['state'], 'tuned')
         self.assertEqual(st['fastpack']['state'], 'fresh', st['fastpack'])
         titles = [j['title'] for j in st['journals']]
-        for t in ('Switched to Fast mode', 'Made the fast pack', 'Graphics set to Max Quality'):
+        for t in ('Switched to Quick Start', 'Made the fast pack', 'Graphics set to Max Quality'):
             self.assertIn(t, titles)
         self.assertEqual(st['library']['cas_now'], self.cas_entries_in_mods())
         self.assertLess(st['library']['cas_now'], st['library']['cas_full'])
@@ -1306,7 +1306,7 @@ class Story(unittest.TestCase):
         # everything SpeedKit did after the other tool's lean is undone; the studio switch before it cannot be
         # (mods_switch.py rewrote the parking list since) and the Hub says so plainly instead of getting stuck
         self.assertTrue(done and not done[-1][1] and 'cannot be undone' in done[-1][2], done)
-        self.assertIn('Switched to Fast mode', [t for t, ok, m in done if ok])
+        self.assertIn('Switched to Quick Start', [t for t, ok, m in done if ok])
         end = Snapshot(self.sims)
         self.assertEqual(end.files()[0], self.start.files()[0], 'undo did not bring every mod file back')
         self.assertEqual((set(end.mods), set(end.parked)), (set(self.after_lean.mods), set(self.after_lean.parked)),

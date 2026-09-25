@@ -39,7 +39,7 @@ class StubRoutes(Base):
         p2 = self.get('/api/cc?offset=60&limit=60')[2]
         self.assertEqual(p2['offset'], 60)
         self.assertFalse({i['id'] for i in p2['items']} & {i['id'] for i in r['items']})
-        self.assertEqual(self.get('/api/cc?flag=duplicate')[2]['total'], 6)
+        self.assertEqual(self.get('/api/cc?flag=duplicate')[2]['total'], 3)          # one of each pair; the file it copies is not marked
         self.assertEqual(self.get('/api/cc?flag=broken')[2]['total'], 2)
         unused = self.get('/api/cc?used=unused&limit=200')[2]
         self.assertTrue(all(i['used'] is False for i in unused['items']))

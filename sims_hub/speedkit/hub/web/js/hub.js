@@ -405,6 +405,7 @@ function renderLibrary() {
       <p>Some CC is stored more than once. The Hub can remove the extra copies. Your game looks exactly the same, and you can undo it on the Tools page.</p></div></div>
       ${plan && plan.ok ? `<div class="plan"><div><b>${planSize(plan)}</b><span>can be freed</span></div><div><b>${num(plan.copies)}</b><span>extra copies</span></div>
         <div><b>${num((plan.rewritten || 0) + (plan.removed || 0))}</b><span>files made smaller or removed</span></div></div>` : ''}
+      ${plan && plan.ok ? dupFilesNote(plan) : ''}
       <div class="actions"><button class="btn" data-act="cleanup-plan"${noChange ? ' disabled' : ''}>${ic('search')}${plan ? 'Check again' : 'Check how much space can be freed'}</button>
         ${plan && plan.ok && plan.copies > 0 ? `<button class="btn soft" data-act="cleanup-confirm"${noChange ? ' disabled' : ''}>${ic('broom')}Free up ${planSize(plan)}</button>` : ''}</div>
     </div>
@@ -1165,6 +1166,7 @@ function ccBuild() {
       <select data-cc-f="flag" aria-label="Problems"><option value="">All files</option><option value="duplicate">Duplicates</option><option value="broken">Damaged files</option></select>
       <select data-cc-f="sort" aria-label="Sort">${CC_SORTS.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join('')}</select>
     </div>
+    <div class="cc-dupwarn"></div>
     <div class="cc-bar"><span class="cc-count"></span><span class="cc-selbar"></span></div>
     <div class="cc-grid" aria-live="polite"></div>
     <div class="cc-pager"></div>`;
@@ -1193,6 +1195,7 @@ function ccBuild() {
       else if (what === 'page') { CCB.page = Math.max(0, +b.dataset.page); ccLoad(); CCB.el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
       else if (what === 'scan') ccScan();
       else if (what === 'clear') ccClearFilters();
+      else if (what === 'showdups') { CCB.f.flag = 'duplicate'; CCB.page = 0; ccLoad(); }
       else if (what === 'aside') ccConfirmAside([...CCB.sel]);
       else if (what === 'unselect') { CCB.sel.clear(); ccDraw(); }
       return;
@@ -1204,6 +1207,40 @@ function ccBuild() {
     const card = e.target.closest('.cc-card');
     if (card && (e.key === 'Enter' || e.key === ' ') && e.target === card) { e.preventDefault(); ccDetails(+card.dataset.id); }
   });
+}
+
+// The clean-up's findings, by name: which files hold extra copies and, for merges, which mods they are.
+function dupFilesNote(plan) {
+  const files = plan.files || [];
+  if (!plan.copies || !files.length) return '';
+  const shown = files.slice(0, 10), more = ((plan.rewritten || 0) + (plan.removed || 0)) - shown.length;
+  const row = f => {
+    const mods = f.mods && f.mods.length ? ` · extra copies of: ${f.mods.slice(0, 4).map(esc).join(', ')}${f.mods.length > 4 ? ` and ${num(f.mods.length - 4)} more` : ''}` : '';
+    return `<div class="item">${ic('warn')}<span class="n" title="${esc(f.folder + '/' + f.name)}">${esc(f.name)}</span>
+      <span class="r">${num(f.copies)} extra ${f.copies === 1 ? 'copy' : 'copies'}${f.whole ? ' · everything in it is also in other files, so the whole file is set aside' : ''}${mods}</span></div>`;
+  };
+  return `<div class="note warn">${ic('warn')}<span>Duplicates found in ${num((plan.rewritten || 0) + (plan.removed || 0))} files. The extra copies go, one copy of everything stays.</span></div>
+    <div class="items">${shown.map(row).join('')}${more > 0 ? `<div class="muted" style="padding:4px 2px">and ${num(more)} more files</div>` : ''}</div>`;
+}
+
+// The CC browser's warning: every file marked Duplicate, with the file that already holds all of it.
+async function ccDupWarn() {
+  const box = CCB.el && $('.cc-dupwarn', CCB.el);
+  if (!box) return;
+  const d = CCB.data, n = d && d.flags ? d.flags.duplicate || 0 : 0;
+  if (!n || CCB.f.flag === 'duplicate' || !(d.index && d.index.state === 'ready')) { box.innerHTML = ''; return; }
+  const key = `${(d.index && d.index.when) || ''}|${n}`;
+  if (!CCB.dups || CCB.dups.key !== key) {
+    const r = await call('cc?flag=duplicate&limit=200&sort=name');
+    CCB.dups = { key, items: r.http === 200 && r.items ? r.items : [] };
+  }
+  const items = CCB.dups.items, shown = items.slice(0, 8);
+  box.innerHTML = `<div class="note warn">${ic('warn')}<span><b>${num(n)} duplicate ${n === 1 ? 'file' : 'files'} found.</b>
+      Each one is completely inside another file, so it can go without losing anything. The file named after it stays.</span>
+      <button class="btn small" data-cc="showdups">Show them</button></div>
+    <div class="items">${shown.map(i => `<div class="item">${ic('warn')}<span class="n" title="${esc(i.name)}">${esc(i.name)}</span>
+      <span class="r">also in <b>${esc(i.duplicate_of || 'another file')}</b></span></div>`).join('')}
+      ${items.length > shown.length ? `<div class="muted" style="padding:4px 2px">and ${num(n - shown.length)} more</div>` : ''}</div>`;
 }
 
 function ccQuery(extra = {}) {
@@ -1233,6 +1270,7 @@ async function ccLoad(facets = false) {
   }
   if (CCB.el) CCB.el.classList.remove('loading');
   ccDraw();
+  ccDupWarn();
 }
 
 function ccClearFilters() {
@@ -1417,15 +1455,34 @@ async function ccDetails(id) {
     ${used}
     ${r.broken ? `<div class="note err">${ic('warn')}<span>${esc(r.broken)}</span></div>` : ''}
     ${r.duplicate_of ? `<div class="note warn">${ic('warn')}<span>Everything in this file is also in <b>${esc(r.duplicate_of)}</b>. Only one of the two is needed.</span></div>` : ''}
+    ${r.merge ? `<div class="note">${ic('info')}<span><b>Merged file: ${num(r.merge.count)} ${r.merge.count === 1 ? 'file' : 'files'} inside.</b> Unmerge splits it back into them, in a folder next to it.</span></div>
+      <details class="cc-merged"><summary>Show the files inside</summary><div class="items">${r.merge.names.map(n => `<div class="item"><span class="n" title="${esc(n)}">${esc(n)}</span></div>`).join('')}
+      ${r.merge.count > r.merge.names.length ? `<div class="muted" style="padding:4px 2px">and ${num(r.merge.count - r.merge.names.length)} more</div>` : ''}</div></details>` : ''}
     ${r.in_mods ? '' : `<div class="note">${ic('info')}<span>Moved out of the Mods folder by Quick Start or one-save mode. It is back when the game starts with Full Start.</span></div>`}`;
   const foot = document.createElement('footer');
   foot.innerHTML = `<span class="hint">${r.kind === 'script' ? 'Script mods are left alone by the Hub.' : 'Setting aside can be undone on the Tools page.'}</span>
     <button class="btn" data-open>${ic('folder')}Open folder</button>
+    ${r.merge ? `<button class="btn soft" data-unmerge${busy() || gameRunning() ? ' disabled' : ''}>${ic('folder')}Unmerge</button>` : ''}
     ${r.kind === 'script' ? '' : `<button class="btn soft" data-aside${busy() || gameRunning() || !r.in_mods ? ' disabled' : ''}>${ic('folder')}Set aside</button>`}`;
   m.el.appendChild(foot);
   $('[data-open]', foot).onclick = async () => { const o = await call('cc/open', { id }); toast(o.message || (o.ok ? 'Opened.' : "That couldn't be opened."), o.ok ? 'ok' : 'err'); };
   const aside = $('[data-aside]', foot);
   if (aside) aside.onclick = () => { m.close(); ccConfirmAside([id], r.name); };
+  const un = $('[data-unmerge]', foot);
+  if (un) un.onclick = () => { m.close(); ccConfirmUnmerge(id, r); };
+}
+
+async function ccConfirmUnmerge(id, r) {
+  const yes = await confirmBox({
+    title: 'Unmerge this file?',
+    text: `It is split back into the ${num(r.merge.count)} files that went into it, in a folder next to it. Every item is copied exactly, nothing is left out, and your game shows the same CC.`,
+    what: `<div class="confirm-what"><b>${esc(r.name)}</b><span>The merged file is kept safe. <b>Undo last change</b> on the Tools page puts it back.</span></div>`,
+    ok: 'Unmerge', cancel: 'Keep it merged',
+  });
+  if (!yes) return;
+  await runTask('cc_unmerge', { id });
+  CCB.facets = null;
+  ccLoad(true);
 }
 
 async function ccConfirmAside(ids, name = '') {

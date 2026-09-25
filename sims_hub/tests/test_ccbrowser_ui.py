@@ -157,7 +157,7 @@ class CCBrowserUI(unittest.TestCase):
         self.page.wait_for_function('() => document.querySelector("#cc-browser .cc-pager").textContent.includes("Page 2 of")')
         self.assertIn('Showing 61-120', self.page.inner_text('#cc-browser .cc-count'))
         self.page.select_option('[data-cc-f="flag"]', 'duplicate')
-        self.wait_count('of 6')
+        self.wait_count('of 3')                          # one of each identical pair
         self.page.select_option('[data-cc-f="flag"]', '')
         self.page.select_option('[data-cc-f="used"]', 'unused')
         self.page.wait_for_function('() => [...document.querySelectorAll("#cc-browser .cc-card")].length > 0 && '
