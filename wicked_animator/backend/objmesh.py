@@ -183,6 +183,12 @@ class _ResIndex:
     def signature(self):
         return self._sig
 
+    def clear(self):
+        """Read again on the next use (the game's folder changed)."""
+        with self._lock:
+            self._tgi = self._ti = self._pkgs = self._sig = None
+            self._checked = 0.0
+
     def load(self):
         with self._lock:
             now = time.time()
@@ -259,6 +265,12 @@ class _ResIndex:
 _GAME = _ResIndex('index', packages, INDEX_VERSION)
 _MODS = _ResIndex('mods_index', mods_packages, 1, root_fn=_mods_root, recheck=30.0)
 _Index = _GAME            # older callers (hair.py) read the game's resources through this name
+
+
+def reset():
+    """The game's folder was picked again: both indexes are read again when next needed."""
+    _GAME.clear()
+    _MODS.clear()
 
 
 def _read(t, g, i):

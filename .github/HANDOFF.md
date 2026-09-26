@@ -180,6 +180,22 @@ node tools/checks/posetools/pose_tools.js      # R turns, T moves the picked par
 node tools/checks/clothes/ui_smoke.js          # clothes preview, incl. the hover glow and selection tint on worn clothes
 ```
 
+## Finding The Sims 4 (animator)
+- `backend/gamefind.py` finds the install by itself: a folder picked in the app (`wicked_animator/config.json`), the
+  one Sims Hub found (`SpeedKit\settings.json` in the user folder), the EA app / Origin registry, Steam's libraries,
+  then the usual folders on every fixed drive. The Documents folder comes from Windows (moved or OneDrive Documents,
+  a localized "Die Sims 4" folder); saves and exports made in the old place are kept there.
+- When it can't find the game, the start waits on "The Sims 4 wasn't found" with Find The Sims 4 (`web/js/findgame.js`,
+  routes `/api/game`, `/api/browse`, `/api/game_dir`). "The Sims 4 folder" in the command menu shows or changes it;
+  a new pick drops everything read from the old folder (`gamedata.forget_game_reads`).
+- The install is all the sims, clothes and furniture need - the game never has to be started. The Tray and Mods
+  folders only exist after its first start: Home and the Tray dialog say so while they are missing.
+- Tests: `WICKED_GAME_DIR` (an empty folder = no game), `WICKED_DOCUMENTS`, `WICKED_CONFIG`. `fake_game_server.py` never
+  reads the real game (also on this PC); `WA_FAKE_NO_GAME=1` / `WA_FAKE_FRESH=1` give the not-found and never-started
+  states (`node tools/checks/findgame/find_game.js`).
+- On this PC `wired/backend_check.py`'s "ea_status without a game" row and two `wired/ui_smoke.js` EA rows fail
+  because `cache/ea_library_v1.json` was built from the real game; delete it to see them pass.
+
 ## Posing: R, T and the circle
 - R gives the picked part its rings, T its arrows (`Interaction.turnSelected` / `moveSelected`). T never moves the whole
   sim: the hips shift with the feet planted and the back bent so the chest and head stay (`shiftHips`; a straight leg

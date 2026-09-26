@@ -22,7 +22,7 @@ export const gameMissing = e => /install not found|game_dir|Data[\\/]+Client/i.t
 // One sentence for an error while reading game data. what: the thing that could not be read ("the places").
 export function plainError(e, what = 'this') {
   const text = String((e && e.message) || e || '');
-  if (gameMissing(text)) return `The Sims 4 was not found on this PC, so ${what} can't be read from the game. Install the game (or set its folder in config.json), then try again.`;
+  if (gameMissing(text)) return `The Sims 4 was not found on this PC, so ${what} can't be read from the game. Show where it is: Ctrl+K, then "The Sims 4 folder".`;
   if (/ww_example_objects|could not be read from the game files/i.test(text)) {
     return `WickedWhims' places could not be read from the game files on this PC, so ${what} can't be listed. Check that The Sims 4 and WickedWhims are installed, then try again.`;
   }

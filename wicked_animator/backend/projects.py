@@ -12,7 +12,17 @@ import gamedata as G
 
 # ANIMATOR_SAVES / WICKED_PROJECTS_DIR (tests only): keep this server's saves (and reference files) in another folder,
 # so a test never touches the user's
-ROOT = os.environ.get('ANIMATOR_SAVES') or os.environ.get('WICKED_PROJECTS_DIR') or os.path.join(G.SIMS_DIR, 'saves', 'FitStudio')
+def _root():
+    own = os.environ.get('ANIMATOR_SAVES') or os.environ.get('WICKED_PROJECTS_DIR')
+    if own:
+        return own
+    here = os.path.join(G.SIMS_DIR, 'saves', 'FitStudio')
+    # saved before the app followed a moved (or OneDrive) Documents folder: they stay where they are
+    old = os.path.join(G.HOME, 'Documents', 'Electronic Arts', 'The Sims 4', 'saves', 'FitStudio')
+    return old if not os.path.isdir(here) and os.path.isdir(old) else here
+
+
+ROOT = _root()
 PROJECTS = os.path.join(ROOT, 'animator_projects')
 PROGRESSIONS = os.path.join(ROOT, 'animator_progressions.json')
 OLD = os.path.join(ROOT, 'animator_replaced')

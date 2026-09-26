@@ -31,7 +31,10 @@ TASKLIST = None        # tests may set a function that returns tasklist's text
 
 def sims_dir():
     d = os.environ.get('WICKED_SIMS_DIR')
-    return os.path.abspath(d) if d else os.path.join(os.path.expanduser('~'), 'Documents', 'Electronic Arts', 'The Sims 4')
+    if d:
+        return os.path.abspath(d)
+    import gamefind
+    return gamefind.SIMS_DIR
 
 
 def log_path():

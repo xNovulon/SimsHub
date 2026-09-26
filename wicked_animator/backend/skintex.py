@@ -633,8 +633,8 @@ def _extra_tone_rows(inst):
     except AttributeError:                                     # another index layout: its first hit only
         row = M.find(T_TONE, inst)
         rows = [] if row is None else [row]
-    parked = os.path.normcase(os.path.abspath(os.path.join(os.path.expanduser('~'), 'Documents', 'Electronic Arts',
-                                                           'The Sims 4', 'Mods_parked')))
+    import gamedata
+    parked = os.path.normcase(os.path.abspath(gamedata.PARKED_DIR))
     out = []
     for k, row in enumerate(rows):
         if int(row['size']) <= 0:

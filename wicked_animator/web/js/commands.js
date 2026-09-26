@@ -47,6 +47,7 @@ export function commands(app) {
     if (vp.qualityLevel > 0) add('View', 'quality-full', 'Full quality', () => { vp.keepQuality = true; vp.setQualityLevel(0); }, { icon: 'spark', words: 'fast mode graphics best' });
     else add('View', 'quality-fast', 'Fast mode', () => vp.setQualityLevel(3), { icon: 'bolt', sub: 'simpler light, smoother on slow computers', words: 'performance speed lag' });
   }
+  add('Settings', 'game-folder', 'The Sims 4 folder', () => import('./findgame.js').then(m => m.openGameFolder()), { icon: 'folder', words: 'game install path find locate browse sims 4 folder' });
   add('Settings', 'reduce-motion', reduceMotionOn() ? 'Reduce motion: off' : 'Reduce motion: on', () => setReduceMotion(!reduceMotionOn()), { icon: 'eye', words: 'animations calm accessibility still' });
   for (const k of ['scene', 'pose', 'motion', 'body', 'face', 'sounds', 'details', 'share', 'library'])
     add('Go to', 'go-' + k, k[0].toUpperCase() + k.slice(1), () => app.showStep(k), { icon: 'arrow', words: 'step' });

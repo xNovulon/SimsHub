@@ -18,8 +18,8 @@ import glob, io, os, re, struct, threading, time, zipfile
 
 from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
 
-HOME = os.path.expanduser('~')
-TRAY_DIR = os.path.join(HOME, 'Documents', 'Electronic Arts', 'The Sims 4', 'Tray')
+from gamefind import HOME, SIMS_DIR
+TRAY_DIR = os.path.join(SIMS_DIR, 'Tray')
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.join(HERE, '..', 'cache', 'tray')
 

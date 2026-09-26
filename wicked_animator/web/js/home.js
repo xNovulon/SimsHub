@@ -9,6 +9,7 @@ import { KINDS } from './tags.js';
 import { maybeTour } from './tour.js';
 import { finishSplash } from './splash.js';
 import { reducedMotion } from './fx.js';
+import { launchNote } from './findgame.js';
 
 const kindName = k => (KINDS.find(x => x[0] === k) || ['', k || 'Animation'])[1];
 const $ = id => document.getElementById(id);
@@ -187,6 +188,11 @@ export async function showHome(app) {
         ['4', 'Play it', 'Send to game, restart The Sims 4, pick it in WickedWhims. Or export a mod to share.']].map(([n, t, s]) =>
         h('div', { class: 'start static' }, h('div', { class: 'ic num' }, h('b', {}, n)), h('b', {}, t), h('small', {}, s)))));
   root.append(inner);
+  // the game was installed but never started: no Tray and no Mods folder yet
+  api.game().then(g => {
+    if (!g || !g.found || g.sims_ready || !inner.isConnected || inner.querySelector('.home-note')) return;
+    inner.firstChild.after(h('div', { class: 'warn-box home-note' }, icon('bolt'), h('span', {}, launchNote())));
+  }).catch(() => {});
   // the first time Home opens in a session its parts rise in one after another
   if (!introShown && !reducedMotion()) {
     introShown = true;

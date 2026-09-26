@@ -31,6 +31,7 @@ import { Pipeline, simBody } from './pipeline.js';
 import { newLayer, MOTIONS, offsetHips, applyLayer } from './motion.js';
 import { ThumbRenderer } from './thumbs.js';
 import { showHome, hideHome } from './home.js';
+import { ensureGame } from './findgame.js';
 import { openHelp, maybeTour } from './tour.js';
 import { SoundPlayer, VOICE_SETS, VOICE_FALLBACK, voiceCode, simVoiceCode, soundFitsSim } from './audio.js';
 import { openMagicDialog } from './magic.js';
@@ -260,12 +261,25 @@ class App {
     let done = 0;
     const tick = text => x => { done++; this._progress = done / steps; this._setLoading(text); return x; };
     this._setLoading('Reading the game\'s skeleton and WickedWhims bodies...');
-    const [rig, yf, ym, futa, furniture] = await Promise.all([
+    const readAll = () => Promise.all([
       api.rig('au').then(tick('Bones ready - loading bodies...')),
       api.body('yf').then(tick('Loading bodies...')),
       api.body('ym').then(tick('Loading bodies...')),
       api.body('yf_futa').catch(() => null).then(tick('Loading furniture...')),
       api.furniture().then(tick('Setting up the stage...'))]);
+    // where the game is, asked alongside the first reads (no wait when it is found). When the engine can't find
+    // The Sims 4, the start waits on "The Sims 4 wasn't found" until it is shown where, then reads again.
+    const gameAsk = api.game().catch(() => null);
+    let reads = readAll();
+    reads.catch(() => {});
+    this.gameInfo = await gameAsk;
+    if (this.gameInfo && !this.gameInfo.found) {
+      this.gameInfo = await ensureGame();
+      done = 0;
+      this._setLoading('Reading the game\'s skeleton and WickedWhims bodies...');
+      reads = readAll();
+    }
+    const [rig, yf, ym, futa, furniture] = await reads;
     this.assets.rig = rig;
     setRig(rig);
     K.setRig(rig);

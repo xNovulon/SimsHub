@@ -221,8 +221,21 @@ class Handler(BaseHTTPRequestHandler):
     # ------------------------------------------------------------------ API
     def _api_get(self, route, q):
         if route == 'status':
-            return self._send(200, _json({'game_dir': G.game_dir(), 'mods': G.MODS_DIR, 'ww': bool(G.ww_tuning_package()), 'ok': True,
+            # never an error: the window waits for this answer (no game found is said by /api/game)
+            try:
+                game = G.game_dir()
+            except FileNotFoundError:
+                game = None
+            return self._send(200, _json({'game_dir': game, 'mods': G.MODS_DIR, 'ww': bool(G.ww_tuning_package()), 'ok': True,
                                           'build': BUILD, 'pid': os.getpid()}))
+        if route == 'game':
+            # where The Sims 4 is: {found, dir, source, sims_dir, sims_ready, mods, tray, played}
+            import gamefind
+            return self._send(200, _json(gamefind.info()))
+        if route == 'browse':
+            # one folder of the in-app browser (Find The Sims 4) - it only reads
+            import gamefind
+            return self._send(200, _json(gamefind.browse(q.get('path') or None)))
         if route == 'rig':
             if q.get('key', 'au') != 'au':
                 return self._error(404, 'Only the adult rig is available.')
@@ -451,6 +464,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _api_post(self, route, body, q=None):
         q = q or {}
+        if route == 'game_dir':
+            # the folder picked in Find The Sims 4: remembered, and the game is read from it from now on
+            r = G.set_game_dir((body or {}).get('path'))
+            return self._send(200 if r.get('ok') else 400, _json(r))
         if route == 'export':
             return self._send(200, _json(exporter.export(body)))
         if route == 'bundle':

@@ -56,3 +56,6 @@ sims_hub/Sims Hub.exe
 
 # redesign screenshots (made by the screenshot script, not kept in the repository)
 sims_hub/tests/_hub_screens_redesign/
+
+# the game folder picked in the animator (Find The Sims 4)
+wicked_animator/config.json

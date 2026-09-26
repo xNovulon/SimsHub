@@ -11,9 +11,15 @@ It is backend/server.py with four things swapped in memory before it starts:
     penis meshes, the woman's with the "NudeBottom_AF" part), skinned to that rig;
   - poses.presets(): every couple ready pose of backend/poses.py COUPLE as the two sims standing face to face (so
     Magic, Say it and the ready poses have something to start from - the poses themselves mean nothing);
-  - /api/status answers without a game folder.
+  - /api/status answers without a game folder, and /api/game says the stand-in game is there (so the app starts).
 Every other route is the real one: game-data routes still say "The Sims 4 install not found", which is what the
-checks want to see the app handle.
+checks want to see the app handle - also on a PC that has the game (WICKED_GAME_DIR points at an empty folder).
+
+The stand-in user folder (Electronic Arts / The Sims 4 in its Documents, empty Mods and Tray) is made in the throw-away home, as
+on a PC where the game has been played; WA_FAKE_FRESH=1 leaves it out (the game never started).
+
+WA_FAKE_NO_GAME=1: /api/game says the game isn't there either (the app's "The Sims 4 wasn't found" screen), until a
+folder that looks like an install is picked in it (POST /api/game_dir; a picked folder goes to a temp config.json).
 """
 import os
 import sys
@@ -27,6 +33,17 @@ sys.path.insert(0, BACKEND)
 _home = os.environ.get('WA_FAKE_HOME') or tempfile.mkdtemp(prefix='wa_fake_home_')
 os.makedirs(_home, exist_ok=True)
 os.environ['HOME'] = os.environ['USERPROFILE'] = _home
+# the real game is never read, also on a PC that has it; a folder picked in the app is kept in a temp file
+os.environ.setdefault('WICKED_GAME_DIR', tempfile.mkdtemp(prefix='wa_no_game_'))
+os.environ.setdefault('WICKED_CONFIG', os.path.join(tempfile.mkdtemp(prefix='wa_config_'), 'config.json'))
+os.environ.setdefault('WICKED_DOCUMENTS', os.path.join(_home, 'Documents'))
+# a PC where the game has been played: its user folder (empty Mods and Tray) is there. WA_FAKE_FRESH=1: never started.
+if os.environ.get('WA_FAKE_FRESH') != '1':
+    _sims = os.path.join(os.environ['WICKED_DOCUMENTS'], 'Electronic Arts', 'The Sims 4')
+    for _d in ('Mods', 'Tray'):
+        os.makedirs(os.path.join(_sims, _d), exist_ok=True)
+    if not os.path.exists(os.path.join(_sims, 'Options.ini')):
+        open(os.path.join(_sims, 'Options.ini'), 'w').close()
 
 import gamedata as G          # noqa: E402
 import poses                  # noqa: E402
@@ -213,16 +230,35 @@ G.ww_tuning_package = lambda: None
 import server  # noqa: E402
 
 _api_get = server.Handler._api_get
+_api_post = server.Handler._api_post
+_picked = {'dir': None}
 
 
 def _api_get_fake(self, route, q):
     if route == 'status':
         return self._send(200, server._json({'game_dir': None, 'mods': G.MODS_DIR, 'ww': False, 'ok': True, 'fake_game': True,
                                              'build': server.BUILD, 'pid': os.getpid()}))
+    if route == 'game':
+        import gamefind
+        g = gamefind.info()
+        if os.environ.get('WA_FAKE_NO_GAME') != '1' or _picked['dir']:
+            g.update(found=True, dir=_picked['dir'] or '(stand-in game)', source='picked' if _picked['dir'] else 'stand-in', error=None)
+        return self._send(200, server._json(g))
     return _api_get(self, route, q)
 
 
+def _api_post_fake(self, route, body, q=None):
+    if route == 'game_dir':
+        import gamefind
+        r = gamefind.set_game_dir((body or {}).get('path'))
+        if r.get('ok'):
+            _picked['dir'] = r['dir']
+        return self._send(200 if r.get('ok') else 400, server._json(r))
+    return _api_post(self, route, body, q)
+
+
 server.Handler._api_get = _api_get_fake
+server.Handler._api_post = _api_post_fake
 
 if __name__ == '__main__':
     server.main()

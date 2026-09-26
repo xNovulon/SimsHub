@@ -26,8 +26,7 @@ import numpy as np
 
 from dbpf import read_index, read_resource
 
-HOME = os.path.expanduser('~')
-SIMS_DIR = os.path.join(HOME, 'Documents', 'Electronic Arts', 'The Sims 4')
+from gamefind import HOME, SIMS_DIR
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.join(HERE, '..', 'cache', 'tray')
 

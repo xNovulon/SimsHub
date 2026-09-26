@@ -2,6 +2,7 @@
 // pick({tray, index, name, first, frame}); `frame` ('yf' / 'ym') then lists only sims with that body.
 import { h, icon, modal, toast } from '../ui.js';
 import { api } from '../api.js';
+import { launchNote } from '../findgame.js';
 
 const FRAME_OF = { male: 'ym', female: 'yf' };
 const MINOR = { baby: 'Baby', infant: 'Infant', toddler: 'Toddler', child: 'Child', teen: 'Teen' };
@@ -78,7 +79,12 @@ export async function openTrayDialog(app, { pick = null, frame = null, title = n
     });
     // adults first, then the locked children and teens
     [...grid.querySelectorAll('.tile-locked')].forEach(t => grid.append(t));
-    if (!grid.querySelector('.tile:not(.tile-locked)')) grid.prepend(h('div', { class: 'empty', style: { gridColumn: '1 / -1' } }, frame ? 'No adult sims with this body found.' : 'No adult sims found.'));
+    if (!grid.querySelector('.tile:not(.tile-locked)')) {
+      const empty = h('div', { class: 'empty', style: { gridColumn: '1 / -1' } }, frame ? 'No adult sims with this body found.' : 'No adult sims found.');
+      grid.prepend(empty);
+      // no Tray folder at all: the game has never started on this PC
+      if (!households.length) api.game().then(g => { if (g && !g.tray) empty.textContent = launchNote() + ' Save a sim to your Library in the game, and it shows up here.'; }).catch(() => {});
+    }
   };
   filter.oninput = draw;
   body.innerHTML = '';

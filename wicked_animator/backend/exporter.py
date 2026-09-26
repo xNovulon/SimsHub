@@ -14,6 +14,7 @@ so a new length is a new name and never needs the ww.clear_animation_clips_cache
 import datetime, glob, math, os, re, struct, threading, time, zipfile
 
 import gamedata as G
+import gamefind
 import projects as P
 import wwpackage as W
 from clipfmt import (encode_channel, write_clip, fnv32, fnv64, constant_channel, IK_CHAINS, ik_weight_sub,
@@ -26,7 +27,10 @@ EPS = 1e-5
 # clip event 19 at time 0: WickedWhims/the game keep lip-sync off this sim, so the clip's own jaw, lip and tongue
 # keys are what shows (without it voices and the game's lip-sync take the mouth over)
 LIPSYNC_OFF = (19, struct.pack('<IIff', 1, 100, 0.0, 100000.0))
-EXPORTS = os.path.join(G.HOME, 'Documents', 'Wicked Animator Exports')
+EXPORTS = os.path.join(gamefind.documents(), 'Wicked Animator Exports')
+_OLD_EXPORTS = os.path.join(G.HOME, 'Documents', 'Wicked Animator Exports')      # before Documents was followed
+if not os.path.isdir(EXPORTS) and os.path.isdir(_OLD_EXPORTS):
+    EXPORTS = _OLD_EXPORTS
 MY_ANIMATIONS = os.path.join(G.MODS_DIR, 'FitStudio', 'MyAnimations')
 # a CLIMAX that plays once holds its last pose this long; WickedWhims ends it that much sooner (negative duration
 # offset), so the clip never restarts for a split second before the next animation

@@ -10,14 +10,15 @@ from dbpf import read_index, read_resource
 from clipfmt import parse_clip, decode_frames, decode_track, fnv32, fnv64
 from rigfmt import parse_rig
 from geomfmt import parse_geom
+import gamefind
 
-HOME = os.path.expanduser('~')
-SIMS_DIR = os.path.join(HOME, 'Documents', 'Electronic Arts', 'The Sims 4')
+HOME = gamefind.HOME
+SIMS_DIR = gamefind.SIMS_DIR           # Documents\Electronic Arts\The Sims 4 (wherever Windows keeps Documents)
 MODS_DIR = os.path.join(SIMS_DIR, 'Mods')
 PARKED_DIR = os.path.join(SIMS_DIR, 'Mods_parked')
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(HERE, '..', 'cache')
-CONFIG = os.path.join(HERE, '..', 'config.json')
+CONFIG = gamefind.CONFIG
 
 T_CLIP, T_CLIP_HEADER, T_RIG, T_GEOM, T_CASP, T_SNIPPET, T_STBL = (
     0x6B20C4F3, 0xBC4A5044, 0x8EAF13DE, 0x015A1849, 0x034AEECB, 0x7DF2169C, 0x220557DA)
@@ -60,14 +61,55 @@ def config():
 
 
 def game_dir():
-    d = config().get('game_dir')
-    if d and os.path.isdir(d):
-        return d
-    for guess in [r'E:\The Sims 4', r'C:\Program Files\EA Games\The Sims 4', r'C:\Program Files (x86)\Origin Games\The Sims 4',
-                  r'C:\Program Files (x86)\Steam\steamapps\common\The Sims 4', r'D:\The Sims 4']:
-        if os.path.isdir(os.path.join(guess, 'Data', 'Client')):
-            return guess
-    raise FileNotFoundError('The Sims 4 install not found - set "game_dir" in config.json')
+    """The game's install folder (gamefind.py: picked in the app, or found). FileNotFoundError when it isn't there."""
+    return gamefind.game_dir()
+
+
+def set_game_dir(path):
+    """A folder the user picked in the app: remembered, and everything read from the old one (or from none) is read again."""
+    r = gamefind.set_game_dir(path)
+    if r.get('ok'):
+        forget_game_reads()
+    return r
+
+
+def forget_game_reads():
+    """Everything this engine has read from the game's folder is dropped, so nothing mixes two installs: it is read
+    again from the new folder when next needed (the window may reuse a running engine, so a restart isn't enough)."""
+    import sys
+    global _clip_index
+    _Client._index = None
+    _clip_index = None
+    m = sys.modules                       # only modules already in use can hold anything
+    if 'objmesh' in m:
+        m['objmesh'].reset()
+    if 'casptex' in m:
+        R = m['casptex'].Resources
+        R._idx = R._pkgs = R._ww = None
+    if 'morph' in m:
+        mo = m['morph']
+        for ix in (mo.MORPH_INDEX, mo.PART_INDEX):
+            with ix._lock:
+                ix._loaded = False
+        with mo._cache_lock:
+            mo._cache.clear()
+    if 'eaclips' in m:
+        e = m['eaclips']
+        e._idx = e._by_name = e._lib = e._faces = None
+    if 'eaaudio' in m:
+        m['eaaudio']._Index.reset()
+    if 'skintex' in m:
+        s = m['skintex']
+        for d in (s._mem, s._pkg_mem, s._tone_mem, s._resolve_mem, s._cum_mem):
+            d.clear()
+        s._game_tone_list[:] = []
+    if 'hair' in m:
+        hr = m['hair']
+        for d in (hr._mem, hr._shaped, hr._geom_mem, hr._pkg_tex):
+            d.clear()
+    if 'trayfmt' in m:
+        P = m['trayfmt']._Protos
+        P._pool, P._classes = None, {}
 
 
 def client_packages():

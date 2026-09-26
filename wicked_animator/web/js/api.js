@@ -36,6 +36,11 @@ export const RECOVERY_SLOT = typeof navigator !== 'undefined' && navigator.webdr
 
 export const api = {
   status: () => j('/api/status'),
+  // where The Sims 4 is: {found, dir, source, sims_dir, sims_ready, mods, tray, played}
+  game: () => j('/api/game'),
+  // one folder of Find The Sims 4 (no path: the drives)
+  browse: (path = '') => j('/api/browse' + (path ? '?path=' + encodeURIComponent(path) : '')),
+  setGameDir: path => post('/api/game_dir', { path }),
   rig: key => j(`/api/rig?key=${key}`),
   body: frame => j(`/api/body?frame=${frame}`),
   // tone: a skin tone, or 'tone~tray:index' for a Tray sim's skin with its own look (makeup, brows, tattoos...)
