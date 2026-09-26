@@ -316,6 +316,32 @@ async function startServer() {
       if (!(Math.abs(turned) > 5)) throw new Error(JSON.stringify({ turned, hit }));
       return `the ring turned it ${Math.abs(turned).toFixed(1)}°`;
     });
+    await step('R on the circle: all three rings and the ball, like a hand; tipping it 30° tips the whole sim (every key, undo)', async () => {
+      const r = await page.evaluate(async () => {
+        const T = await import('three');
+        const app = window.app, I = app.interact, gz = app.vp.gizmo, t = window.__t, id = t.sim();
+        I.selectRoot(id, 'rotate');
+        const shown = [gz.mode, gz.showX, gz.showY, gz.showZ];
+        const up = () => { const h = t.wp('b__Head__'), p = t.wp('b__Pelvis__'); return new T.Vector3(h[0] - p[0], h[1] - p[1], h[2] - p[2]).normalize(); };
+        const rot = () => JSON.stringify(app.store.sim(id).keys.map(k => k.pose.rot && k.pose.rot.b__Pelvis__));
+        const u0 = up(), k0 = rot(), c0 = I.proxy.position.clone();
+        gz.dispatchEvent({ type: 'mouseDown' });
+        for (let s = 1; s <= 3; s++) {
+          I.proxy.quaternion.premultiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), T.MathUtils.degToRad(10)));
+          gz.dispatchEvent({ type: 'objectChange' });
+        }
+        gz.dispatchEvent({ type: 'mouseUp' });
+        app.applyPoses(false);
+        const u1 = up(), k1 = rot();
+        // the circle stays the pivot: the point of the body at the circle doesn't move sideways along the tip's axis
+        const tilt = T.MathUtils.radToDeg(u0.angleTo(u1));
+        app.undo(); app.applyPoses(false);
+        const back = T.MathUtils.radToDeg(u0.angleTo(up()));
+        return { shown, tilt, keysChanged: k0 !== k1, back, pivot: c0.toArray() };
+      });
+      if (!(r.shown[0] === 'rotate' && r.shown.slice(1).every(Boolean) && Math.abs(r.tilt - 30) < 1.5 && r.keysChanged && r.back < 0.5)) throw new Error(JSON.stringify(r));
+      return `rings X, Y, Z shown; tipped ${r.tilt.toFixed(1)}° (asked 30), the keys changed, undo put it back (${r.back.toFixed(2)}° off)`;
+    });
 
     await step('the Move tool (M) moves the part clicked, never the whole sim', async () => {
       const r = await page.evaluate(() => {

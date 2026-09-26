@@ -300,7 +300,7 @@ export class Interaction {
     this.app.store.selected = { sim: simId, bone: null };
     this.selectPlace(simId, mode);
     this.app.emitSelection();
-    this.app.hud(mode === 'rotate' ? 'Drag the circle or its ring to turn the whole sim (T slides it)' : 'Arrows: move the whole sim (R turns it)', { hold: 1400 });
+    this.app.hud(mode === 'rotate' ? 'Rings: turn or tip the whole sim · drag the circle to turn it (T slides it)' : 'Arrows: move the whole sim (R turns it)', { hold: 1400 });
   }
 
   // A press on a circle that then moves slides the sim over the floor (the plane of the floor, grabbed where pressed);
@@ -1038,8 +1038,8 @@ export class Interaction {
     this.proxy.quaternion.identity();
     const gz = this.vp.gizmo;
     gz.setMode(mode); gz.setSpace('world'); gz.setSize(0.85);
-    gz.showX = mode === 'translate'; gz.showZ = mode === 'translate';
-    gz.showY = true;
+    // all three rings and the ball (like a hand's): turned, tipped or rolled about the circle
+    gz.showX = gz.showY = gz.showZ = true;
     gz.attach(this.proxy);
   }
 
@@ -1122,10 +1122,12 @@ export class Interaction {
         this.placeSim(a.simId, { move: d });
         this.lastProxy.copy(this.proxy.position);
       } else {
+        // any turn of the rings (tipping the whole sim over too), about the circle; the rings' world turn in sim space
         const now = this.proxy.quaternion.clone();
         const delta = now.clone().multiply(this.turnStart.clone().invert());
-        const ang = 2 * Math.atan2(delta.y, delta.w);
-        this.placeSim(a.simId, { turn: ang, pivot: worldToSpace(v, this.proxy.position) });
+        const sq = v.space.getWorldQuaternion(new THREE.Quaternion());
+        const rot = sq.clone().invert().multiply(delta).multiply(sq).normalize();
+        this.placeSim(a.simId, { rot, pivot: worldToSpace(v, this.proxy.position) });
         this.turnStart.copy(now);
       }
       this.app.store.dirty = true;
@@ -1181,13 +1183,15 @@ export class Interaction {
   // Every key, any pending pose, the pins and the view change together - otherwise the other keys stay behind
   // and pinned hands and feet stretch toward the new place. Keys hold the hips in b__ROOT_bind__'s frame (that
   // bone is always at rest), so one conversion of the change serves every key.
-  placeSim(simId, { move = null, turn = 0, pivot = null } = {}) {
+  placeSim(simId, { move = null, turn = 0, rot = null, pivot = null } = {}) {
     const sim = this.app.store.sim(simId), v = this.views().get(simId);
     if (!sim || !v) return;
     const rb = v.bone('b__ROOT_bind__');
     const rbQ = spaceQuat(v, rb), rbP = spacePos(v, rb), toLocal = rbQ.clone().invert();
     const piv = pivot || new THREE.Vector3();
-    const R = turn ? new THREE.Quaternion().setFromAxisAngle(UP, turn) : null;
+    // turn: radians about the vertical; rot: any turn (sim space), e.g. tipping the whole sim over
+    const R = rot ? rot.clone() : turn ? new THREE.Quaternion().setFromAxisAngle(UP, turn) : null;
+    if (rot) turn = R;
     const Rl = R ? toLocal.clone().multiply(R).multiply(rbQ) : null;      // the turn, in the root's own frame
     const dl = move ? move.clone().applyQuaternion(toLocal) : null;
     const done = new Set();
@@ -1269,8 +1273,9 @@ export class Interaction {
     }
   }
 
+  // ang: radians about the vertical, or any turn (a quaternion in sim space)
   turnPins(sim, ang, pivot) {
-    const R = new THREE.Quaternion().setFromAxisAngle(UP, ang);
+    const R = ang && ang.isQuaternion ? ang : new THREE.Quaternion().setFromAxisAngle(UP, ang);
     const turn = a => new THREE.Vector3().fromArray(a).sub(pivot).applyQuaternion(R).add(pivot).toArray();
     for (const k of Object.keys(sim.pins || {})) {
       const p = sim.pins[k];
@@ -1288,7 +1293,7 @@ export class Interaction {
   }
 
   turnHips(v, ang, pivot) {
-    const R = new THREE.Quaternion().setFromAxisAngle(UP, ang);
+    const R = ang && ang.isQuaternion ? ang : new THREE.Quaternion().setFromAxisAngle(UP, ang);
     const rb = v.bone('b__ROOT_bind__');
     const rbQ = spaceQuat(v, rb), rbP = spacePos(v, rb);
     for (const n of HIPS) {
