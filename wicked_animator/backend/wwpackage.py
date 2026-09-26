@@ -223,7 +223,8 @@ def animation_xml(anim):
     Optional custom_locations: [object ids] (animation_custom_locations - CC furniture WickedWhims finds by its id).
     Per actor (all optional): role, body, strapon, nude_feet, visible_tongue, pref_gender, animated_vagina,
     invisible_teeth, cum_after ('AUTO' | 'NONE' | [layers]). Optional on the animation: events (baked moments),
-    clip_seconds and props ([{id, guid, clip, type?}] -> animation_props_list). Laid out exactly like WickedWhims' own animation XML template (every list and item is a <T>; the
+    clip_seconds, props ([{id, guid, clip, type?}] -> animation_props_list) and object_clip (the bed's own clip ->
+    object_animation_clip_name). Laid out exactly like WickedWhims' own animation XML template (every list and item is a <T>; the
     moments list is an <L> of <U> items, as WickedWhims' template writes it)."""
     lines = []
     lines.append(_t('animation_raw_display_name', anim['name'], 6))
@@ -232,6 +233,9 @@ def animation_xml(anim):
     if anim.get('custom_locations'):
         # custom-content furniture WickedWhims finds by its object id (with animation_locations NONE)
         lines.append(_t('animation_custom_locations', ', '.join(str(int(x)) for x in anim['custom_locations']), 6))
+    if anim.get('object_clip'):
+        # the bed's own clip (exporter.py's bedAnim): the sheets/blanket/pillows moving along with the actors
+        lines.append(_t('object_animation_clip_name', anim['object_clip'], 6))
     lines.append(_t('animation_category', anim['category'], 6))
     if anim.get('tags'):
         lines.append(_t('animation_tags', ', '.join(anim['tags']), 6))

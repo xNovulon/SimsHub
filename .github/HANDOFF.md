@@ -196,6 +196,22 @@ node tools/checks/clothes/ui_smoke.js          # clothes preview, incl. the hove
 - On this PC `wired/backend_check.py`'s "ea_status without a game" row and two `wired/ui_smoke.js` EA rows fail
   because `cache/ea_library_v1.json` was built from the real game; delete it to see them pass.
 
+## Furniture animation (animator)
+- `web/js/features/furnanim.js`: "Bed animation" in the timeline bar ("Couch", "Chair", "Table animation" for the
+  others) opens rows on the timeline (the piece, and for a bed Blanket and Pillows) and a panel over the stage.
+- The piece itself: keys with the gizmo, or Tip over (4 ways), Lift and throw, Drop, Back in place. It only moves in
+  the editor - WickedWhims keeps the real object where it is.
+- The blanket and pillows (beds): Automatic (the blanket covers the sims and follows them "Under the blanket" - which
+  also sets the UNDER_COVERS tag - else it lies pulled back to the foot; a pillow gives under a head) or By hand (keys;
+  "Start from automatic" turns the automatic movement into keys). They bend the game bed's own bedding mesh through
+  its rig (`/api/furniture_mesh` sends `skin`), and Send to game writes them as the bed's clip (`bedAnim` in the
+  export payload -> `object_animation_clip_name`, backend/exporter.py). NOT TESTED IN THE GAME YET: check that the
+  blanket moves on a single and a double bed.
+- project.furnAnim holds the keys; they stay inside the loop (a shorter loop cuts them, a stretched one takes them
+  along: the `retime` hook). Checks: `node tools/checks/furnanim/furn_anim.js` (the editor) and
+  `python3 tools/checks/bedanim/test_bed_export.py` (the bones in /api/furniture_mesh and the bed clip; needs the game).
+- Moving the whole piece doesn't move the sit/lie spots or Magic's placing: those stay where the game puts the object.
+
 ## Posing: R, T and the circle
 - R gives the picked part its rings, T its arrows (`Interaction.turnSelected` / `moveSelected`). T never moves the whole
   sim: the hips shift with the feet planted and the back bent so the chest and head stay (`shiftHips`; a straight leg

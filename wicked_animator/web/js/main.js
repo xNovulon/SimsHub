@@ -94,7 +94,7 @@ class App {
     // the app. Hooks run in the order they were registered.
     this.hooks = {
       afterApply: [], tick: [], frameSet: [], playing: [], bake: [], beforeBake: [], beforeSave: [], projectLoaded: [],
-      simRemoved: [], viewCreated: [], viewsSynced: [], traySimAdded: [], furnitureBuilt: [], selection: [], keys: [],
+      simRemoved: [], viewCreated: [], viewsSynced: [], traySimAdded: [], furnitureBuilt: [], selection: [], keys: [], retime: [],
       menus: { key: [], lane: [], sound: [], ruler: [] },
       exportChecks: [], soundOpts: [], bodyOverride: [], imported: [],
       sections: { scene: [], pose: [], motion: [], body: [], face: [], sounds: [], details: [], share: [] },
@@ -3454,6 +3454,8 @@ class App {
       // an effect's end: never before its start, never past the end of the loop (spec_game 1)
       for (const e of p.events) if (typeof e.end === 'number') e.end = Math.max(typeof e.frame === 'number' ? e.frame : 0, Math.min(newLen, e.end));
     }
+    // features' own tracks (the furniture's) follow the loop the same way
+    this.runHook('retime', p, { oldLen, newLen, mode, scale });
     p.length = newLen;
     return info;
   }

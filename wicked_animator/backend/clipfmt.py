@@ -257,9 +257,12 @@ def write_codec(name, source, num_ticks, channels, tick_length=1.0 / 30.0, versi
     return head + b''.join(table) + name_b + src_b + palette + b''.join(blobs)
 
 
-def write_clip(name, rig_ns, num_ticks, channels, source='FitStudio', events=(), tick_length=1.0 / 30.0, slots=()):
+def write_clip(name, rig_ns, num_ticks, channels, source='FitStudio', events=(), tick_length=1.0 / 30.0, slots=(),
+              explicit_ns=()):
     """(clip bytes, clip header bytes) for a version-14 CLIP resource. slots: IK targets [(chain, slot, namespace,
-    joint)] (see IK_CHAINS); none gives exactly the bytes of a clip without them.
+    joint)] (see IK_CHAINS); none gives exactly the bytes of a clip without them. explicit_ns: extra namespaces the
+    header names (EA's own *_bed clips list ('bed', 'x') - the bed rig's own namespace plus the sim's); none gives
+    exactly the bytes of a clip without it, like every clip here wrote before bedAnim.
 
     The duration covers every tick (num_ticks * tick_length), like most creator clips: in a loop the step from the
     last tick back to tick 0 then takes one tick too, instead of no time at all (a visible hitch every loop)."""
@@ -268,7 +271,8 @@ def write_clip(name, rig_ns, num_ticks, channels, source='FitStudio', events=(),
     head = struct.pack('<IIf', 14, 0, duration) + struct.pack('<4f', 0, 0, 0, 1) + struct.pack('<3f', 0, 0, 0)
     head += struct.pack('<IIII', 0, empty, empty, empty)
     head += _s32(name.encode('ascii')) + _s32(rig_ns.encode('ascii'))
-    head += struct.pack('<i', 0) + _slot_bytes(slots)             # explicit namespaces, slot assignments
+    head += struct.pack('<i', len(explicit_ns)) + b''.join(_s32(ns.encode('ascii')) for ns in explicit_ns)
+    head += _slot_bytes(slots)
     head += struct.pack('<I', len(events)) + b''.join(struct.pack('<II', t, len(d)) + d for t, d in events)
     codec = write_codec(name, source, num_ticks, channels, tick_length)
     stub = write_codec(name, source, num_ticks, [], tick_length)

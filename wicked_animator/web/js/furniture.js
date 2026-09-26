@@ -77,9 +77,21 @@ const BUILDERS = {
     const top = 0.52;
     g.add(box(w + 0.06, 0.26, d + 0.04, mats.darkwood, 0, 0.13, 0, 0.02));
     g.add(box(w, top - 0.26, d, mats.sheet, 0, 0.26 + (top - 0.26) / 2, 0, 0.05));
-    g.add(box(w + 0.02, 0.05, d * 0.55, mats.blanket, 0, top + 0.01, d * 0.2, 0.025));
+    // the blanket and the pillows are their own named parts (features/furnanim.js moves them); the blanket is finely
+    // cut so it can bend over the sims
+    const blanket = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, 0.05, d * 0.55, 10, 1, 18), mats.blanket);
+    blanket.position.set(0, top + 0.01, d * 0.2);
+    blanket.castShadow = true; blanket.receiveShadow = true;
+    blanket.userData.part = 'blanket';
+    g.add(blanket);
     const pillows = w > 1.4 ? [-w / 4, w / 4] : [0];
-    for (const x of pillows) g.add(box(Math.min(0.62, w * 0.42), 0.13, 0.36, mats.pillow, x, top + 0.07, -d / 2 + 0.26, 0.06));
+    for (const x of pillows) {
+      const pl = box(Math.min(0.62, w * 0.42), 0.13, 0.36, mats.pillow, x, top + 0.07, -d / 2 + 0.26, 0.06);
+      pl.userData.part = 'pillow';
+      pl.userData.side = pillows.length > 1 ? (x < 0 ? 'L' : 'R') : '';
+      g.add(pl);
+    }
+    g.userData.bed = { head: -1, top, double: pillows.length > 1 };      // the head end is at -Z
     g.add(box(w + 0.1, 1.1, 0.08, mats.darkwood, 0, 0.55, -d / 2 - 0.04, 0.02));
     return g;
   },
@@ -156,7 +168,7 @@ const _cache = new Map();
 function sharedInfo(id, app = window.app) {
   const map = app ? (app._furnInfo = app._furnInfo instanceof Map ? app._furnInfo : new Map()) : _infoFallback;
   if (!map.has(id)) {
-    map.set(id, fetch('/api/furniture_mesh?v=2&id=' + encodeURIComponent(id)).then(r => (r.ok ? r.json() : null)).catch(() => null));
+    map.set(id, fetch('/api/furniture_mesh?v=3&id=' + encodeURIComponent(id)).then(r => (r.ok ? r.json() : null)).catch(() => null));
   }
   return Promise.resolve(map.get(id));
 }
@@ -187,6 +199,8 @@ export function loadGameFurniture(def, app = window.app) {
         addCutaway(mat);
         const mesh = new THREE.Mesh(geo, mat);
         mesh.castShadow = !m.transparent; mesh.receiveShadow = true;
+        // a bed's bedding is skinned to the bed's own bones (blanket, pillows): features/furnanim.js bends it with them
+        if (m.skin && m.skin.bones && m.skin.bones.length) mesh.userData.skin = m.skin;
         g.add(mesh);
       }
       g.userData.bounds = obj.bounds;

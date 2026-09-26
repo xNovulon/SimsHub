@@ -442,12 +442,133 @@ def prop_resources(project, base, ticks, frames, hold, fps, warnings):
     return res, xml, info
 
 
+# ------------------------------------------------------------------ the bed itself (spec_bodies: bedAnim)
+# WickedWhims' reference object per bed location (objmesh.py TASK 1's skin data comes off the same object's rig).
+BED_LOCATIONS = {'SINGLE_BED': 51719, 'DOUBLE_BED': 288627}
+# copied from EA's own *_bed clips (e.g. a2a_bed_wooHoo_LS_fail1_bed, read with clipfmt.parse_clip): rig_ns is the
+# bed's own namespace, explicit_ns also lists it plus 'x' (the sim namespace every actor clip here plays as)
+BED_RIG_NS, BED_EXPLICIT_NS = 'bed', ('bed', 'x')
+
+
+def _bed_rig(location):
+    """The bed rig's own bones for `location`, in the same object space as objmesh's skin data (root_offset already
+    subtracted): {bone name: {'pos', 'rot': rest world position/orientation (x,y,z)/(x,y,z,w), 'parent': name or
+    None}}. None when the object or its rig can't be read (no game files here, or an odd object)."""
+    obj_id = BED_LOCATIONS.get(location)
+    if not obj_id:
+        return None
+    try:
+        import objmesh
+        from rigfmt import parse_rig
+        od = objmesh.parse_objd(objmesh._read(objmesh.T_OBJD, 0, obj_id))
+        rig_key = od['rigs'][0]
+        r = parse_rig(objmesh._read(*rig_key))
+        rest, _ = objmesh.rig_rest(rig_key)
+    except Exception:
+        return None
+    root = rest.get(objmesh.H_ROOT)
+    root_off = root[:3, 3] if root is not None else [0.0, 0.0, 0.0]
+    out = {}
+    for k, b in enumerate(r['bones']):
+        M = rest.get(b['hash'])
+        if M is None:
+            continue
+        pos = tuple(float(v) for v in (M[:3, 3] - root_off))
+        rot = objmesh._mat_to_quat(M[:3, :3])
+        par = b['parent']
+        parent = r['bones'][par]['name'] if 0 <= par < len(r['bones']) and par != k else None
+        out[b['name']] = {'pos': pos, 'rot': rot, 'parent': parent}
+    return out
+
+
+def bed_resources(project, base, ticks, frames, hold, fps, warnings):
+    """The bed's own clip (spec_bodies: bedAnim): keys the bed rig's own bones from project['bedAnim'] (an optional
+    {'location': 'SINGLE_BED' | 'DOUBLE_BED', 'bones': [names], 'frames': [[dx,dy,dz,qx,qy,qz,qw] * len(bones) per
+    frame]} the web app sends when it moved the bed's sheets/blanket/pillows) -> ([(type, group, instance, bytes)],
+    clip name or None). ([], None) when there is no bedAnim, its location isn't one of the animation's own locations,
+    it has nothing usable, or the game's bed rig can't be read here (a warning is added for the last two).
+
+    (dx,dy,dz)/(qx,qy,qz,qw) are a translation/rotation delta in the bed's object space, applied about each bone's
+    rest position (see objmesh.py's per-mesh 'skin' data: the same space). Written as each bone's LOCAL translation
+    and rotation (relative to its parent in the bed rig): the delta is added to the bone's rest world pose, giving
+    each keyed bone's own world-space target; that target is then expressed in the parent's frame for that same
+    frame - the parent's own target when the parent is keyed too (a Pillow_trans_ bone and its child Pillow_squish_
+    bone are both keyed together for every real bed export), otherwise the parent's rest frame (an unkeyed bone
+    stays at rest, same as no clip channel for it at all)."""
+    anim = project.get('bedAnim')
+    if not isinstance(anim, dict):
+        return [], None
+    location = str(anim.get('location') or '').strip().upper()
+    locations = [str(l).strip().upper() for l in (project.get('locations') or ['FLOOR'])]
+    bones = [str(b) for b in (anim.get('bones') or []) if b]
+    if location not in BED_LOCATIONS or location not in locations or not bones:
+        return [], None
+    raw = _prop_frames(anim.get('frames'), frames, len(bones) * 7)
+    if raw is None:
+        warnings.append('The bed animation has no movement to export, so it was left out.')
+        return [], None
+    rig = _bed_rig(location)
+    if not rig:
+        warnings.append('The bed animation needs the game files to place its bones, so it was left out.')
+        return [], None
+    # every keyed bone's own world-space target per frame (rest + its delta) - independent of the rig hierarchy
+    world = {}
+    for i, bn in enumerate(bones):
+        info = rig.get(bn)
+        if info is None:
+            continue
+        rest_pos, rest_rot = info['pos'], info['rot']
+        wp = []
+        for fr in raw:
+            dx, dy, dz, qx, qy, qz, qw = fr[i * 7:i * 7 + 7]
+            world_pos = (rest_pos[0] + dx, rest_pos[1] + dy, rest_pos[2] + dz)
+            world_rot = _qn(_qmul((qx, qy, qz, qw), rest_rot))
+            wp.append((world_pos, world_rot))
+        world[bn] = wp
+    chans, used = [], 0
+    for i, bn in enumerate(bones):
+        info = rig.get(bn)
+        if info is None:
+            continue          # not a real bed rig bone name: skipped rather than failing the whole export
+        parent = info['parent']
+        p = rig.get(parent) if parent else None
+        rest_p_pos, rest_p_rot = (p['pos'], p['rot']) if p else ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+        p_world = world.get(parent)          # the parent's own target per frame, when it is keyed too
+        t_local, r_local = [], []
+        for k, (world_pos, world_rot) in enumerate(world[bn]):
+            p_pos, p_rot = p_world[k] if p_world else (rest_p_pos, rest_p_rot)
+            p_inv = (-p_rot[0], -p_rot[1], -p_rot[2], p_rot[3])
+            rel = (world_pos[0] - p_pos[0], world_pos[1] - p_pos[1], world_pos[2] - p_pos[2])
+            t_local.append(list(_qrot(p_inv, rel)))
+            r_local.append(list(_qn(_qmul(p_inv, world_rot))))
+        r_local = _continuous(r_local)
+        target = fnv32(bn)
+        for sub, vals, quat in ((1, t_local, False), (2, r_local, True)):
+            if _constant(vals):
+                keys = [(0, list(vals[0]))]
+            else:
+                keys = [(k, list(v)) for k, v in enumerate(vals)]
+                if hold:
+                    keys.append((len(vals) - 1 + hold, list(vals[-1])))
+            chans.append(encode_channel(target, sub, keys, quat))
+        used += 1
+    if not used:
+        warnings.append('The bed animation doesn’t move any of the bed’s own bones, so it was left out.')
+        return [], None
+    clip_name = '%s_%df_bed' % (base, ticks)
+    clip, header = write_clip(clip_name, BED_RIG_NS, ticks, chans, source="Novulon's Wicked Animator",
+                              tick_length=1.0 / fps, explicit_ns=BED_EXPLICIT_NS)
+    inst = fnv64(clip_name)
+    return [(T_CLIP, 0, inst, clip), (T_CLIP_HEADER, 0, inst, header)], clip_name
+
+
 def animation_resources(project, metas=None, present=None):
     """([(type, group, instance, bytes)], info) for one baked animation.
 
     Optional (missing = the old behaviour): project['events'] = baked moments (seconds, target = actor index), per
     actor 'cumAfter' ('AUTO' | 'NONE' | [layers]), project['customLocations'] = [CC object ids], and project['props'] = [{guid, name?, source?, track: {t: [[x, y,
-    z] per frame], r: [[x, y, z, w] per frame]}}] (props held or placed: their own clips + animation_props_list)."""
+    z] per frame], r: [[x, y, z, w] per frame]}}] (props held or placed: their own clips + animation_props_list).
+    project['bedAnim'] = {location, bones, frames} moves the bed itself (see bed_resources) - object_animation_clip_name."""
     metas = metas if metas is not None else P.by_uid()
     name = (project.get('name') or '').strip() or 'My animation'
     author = (project.get('author') or '').strip() or 'Fit Studio'
@@ -496,7 +617,8 @@ def animation_resources(project, metas=None, present=None):
             'animated_vagina': bool(actor.get('animatedVagina')) and gender != 'MALE',
             'invisible_teeth': bool(actor.get('invisibleTeeth')), 'cum_after': actor.get('cumAfter')})
     prop_res, props_xml, props_info = prop_resources(project, base, ticks, frames, hold, fps, checks)
-    resources += prop_res + mine_res
+    bed_res, bed_clip = bed_resources(project, base, ticks, frames, hold, fps, checks)
+    resources += prop_res + bed_res + mine_res
     nxt, next_names, random_ok, warnings = _links(project, metas, present)
     tags = [t for t in (project.get('tags') or []) if t]
     if voices and 'CUSTOM_VOICE_SFX' not in tags:
@@ -507,6 +629,8 @@ def animation_resources(project, metas=None, present=None):
             'negative_offset': hold / fps if hold else 0}
     if props_xml:
         anim['props'] = props_xml
+    if bed_clip:
+        anim['object_clip'] = bed_clip
     custom = _custom_locations(project)
     if custom:
         anim['custom_locations'] = custom
@@ -526,7 +650,7 @@ def animation_resources(project, metas=None, present=None):
                        'category': category, 'locations': anim['locations'], 'genders': [a['gender'] for a in actors_xml],
                        'warnings': warnings, 'events': n_events, 'props': props_info,
                        'prop_clips': [p['clip'] for p in props_xml], 'own_sounds': sorted(mine_names),
-                       'fit_bodies': fitted}
+                       'fit_bodies': fitted, 'bed_clip': bed_clip}
 
 
 def _in_use(ex):

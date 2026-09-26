@@ -2,7 +2,9 @@
 
     object_mesh(obj_def_id, lod=0, piece=0, state=None)
         -> {'name', 'meshes': [{'positions', 'normals', 'uvs', 'faces', 'texture', 'transparent', 'alpha_test',
-            'water', ...}], 'bounds': {'min', 'max'}, 'surface_height', 'geometry_state', ...}  (JSON-cached)
+            'water', 'skinned', 'skin': {'bones', 'rest', 'rq', 'idx', 'w'} (only when 'skinned': the mesh's rest
+            pose and per-vertex blend weights, in the same object space as 'positions'), ...}], 'bounds': {'min',
+            'max'}, 'surface_height', 'geometry_state', ...}  (JSON-cached)
     furniture_for_location(name)     -> object_mesh() of WickedWhims' reference object for a location, or None
     all_locations()                  -> [{'location', 'object_id', 'name', 'bounds', 'surface_height',
                                           'geometry_state', 'slots'}] for every location with a resolvable object
@@ -87,7 +89,8 @@ CACHE_DIR = os.path.normpath(os.path.join(HERE, '..', 'cache', 'furniture'))
 EXAMPLES_SHIPPED = os.path.normpath(os.path.join(HERE, '..', 'data', 'ww_example_objects.json'))
 EXAMPLES = os.path.normpath(os.path.join(HERE, '..', 'cache', 'ww_example_objects.json'))
 INDEX_VERSION = 1       # the resource index (_index_v1.pkl): unchanged, never rebuilt for a new object format
-VERSION = 2             # object JSON and locations_v2.json: 2 = seat/lying spots and the surface grid
+VERSION = 3             # object JSON and locations_v3.json: 2 = seat/lying spots and the surface grid, 3 = skin data
+                        # (bones/rest/rq/idx/w) on skinned meshes, for posing a bed's bedding to a bed animation
 
 T_OBJD, T_MODL, T_MLOD, T_RIG, T_FTPT = 0xC0DB5AE7, 0x01661233, 0x01D10F34, 0x8EAF13DE, 0xD382BF57
 T_MATD, T_MTST, T_VRTF, T_VBUF, T_IBUF, T_SKIN = 0x01D0E75D, 0x02019972, 0x01D0E723, 0x01D0E6FB, 0x01D0E70F, 0x01D0E76B
@@ -589,7 +592,40 @@ def _pick_material(rc, ref, variant_hash):
     return parse_matd(mc) if mc is not None and mc[:4] == b'MATD' else None
 
 
-def _build_mesh(rc, m, variant_hash, rest, report, state=0):
+def _mat_to_quat(R):
+    """3x3 rotation matrix (columns normalised first, in case a parent bone carries scale) -> (x, y, z, w)."""
+    c0, c1, c2 = R[:, 0], R[:, 1], R[:, 2]
+    m00, m10, m20 = c0 / (np.linalg.norm(c0) or 1.0)
+    m01, m11, m21 = c1 / (np.linalg.norm(c1) or 1.0)
+    m02, m12, m22 = c2 / (np.linalg.norm(c2) or 1.0)
+    tr = m00 + m11 + m22
+    if tr > 0:
+        s = np.sqrt(tr + 1.0) * 2
+        w, x, y, z = 0.25 * s, (m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s
+    elif m00 > m11 and m00 > m22:
+        s = np.sqrt(1.0 + m00 - m11 - m22) * 2
+        w, x, y, z = (m21 - m12) / s, 0.25 * s, (m01 + m10) / s, (m02 + m20) / s
+    elif m11 > m22:
+        s = np.sqrt(1.0 + m11 - m00 - m22) * 2
+        w, x, y, z = (m02 - m20) / s, (m01 + m10) / s, 0.25 * s, (m12 + m21) / s
+    else:
+        s = np.sqrt(1.0 + m22 - m00 - m11) * 2
+        w, x, y, z = (m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, 0.25 * s
+    return float(x), float(y), float(z), float(w)
+
+
+def _round_weights(w):
+    """(n, 4) blend weights (rows already summing to ~1) -> rows rounded to 4 decimals that still sum to exactly 1
+    (the rounding error is folded into each row's biggest weight)."""
+    r = np.round(w, 4)
+    diff = np.round(1.0 - r.sum(1), 4)
+    rows = np.arange(len(r))
+    imax = np.argmax(r, axis=1)
+    r[rows, imax] = np.round(r[rows, imax] + diff, 4)
+    return r
+
+
+def _build_mesh(rc, m, variant_hash, rest, bone_names, report, state=0):
     for name, s_index, s_min, s_count, s_prims in m['states']:
         if state and name == state:          # this geometry state's own index range (0 triangles = hidden)
             if s_prims == 0:
@@ -673,6 +709,7 @@ def _build_mesh(rc, m, variant_hash, rest, report, state=0):
 
     # skinned meshes: pose with the rig's rest pose (world = sum_i w_i * rest_i * inverse_bind_i * bind position)
     moved = 0.0
+    skin = None
     if m['skin'] and m['joints'] and rest and (U_BLEND_INDEX, 0) in els:
         sk, _ = rc.resolve(m['skin'])
         inv = parse_skin(sk) if sk is not None and sk[:4] == b'SKIN' else {}
@@ -690,9 +727,9 @@ def _build_mesh(rc, m, variant_hash, rest, report, state=0):
             else:
                 mats.append(np.eye(4))
         mats = np.array(mats)
+        bi = np.clip(bi, 0, len(mats) - 1)
         dev = np.abs(mats - np.eye(4)[None]).max() if len(mats) else 0.0
         if dev > 1e-4:
-            bi = np.clip(bi, 0, len(mats) - 1)
             hp = np.c_[pos, np.ones(len(pos))]
             acc = np.zeros_like(pos); nacc = np.zeros_like(pos)
             wsum = bw.sum(1, keepdims=True); wsum[wsum == 0] = 1
@@ -706,6 +743,25 @@ def _build_mesh(rc, m, variant_hash, rest, report, state=0):
             if nrm is not None:
                 nrm = nacc / (np.linalg.norm(nacc, axis=1, keepdims=True) + 1e-12)
             report.append('mesh %08x: skinned with the rig rest pose (moved up to %.3f m)' % (m['name'], moved))
+        if len(m['joints']) > 1:
+            # bone rest pose (in the same object space as the returned positions) + per-vertex weights, so a bed's
+            # bedding can be posed at runtime by the bed rig's own animation (see exporter.py's bedAnim)
+            root_off = rest[H_ROOT][:3, 3] if H_ROOT in rest else np.zeros(3)
+            names_out, rest_pos, rest_q = [], [], []
+            for h in m['joints']:
+                names_out.append(bone_names.get(h, '%08x' % h))
+                M = rest.get(h)
+                if M is None:
+                    rest_pos.append([0.0, 0.0, 0.0]); rest_q.append([0.0, 0.0, 0.0, 1.0])
+                else:
+                    rest_pos.append([round(float(v), 5) for v in (M[:3, 3] - root_off)])
+                    rest_q.append([round(float(v), 5) for v in _mat_to_quat(M[:3, :3])])
+            bw_fixed = bw.copy()
+            bw_fixed[bw_fixed.sum(1) == 0, 0] = 1          # an unweighted vertex: pin it to its first bone
+            wn = bw_fixed / bw_fixed.sum(1, keepdims=True)
+            w4 = _round_weights(wn)
+            skin = {'bones': names_out, 'rest': rest_pos, 'rq': rest_q,
+                    'idx': [int(v) for v in bi.reshape(-1)], 'w': [float(v) for v in w4.reshape(-1)]}
 
     texture, alpha_tex = None, False
     params = mat['params'] if mat else {}
@@ -729,7 +785,7 @@ def _build_mesh(rc, m, variant_hash, rest, report, state=0):
     return {'pos': pos, 'nrm': nrm, 'uv': uv, 'faces': faces, 'texture': texture, 'water': shader in WATER_SHADERS,
             'alpha_test': alpha_test,
             'transparent': bool(transparent or alpha_tex), 'shader': SHADER_NAMES.get(shader, '%08x' % shader),
-            'mesh': '%08x' % m['name'], 'skinned': bool(m['skin'] and len(m['joints']) > 1)}
+            'mesh': '%08x' % m['name'], 'skinned': bool(m['skin'] and len(m['joints']) > 1), 'skin': skin}
 
 
 def _height_map(meshes, cell=0.02):
@@ -1043,7 +1099,7 @@ def _build(obj_def_id, lod=0, piece=0, state=None):
                                    H_STATE_THUMBNAIL) if h and h in states), 0)
     for m in ml['meshes']:
         try:
-            r = _build_mesh(owner, m, variant_hash, rest, report, chosen)
+            r = _build_mesh(owner, m, variant_hash, rest, bone_names, report, chosen)
         except Exception as ex:           # one odd mesh should not lose the object
             report.append('mesh %08x failed: %r' % (m['name'], ex))
             r = None
@@ -1055,13 +1111,16 @@ def _build(obj_def_id, lod=0, piece=0, state=None):
         p = r['pos'] - root_offset
         if not r['water']:
             lo, hi = np.minimum(lo, p.min(0)), np.maximum(hi, p.max(0))
-        meshes.append({
+        entry = {
             'positions': [round(float(c), 5) for c in p.reshape(-1)],
             'normals': [round(float(c), 4) for c in r['nrm'].reshape(-1)] if r['nrm'] is not None else [],
             'uvs': [round(float(c), 5) for c in r['uv'].reshape(-1)] if r['uv'] is not None else [],
             'faces': [int(i) for i in r['faces'].reshape(-1)],
             'texture': r['texture'], 'transparent': r['transparent'], 'alpha_test': r['alpha_test'], 'water': r['water'],
-            'shader': r['shader'], 'mesh': r['mesh'], 'skinned': r['skinned']})
+            'shader': r['shader'], 'mesh': r['mesh'], 'skinned': r['skinned']}
+        if r.get('skin') is not None:
+            entry['skin'] = r['skin']
+        meshes.append(entry)
     if not meshes:
         raise ValueError('object %d (%s): no visible meshes (%s)' % (obj_def_id, od['name'], '; '.join(report)))
     solid = [(r['pos'] - root_offset, r['faces']) for r in parts if not r['transparent'] and not r['water']]

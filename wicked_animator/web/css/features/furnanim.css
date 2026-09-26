@@ -1,0 +1,18 @@
+/* Furniture animation (js/features/furnanim.js): the timeline button and the panel over the stage */
+.fa-btn { margin-left: 8px; gap: 6px; }
+.fa-btn svg { width: 14px; height: 14px; }
+.fa-btn.on { background: var(--accent-soft); border-color: var(--accent-line); color: #ffd3e6; }
+.fa-card { position: absolute; left: 14px; bottom: 58px; z-index: 4; width: min(330px, calc(100% - 28px)); display: flex; flex-direction: column; gap: 9px;
+  padding: 12px 13px; border-radius: 14px; background: rgba(20, 17, 27, .94); border: 1px solid var(--line-2); box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+.fa-head { display: flex; align-items: center; gap: 8px; }
+.fa-head > svg { width: 16px; height: 16px; color: var(--accent); }
+.fa-head b { font-size: 13.5px; }
+.fa-head .grow { flex: 1; }
+.fa-parts { display: flex; gap: 6px; flex-wrap: wrap; }
+.fa-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fa-l { color: var(--muted); font-size: 12px; min-width: 58px; }
+.fa-seg { align-self: flex-start; }
+.fa-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+.fa-check input { accent-color: var(--accent); width: 15px; height: 15px; }
+.fa-foot { color: var(--faint); font-size: 11px; line-height: 1.45; border-top: 1px solid var(--line); padding-top: 8px; }
+.fa-card .hint { margin: 0; }
