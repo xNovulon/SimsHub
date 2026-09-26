@@ -54,11 +54,12 @@ const valOf = (p, q) => [r5(p.x), r5(p.y), r5(p.z), r5(q.x), r5(q.y), r5(q.z), r
 function fa(app, proj = app.store.project) { return proj.furnAnim || null; }
 function ensure(app) {
   const p = app.store.project;
-  if (!p.furnAnim) p.furnAnim = { parts: { object: { keys: [] }, blanket: { mode: 'auto', under: false, keys: [] }, pillows: { mode: 'auto', keys: [] } } };
+  // the bedding stays as the bed has it ('still') until Automatic or By hand is picked
+  if (!p.furnAnim) p.furnAnim = { parts: { object: { keys: [] }, blanket: { mode: 'still', under: false, keys: [] }, pillows: { mode: 'still', keys: [] } } };
   const parts = p.furnAnim.parts = p.furnAnim.parts || {};
   parts.object = parts.object || { keys: [] };
-  parts.blanket = parts.blanket || { mode: 'auto', under: false, keys: [] };
-  parts.pillows = parts.pillows || { mode: 'auto', keys: [] };
+  parts.blanket = parts.blanket || { mode: 'still', under: false, keys: [] };
+  parts.pillows = parts.pillows || { mode: 'still', keys: [] };
   return p.furnAnim;
 }
 const partOf = (app, name, proj) => { const d = fa(app, proj); return d && d.parts && d.parts[name] || null; };
@@ -298,8 +299,8 @@ function partValues(app, F, name, f, pts, proj) {
   if (name === 'object') v = (part && sample(part.keys, f)) || { root: ID };
   else if (!bed) return null;
   else if (part && part.mode === 'hand') v = adapt(sample(part.keys, f) || {}, bed, name);
-  else if (part && name === 'blanket') v = autoBlanket(bed, pts(), !!part.under);
-  else if (part && name === 'pillows') v = autoPillows(bed, pts());
+  else if (part && part.mode === 'auto' && name === 'blanket') v = autoBlanket(bed, pts(), !!part.under);
+  else if (part && part.mode === 'auto' && name === 'pillows') v = autoPillows(bed, pts());
   else v = {};
   return live ? { ...v, ...live } : v;
 }
@@ -492,14 +493,14 @@ function rowsFor(app, F) {
     let drag = null;
     return {
       id: 'furn-' + name, height: ROW_H, order: 5 + i,
-      get label() { const pt = partOf(app, name); return pt && name !== 'object' && pt.mode !== 'hand' ? `${word} · automatic` : word; },
+      get label() { const pt = partOf(app, name); return pt && name !== 'object' && pt.mode === 'auto' ? `${word} · automatic` : word; },
       draw(g, ctx) {
         const { x0, x1, y, h: hh, xAt } = ctx, len = app.store.project.length, pt = partOf(app, name);
         const sel = F.sel === name;
         g.save(); g.beginPath(); g.rect(x0, y, x1 - x0, hh); g.clip();
         g.fillStyle = sel ? 'rgba(255,79,154,0.07)' : 'rgba(255,255,255,0.02)';
         g.fillRect(x0, y, Math.min(x1, xAt(len)) - x0, hh);
-        if (pt && name !== 'object' && pt.mode !== 'hand') {
+        if (pt && name !== 'object' && pt.mode === 'auto') {
           // automatic: a soft wave the length of the loop
           g.strokeStyle = 'rgba(96,165,250,0.55)'; g.lineWidth = 1.5; g.beginPath();
           for (let x = Math.max(x0, xAt(0)); x <= Math.min(x1, xAt(len - 1)); x += 3) {
@@ -518,7 +519,7 @@ function rowsFor(app, F) {
           }
         } else {
           g.fillStyle = 'rgba(255,255,255,0.28)'; g.font = '500 10.5px Plus Jakarta Sans, Segoe UI, sans-serif'; g.textBaseline = 'middle';
-          g.fillText(name === 'object' ? 'Drag it on the stage, or use Tip over, Lift and throw...' : 'By hand: drag a dot on the stage', x0 + 8, y + hh / 2 + 0.5);
+          g.fillText(name === 'object' ? 'Drag it on the stage, or use Tip over, Lift and throw...' : pt && pt.mode === 'hand' ? 'By hand: drag a dot on the stage' : 'Still - pick Automatic or By hand', x0 + 8, y + hh / 2 + 0.5);
         }
         // the end of the loop: nothing goes past it
         const xe = xAt(len - 1);
@@ -564,7 +565,8 @@ function keyHere(app, F, name, f) {
   pause(app);
   app.store.checkpoint('Furniture key');
   const d = ensure(app), part = d.parts[name];
-  if (name !== 'object' && part.mode !== 'hand') bakeAuto(app, F, name);
+  if (name !== 'object' && part.mode === 'auto') bakeAuto(app, F, name);
+  else if (name !== 'object') part.mode = 'hand';
   const v = partValues(app, F, name, f, () => bodyPoints(app, F.rig.g));
   if (v) setKey(part, Math.max(0, Math.min(app.store.project.length - 1, Math.round(f))), JSON.parse(JSON.stringify(v)));
   app.store.setDirty(true);
@@ -587,7 +589,7 @@ function attachObject(app, F) {
   F.detach = app.interact.attachGizmo(g, {
     modes: ['translate', 'rotate'], size: 0.9,
     onStart: () => { app.store.checkpoint(`Move the ${kindWord(F.rig.def).toLowerCase()}`); F.dragging = 'object'; },
-    onChange: () => { F.live = { object: { root: valOf(g.position, g.quaternion) } }; },
+    onChange: () => { F.live = { object: { root: valOf(g.position, g.quaternion) } }; apply(app); },
     onEnd: () => {
       const part = ensure(app).parts.object, f = Math.round(app.store.frame);
       if (!part.keys.length && f !== 0) setKey(part, 0, { root: ID.slice() });      // it starts where it stood
@@ -616,10 +618,11 @@ function attachHandle(app, F, name, hn) {
     onStart: () => {
       app.store.checkpoint(`Move the ${HANDLE_WORD[hn] || name}`);
       const part = ensure(app).parts[name];
-      if (part.mode !== 'hand') bakeAuto(app, F, name);                         // from what it did by itself
+      if (part.mode === 'auto') bakeAuto(app, F, name);                         // from what it did by itself
+      else part.mode = 'hand';
       F.dragging = name;
     },
-    onChange: () => { F.live = { [name]: { [hn]: read() } }; },
+    onChange: () => { F.live = { [name]: { [hn]: read() } }; apply(app); },     // the bedding follows the drag
     onEnd: () => {
       const part = ensure(app).parts[name], f = Math.round(app.store.frame);
       const now = sample(part.keys, f) || {};
@@ -689,9 +692,17 @@ function drawCard(app) {
   const chip = (name, label) => h('button', { class: 'chipbtn' + (F.sel === name ? ' on' : ''), 'data-part': name, onclick: () => select(app, name) }, label);
   const seg = name => {
     const pt = d.parts[name];
+    const to = (mode, label) => () => {
+      if (pt.mode === mode) return;
+      pause(app); app.store.checkpoint(label);
+      if (mode === 'hand' && !pt.keys.length && pt.mode === 'auto') bakeAuto(app, F, name);
+      pt.mode = mode; app.store.setDirty(true); refresh(app);
+    };
+    const cur = pt.mode === 'hand' || pt.mode === 'auto' ? pt.mode : 'still';
     return h('div', { class: 'seg small fa-seg' },
-      h('button', { class: pt.mode !== 'hand' ? 'active' : '', 'data-mode': 'auto', onclick: () => { if (pt.mode !== 'hand') return; pause(app); app.store.checkpoint('Automatic'); pt.mode = 'auto'; app.store.setDirty(true); refresh(app); } }, 'Automatic'),
-      h('button', { class: pt.mode === 'hand' ? 'active' : '', 'data-mode': 'hand', onclick: () => { if (pt.mode === 'hand') return; pause(app); app.store.checkpoint('By hand'); if (!pt.keys.length) bakeAuto(app, F, name); pt.mode = 'hand'; app.store.setDirty(true); refresh(app); } }, 'By hand'));
+      h('button', { class: cur === 'still' ? 'active' : '', 'data-mode': 'still', onclick: to('still', 'Still') }, 'Still'),
+      h('button', { class: cur === 'auto' ? 'active' : '', 'data-mode': 'auto', onclick: to('auto', 'Automatic') }, 'Automatic'),
+      h('button', { class: cur === 'hand' ? 'active' : '', 'data-mode': 'hand', onclick: to('hand', 'By hand') }, 'By hand'));
   };
   const body = [];
   if (F.sel === 'object' || !bed) {
@@ -706,13 +717,13 @@ function drawCard(app) {
     const pt = d.parts.blanket;
     const under = h('input', { type: 'checkbox', checked: !!pt.under, 'data-under': '1', onchange: () => setUnder(app, under.checked) });
     body.push(seg('blanket'), h('label', { class: 'fa-check' }, under, 'Under the blanket'),
-      h('div', { class: 'hint' }, pt.mode !== 'hand' ? (pt.under ? 'It covers the sims and follows their bodies. Drag a blue dot to move it yourself.'
+      h('div', { class: 'hint' }, pt.mode !== 'hand' && pt.mode !== 'auto' ? 'It stays as the bed has it. Automatic moves it with the sims; By hand lets you drag it.' : pt.mode !== 'hand' ? (pt.under ? 'It covers the sims and follows their bodies. Drag a blue dot to move it yourself.'
         : 'It lies pulled back to the foot of the bed. Drag a blue dot to move it yourself.')
         : 'Drag a blue dot on the blanket. Keys go on the timeline.'),
       pt.mode === 'hand' ? h('button', { class: 'btn small', 'data-act': 'from-auto', onclick: () => { app.store.checkpoint('Start from automatic'); bakeAuto(app, F, 'blanket'); app.store.setDirty(true); refresh(app); } }, 'Start from automatic') : null);
   } else {
     const pt = d.parts.pillows;
-    body.push(seg('pillows'), h('div', { class: 'hint' }, pt.mode !== 'hand' ? 'A pillow gives under a head resting on it.' : 'Drag a yellow dot; R turns the pillow.'),
+    body.push(seg('pillows'), h('div', { class: 'hint' }, pt.mode === 'auto' ? 'A pillow gives under a head resting on it.' : pt.mode === 'hand' ? 'Drag a yellow dot; R turns the pillow.' : 'They stay as the bed has them.'),
       pt.mode === 'hand' ? h('button', { class: 'btn small', 'data-act': 'from-auto', onclick: () => { app.store.checkpoint('Start from automatic'); bakeAuto(app, F, 'pillows'); app.store.setDirty(true); refresh(app); } }, 'Start from automatic') : null);
   }
   F.card.replaceChildren(...[
@@ -722,7 +733,21 @@ function drawCard(app) {
     ...body,
     h('div', { class: 'fa-foot' }, `Keys stay inside the loop (${(len / fps).toFixed(1)} s). `,
       bed ? 'The blanket and pillows go to the game with the animation; moving the bed only shows here.' : 'It only moves here: in the game it stands still.'),
+    h('button', { class: 'btn small ghost fa-remove', 'data-act': 'remove', title: 'Everything back as the game has it, and close', onclick: () => removeAll(app) }, icon('trash'), `Remove the ${word.toLowerCase()} animation`),
   ].filter(Boolean));
+}
+
+// Everything back as the game has it (one undo step), and the panel closes.
+function removeAll(app) {
+  pause(app);
+  const p = app.store.project;
+  app.store.checkpoint('Remove the furniture animation');
+  delete p.furnAnim;
+  if (Array.isArray(p.tags)) { const i = p.tags.indexOf('UNDER_COVERS'); if (i >= 0) p.tags.splice(i, 1); }
+  app._furn.live = null;
+  app.store.setDirty(true);
+  setOn(app, false);
+  if (app.step === 'scene') app.renderStep();
 }
 
 function setUnder(app, on, { auto = false } = {}) {
@@ -730,7 +755,7 @@ function setUnder(app, on, { auto = false } = {}) {
   const p = app.store.project, pt = ensure(app).parts.blanket;
   app.store.checkpoint(on ? 'Under the blanket' : 'On the blanket');
   pt.under = !!on;
-  if (auto) pt.mode = 'auto';                                  // the Scene step's choice: it follows the sims again
+  if (auto || pt.mode !== 'hand') pt.mode = 'auto';                                  // the Scene step's choice: it follows the sims again
   // WickedWhims' own tag for it, so players can find it
   p.tags = Array.isArray(p.tags) ? p.tags : [];
   const i = p.tags.indexOf('UNDER_COVERS');
@@ -807,14 +832,14 @@ export function install(app) {
   add('sections.scene', (a, root) => {
     const def = defOf(app);
     if (!def || def.kind !== 'bed') return;
-    const d = fa(app), pt = (d && d.parts && d.parts.blanket) || { mode: 'auto', under: false };
-    const auto = pt.mode !== 'hand';
+    const d = fa(app), pt = (d && d.parts && d.parts.blanket) || { mode: 'still', under: false };
+    const auto = pt.mode === 'auto';
     const pick = on => { setUnder(app, on, { auto: true }); if (app.step === 'scene') app.renderStep(); };
     const sec = section('Blanket',
       h('div', { class: 'seg small fa-seg fa-under' },
         h('button', { class: auto && pt.under ? 'active' : '', 'data-under': 'on', onclick: () => pick(true) }, 'Sims under it'),
         h('button', { class: auto && !pt.under ? 'active' : '', 'data-under': 'off', onclick: () => pick(false) }, 'Pulled back')),
-      h('div', { class: 'hint' }, auto ? 'It moves with the sims by itself and goes to the game with the animation.' : 'Moved by hand - its keys are on the timeline.'),
+      h('div', { class: 'hint' }, pt.mode === 'hand' ? 'Moved by hand - its keys are on the timeline.' : auto ? 'It moves with the sims by itself and goes to the game with the animation.' : 'It stays as the bed has it until one is picked.'),
       h('button', { class: 'btn small', 'data-act': 'blanket-hand', onclick: () => { setOn(app, true); select(app, 'blanket'); } }, icon('bed'), 'Move it by hand'));
     sec.classList.add('blanket-card');
     const tipEl = root.querySelector(':scope > .tip');
@@ -847,6 +872,9 @@ export function install(app) {
     // the bed's bones: the open scene's, or (another animation, e.g. a progression's step) the same bed's from before
     const rig = !other && F.rig && F.rig.def && F.rig.def.id === p.furniture ? F.rig : F.rigs.get(p.furniture), bed = rig && rig.bed;
     if (!d || !bed || !bed.real) return;
+    // nothing to send while the bedding never moves
+    const still = x => !x || (x.mode !== 'auto' && !(x.mode === 'hand' && (x.keys || []).length));
+    if (still(d.parts && d.parts.blanket) && still(d.parts && d.parts.pillows)) return;
     const loc = bed.double ? 'DOUBLE_BED' : 'SINGLE_BED';
     if (!(p.locations || []).includes(loc) && !(payload.locations || []).includes(loc)) return;
     const pipe = other ? opts.pipeline : app.pipeline, views = other ? opts.views : app.simViews;

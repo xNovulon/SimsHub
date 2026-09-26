@@ -16,3 +16,5 @@
 .fa-check input { accent-color: var(--accent); width: 15px; height: 15px; }
 .fa-foot { color: var(--faint); font-size: 11px; line-height: 1.45; border-top: 1px solid var(--line); padding-top: 8px; }
 .fa-card .hint { margin: 0; }
+.fa-remove { align-self: flex-start; color: var(--faint); }
+.fa-remove:hover { color: #fb5471; }

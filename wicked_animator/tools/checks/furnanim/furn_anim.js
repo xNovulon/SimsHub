@@ -84,8 +84,28 @@ const get = url => new Promise(res => { http.get(url, r => { let b = ''; r.on('d
       const r = await page.evaluate(() => ({ rows: window.__f.rows(), card: !document.querySelector('.fa-card').hidden, text: document.querySelector('.fa-card').innerText, double: window.wickedFurnAnim.state.rig.bed && window.wickedFurnAnim.state.rig.bed.double,
         handles: window.wickedFurnAnim.state.rig.bed && Object.keys(window.wickedFurnAnim.state.rig.bed.handles.blanket) }));
       await shot('bed_open');
-      if (!ok2 || r.rows.join() !== 'Bed,Blanket · automatic,Pillows · automatic' || !r.card || !/Bed animation/.test(r.text) || /null|undefined/.test(r.text) || !r.double || r.handles.length !== 6) throw new Error(JSON.stringify(r));
+      if (!ok2 || r.rows.join() !== 'Bed,Blanket,Pillows' || !r.card || !/Bed animation/.test(r.text) || /null|undefined/.test(r.text) || !r.double || r.handles.length !== 6) throw new Error(JSON.stringify(r));
       return `${r.rows.join(' | ')}; ${r.handles.length} blanket handles`;
+    });
+    await step('opening it moves nothing: the blanket and pillows stay still until Automatic or By hand is picked', async () => {
+      const r = await page.evaluate(() => { const app = window.app; app.applyPoses(false); const b = app.store.project.furnAnim.parts; return { blanket: window.__f.shift('blanket'), pillows: window.__f.shift('pillows'), modes: [b.blanket.mode, b.pillows.mode] }; });
+      if (!(Math.abs(r.blanket) < 1e-6 && Math.abs(r.pillows) < 1e-6 && r.modes.join() === 'still,still')) throw new Error(JSON.stringify(r));
+      return 'blanket and pillows as the bed has them (Still)';
+    });
+    await step('dragging a blanket dot moves the blanket while dragging, not only on letting go', async () => {
+      const r = await page.evaluate(() => {
+        const app = window.app, A = window.wickedFurnAnim, F = A.state, gz = app.vp.gizmo;
+        A.select('blanket', Object.keys(F.rig.bed.handles.blanket)[0]);
+        gz.dispatchEvent({ type: 'mouseDown' }); app.vp.dragging = true;
+        F.proxy.position.y += 0.25; F.proxy.updateMatrixWorld();
+        gz.dispatchEvent({ type: 'objectChange' });
+        const during = window.__f.shift('blanket');
+        app.vp.dragging = false; gz.dispatchEvent({ type: 'mouseUp' });
+        app.undo(); app.applyPoses(false);
+        return { during, after: window.__f.shift('blanket'), mode: app.store.project.furnAnim.parts.blanket.mode };
+      });
+      if (!(r.during > 0.01 && Math.abs(r.after) < 1e-6 && r.mode === 'still')) throw new Error(JSON.stringify(r));
+      return `up ${(r.during * 100).toFixed(1)} cm on average while dragging; undo put it back (Still)`;
     });
     await step('the blanket by itself: pulled back to the foot, or over the sims when they are under it', async () => {
       const r = await page.evaluate(() => {
@@ -126,6 +146,7 @@ const get = url => new Promise(res => { http.get(url, r => { let b = ''; r.on('d
       const r = await page.evaluate(() => {
         const app = window.app, A = window.wickedFurnAnim, F = A.state, T = window.__T;
         A.select('pillows');
+        app.store.project.furnAnim.parts.pillows.mode = 'auto';
         const bed = F.rig.bed, pl = bed.handles.pillows.left, g = F.rig.g;
         // a head just above the left pillow: move the first sim so its head is there
         const s = app.store.project.sims[0], v = app.simViews.get(s.id);
@@ -230,6 +251,21 @@ const get = url => new Promise(res => { http.get(url, r => { let b = ''; r.on('d
       const good = !r.chair && (r.real ? r.bed && r.n === r.frames && r.width === r.bones * 7 && r.bones >= 10 && /_bind_DB_blanket_Top_L_/.test(r.names) : !r.bed);
       if (!good) throw new Error(JSON.stringify(r));
       return r.real ? `the game bed: ${r.bones} bones x ${r.n} frames; a chair: none` : 'none (the stand-in bed has no game bones)';
+    });
+    await step('"Remove the bed animation": everything back as the game has it, the panel closes, undo brings it back', async () => {
+      const r = await page.evaluate(() => {
+        const app = window.app, A = window.wickedFurnAnim;
+        A.setOn(true);
+        document.querySelector('.fa-card [data-act="remove"]').click();
+        app.applyPoses(false);
+        const gone = { data: !app.store.project.furnAnim, hidden: document.querySelector('.fa-card').hidden, on: A.state.on,
+          blanket: window.__f.shift('blanket'), tag: (app.store.project.tags || []).includes('UNDER_COVERS'), clip: !!app.bake().bedAnim };
+        app.undo();
+        return { gone, back: !!app.store.project.furnAnim };
+      });
+      const g = r.gone;
+      if (!(g.data && g.hidden && !g.on && Math.abs(g.blanket) < 1e-6 && !g.tag && !g.clip && r.back)) throw new Error(JSON.stringify(r));
+      return 'nothing left (no keys, no tag, no bed clip), panel closed; undo brought it back';
     });
     const expected = [/Failed to load resource/, /GPU stall|WebGL|swiftshader|GroupMarkerNotSet/i, /fonts\.googleapis/];
     const bad = P.problems(logs, { ignore: expected });
