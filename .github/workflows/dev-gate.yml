@@ -76,7 +76,10 @@ jobs:
       contents: write
       actions: write
     steps:
+      # full history: GitHub refuses a push made from a shallow (depth 1) copy ("shallow update not allowed")
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Fast-forward main to this commit
         shell: pwsh
@@ -86,7 +89,7 @@ jobs:
           $sha = $env:GITHUB_SHA
 
           # main's tip before we move it, so we can tell afterwards whether build-apps.yml needs a run
-          git fetch origin main --depth 1
+          git fetch origin main
           if ($LASTEXITCODE -ne 0) { throw "could not read main's current commit" }
           $oldMain = git rev-parse FETCH_HEAD
 
