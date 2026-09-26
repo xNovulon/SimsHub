@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import { evaluate, evaluateFace, evaluateFaceBones, twistAngle } from './animation.js';
 import { applyLayer, MOTIONS } from './motion.js';
 import { LIMBS, POSABLE, HIPS, AUTO, MOUTH, TONGUE, FACE_CHANNEL, TWIST, PALM, PALM_GAP, SOLE_GAP, pinAt, pinWeight } from './bones.js';
-import { spacePos, solveTwoBone, setSpaceQuat } from './posemath.js';
+import { spacePos, solveTwoBone, setSpaceQuat, limbPole } from './posemath.js';
 import { applyFace, talkAt, mergeFace, blinkAt, followJaw, clampFace, keyedAmounts, fadeOverlay } from './face.js';
 import { measure, applyOpen } from './openings.js';
 import { partsFor, simulate, applyFrame, defaultPhysics } from './physics.js';
@@ -201,10 +201,7 @@ export class Pipeline {
       if (chain.some(b => !b)) continue;
       const before = w < 1 ? chain.map(b => b.quaternion.clone()) : null;
       const target = new THREE.Vector3().fromArray(at);
-      const A = spacePos(v, chain[0]), C = spacePos(v, chain[2]), B = spacePos(v, chain[1]);
-      const mid = A.clone().add(C).multiplyScalar(0.5), out = B.clone().sub(mid);
-      const pole = out.lengthSq() > 1e-6 ? B.clone().add(out.normalize().multiplyScalar(0.4)) : null;
-      solveTwoBone(v, chain[0], chain[1], chain[2], target, pole);
+      solveTwoBone(v, chain[0], chain[1], chain[2], target, limbPole(v, chain[0], chain[1], chain[2]));
       if (before) chain.forEach((b, i) => b.quaternion.copy(before[i].slerp(b.quaternion, w)));
     }
   }
@@ -249,10 +246,7 @@ export class Pipeline {
       const contact = contactW.applyMatrix4(_spaceM.copy(v.space.matrixWorld).invert());
       const palm = isHand && v.restByName[PALM[limb]];
       const wrist = palm ? contact.clone().sub(palm.pos.clone().applyQuaternion(handQ)) : contact.clone();
-      const A = spacePos(v, chain[0]), B = spacePos(v, chain[1]), C = spacePos(v, chain[2]);
-      const mid = A.clone().add(C).multiplyScalar(0.5), out = B.clone().sub(mid);
-      const pole = out.lengthSq() > 1e-6 ? B.clone().add(out.normalize().multiplyScalar(0.4)) : null;
-      solveTwoBone(v, chain[0], chain[1], chain[2], wrist, pole);                          // keeps the hand's turn
+      solveTwoBone(v, chain[0], chain[1], chain[2], wrist, limbPole(v, chain[0], chain[1], chain[2]));  // keeps the hand's turn
       if (before) chain.forEach((b, i) => b.quaternion.copy(before[i].slerp(b.quaternion, w)));
       (reach = reach || {})[limb] = w < 1 ? 0 : spacePos(v, chain[2]).distanceTo(wrist);
     }

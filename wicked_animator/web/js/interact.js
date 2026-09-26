@@ -12,7 +12,7 @@
 // {onChange, onEnd, onStart, modes, space, size})` for anything else the gizmo should move (props, boards).
 import * as THREE from 'three';
 import { LIMBS, HIPS, HINGE, KNUCKLE, TURN_GROUPS, LIMB_LABEL, isHold } from './bones.js';
-import { spacePos, worldToSpace, spaceToWorld, solveTwoBone, spaceQuat, setSpaceQuat, rotateInSpace, clampToLimits } from './posemath.js';
+import { spacePos, worldToSpace, spaceToWorld, solveTwoBone, spaceQuat, setSpaceQuat, rotateInSpace, clampToLimits, limbPole } from './posemath.js';
 import * as K from './facekit.js';
 import * as Holds from './holds.js';
 
@@ -956,36 +956,79 @@ export class Interaction {
       start: keep.map(n => [n, v.bone(n).position.clone(), v.bone(n).quaternion.clone()]) };
   }
 
-  // The hips moved by `d` (sim space) since the drag started, as a body does it: each foot stays where it stood (the
-  // leg bends to it, and when a straight leg can't reach any more the hips drop a little), the back bends so the chest
-  // and head stay where they were, and the head keeps looking the same way. A pinned foot is left to its pin.
+  // The hips moved by `d` (sim space) since the drag started, as a body does it, in any position - standing, lying
+  // down, sitting, kneeling: each foot stays where it stood when the leg can still reach it; when it can't (the hip
+  // moved past what a straight leg allows), the foot slides toward the hip along the surface it rests on instead of
+  // the hip refusing to move or the leg stretching - it keeps its height on that surface and never lifts off it, so
+  // the knees bend up like a bridge rather than the feet flying into the air. The back bends so the chest and head
+  // stay where they were (as far as the back's own length allows), and the head keeps looking the same way. A pinned
+  // foot is left to its pin.
   shiftHips(v, S, sim, d) {
     for (const [n, p, q] of S.start) { v.bone(n).position.copy(p); v.bone(n).quaternion.copy(q); }
-    this.moveHips(v, d);
     const planted = Object.keys(S.feet).filter(limb => !(sim.pins && sim.pins[limb]));
+    // each leg's own reach axis: the hip joint to its foot, as the pose stood before this frame's move - this is what
+    // "up" meant for a standing sim (the leg hangs straight down), but it is only right there; for a lying, sitting or
+    // kneeling body the leg's own axis points a different way, and using it instead is what lets this work in any
+    // position.
+    const axis = {};
+    for (const limb of planted) {
+      const a0 = spacePos(v, v.bone(LIMBS[limb][0])), ax = a0.clone().sub(S.feet[limb].pos);   // foot -> hip
+      axis[limb] = ax.lengthSq() > 1e-10 ? ax.normalize() : new THREE.Vector3(0, 1, 0);
+    }
+    this.moveHips(v, d);
+    // the surface a foot rests on (the floor, a bed) is level in the world, whatever way the body itself is turned
     v.space.updateWorldMatrix(true, false);
     const up = UP.clone().applyQuaternion(v.space.getWorldQuaternion(new THREE.Quaternion()).invert());
-    let drop = 0;
+    // a leg that can only just not reach its foot's exact spot drops the hips a little along its own axis first (an
+    // ordinary standing overreach, a few mm) - so the foot keeps its spot exactly, as before. Past a small cap - the
+    // drop would eat too much of the drag itself (a deliberate lift past what a straight leg allows) - no drop is
+    // taken; the per-leg reach below then lets that foot slide instead, rather than the hips refusing to move.
+    const DROP_CAP = 0.04;
+    let bestDrop = 0, bestAxis = null;
     for (const limb of planted) {
       const [a, b, c] = LIMBS[limb].map(n => v.bone(n));
-      const A = spacePos(v, a), B = spacePos(v, b), L = (A.distanceTo(B) + B.distanceTo(spacePos(v, c))) * 0.999;
-      const D = A.sub(S.feet[limb].pos), du = D.dot(up), c2 = D.lengthSq() - L * L;
+      const A = spacePos(v, a), L = (A.distanceTo(spacePos(v, b)) + spacePos(v, b).distanceTo(spacePos(v, c))) * 0.999;
+      const D = A.clone().sub(S.feet[limb].pos), du = D.dot(axis[limb]), c2 = D.lengthSq() - L * L;
       if (c2 <= 0) continue;
       const disc = du * du - c2;
-      if (disc >= 0) drop = Math.max(drop, du - Math.sqrt(disc));
+      if (disc < 0) continue;
+      const drop = du - Math.sqrt(disc);
+      if (drop > bestDrop) { bestDrop = drop; bestAxis = axis[limb]; }
     }
-    if (drop > 0) this.moveHips(v, up.clone().multiplyScalar(-drop));
+    if (bestDrop > 0 && bestDrop <= DROP_CAP) this.moveHips(v, bestAxis.clone().multiplyScalar(-bestDrop));
     for (const limb of planted) {
-      this.solveLimb(v, LIMBS[limb], S.feet[limb].pos);
+      const [a, b, c] = LIMBS[limb].map(n => v.bone(n));
+      const A = spacePos(v, a), L = (A.distanceTo(spacePos(v, b)) + spacePos(v, b).distanceTo(spacePos(v, c))) * 0.999;
+      const rest = S.feet[limb].pos;
+      let target = rest;
+      if (A.distanceTo(rest) > L) {
+        // still out of reach (the drop above wasn't enough, or was skipped as too costly): slide the foot toward the
+        // hip instead, staying at the same height on the surface (the `up` component of its position stays put) -
+        // it never lifts off the floor or bed, and the knee bends up to take the slack, like a bridge.
+        const dz = A.clone().sub(rest).dot(up);
+        const onSurface = A.clone().addScaledVector(up, -dz);       // the hip's own point on the foot's surface
+        const along = rest.clone().sub(onSurface), len = along.length();
+        const reach = Math.sqrt(Math.max(0, L * L - dz * dz));
+        target = len > 1e-6 ? onSurface.addScaledVector(along, Math.min(reach, len) / len) : onSurface;
+      }
+      this.solveLimb(v, LIMBS[limb], target);
       setSpaceQuat(v, v.bone(LIMBS[limb][2]), S.feet[limb].q);
     }
     const spine = ['b__Spine0__', 'b__Spine1__', 'b__Spine2__'].map(n => v.bone(n)).filter(Boolean);
     const neck = v.bone('b__Neck__');
     if (S.neck && neck && spine.length) {
-      // the turn that brings the neck back over the hips, spread evenly over the back (a few passes: the joints differ)
+      // the turn that brings the neck back over the hips, spread evenly over the back (a few passes: the joints
+      // differ). The back has a fixed length too (only turns, no stretch) - when the hips moved along the back's own
+      // axis by more than that, the neck can't fully get back; it goes as far as the back's length allows instead of
+      // the correction giving up and doing nothing.
+      const P0 = spacePos(v, spine[0]);
+      let reach = 0, prev = P0;
+      for (const b of [...spine.slice(1), neck]) { const p = spacePos(v, b); reach += prev.distanceTo(p); prev = p; }
+      reach *= 0.999;
+      const toNeck = S.neck.clone().sub(P0), dist = toNeck.length();
+      const goal = dist > reach && dist > 1e-9 ? P0.clone().addScaledVector(toNeck, reach / dist) : S.neck;
       for (let it = 0; it < 4; it++) {
-        const P0 = spacePos(v, spine[0]);
-        const from = spacePos(v, neck).sub(P0), to = S.neck.clone().sub(P0);
+        const from = spacePos(v, neck).sub(P0), to = goal.clone().sub(P0);
         if (from.lengthSq() < 1e-8 || to.lengthSq() < 1e-8 || from.distanceToSquared(to) < 4e-6) break;
         const part = new THREE.Quaternion().slerp(new THREE.Quaternion().setFromUnitVectors(from.normalize(), to.normalize()), 1 / spine.length);
         for (const b of spine) rotateInSpace(v, b, part);
@@ -1233,11 +1276,7 @@ export class Interaction {
 
   solveLimb(v, chain, target) {
     const [a, b, c] = chain.map(n => v.bone(n));
-    const A = spacePos(v, a), B = spacePos(v, b), C = spacePos(v, c);
-    const mid = A.clone().add(C).multiplyScalar(0.5);
-    const out = B.clone().sub(mid);
-    const pole = out.lengthSq() > 1e-6 ? B.clone().add(out.normalize().multiplyScalar(0.4)) : null;
-    solveTwoBone(v, a, b, c, target, pole);
+    solveTwoBone(v, a, b, c, target, limbPole(v, a, b, c));
   }
 
   // Pins (whole loop or part of it) and holds, while a body part is being posed: the engine's own passes, at this
@@ -1454,7 +1493,11 @@ export class Interaction {
     const a = this.active, v = a && a.simId && this.views().get(a.simId);
     if (v && !this.vp.dragging) {
       if (a.kind === 'place') { const m = this.rootMeshes.get(a.simId); if (m) this.proxy.position.set(m.group.position.x, 0, m.group.position.z); }
-      else if (a.kind === 'hips' && a.bone) this.proxy.position.copy(v.worldPos('b__Pelvis__'));
+      // not mid-drag (this.hipShift): shiftHips reads the proxy against hipShift.proxy0 to get the *whole* drag's
+      // offset since it started, replaying from the pose at mouseDown every step (spec_editing 9: "nothing drifts").
+      // Syncing the proxy to the bone here while that is still going on would overwrite the very thing that offset
+      // is measured from, so each step would only see the last little bit of the drag instead of all of it.
+      else if (a.kind === 'hips' && a.bone && !this.hipShift) this.proxy.position.copy(v.worldPos('b__Pelvis__'));
       else if (a.kind === 'limb' && a.bone) this.proxy.position.copy(v.worldPos(LIMBS[a.limb][2]));
       else if (a.kind === 'pull') this.proxy.position.copy(spaceToWorld(v, this._pullEnd(v, a.pull)));
     }

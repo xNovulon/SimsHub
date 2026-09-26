@@ -2,8 +2,9 @@
 // Pose the sims once, add "Thrust" or "Ride", set how often and how far - it loops perfectly because every
 // motion repeats a whole number of times per loop. Pinned hands and feet stay put while the body moves.
 import * as THREE from 'three';
-import { spaceQuat, spacePos, rotateInSpace, solveTwoBone } from './posemath.js';
+import { spaceQuat, spacePos, rotateInSpace, solveTwoBone, pelvisAxes } from './posemath.js';
 import { LIMBS } from './bones.js';
+export { pelvisAxes } from './posemath.js';    // kept here too: placing.js and others already import it from here
 
 const PI = Math.PI, TAU = 2 * Math.PI;
 const _q = new THREE.Quaternion();
@@ -82,14 +83,7 @@ export function awayCurve(p, sharp) {
 }
 
 // ---------------------------------------------------------------- body frames (sim space)
-export function pelvisAxes(v) {
-  const q = spaceQuat(v, v.bone('b__Pelvis__'), _q.clone());
-  return {
-    forward: new THREE.Vector3(0, 1, 0).applyQuaternion(q),
-    up: new THREE.Vector3(-1, 0, 0).applyQuaternion(q),
-    left: new THREE.Vector3(0, 0, -1).applyQuaternion(q),
-  };
-}
+// pelvisAxes now lives in posemath.js (shared with the hip-shift/limb-solve code); re-exported above.
 export function chestLateral(v) {
   const l = spacePos(v, v.bone('b__L_Clavicle__')).sub(spacePos(v, v.bone('b__R_Clavicle__')));
   return l.lengthSq() > 1e-8 ? l.normalize() : new THREE.Vector3(1, 0, 0);

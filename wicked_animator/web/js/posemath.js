@@ -39,6 +39,29 @@ export function rotateInSpace(sim, bone, delta) {
   setSpaceQuat(sim, bone, delta.clone().multiply(q));
 }
 
+// The body's own axes, from the hips' own local rotation - right whether the body stands, lies down, sits or is
+// on its side (a "Lie here" pose bakes its turn straight into the hips' own rotation, see placing.js/sim.js), unlike
+// world up/forward which only match the body's own front when it happens to be standing. forward: the way the hips
+// face; up: away from the body's back; left: the sim's own left.
+export function pelvisAxes(sim) {
+  const q = spaceQuat(sim, sim.bone('b__Pelvis__'));
+  return {
+    forward: new THREE.Vector3(0, 1, 0).applyQuaternion(q),
+    up: new THREE.Vector3(-1, 0, 0).applyQuaternion(q),
+    left: new THREE.Vector3(0, 0, -1).applyQuaternion(q),
+  };
+}
+
+// Where a two-bone limb's middle joint (elbow/knee) should bend toward: its current bend direction when it has one,
+// else the body's own front (pelvisAxes) rather than a fixed world/sim axis - so a straight limb still folds the
+// right way lying down, on its side, or upside down, not just standing up.
+export function limbPole(sim, a, b, c) {
+  const A = spacePos(sim, a), B = spacePos(sim, b), C = spacePos(sim, c);
+  const mid = A.clone().add(C).multiplyScalar(0.5), out = B.clone().sub(mid);
+  const dir = out.lengthSq() > 1e-6 ? out.normalize() : pelvisAxes(sim).forward;
+  return B.clone().add(dir.multiplyScalar(0.4));
+}
+
 // Analytic two-bone IK in sim space: a (upper), b (lower), c (end effector bone).
 // Keeps the end bone's space rotation. Elbows and knees (HINGE bones) only bend about their own Z axis.
 export function solveTwoBone(sim, a, b, c, targetSpace, poleSpace = null) {
@@ -59,8 +82,9 @@ export function solveTwoBone(sim, a, b, c, targetSpace, poleSpace = null) {
     const want = Math.acos(THREE.MathUtils.clamp((lab * lab + lbc * lbc - dist * dist) / (2 * lab * lbc), -1, 1));
     let axis = ba.clone().cross(bc);
     if (axis.lengthSq() < 1e-10) {
-      // straight limb: bend toward the pole (or any perpendicular)
-      const p = poleSpace ? poleSpace.clone().sub(B) : new THREE.Vector3(0, 0, 1);
+      // straight limb: bend toward the pole (or, with none given, the body's own front - not a fixed axis, which
+      // only means "front" when the body is standing)
+      const p = poleSpace ? poleSpace.clone().sub(B) : pelvisAxes(sim).forward;
       axis = ba.clone().cross(p);
       if (axis.lengthSq() < 1e-10) axis = ba.clone().cross(new THREE.Vector3(1, 0, 0));
     }
