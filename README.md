@@ -136,8 +136,10 @@ Make WickedWhims animations without Blender, then send them straight into your g
 
 The app walks you through eight steps. You can jump between them at any time.
 
-1. **Scene.** Add your sims and pick where it happens: the floor, a bed, a sofa and many more.
-2. **Pose.** Start from a ready-made pose, or drag hands and feet and let the body follow.
+1. **Scene.** Add your sims and pick where it happens: the floor, a bed, a sofa and many more. The bed, couch or chair
+   can move too: slide it, tip it over or throw it, and the blanket follows the sims.
+2. **Pose.** Start from a ready-made pose, or drag hands and feet and let the body follow. Pick any part: R turns it,
+   T moves it.
 3. **Motion.** Add movement with one click, or set your own keys on the timeline.
 4. **Body.** Physics, hair and clothes to check clipping, and body details like the erection and the tongue.
 5. **Face.** Ready expressions, blinking and lip-sync, or pose the brows, eyes and lips yourself.
