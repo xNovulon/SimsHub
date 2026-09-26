@@ -263,6 +263,59 @@ async function startServer() {
       if (!(d > 0.03 && Math.abs(d - f) < 0.005 && Math.abs(e.hips[1] - s.hips[1]) < 1e-4 && keysMoved === e.keys.filter(Boolean).length && e.kind === 'place')) throw new Error(JSON.stringify({ d, f, dy: e.hips[1] - s.hips[1], keysMoved, keys: e.keys.length, kind: e.kind }));
       return `the sim slid ${(d * 100).toFixed(1)} cm (feet too), ${keysMoved} key(s) moved with it, same height`;
     });
+    // which way the hips point on the floor (the line from the left thigh to the right one, degrees) and where they are
+    const facing = () => page.evaluate(() => {
+      const t = window.__t, l = t.wp('b__L_Thigh__'), r = t.wp('b__R_Thigh__');
+      return { yaw: Math.atan2(r[0] - l[0], r[2] - l[2]) * 180 / Math.PI, hips: t.wp('b__Pelvis__') };
+    });
+    const turnBy = (a, b) => ((b - a + 540) % 360) - 180;
+    await step('R, then dragging the circle itself turns the whole sim about its circle (every key)', async () => {
+      await page.evaluate(() => { const app = window.app; app.vp.stopCamera && app.vp.stopCamera(); app.setView('top'); });
+      await P.sleep(900);
+      await page.evaluate(() => window.__t.key('KeyR'));
+      const s = await page.evaluate(() => {
+        const app = window.app, t = window.__t, id = t.sim(), m = app.interact.rootMeshes.get(id), R = 0.075 * 0.87;
+        const c = m.group.position;
+        return { c: t.screen([c.x, 0.004, c.z]), e: t.screen([c.x + R * m.group.scale.x, 0.004, c.z]), mode: app.vp.gizmo.mode,
+          keys: app.store.sim(id).keys.map(k => (k.pose.rot && k.pose.rot.b__Pelvis__) ? k.pose.rot.b__Pelvis__.slice() : null) };
+      });
+      const f0 = await facing();
+      // press on the circle's edge and go a quarter of the way round it
+      const rad = Math.max(8, Math.hypot(s.e[0] - s.c[0], s.e[1] - s.c[1]) * 0.8);
+      await page.mouse.move(s.c[0] + rad, s.c[1]);
+      await page.mouse.down();
+      for (let k = 1; k <= 12; k++) { const a = (k / 12) * Math.PI / 2; await page.mouse.move(s.c[0] + rad * Math.cos(a), s.c[1] + rad * Math.sin(a), { steps: 1 }); }
+      await page.mouse.up();
+      await P.sleep(200);
+      const f1 = await facing();
+      const e = await page.evaluate(() => { const app = window.app, id = window.__t.sim(); return { kind: app.interact.active && app.interact.active.kind, mode: app.vp.gizmo.mode,
+        keys: app.store.sim(id).keys.map(k => (k.pose.rot && k.pose.rot.b__Pelvis__) ? k.pose.rot.b__Pelvis__.slice() : null) }; });
+      const turned = turnBy(f0.yaw, f1.yaw), moved = Math.hypot(f1.hips[0] - f0.hips[0], f1.hips[2] - f0.hips[2]);
+      const keysTurned = e.keys.filter((k, i) => k && s.keys[i] && k.some((x, j) => Math.abs(x - s.keys[i][j]) > 1e-4)).length;
+      await shot('root_turned');
+      if (!(s.mode === 'rotate' && Math.abs(Math.abs(turned) - 90) < 20 && moved < 0.03 && e.kind === 'place' && e.mode === 'rotate' && keysTurned === e.keys.filter(Boolean).length))
+        throw new Error(JSON.stringify({ mode: s.mode, turned, moved, kind: e.kind, endMode: e.mode, keysTurned }));
+      return `a quarter round the circle turned the sim ${Math.abs(turned).toFixed(1)}° (hips moved ${(moved * 100).toFixed(1)} cm), ${keysTurned} key(s) turned`;
+    });
+    await step('R, then dragging the green ring turns the whole sim too', async () => {
+      const s = await page.evaluate(() => window.__t.screen(window.app.interact.proxy.position.toArray()));
+      const f0 = await facing();
+      let hit = null;
+      for (let r = 10; r < 300 && !hit; r += 3) for (let a = 0; a < 360; a += 12) {
+        const x = s[0] + r * Math.cos(a * Math.PI / 180), y = s[1] + r * Math.sin(a * Math.PI / 180);
+        await page.mouse.move(x, y);
+        if (await page.evaluate(() => window.app.vp.gizmo.axis) === 'Y' && !(await page.evaluate(([px, py]) => !!window.app.interact._rootAt({ clientX: px, clientY: py }), [x, y]))) { hit = { x, y, a }; break; }
+      }
+      if (!hit) throw new Error('no point on the ring outside the circle');
+      await page.mouse.down();
+      const t = (hit.a + 90) * Math.PI / 180;
+      for (let k = 1; k <= 10; k++) await page.mouse.move(hit.x + Math.cos(t) * 6 * k, hit.y + Math.sin(t) * 6 * k, { steps: 1 });
+      await page.mouse.up();
+      await P.sleep(200);
+      const f1 = await facing(), turned = turnBy(f0.yaw, f1.yaw);
+      if (!(Math.abs(turned) > 5)) throw new Error(JSON.stringify({ turned, hit }));
+      return `the ring turned it ${Math.abs(turned).toFixed(1)}°`;
+    });
 
     await step('the Move tool (M) moves the part clicked, never the whole sim', async () => {
       const r = await page.evaluate(() => {

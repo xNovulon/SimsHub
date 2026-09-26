@@ -284,8 +284,9 @@ export class Interaction {
       for (const [sid, v] of this.views()) v.hover(sid === id ? 'all' : -1);
       this.vp.canvas.style.cursor = 'grab';
       this.app.setHotBone?.(null);
-      const sim = this.app.store.sim(id);
-      this.app.hud(`${sim ? sim.label + ' · ' : ''}the whole sim · drag to slide it`);
+      const sim = this.app.store.sim(id), a = this.active;
+      const turn = a && a.kind === 'place' && a.simId === id && this.vp.gizmo.mode === 'rotate';
+      this.app.hud(`${sim ? sim.label + ' · ' : ''}the whole sim · drag to ${turn ? 'turn' : 'slide'} it`);
       return true;
     }
     if (!id) return false;
@@ -299,10 +300,11 @@ export class Interaction {
     this.app.store.selected = { sim: simId, bone: null };
     this.selectPlace(simId, mode);
     this.app.emitSelection();
-    this.app.hud(mode === 'rotate' ? 'Ring: turn the whole sim' : 'Arrows: move the whole sim (R turns it)', { hold: 1400 });
+    this.app.hud(mode === 'rotate' ? 'Drag the circle or its ring to turn the whole sim (T slides it)' : 'Arrows: move the whole sim (R turns it)', { hold: 1400 });
   }
 
-  // A press on a circle that then moves slides the sim over the floor (the plane of the floor, grabbed where pressed).
+  // A press on a circle that then moves slides the sim over the floor (the plane of the floor, grabbed where pressed);
+  // with the circle's turn ring up (R) it turns the sim about the circle instead, following the pointer round it.
   // A press that doesn't move is an ordinary click (it picks the circle).
   _rootDown(e) {
     if (e.button !== 0 || e.altKey || e.ctrlKey || e.metaKey || this.vp.dragging || this.app.preview) return;
@@ -313,7 +315,9 @@ export class Interaction {
     const c = this.vp.canvas, gz = this.vp.gizmo;
     this.downAt = [e.clientX, e.clientY];
     try { c.setPointerCapture(e.pointerId); } catch { /* not a real pointer (tests) */ }
-    const drag = { from: [e.clientX, e.clientY], on: false, plane: null, grab: null };
+    const a0 = this.active;
+    const turning = !!(a0 && a0.kind === 'place' && a0.simId === simId && gz.mode === 'rotate' && gz.object === this.proxy);
+    const drag = { from: [e.clientX, e.clientY], on: false, plane: null, grab: null, ang0: null, q0: null };
     const rayAt = ev => {
       const r = c.getBoundingClientRect(), rc = new THREE.Raycaster();
       rc.setFromCamera(new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1), this.vp.camera);
@@ -324,17 +328,27 @@ export class Interaction {
       if (!drag.on) {
         if (Math.hypot(ev.clientX - drag.from[0], ev.clientY - drag.from[1]) < 4) return;
         const a = this.active;
-        if (!(a && a.kind === 'place' && a.simId === simId && gz.mode === 'translate')) this.selectRoot(simId, 'translate');
+        if (!turning && !(a && a.kind === 'place' && a.simId === simId && gz.mode === 'translate')) this.selectRoot(simId, 'translate');
         drag.plane = new THREE.Plane(UP.clone(), -this.proxy.position.y);
         const p0 = rayAt({ clientX: drag.from[0], clientY: drag.from[1] }).intersectPlane(drag.plane, new THREE.Vector3());
         drag.grab = p0 ? p0.sub(this.proxy.position) : new THREE.Vector3();
+        drag.q0 = this.proxy.quaternion.clone();
+        if (turning && Math.hypot(drag.grab.x, drag.grab.z) >= 0.015) drag.ang0 = Math.atan2(drag.grab.x, drag.grab.z);
         drag.on = true;
         gz.dispatchEvent({ type: 'dragging-changed', value: true });
         gz.dispatchEvent({ type: 'mouseDown' });
       }
       const p = rayAt(ev).intersectPlane(drag.plane, new THREE.Vector3());
       if (!p) return;
-      this.proxy.position.copy(p.sub(drag.grab));
+      if (turning) {
+        // the angle of the pointer round the circle's centre on the floor, counted from the press (or, for a press in
+        // the very middle, from where the pointer first is 1.5 cm off it - so it doesn't jump)
+        const d = p.sub(this.proxy.position);
+        if (Math.hypot(d.x, d.z) < 0.015) return;
+        const ang = Math.atan2(d.x, d.z);
+        if (drag.ang0 === null) { drag.ang0 = ang; return; }
+        this.proxy.quaternion.setFromAxisAngle(UP, ang - drag.ang0).multiply(drag.q0);
+      } else this.proxy.position.copy(p.sub(drag.grab));
       gz.dispatchEvent({ type: 'objectChange' });
     };
     const up = () => {
