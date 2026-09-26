@@ -226,7 +226,8 @@ function fetchHair(app, spec) {
   const key = hairKey(spec);
   if (!app._hair.has(key)) {
     const p = json('/api/hair?' + q(spec)).then(data => {
-      if (!data || !data.meshes || !data.meshes.length) return { data, texture: null };
+      // no hair in the answer: the engine may still be reading the game's parts - asked again next time
+      if (!data || !data.meshes || !data.meshes.length) { app._hair.delete(key); return { data, texture: null }; }
       if (!data.texture) return { data, texture: null };
       return new Promise(res => {
         _texLoader.load('/api/hair_tex?file=' + encodeURIComponent(data.texture), tex => {
@@ -240,6 +241,15 @@ function fetchHair(app, spec) {
   return app._hair.get(key);
 }
 
+// Try something again after 2, 5 and then 12 s (at most 3 times per view and thing).
+export function retryLater(v, what, fn) {
+  v._retries = v._retries || {};
+  const n = v._retries[what] = (v._retries[what] || 0) + 1;
+  if (n > 3) return false;
+  setTimeout(fn, [2000, 5000, 12000][n - 1]);
+  return true;
+}
+
 // Put the right hair on a view (hooks.viewCreated, and after a change). Stale answers are dropped.
 export async function loadHair(app, v, s) {
   const spec = hairSpecOf(app, s), key = hairKey(spec);
@@ -251,7 +261,12 @@ export async function loadHair(app, v, s) {
   const r = await fetchHair(app, spec);
   if (v.hairKey !== key || app.simViews.get(s.id) !== v) return 0;          // changed or replaced meanwhile
   v.removeParts('hair');
-  if (!r || !r.data || !r.data.meshes || !r.data.meshes.length) return 0;
+  if (!r || !r.data || !r.data.meshes || !r.data.meshes.length) {
+    // a failed or empty answer (a busy start: a continued animation asks for everything at once) is tried again a
+    // few times, a little later each time - never taken as "no hair" for good on the first try
+    if (retryLater(v, 'hair:' + key, () => { if (app.simViews.get(s.id) === v && v.hairKey === undefined) loadHair(app, v, s).catch(() => {}); })) v.hairKey = undefined;
+    return 0;
+  }
   const n = v.addPart(r.data, r.texture, { role: 'hair' });
   v.hairMs = Math.round(performance.now() - t0);
   v.hairName = r.data.name || null;

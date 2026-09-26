@@ -6,6 +6,7 @@
 // own outfit) or {basic: 'underwear'}, with off: [casp, ...] for the pieces taken off (the clothes remover). Undress moments on the timeline hide the parts they take off while the
 // playhead is past them; app.clothesHidden hides every sim's clothes.
 import * as THREE from 'three';
+import { retryLater } from './bodies.js';
 
 // what an undress moment takes off (WickedWhims' naked types -> the part kinds clothes.py gives)
 const BODY = ['full', 'top', 'bottom', 'tights', 'socks', 'shoes'];
@@ -129,12 +130,17 @@ export async function loadClothes(app, v, s) {
   if (!spec) { v.removeParts('clothes'); v.clothesInfo = null; if (v.setCovered) v.setCovered(null); return 0; }
   v.clothesInfo = { loading: true, shown: 0, missing: [], painted: [] };
   const stale = () => v.clothesKey !== key || app.simViews.get(s.id) !== v;
+  // a failed answer (a busy start) is asked again a little later, a few times
+  const again = () => { if (retryLater(v, 'clothes:' + key, () => { if (app.simViews.get(s.id) === v && v.clothesKey === undefined) loadClothes(app, v, s).catch(() => {}); })) v.clothesKey = undefined; };
   let outfit;
   try {
     const list = await outfitList(app, spec.list);
     outfit = list.items.find(o => o.key === spec.pick) || null;
   } catch (err) {
-    if (!stale()) { v.removeParts('clothes'); v.setCovered && v.setCovered(null); v.clothesInfo = { error: err.message, shown: 0, missing: [], painted: [] }; }
+    if (!stale()) {
+      v.removeParts('clothes'); v.setCovered && v.setCovered(null); v.clothesInfo = { error: err.message, shown: 0, missing: [], painted: [] };
+      again();
+    }
     return 0;
   }
   if (stale()) return 0;
@@ -156,6 +162,7 @@ export async function loadClothes(app, v, s) {
     if ((v.parts || []).length > before) info.shown++;
   });
   v.clothesInfo = info;
+  if (results.some(r => r && r.data && r.data.error)) again();
   if (!(await paintOnSkin(app, v, s, painted, key))) {
     // nothing to paint them on (no garment with a body mesh): say so, as before
     for (const t of painted) info.painted.push(((results.find(r => r && r.texture === t) || {}).data || {}).name || 'a piece');
