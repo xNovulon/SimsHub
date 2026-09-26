@@ -211,6 +211,13 @@ node tools/checks/clothes/ui_smoke.js          # clothes preview, incl. the hove
   along: the `retime` hook). Checks: `node tools/checks/furnanim/furn_anim.js` (the editor) and
   `python3 tools/checks/bedanim/test_bed_export.py` (the bones in /api/furniture_mesh and the bed clip; needs the game).
 - Moving the whole piece doesn't move the sit/lie spots or Magic's placing: those stay where the game puts the object.
+- The Scene step has a Blanket section for beds ("Sims under it" / "Pulled back" / "Move it by hand").
+- The beds shown have no headboard or footboard (owner's request): `objmesh.SHOWN` picks the first one the game has -
+  double: Eco Lifestyle mattress on pallets (241642), Outdoor Retreat air bed, then a base-game bed; single: Outdoor
+  Retreat air bed (68869), then a base-game bed. Same rig bones and spots as WickedWhims' reference beds (51719,
+  288627), which the exporter still reads for the bed clip.
+- Sit/lie spots: lying down from a seat lets the feet go and straightens the legs; sitting from lying sits the body up
+  first (`placing.js` letFeetGo / seated / straightLegs / standUp). A sim in front of a spot takes the click.
 
 ## Posing: R, T and the circle
 - R gives the picked part its rings, T its arrows (`Interaction.turnSelected` / `moveSelected`). T never moves the whole

@@ -96,7 +96,11 @@ export function install(app) {
   const pickSpot = e => {
     if (!slots.group) return null;
     const hit = app.vp.pick(e, [slots.group]);
-    let o = hit && hit.object;
+    if (!hit) return null;
+    // a sim in front of the spot (a leg, a foot over it) is picked instead: the spot only takes the click on its own
+    const body = app.interact && app.interact._meshes ? app.vp.pick(e, app.interact._meshes()) : null;
+    if (body && body.distance < hit.distance) return null;
+    let o = hit.object;
     while (o && !o.userData.spot) o = o.parent;
     return o || null;
   };

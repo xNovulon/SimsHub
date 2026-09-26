@@ -5,7 +5,8 @@
             'water', 'skinned', 'skin': {'bones', 'rest', 'rq', 'idx', 'w'} (only when 'skinned': the mesh's rest
             pose and per-vertex blend weights, in the same object space as 'positions'), ...}], 'bounds': {'min',
             'max'}, 'surface_height', 'geometry_state', ...}  (JSON-cached)
-    furniture_for_location(name)     -> object_mesh() of WickedWhims' reference object for a location, or None
+    furniture_for_location(name)     -> object_mesh() of the object shown for a location (SHOWN, else WickedWhims'
+                                        reference object), or None
     all_locations()                  -> [{'location', 'object_id', 'name', 'bounds', 'surface_height',
                                           'geometry_state', 'slots'}] for every location with a resolvable object
     prop_list()                      -> [{'guid', 'objName', 'name', 'uses', 'source'}]: the props the animation
@@ -1210,17 +1211,44 @@ def example_objects():
 # geometry state to show for a location when the automatic choice is not the in-use look
 LOCATION_STATES = {'BLANKET': 'Blanket'}
 
+# Objects shown instead of the reference object, first one the game has: beds with no headboard or footboard, so
+# nothing is in the way of legs over the ends. Same rig, spots and mattress height as the reference bed (the double
+# bed's rig is shared by every double bed; the single ones carry the same _bind_SB_ bones).
+SHOWN = {
+    'DOUBLE_BED': [241642, 68856, 20902],      # Eco Lifestyle mattress on pallets, Outdoor Retreat air bed, base game
+                                               # (low headboard)
+    'SINGLE_BED': [68869, 22953],              # Outdoor Retreat air bed, base game (low headboard)
+}
+
+
+def shown_object(loc):
+    """The object id shown for a location: the first of SHOWN the game has, else WickedWhims' reference object."""
+    loc = str(loc).upper()
+    for oid in SHOWN.get(loc, ()):
+        try:
+            if source_of(oid) == 'game':
+                return oid
+        except Exception:
+            break
+    return example_objects().get(loc)
+
 
 def furniture_for_location(name):
-    """Mesh of WickedWhims' reference object for a location name (e.g. 'DOUBLE_BED'), or None."""
+    """Mesh of the object shown for a location name (e.g. 'DOUBLE_BED'), or None."""
     loc = str(name).upper()
-    oid = example_objects().get(loc)
+    oid = shown_object(loc)
     if oid is None:
         return None
     try:
         m = object_mesh(oid, state=LOCATION_STATES.get(loc))
     except (KeyError, ValueError):
-        return None
+        ref = example_objects().get(loc)
+        if ref is None or ref == oid:
+            return None
+        try:
+            m = object_mesh(ref, state=LOCATION_STATES.get(loc))
+        except (KeyError, ValueError):
+            return None
     return dict(m, location=loc)
 
 
@@ -1229,11 +1257,12 @@ def all_locations():
     [{'location', 'object_id', 'name', 'bounds', 'surface_height', 'geometry_state', 'slots'}] (cached)."""
     path = os.path.join(CACHE_DIR, 'locations_v%d.json' % VERSION)
     ex = example_objects()
+    shown = {loc: shown_object(loc) for loc in SHOWN}
     if os.path.exists(path):
         try:
             with open(path, encoding='utf-8') as f:
                 cached = json.load(f)
-            if cached.get('examples') == ex:
+            if cached.get('examples') == ex and cached.get('shown') == shown:
                 return cached['locations']
         except Exception:
             pass
@@ -1250,7 +1279,7 @@ def all_locations():
                     'slots': m.get('slots') or []})
     tmp = '%s.%d.tmp' % (path, os.getpid())
     with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump({'examples': ex, 'locations': out}, f, separators=(',', ':'))
+        json.dump({'examples': ex, 'shown': shown, 'locations': out}, f, separators=(',', ':'))
     os.replace(tmp, path)
     return out
 

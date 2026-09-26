@@ -18,7 +18,7 @@ export async function furnitureInfo(app, placeId) {
   if (!placeId || placeId === 'floor') return null;
   app._furnInfo = app._furnInfo || new Map();
   if (!app._furnInfo.has(placeId)) {
-    app._furnInfo.set(placeId, fetch('/api/furniture_mesh?v=2&id=' + encodeURIComponent(placeId))
+    app._furnInfo.set(placeId, fetch('/api/furniture_mesh?v=4&id=' + encodeURIComponent(placeId))
       .then(r => (r.ok ? r.json() : null)).catch(() => null));
   }
   return app._furnInfo.get(placeId);
@@ -485,7 +485,9 @@ export function sitOn(app, sim, slot, { frame = null, others = [] } = {}) {
   const f = Math.round(frame ?? app.store.frame);
   // the feet may be pinned somewhere else: they follow the new spot (or are let go) - pins first, so the turn below
   // does not carry old pins along
-  for (const limb of ['L foot', 'R foot']) if (sim.pins && Array.isArray(sim.pins[limb])) delete sim.pins[limb];
+  letFeetGo(sim);
+  // lying down (a lying spot before): sit up first - the body turns upright about the pelvis, the legs follow below
+  if (!others.length) standUp(app, sim, v, f);
   app.pipeline.base({ sim, v }, f);
   // which way the sim faces: where its knees are (a seated sim's thighs point forward), else its hips' forward
   const pel0 = spacePos(v, v.bone('b__Pelvis__'));
@@ -513,6 +515,52 @@ export function sitOn(app, sim, slot, { frame = null, others = [] } = {}) {
   }
   app.pipeline.base({ sim, v }, f);
   return true;
+}
+
+// Feet pinned in place (a seat's floor spots) let go; a hand or foot holding on to a partner keeps its hold.
+function letFeetGo(sim) {
+  for (const limb of ['L foot', 'R foot']) if (sim.pins && Array.isArray(sim.pins[limb])) delete sim.pins[limb];
+}
+
+// Sitting at frame f: the body upright (head over the pelvis) with the thighs bent forward across its line.
+function seated(app, sim, v, f) {
+  if (!v.bone('b__Pelvis__') || !v.bone('b__Head__')) return false;
+  app.pipeline.base({ sim, v }, f);
+  const pel = spacePos(v, v.bone('b__Pelvis__')), up = spacePos(v, v.bone('b__Head__')).sub(pel);
+  if (up.y < 0.35) return false;
+  up.normalize();
+  let s = 0, n = 0;
+  for (const side of ['L', 'R']) {
+    const [A, B] = LIMBS[side + ' foot'].map(x => v.bone(x));
+    if (!A || !B) continue;
+    s += spacePos(v, B).sub(spacePos(v, A)).normalize().dot(up); n++;
+  }
+  // straight legs run down the body's line (-1); a seat bends them to about 0
+  return n > 0 && s / n > -0.6;
+}
+
+// The legs straight again (as the body stands), in every key and a pose not keyed yet.
+function straightLegs(app, sim, v) {
+  const names = [...LIMBS['L foot'], ...LIMBS['R foot']].filter(n => v.index(n) >= 0);
+  const fix = pose => {
+    if (!pose) return;
+    pose.rot = pose.rot || {};
+    for (const n of names) pose.rot[n] = v.rest[v.index(n)].quat.toArray();
+  };
+  for (const key of sim.keys) if (!key.faceOnly) fix(key.pose);
+  const ov = app.pipeline.overrides.get(sim.id);
+  if (ov) fix(ov.pose);
+}
+
+// Lying (the head no higher than the pelvis's line allows for sitting): the whole body turns upright about the
+// pelvis, through the whole animation, so a seat can bend its legs from there.
+function standUp(app, sim, v, f) {
+  if (!v.bone('b__Pelvis__') || !v.bone('b__Head__')) return;
+  app.pipeline.base({ sim, v }, f);
+  const pel = spacePos(v, v.bone('b__Pelvis__')), up = spacePos(v, v.bone('b__Head__')).sub(pel);
+  if (up.lengthSq() < 1e-6 || up.clone().normalize().y > 0.6) return;
+  turnSimBy(app, sim.id, new THREE.Quaternion().setFromUnitVectors(up.normalize(), UP), pel);
+  straightLegs(app, sim, v);
 }
 
 // The legs of a seated sim, in every key: the knees forward and up, the feet on the object's foot spots (a seat, a bed's
@@ -547,6 +595,9 @@ export async function lieOn(app, sim, spot, info, { frame = null } = {}) {
   if (!v || !spot || !spot.pos) return false;
   const f = Math.round(frame ?? app.store.frame);
   const at = n => { app.pipeline.base({ sim, v }, f); return spacePos(v, v.bone(n)); };
+  // from a seat: the feet let go of the floor spots and the bent legs straighten (else they point up once lying)
+  letFeetGo(sim);
+  if (seated(app, sim, v, f)) straightLegs(app, sim, v);
   const head = v.bone('b__Head__') ? at('b__Head__') : null;
   const low = lowestSkin(app, [sim], f);
   if (head && head.y - low > 1.0) {

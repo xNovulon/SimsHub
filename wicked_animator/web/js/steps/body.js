@@ -128,7 +128,7 @@ function otherBodies(app, sim, v) {
       Object.entries(B.SIZE_PRESETS).map(([k, p]) => h('button', { class: cur === k ? 'on' : '', onclick: () => app.tryBody(sim.id, { kind: 'size', preset: k }) }, p.label)))));
   }
   const cycling = !!(app._cycle && app._cycle.simId === sim.id);
-  kids.push(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, 'Change body every loop while playing'), h('span', {}, 'Catches hands and contact that only work on one body')),
+  kids.push(h('div', { class: 'toggle-row' }, h('div', {}, h('b', {}, 'Play it on each body in turn'), h('span', {}, 'Plays the animation and switches to the next body every time it starts over')),
     toggle(cycling, on => { app.cycleBodies(on, sim.id); if (!on) app.endTrial(sim.id); })));
   const sec = section(['Try it on other bodies', t ? h('span', { class: 'count' }, 'trying') : null], ...kids);
   sec.classList.add('try-bodies');

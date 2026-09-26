@@ -15,7 +15,7 @@
 // A game bed's bedding is skinned to its rig (/api/furniture_mesh "skin"); the stand-in bed's blanket and pillows get
 // the same kind of weights here, so both bend the same way.
 import * as THREE from 'three';
-import { h, icon, toast, contextMenu } from '../ui.js';
+import { h, icon, toast, contextMenu, section } from '../ui.js';
 
 const ROW_H = 22;
 const ID = [0, 0, 0, 0, 0, 0, 1];
@@ -706,7 +706,8 @@ function drawCard(app) {
     const pt = d.parts.blanket;
     const under = h('input', { type: 'checkbox', checked: !!pt.under, 'data-under': '1', onchange: () => setUnder(app, under.checked) });
     body.push(seg('blanket'), h('label', { class: 'fa-check' }, under, 'Under the blanket'),
-      h('div', { class: 'hint' }, pt.mode !== 'hand' ? (pt.under ? 'It covers the sims and follows their bodies.' : 'It lies pulled back to the foot of the bed.')
+      h('div', { class: 'hint' }, pt.mode !== 'hand' ? (pt.under ? 'It covers the sims and follows their bodies. Drag a blue dot to move it yourself.'
+        : 'It lies pulled back to the foot of the bed. Drag a blue dot to move it yourself.')
         : 'Drag a blue dot on the blanket. Keys go on the timeline.'),
       pt.mode === 'hand' ? h('button', { class: 'btn small', 'data-act': 'from-auto', onclick: () => { app.store.checkpoint('Start from automatic'); bakeAuto(app, F, 'blanket'); app.store.setDirty(true); refresh(app); } }, 'Start from automatic') : null);
   } else {
@@ -724,11 +725,12 @@ function drawCard(app) {
   ].filter(Boolean));
 }
 
-function setUnder(app, on) {
+function setUnder(app, on, { auto = false } = {}) {
   pause(app);
   const p = app.store.project, pt = ensure(app).parts.blanket;
   app.store.checkpoint(on ? 'Under the blanket' : 'On the blanket');
   pt.under = !!on;
+  if (auto) pt.mode = 'auto';                                  // the Scene step's choice: it follows the sims again
   // WickedWhims' own tag for it, so players can find it
   p.tags = Array.isArray(p.tags) ? p.tags : [];
   const i = p.tags.indexOf('UNDER_COVERS');
@@ -756,7 +758,8 @@ function setOn(app, on) {
   if (F.detach) { F.detach(); F.detach = null; }
   if (on) {
     ensure(app);
-    if (!F.sel || (F.sel !== 'object' && def.kind !== 'bed')) F.sel = 'object';
+    // a bed opens on its blanket (what most animations move), the others on the piece itself
+    if (!F.sel || (F.sel !== 'object' && def.kind !== 'bed')) F.sel = def.kind === 'bed' ? 'blanket' : 'object';
     if (app.timeline && typeof app.timeline.addRow === 'function') F.rows = rowsFor(app, F).map(r => app.timeline.addRow(r));
     if (app.playing) app.setPlaying(false);
     apply(app);                                               // measure the piece now, so the gizmo can go on it
@@ -781,7 +784,7 @@ export function install(app) {
   app.__furnAnim = true;
   const hooks = app.hooks || {};
   const add = (name, fn) => { const list = name.split('.').reduce((o, k) => o && o[k], hooks); if (Array.isArray(list)) list.push(fn); };
-  const F = app._furn = { on: false, sel: 'object', handle: null, rows: [], rig: null, rigs: new Map(), live: null, dragging: null, detach: null };
+  const F = app._furn = { on: false, sel: null, handle: null, rows: [], rig: null, rigs: new Map(), live: null, dragging: null, detach: null };
   F.proxy = new THREE.Object3D(); app.vp.scene.add(F.proxy);
   F.dots = new THREE.Group(); F.dots.name = 'furniture-dots'; app.vp.overlay.add(F.dots);
   // the button in the timeline bar, and the panel over the stage
@@ -799,6 +802,23 @@ export function install(app) {
     const meshes = []; F.rig.g.traverse(o => { if (o.isMesh) meshes.push(o); });
     if (app.vp.pick(e, meshes)) { select(app, 'object'); return true; }
     return false;
+  });
+  // the Scene step, with a bed: under the blanket or not, and moving it by hand (before the closing tip)
+  add('sections.scene', (a, root) => {
+    const def = defOf(app);
+    if (!def || def.kind !== 'bed') return;
+    const d = fa(app), pt = (d && d.parts && d.parts.blanket) || { mode: 'auto', under: false };
+    const auto = pt.mode !== 'hand';
+    const pick = on => { setUnder(app, on, { auto: true }); if (app.step === 'scene') app.renderStep(); };
+    const sec = section('Blanket',
+      h('div', { class: 'seg small fa-seg fa-under' },
+        h('button', { class: auto && pt.under ? 'active' : '', 'data-under': 'on', onclick: () => pick(true) }, 'Sims under it'),
+        h('button', { class: auto && !pt.under ? 'active' : '', 'data-under': 'off', onclick: () => pick(false) }, 'Pulled back')),
+      h('div', { class: 'hint' }, auto ? 'It moves with the sims by itself and goes to the game with the animation.' : 'Moved by hand - its keys are on the timeline.'),
+      h('button', { class: 'btn small', 'data-act': 'blanket-hand', onclick: () => { setOn(app, true); select(app, 'blanket'); } }, icon('bed'), 'Move it by hand'));
+    sec.classList.add('blanket-card');
+    const tipEl = root.querySelector(':scope > .tip');
+    if (tipEl) root.insertBefore(sec, tipEl); else root.append(sec);
   });
   add('afterApply', () => { try { apply(app); } catch (err) { console.error('furniture animation:', err); } });
   // the old piece left the stage: its bending copies go (a kept game bed keeps only its bone data, for sending)

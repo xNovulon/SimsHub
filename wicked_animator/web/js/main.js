@@ -659,7 +659,7 @@ class App {
     }
     this._furnInfo = this._furnInfo || new Map();
     if (!this._furnInfo.has(id)) {
-      this._furnInfo.set(id, fetch('/api/furniture_mesh?v=2&id=' + encodeURIComponent(id)).then(r => (r.ok ? r.json() : null)).catch(() => null));
+      this._furnInfo.set(id, fetch('/api/furniture_mesh?v=4&id=' + encodeURIComponent(id)).then(r => (r.ok ? r.json() : null)).catch(() => null));
     }
     return this._furnInfo.get(id).then(info => { this._furnInfoKnown.set(id, info || null); return info; });
   }
@@ -3560,6 +3560,9 @@ class App {
     // sections other features add at the end of this step's panel
     this.runHook('sections.' + this.step, this, body);
     body.scrollTop = keep;
+    // sections that fill in a moment later (hair, the Tray bodies) must not move the page: the same place again once
+    // they have (the panel doesn't follow them by itself: overflow-anchor is off in app.css)
+    if (keep) requestAnimationFrame(() => { if (body.scrollTop !== keep) body.scrollTop = keep; });
     foot.innerHTML = '';
     const order = Object.keys(STEPS).filter(k => k !== 'library');
     const i = order.indexOf(this.step);

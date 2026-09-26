@@ -122,7 +122,7 @@ function refreshBodies(app) {
   if (app.step === 'body') app.renderStep();
 }
 
-// The options "Change body every loop" goes through for a sim: own, the Tray sims with the same body, the sizes.
+// The options "Play it on each body in turn" goes through for a sim: own, the Tray sims with the same body, the sizes.
 export async function trialOptions(app, s) {
   const out = [{ kind: 'own', label: 'Own body' }];
   if (s.frame !== 'yf_futa') {
@@ -153,10 +153,13 @@ export async function nextBody(app, simId) {
   if (after && after.kind !== 'own') loadOption(app, s, after).catch(() => {});
 }
 
-// "Change body every loop while playing": at every loop wrap the next body (hooks.tick).
+// "Play it on each body in turn": it plays, and at every loop wrap the next body comes (hooks.tick). Switched off, it
+// stops playing too.
 export function setCycle(app, simId, on) {
+  const was = !!app._cycle;
   app._cycle = on ? { simId, busy: false } : null;
   if (on && !app.playing) app.setPlaying(true);
+  if (!on && was && app.playing) app.setPlaying(false);
   if (on) nextBody(app, simId);
   showBanner(app);
 }
@@ -185,7 +188,7 @@ export function showBanner(app) {
   const [id, t] = entries[0] || [app._cycle && app._cycle.simId, null];
   const sim = app.store.sim(id);
   const txt = document.createElement('span');
-  txt.innerHTML = t ? `Trying <b></b> on <b></b>` : `Changing bodies every loop on <b></b>`;
+  txt.innerHTML = t ? `Trying <b></b> on <b></b>` : `Each body in turn on <b></b>`;
   const bs = txt.querySelectorAll('b');
   if (t) { bs[0].textContent = t.label; bs[1].textContent = sim ? sim.label : ''; } else bs[0].textContent = sim ? sim.label : '';
   const btn = (label, fn, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = 'vp-trial-btn ' + cls; b.textContent = label; b.onclick = fn; return b; };

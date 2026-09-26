@@ -168,7 +168,7 @@ const _cache = new Map();
 function sharedInfo(id, app = window.app) {
   const map = app ? (app._furnInfo = app._furnInfo instanceof Map ? app._furnInfo : new Map()) : _infoFallback;
   if (!map.has(id)) {
-    map.set(id, fetch('/api/furniture_mesh?v=3&id=' + encodeURIComponent(id)).then(r => (r.ok ? r.json() : null)).catch(() => null));
+    map.set(id, fetch('/api/furniture_mesh?v=4&id=' + encodeURIComponent(id)).then(r => (r.ok ? r.json() : null)).catch(() => null));
   }
   return Promise.resolve(map.get(id));
 }
