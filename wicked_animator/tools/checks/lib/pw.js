@@ -28,7 +28,7 @@ function threeDir() {
   return null;
 }
 
-async function open(port, { w = 1366, h = 768, intercept = true, allow = [], extraWrites = [], query = '', timeout = 120000 } = {}) {
+async function open(port, { w = 1366, h = 768, intercept = true, allow = [], extraWrites = [], query = '', timeout = 120000, scene = null } = {}) {
   port = +port;
   if (H.REFUSED.has(port)) throw new Error(`port ${port} belongs to someone else (the user's app, the Sims Hub or the verifier)`);
   const base = `http://127.0.0.1:${port}`;
@@ -67,6 +67,8 @@ async function open(port, { w = 1366, h = 768, intercept = true, allow = [], ext
   }
   await page.goto(`${base}/?slot=test${query ? '&' + query : ''}`, { waitUntil: 'domcontentloaded', timeout });
   await page.waitForSelector('#loading.done', { state: 'attached', timeout }).catch(() => logs.push({ type: 'harness', text: 'the app never became ready (#loading.done)' }));
+  // the app opens on an empty scene; scene: 'couple' starts the check from the ready-made couple (as harness.js)
+  if (scene) await page.evaluate(t => { if (!app.store.project.sims.length) app.newScene(false, false, t); }, scene).catch(e => logs.push({ type: 'harness', text: 'no ' + scene + ' scene: ' + e.message }));
   return { browser, context, page, logs, writes, base };
 }
 

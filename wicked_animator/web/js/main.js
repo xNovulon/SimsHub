@@ -3559,8 +3559,8 @@ class App {
     if (hold) this._hudHold = now + hold;
     else if (this._hudHold > now) return;
     const sim = this.store.sim();
-    const tool = { rotate: 'Click a body part, then turn the rings', ik: 'Drag the dots: hands, feet, hips - drop a hand on the partner to hold on · Alt+click pins them', move: 'Drag to move the whole sim · T switches to turning',
-      face: 'Click a dot on the face · T move/turn · X both sides · Alt goes past the safe range' }[this.interact.tool];
+    const tool = { rotate: 'Click a body part, then turn the rings · T moves it', ik: 'Drag the dots: hands, feet, hips - drop a hand on the partner to hold on · Alt+click pins them', move: 'Click a body part to move it · the circle at a sim\'s feet moves the whole sim',
+      face: 'Click a dot on the face · T moves, R turns · X both sides · Alt goes past the safe range' }[this.interact.tool];
     el.innerHTML = '';
     el.append(text ? h('span', {}, h('b', {}, text)) : h('span', {}, sim ? h('b', {}, sim.label + ' · ') : '', tool));
   }
@@ -3914,7 +3914,7 @@ class App {
       e.preventDefault();
       const sel = this.store.selected;
       if (!sel.sim || !sel.bone) { toast('Click a body part first.'); return; }
-      if (code === 'KeyG' && HIPS.includes(sel.bone)) { toast('The hips carry the sim\'s place - use Place (M) to move the whole sim.'); return; }
+      if (code === 'KeyG' && HIPS.includes(sel.bone)) { toast('The hips carry the sim\'s place. The circle at its feet moves the whole sim.'); return; }
       this.resetBone(sel.sim, sel.bone, code === 'KeyR' ? { turn: true, move: false } : { turn: false, move: true });
       toast(code === 'KeyR' ? `${label(sel.bone)}: turn reset.` : `${label(sel.bone)}: back in its place.`);
       return;
@@ -3927,15 +3927,12 @@ class App {
       case 'i': case 'I': this.keyPose(); break;                    // Blender's "insert keyframe"
       case 'Delete': case 'Backspace': if (onTl && hasSel) this.deleteSelectedKeys(); else this.deleteKey(); break;
       case 'p': case 'P': this.togglePlayRange(); break;
-      case 'r': case 'R': this.setTool('rotate'); break;
+      // R turns the picked part (its rings), T moves it (its arrows) - the circle at a sim's feet is the whole sim
+      case 'r': case 'R': if (!this.interact.turnSelected()) this.setTool('rotate'); break;
       case 'g': case 'G': this.setTool('ik'); break;
       case 'm': case 'M': this.setTool('move'); break;
       case 'x': case 'X': this.setMirrorEdit(!this.mirrorEdit); break;
-      case 't': case 'T':
-        // a face or extra part: arrows <-> rings; Place: move <-> turn
-        if (this.interact.toggleGizmoMode()) break;
-        if (this.interact.tool === 'move' && this.store.selected.sim) this.interact.selectPlace(this.store.selected.sim, this.vp.gizmo.mode === 'rotate' ? 'translate' : 'rotate');
-        break;
+      case 't': case 'T': if (this.interact.moveSelected()) this.emitSelection(); break;
       case 'Home': this.setFrame(0); break;
       case ',': this.jumpKey(-1); break;
       case '.': this.jumpKey(1); break;

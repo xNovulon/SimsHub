@@ -46,7 +46,7 @@ async function startServer() {
   let browser;
   const ok = (name, cond, detail) => rows.push({ name, ok: !!cond, detail });
   try {
-    const o = await P.open(PORT);
+    const o = await P.open(PORT, { scene: 'couple' });
     browser = o.browser;
     const { page, logs } = o;
     const bad = [];
@@ -104,7 +104,7 @@ async function startServer() {
       await waitWorn(3);
       const w = await worn();
       if (w.map(x => x.kind).join() !== 'top,bottom,shoes' || w.some(x => !x.visible || !x.map || x.maxBone >= x.bones || x.verts < 16)) throw new Error(JSON.stringify(w));
-      await page.waitForFunction(() => /3 parts shown/.test(document.querySelector('.clothes-note')?.innerText || ''), null, { timeout: 5000 });
+      await page.waitForFunction(() => /3 of 3 pieces on/.test(document.querySelector('.clothes-row .pieces-head')?.innerText || ''), null, { timeout: 5000 });
       await shot('casual');
       return w.map(x => `${x.kind} ${x.verts} verts`).join(', ');
     });
@@ -178,21 +178,65 @@ async function startServer() {
       if (JSON.stringify(chips) !== JSON.stringify(want)) throw new Error(chips.join(', '));
       return chips.join(', ');
     });
-    await step('Everyday: 4 parts on the Tray body, tights named as painted on the skin', async () => {
+    await step('Everyday: 4 parts on the Tray body, the tights painted on the skin as in the game', async () => {
       await page.click('.clothes-row [data-clothes="outfit:EVERYDAY:0"]');
       await waitWorn(4);
       const w = await worn(trayId);
-      await page.waitForFunction(() => /4 parts shown/.test(document.querySelector('.clothes-note')?.innerText || ''), null, { timeout: 5000 });
-      const note = await page.evaluate(() => document.querySelector('.clothes-note').innerText);
-      if (w.map(x => x.kind).join() !== 'top,bottom,shoes,accessory' || !/Painted on the skin.*yfTights_Test_Black/.test(note)) throw new Error(JSON.stringify({ w, note }));
+      // a piece the game paints on the skin is drawn into the sim's skin picture; only one that can't be is noted
+      const info = await page.evaluate(() => { const app = window.app, v = app.simViews.get(app.store.selected.sim); return v.clothesInfo; });
+      const note = await page.evaluate(() => document.querySelector('.clothes-row .clothes-note')?.innerText || '');
+      if (w.map(x => x.kind).join() !== 'top,bottom,shoes,accessory' || info.painted.length || /painted on the skin/.test(note)) throw new Error(JSON.stringify({ w, info, note }));
       await shot('tray_everyday');
-      return note;
+      return `${w.length} parts shown, the tights painted on the skin`;
+    });
+    // the picked part's tint and the hover glow show on what the sim wears, not only on the skin under it
+    const tintOn = () => page.evaluate(() => {
+      const app = window.app, v = app.simViews.get(app.store.selected.sim);
+      return (v.parts || []).filter(m => m.userData.role === 'clothes').map(m => {
+        const col = m.geometry.attributes.color, glow = m.geometry.attributes.glow;
+        if (!col || !glow) return { kind: m.userData.kind, attrs: false };
+        let tint = 0, lit = 0;
+        for (let i = 0; i < col.count; i++) { tint += 1 - col.getY(i); lit += glow.getX(i); }
+        return { kind: m.userData.kind, attrs: true, vc: !!m.material.vertexColors, tint: +tint.toFixed(2), lit: +lit.toFixed(2) };
+      });
+    });
+    await step('the selection tint and hover glow reach the worn clothes', async () => {
+      await page.evaluate(() => {
+        const app = window.app, v = app.simViews.get(app.store.selected.sim);
+        v.setPickMode('body');
+        v.highlight(v.index('b__Pelvis__'), '#ff2255');
+        v.hover(v.index('b__Pelvis__'));
+      });
+      await P.sleep(300);
+      const t = await tintOn();
+      const bottom = t.find(x => x.kind === 'bottom');
+      if (!t.every(x => x.attrs && x.vc) || !bottom || !(bottom.tint > 1) || !(bottom.lit > 1)) throw new Error(JSON.stringify(t));
+      await shot('tray_everyday_hips_picked');
+      return t.map(x => `${x.kind}: tint ${x.tint}, glow ${x.lit}`).join('; ');
+    });
+    await step('clothes put on while a part is picked show its tint at once', async () => {
+      await page.click('.clothes-row [data-clothes="basic:casual"]');
+      await page.waitForFunction(() => { const app = window.app, v = app.simViews.get(app.store.selected.sim);
+        return v.clothesInfo && !v.clothesInfo.loading && (v.parts || []).some(m => m.userData.role === 'clothes' && m.userData.kind === 'bottom'); }, null, { timeout: 10000 });
+      const t = await tintOn();
+      const bottom = t.find(x => x.kind === 'bottom');
+      if (!bottom || !(bottom.tint > 1) || !(bottom.lit > 1)) throw new Error(JSON.stringify(t));
+      return t.map(x => `${x.kind}: tint ${x.tint}, glow ${x.lit}`).join('; ');
+    });
+    await step('nothing picked: the clothes look as they did', async () => {
+      await page.evaluate(() => { const app = window.app, v = app.simViews.get(app.store.selected.sim); v.highlight(-1); v.hover(-1); });
+      await P.sleep(300);
+      const t = await tintOn();
+      if (!t.length || !t.every(x => x.tint === 0 && x.lit === 0)) throw new Error(JSON.stringify(t));
+      await page.click('.clothes-row [data-clothes="outfit:EVERYDAY:0"]');
+      await waitWorn(4);
+      return 'no tint, no glow';
     });
     await step('Formal: the part that is not installed is named, the rest shows', async () => {
       await page.click('.clothes-row [data-clothes="outfit:FORMAL:0"]');
       await waitWorn(1);
-      await page.waitForFunction(() => /Not installed: outfit/.test(document.querySelector('.clothes-note')?.innerText || ''), null, { timeout: 5000 });
-      const note = await page.evaluate(() => document.querySelector('.clothes-note').innerText);
+      await page.waitForFunction(() => /1 piece isn't installed on this PC/.test(document.querySelector('.clothes-row .clothes-note')?.innerText || ''), null, { timeout: 5000 });
+      const note = await page.evaluate(() => document.querySelector('.clothes-row .clothes-note').innerText);
       return note;
     });
     await step('the palette lists Clothes and Hide clothes', async () => {

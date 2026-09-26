@@ -62,24 +62,14 @@ export class Sim {
     // skin: a soft sheen so the body reads as skin, not plastic
     this.material = new THREE.MeshPhysicalMaterial({ color: skin, roughness: 0.55, metalness: 0.0, vertexColors: true, sheen: 0.45, sheenRoughness: 0.55, sheenColor: new THREE.Color('#ffc9b8'), clearcoat: 0.04, clearcoatRoughness: 0.6 });
     // hover glow: a per-vertex amount added as light, on top of the skin, cross-faded from the part glowing before;
-    // rim: a Fresnel edge light in the sim's colour (the selected sim, design.md 4.5)
-    const u = this._fxU = {
+    // rim: a Fresnel edge light in the sim's colour (the selected sim, design.md 4.5). The clothes get the same.
+    this._fxU = {
       glowColor: { value: new THREE.Color('#8fe3ff') }, glowT: { value: 1 },
       rimColor: { value: new THREE.Color(color) }, rimAmount: { value: 0 },
     };
     this._glowT0 = -1e9;
     this._rim = { from: 0, to: 0, t0: 0, ms: 0 };
-    this.material.onBeforeCompile = shader => {
-      Object.assign(shader.uniforms, u);
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float glow;\nattribute float glowPrev;\nuniform float glowT;\nvarying float vGlow;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = mix(glowPrev, glow, glowT);');
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform vec3 glowColor;\nvarying float vGlow;\nuniform vec3 rimColor;\nuniform float rimAmount;')
-        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += glowColor * vGlow * 0.42;\ndiffuseColor.rgb = mix(diffuseColor.rgb, glowColor, vGlow * 0.35);\n'
-          + 'if (rimAmount > 0.0) { float waF = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 3.2); totalEmissiveRadiance += rimColor * waF * rimAmount; }');
-    };
-    this.material.customProgramCacheKey = () => 'wa-sim-v2';
+    this._fx(this.material);
     const tick = () => this._tickFx();
     this.meshes = [];
     for (const part of body.meshes) {
@@ -89,10 +79,7 @@ export class Sim {
       if (part.uvs && part.uvs.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(part.uvs, 2));
       g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(part.bones, 4));
       g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(part.weights, 4));
-      const n = part.positions.length / 3;
-      g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(1), 3));
-      g.setAttribute('glow', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
-      g.setAttribute('glowPrev', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+      this._fxAttrs(g);
       g.setIndex(part.faces);
       if (!part.normals.length) g.computeVertexNormals();
       const mesh = new THREE.SkinnedMesh(g, this.material);
@@ -299,10 +286,14 @@ export class Sim {
       g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(part.weights, 4));
       g.setIndex(part.faces);
       if (!g.attributes.normal) g.computeVertexNormals();
-      const base = texture ? { map: texture } : { color };
+      // clothes and hair show the picked part's tint and the hover glow like the skin under them
+      const tint = role === 'clothes' || role === 'hair';
+      if (tint) this._fxAttrs(g);
+      const base = { ...(texture ? { map: texture } : { color }), vertexColors: tint };
       const solid = new THREE.MeshStandardMaterial({ ...base, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5, metalness: 0 });
       if (offset) Object.assign(solid, { polygonOffset: true, polygonOffsetFactor: -offset, polygonOffsetUnits: -2 * offset });
       const soft = withSoft ? new THREE.MeshStandardMaterial({ ...base, transparent: true, alphaTest: 0.04, depthWrite: false, side: THREE.DoubleSide, roughness: 0.5, metalness: 0 }) : null;
+      if (tint) for (const mat of soft ? [solid, soft] : [solid]) this._fx(mat);
       for (const [mat, order] of soft ? [[solid, 0], [soft, 1]] : [[solid, 0]]) {
         const m = new THREE.SkinnedMesh(g, mat);
         m.renderOrder = order;
@@ -321,6 +312,7 @@ export class Sim {
     }
     this._partKey = null;
     this._syncParts(true);
+    this._fxRepaint();
     return this.parts.length;
   }
 
@@ -512,13 +504,59 @@ export class Sim {
     return out;
   }
 
+  // The tint and hover glow: the skin's material, and each worn garment's (addPart). A per-vertex glow amount is
+  // added as light, cross-faded from the part glowing before; the rim is a Fresnel edge light in the sim's colour.
+  _fx(material) {
+    const u = this._fxU;
+    material.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms, u);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float glow;\nattribute float glowPrev;\nuniform float glowT;\nvarying float vGlow;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = mix(glowPrev, glow, glowT);');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform vec3 glowColor;\nvarying float vGlow;\nuniform vec3 rimColor;\nuniform float rimAmount;')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += glowColor * vGlow * 0.42;\ndiffuseColor.rgb = mix(diffuseColor.rgb, glowColor, vGlow * 0.35);\n'
+          + 'if (rimAmount > 0.0) { float waF = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 3.2); totalEmissiveRadiance += rimColor * waF * rimAmount; }');
+    };
+    material.customProgramCacheKey = () => 'wa-sim-v2';
+  }
+  // the per-vertex tint (colour) and glow the shader above reads; untinted, unlit to start
+  _fxAttrs(g) {
+    const n = g.attributes.position.count;
+    g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+    g.setAttribute('glow', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute('glowPrev', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+  }
+  // Everything that shows the tint: the body, and the clothes (one mesh per geometry - a garment's soft edge pass
+  // shares its solid pass's).
+  _fxMeshes() {
+    const out = [...this.meshes], seen = new Set(out.map(m => m.geometry));
+    for (const m of this.parts || []) {
+      if (!m.geometry.attributes.glow || seen.has(m.geometry)) continue;
+      seen.add(m.geometry); out.push(m);
+    }
+    return out;
+  }
+  // New clothes take on the tint and glow already showing.
+  _fxRepaint() {
+    if (this._hl) { this.highlighted = null; this.highlight(this._hl[0], this._hl[1]); }
+    if (this.hovered === -1 || this.hovered === null || this.hovered === undefined) return;
+    for (const mesh of this._fxMeshes()) {
+      const g = mesh.geometry.attributes.glow, g0 = mesh.geometry.attributes.glowPrev;
+      const w = this._partWeight(mesh, this.hovered);
+      g.array.set(w); g0.array.set(w);
+      g.needsUpdate = true; g0.needsUpdate = true;
+    }
+  }
+
   // The selected part, tinted in the sim's colour.
   highlight(boneIndex, color = this.color) {
     const key = boneIndex + '|' + color + '|' + this.pickMode;
     if (key === this.highlighted) return;
     this.highlighted = key;
+    this._hl = [boneIndex, color];
     const c = new THREE.Color(color);
-    for (const mesh of this.meshes) {
+    for (const mesh of this._fxMeshes()) {
       const w = this._partWeight(mesh, boneIndex), col = mesh.geometry.attributes.color;
       for (let v = 0; v < w.length; v++) {
         const t = w[v] * 0.75;
@@ -535,7 +573,7 @@ export class Sim {
     this.hovered = part;
     const now = performance.now();
     const t = reducedMotion() ? 1 : this._glowMix(now);
-    for (const mesh of this.meshes) {
+    for (const mesh of this._fxMeshes()) {
       const g = mesh.geometry.attributes.glow, g0 = mesh.geometry.attributes.glowPrev;
       const a = g.array, a0 = g0.array;
       for (let i = 0; i < a.length; i++) a0[i] += (a[i] - a0[i]) * t;       // what shows now fades out from here

@@ -1,7 +1,8 @@
 // Mouse work in the 3D view: pick a body part, rotate it, drag hands/feet/hips, pin limbs, place sims - and the Face
 // tool: small coloured dots bloom onto the face (brows, eyes, lids, cheeks, nostrils, lips, corners, jaw, tongue);
-// click one for arrows (move) or rings (turn), T switches, each part stops at a safe range (Alt goes further), and
-// a look-at ring in front of the face aims both eyes.
+// click one for arrows (move) or rings (turn), T moves and R turns, each part stops at a safe range (Alt goes further),
+// and a look-at ring in front of the face aims both eyes. T moves any picked part without moving the sim; the circle at
+// each sim's feet (always shown, always clickable) is the whole sim.
 // Hands and feet can hold on to a partner: drop one on the partner's skin in the Drag tool and it follows that body;
 // drag it away to let go. Fingers, elbows, knees, the back, the neck and the head stop at natural limits (switch
 // them off for special poses; Alt goes past them while dragging). "Whole back" / "Neck & head" spread one turn over
@@ -11,11 +12,41 @@
 // {onChange, onEnd, onStart, modes, space, size})` for anything else the gizmo should move (props, boards).
 import * as THREE from 'three';
 import { LIMBS, HIPS, HINGE, KNUCKLE, TURN_GROUPS, LIMB_LABEL, isHold } from './bones.js';
-import { spacePos, worldToSpace, spaceToWorld, solveTwoBone, spaceQuat, setSpaceQuat, clampToLimits } from './posemath.js';
+import { spacePos, worldToSpace, spaceToWorld, solveTwoBone, spaceQuat, setSpaceQuat, rotateInSpace, clampToLimits } from './posemath.js';
 import * as K from './facekit.js';
 import * as Holds from './holds.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
+const ROOT_COLOR = 0xff4f9a;          // the circle at each sim's feet: the whole sim (move and turn it)
+const ROOT_R = 0.075;
+// T on a part that isn't a hand, a foot or the hips: the joints that bend to move it (nearest first) and where it is
+// held - the joint at its far end (tip), or a point along its own length past its joint (len, metres) for an end part.
+const PULL = {
+  b__Spine1__: { tip: 'b__Spine2__', chain: ['b__Spine1__', 'b__Spine0__'] },
+  b__Spine2__: { tip: 'b__Neck__', chain: ['b__Spine2__', 'b__Spine1__', 'b__Spine0__'] },
+  b__Neck__: { tip: 'b__Head__', chain: ['b__Neck__', 'b__Spine2__'] },
+  b__Head__: { len: 0.12, chain: ['b__Head__', 'b__Neck__'] },
+  b__Penis_Base: { tip: 'b__Penis_Base01', chain: ['b__Penis_Base'] },
+  b__Penis_Base01: { tip: 'b__Penis_Mid', chain: ['b__Penis_Base01', 'b__Penis_Base'] },
+  b__Penis_Mid: { tip: 'b__Penis_Mid01', chain: ['b__Penis_Mid', 'b__Penis_Base01', 'b__Penis_Base'] },
+  b__Penis_Mid01: { tip: 'b__Penis_Tip', chain: ['b__Penis_Mid01', 'b__Penis_Mid', 'b__Penis_Base01'] },
+};
+for (const s of ['L', 'R']) {
+  const n = x => `b__${s}_${x}__`;
+  PULL[n('Clavicle')] = { tip: n('UpperArm'), chain: [n('Clavicle')] };
+  PULL[n('UpperArm')] = { tip: n('Forearm'), chain: [n('UpperArm')] };
+  PULL[n('Thigh')] = { tip: n('Calf'), chain: [n('Thigh')] };
+  PULL[n('Toe')] = { len: 0.05, chain: [n('Toe')] };
+  for (const f of ['Thumb', 'Index', 'Mid', 'Ring', 'Pinky']) {
+    PULL[n(f + '0')] = { tip: n(f + '1'), chain: [n(f + '0')] };
+    PULL[n(f + '1')] = { tip: n(f + '2'), chain: [n(f + '1'), n(f + '0')] };
+    PULL[n(f + '2')] = { len: 0.022, chain: [n(f + '2'), n(f + '1'), n(f + '0')] };
+  }
+}
+// the limb a forearm, calf, hand or foot moves with (its hand or foot is pulled, the arm or leg follows)
+const LIMB_OF = {};
+for (const [limb, chain] of Object.entries(LIMBS)) for (const n of chain.slice(1)) LIMB_OF[n] = limb;
+const OTHER_LIMB = { 'L hand': 'R hand', 'R hand': 'L hand', 'L foot': 'R foot', 'R foot': 'L foot' };
 const FACE_NEAR = 0.9;                // the dots also show in the Pose tool when the camera is this close to a face
 const FACE_STEP_NEAR = 1.6;           // ... and in the Face step on the selected sim's face (its close-up is ~0.9 m away)
 const PICK_PX = 14;                   // face dots are picked in screen space (they are too small to raycast)
@@ -45,7 +76,12 @@ export class Interaction {
     this.handles.renderOrder = 10;
     this.vp.overlay.add(this.handles);
     this.handleList = [];
-    this.active = null;            // {simId, kind: 'bone'|'limb'|'hips'|'place'|'eyes', bone?, limb?, face?}
+    // the circle at each sim's feet: always drawn over everything, always the first thing a click finds
+    this.roots = new THREE.Group();
+    this.vp.overlay.add(this.roots);
+    this.rootMeshes = new Map();   // simId -> {group, ring, fill}
+    this._hotRoot = null;
+    this.active = null;            // {simId, kind: 'bone'|'limb'|'hips'|'pull'|'place'|'eyes', bone?, limb?, face?}
     this.lastProxy = new THREE.Vector3();
     this.hoverSimId = null;
     // the Face tool
@@ -61,6 +97,7 @@ export class Interaction {
     this._faceT = 0;
     this._hotDot = null;
     this.pickers = [];             // fn(event, 'down' | 'click' | 'hover') -> true: used (tried before mesh picking)
+    this.pickers.push((e, kind) => this._pickRoot(e, kind));      // first: the circles win over everything
     this.dragHold = null;          // {simId, limb}: a held limb being dragged (its hold waits until it is dropped)
     this.groupTurn = null;         // Whole back / Neck & head: the chain's turns when the drag started
     this.multi = [];               // Ctrl+click: more parts of the same sim that move with the selected one [{simId, bone}]
@@ -70,6 +107,8 @@ export class Interaction {
     // a press on a hand, foot or hips dot (Drag tool) drags it freely in the screen plane - before the gizmo sees the
     // press, so an arrow drawn over the dot (one pointing at the camera) can't take it
     c.addEventListener('pointerdown', e => this._dotDown(e), true);
+    // a press on a sim's circle slides the whole sim over the floor (the circle wins over the gizmo too)
+    c.addEventListener('pointerdown', e => this._rootDown(e), true);
     c.addEventListener('pointermove', e => { this.lastPointer = { clientX: e.clientX, clientY: e.clientY }; this._hover(e); });
     c.addEventListener('pointerleave', () => this.clearHover());
     c.addEventListener('pointerdown', e => { this.downAt = [e.clientX, e.clientY]; if (e.button === 0) this._runPickers(e, 'down'); });
@@ -101,6 +140,9 @@ export class Interaction {
       // turning the hips turns the whole body: remember where the upper body was
       const a = this.active;
       this.hipTurn = a && a.kind === 'bone' && a.bone === 'b__Pelvis__' ? this.beginHipTurn(this.views().get(a.simId)) : null;
+      // moving the hips: the feet stay planted and the upper body keeps its place
+      // (T on the hips; the Drag tool's hips dot still carries the legs along - lifting a sim, a jump)
+      this.hipShift = a && a.kind === 'hips' && a.bone ? this.beginHipShift(this.views().get(a.simId)) : null;
       // a held hand being dragged: the hold waits until it is dropped (then it holds where it lands, or lets go)
       const sim = a && a.kind === 'limb' && this.app.store.sim(a.simId);
       this.dragHold = sim && isHold(sim.pins && sim.pins[a.limb]) ? { simId: a.simId, limb: a.limb } : null;
@@ -117,6 +159,7 @@ export class Interaction {
       }
       this.groupTurn = null;
       this.multiStart = null;
+      this.hipShift = null;
       // a hand or foot dropped on a partner (within 4 cm of the skin) holds on; a held one dragged away lets go
       if (a && a.kind === 'limb') {
         try { Holds.tryHold(this.app, a.simId, a.limb, { maxDist: 0.04, fromDrag: true, pointer: this.lastPointer }); } catch (err) { console.error('hold:', err); }
@@ -200,6 +243,151 @@ export class Interaction {
     c.addEventListener('pointercancel', up, true);
   }
 
+  // ---------------------------------------------------------------- the circle at a sim's feet (the whole sim)
+  // The sim whose circle is under the pointer: the circle or its inside as it looks on screen, give or take 4 px (so
+  // it can still be hit when the floor is seen almost edge-on). Nothing drawn over it (a bed, a body) can hide it.
+  _rootAt(e) {
+    if (!this.rootMeshes.size || this.app.preview) return null;
+    const shown = [...this.rootMeshes].filter(([, m]) => m.group.visible);
+    if (!shown.length) return null;
+    const hit = this.vp.pick(e, shown.flatMap(([, m]) => [m.ring, m.fill]));
+    if (hit) {
+      const f = shown.find(([, m]) => m.ring === hit.object || m.fill === hit.object);
+      if (f) return f[0];
+    }
+    const cam = this.vp.camera, right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0).setY(0);
+    if (right.lengthSq() < 1e-8) right.set(1, 0, 0);
+    right.normalize();
+    const deep = new THREE.Vector3(-right.z, 0, right.x);            // along the floor, away from / toward the camera
+    let best = null, bd = Infinity;
+    for (const [id, m] of shown) {
+      const c = m.group.position, R = ROOT_R * m.group.scale.x;
+      const [x, y, z] = this._screenOf(c);
+      if (z > 1) continue;
+      const [ax, ay] = this._screenOf(c.clone().addScaledVector(right, R)), [bx, by] = this._screenOf(c.clone().addScaledVector(deep, R));
+      const ux = ax - x, uy = ay - y, wx = bx - x, wy = by - y, dx = e.clientX - x, dy = e.clientY - y;
+      const a = Math.hypot(ux, uy) + 4, b = Math.hypot(wx, wy) + 4;
+      const pu = Math.hypot(ux, uy) > 1e-6 ? (dx * ux + dy * uy) / Math.hypot(ux, uy) : 0;
+      const pw = Math.hypot(wx, wy) > 1e-6 ? (dx * wx + dy * wy) / Math.hypot(wx, wy) : 0;
+      const k = (pu / a) ** 2 + (pw / b) ** 2;                         // inside the (slightly grown) ellipse when <= 1
+      if (k <= 1 && k < bd) { bd = k; best = id; }
+    }
+    return best;
+  }
+
+  _pickRoot(e, kind) {
+    if (kind === 'down') return false;
+    const id = this._rootAt(e);
+    if (kind === 'hover') {
+      this._hotRoot = id;
+      if (!id) return false;
+      for (const [sid, v] of this.views()) v.hover(sid === id ? 'all' : -1);
+      this.vp.canvas.style.cursor = 'grab';
+      this.app.setHotBone?.(null);
+      const sim = this.app.store.sim(id);
+      this.app.hud(`${sim ? sim.label + ' · ' : ''}the whole sim · drag to slide it`);
+      return true;
+    }
+    if (!id) return false;
+    this.selectRoot(id);
+    return true;
+  }
+
+  // Pick a sim's circle: the whole sim, with arrows (T) or its turn ring (R).
+  selectRoot(simId, mode = 'translate') {
+    this.multi = [];
+    this.app.store.selected = { sim: simId, bone: null };
+    this.selectPlace(simId, mode);
+    this.app.emitSelection();
+    this.app.hud(mode === 'rotate' ? 'Ring: turn the whole sim' : 'Arrows: move the whole sim (R turns it)', { hold: 1400 });
+  }
+
+  // A press on a circle that then moves slides the sim over the floor (the plane of the floor, grabbed where pressed).
+  // A press that doesn't move is an ordinary click (it picks the circle).
+  _rootDown(e) {
+    if (e.button !== 0 || e.altKey || e.ctrlKey || e.metaKey || this.vp.dragging || this.app.preview) return;
+    const simId = this._rootAt(e);
+    if (!simId) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    const c = this.vp.canvas, gz = this.vp.gizmo;
+    this.downAt = [e.clientX, e.clientY];
+    try { c.setPointerCapture(e.pointerId); } catch { /* not a real pointer (tests) */ }
+    const drag = { from: [e.clientX, e.clientY], on: false, plane: null, grab: null };
+    const rayAt = ev => {
+      const r = c.getBoundingClientRect(), rc = new THREE.Raycaster();
+      rc.setFromCamera(new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1), this.vp.camera);
+      return rc.ray;
+    };
+    const move = ev => {
+      if (ev.pointerId !== undefined && e.pointerId !== undefined && ev.pointerId !== e.pointerId) return;
+      if (!drag.on) {
+        if (Math.hypot(ev.clientX - drag.from[0], ev.clientY - drag.from[1]) < 4) return;
+        const a = this.active;
+        if (!(a && a.kind === 'place' && a.simId === simId && gz.mode === 'translate')) this.selectRoot(simId, 'translate');
+        drag.plane = new THREE.Plane(UP.clone(), -this.proxy.position.y);
+        const p0 = rayAt({ clientX: drag.from[0], clientY: drag.from[1] }).intersectPlane(drag.plane, new THREE.Vector3());
+        drag.grab = p0 ? p0.sub(this.proxy.position) : new THREE.Vector3();
+        drag.on = true;
+        gz.dispatchEvent({ type: 'dragging-changed', value: true });
+        gz.dispatchEvent({ type: 'mouseDown' });
+      }
+      const p = rayAt(ev).intersectPlane(drag.plane, new THREE.Vector3());
+      if (!p) return;
+      this.proxy.position.copy(p.sub(drag.grab));
+      gz.dispatchEvent({ type: 'objectChange' });
+    };
+    const up = () => {
+      c.removeEventListener('pointermove', move, true);
+      c.removeEventListener('pointerup', up, true);
+      c.removeEventListener('pointercancel', up, true);
+      try { c.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+      if (!drag.on) return;                     // no move: the click that follows picks the circle
+      this.downAt = null;
+      gz.dispatchEvent({ type: 'mouseUp' });
+      gz.dispatchEvent({ type: 'dragging-changed', value: false });
+    };
+    c.addEventListener('pointermove', move, true);
+    c.addEventListener('pointerup', up, true);
+    c.addEventListener('pointercancel', up, true);
+  }
+
+  // One circle per shown sim, kept under its hips on the floor every frame. Hidden only while a video is filmed (and
+  // in the clean pictures, with the rest of the overlay).
+  _syncRoots() {
+    const film = !!this.app._recordingVideo;
+    const seen = new Set();
+    for (const [id, v] of this.views()) {
+      seen.add(id);
+      let m = this.rootMeshes.get(id);
+      if (!m) {
+        const mat = opacity => new THREE.MeshBasicMaterial({ color: ROOT_COLOR, transparent: true, opacity, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
+        const ring = new THREE.Mesh(new THREE.RingGeometry(ROOT_R * 0.74, ROOT_R, 48), mat(0.9));
+        const fill = new THREE.Mesh(new THREE.CircleGeometry(ROOT_R * 0.74, 40), mat(0.12));
+        ring.rotation.x = fill.rotation.x = -Math.PI / 2;
+        ring.renderOrder = 18; fill.renderOrder = 17;
+        const group = new THREE.Group();
+        group.add(fill, ring);
+        this.roots.add(group);
+        m = { group, ring, fill };
+        this.rootMeshes.set(id, m);
+      }
+      m.group.visible = v.group.visible && !film;
+      if (!m.group.visible) continue;
+      const p = v.worldPos('b__Pelvis__');
+      m.group.position.set(p.x, 0.004, p.z);
+      const on = this.active && this.active.kind === 'place' && this.active.simId === id;
+      m.group.scale.setScalar(on ? 1.25 : this._hotRoot === id ? 1.15 : 1);
+      m.fill.material.opacity = on ? 0.3 : this._hotRoot === id ? 0.22 : 0.12;
+    }
+    for (const [id, m] of [...this.rootMeshes]) {
+      if (seen.has(id)) continue;
+      m.group.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
+      m.group.removeFromParent();
+      this.rootMeshes.delete(id);
+    }
+  }
+
   // Arrows (and their pickers) that point within 15 degrees of the view are hidden: seen end-on they can't be dragged
   // anyway, and they would cover the dot or the part under them.
   _fadeFacingArrows(gz) {
@@ -252,11 +440,14 @@ export class Interaction {
     this.vp.gizmo.detach();
     this.active = null;
     const sel = this.app.store.selected;
-    if ((tool === 'rotate' || tool === 'face') && sel.sim && sel.bone) {
+    if ((tool === 'rotate' || tool === 'face' || tool === 'move') && sel.sim && sel.bone) {
       if (K.isFace(sel.bone)) this.selectFaceBone(sel.sim, sel.bone);
       else this.selectBone(sel.sim, sel.bone);
     }
-    if (tool === 'move' && sel.sim) this.selectPlace(sel.sim);
+    // the Move tool: the picked part's arrows, or with no part picked the sim's circle (the whole sim)
+    if (tool === 'move' && sel.sim) {
+      if (!sel.bone || !this.moveSelected({ quiet: true })) { sel.bone = null; this.selectPlace(sel.sim); }
+    }
     this.updateFaceMode(true);
     this.refreshHandles();
     this.app.emitSelection();
@@ -372,7 +563,7 @@ export class Interaction {
         for (const [, w] of this.views()) w.hover(w === v ? v.index(d.bone) : -1);
         this.vp.canvas.style.cursor = 'pointer';
         this.app.setHotBone?.(d.bone);
-        this.app.hud(`${sim ? sim.label + ' · ' : ''}${K.label(d.bone, sim && sim.frame)} · ${d.bone} · drag · T move/turn`);
+        this.app.hud(`${sim ? sim.label + ' · ' : ''}${K.label(d.bone, sim && sim.frame)} · ${d.bone} · drag · T moves, R turns`);
         return;
       }
       if (this._pickEyeTarget(e)) {
@@ -397,10 +588,11 @@ export class Interaction {
       hoverSim = hit.object.userData.sim;
       hoverBone = K.controllableIndex(hoverSim.rig, hoverSim.boneAtHit(hit), this._pickMode(hoverSim, e));
     }
-    for (const [, v] of this.views()) v.hover(v !== hoverSim ? -1 : this.tool === 'move' ? 'all' : hoverBone);
+    // (the Move tool picks parts too: only the circle at a sim's feet moves the whole sim)
+    for (const [, v] of this.views()) v.hover(v !== hoverSim ? -1 : hoverBone);
     this.vp.canvas.style.cursor = hit ? 'pointer' : 'default';
-    this.app.setHotBone?.(hit && this.tool !== 'move' ? hoverSim.bones[hoverBone].name : null);
-    this.app.hud(hit ? (this.tool === 'move' ? `${this.app.store.sim(this.app.idOf(hoverSim))?.label || 'Sim'} · click to place` : this.app.boneLabel(hoverSim, hoverBone)) : null);
+    this.app.setHotBone?.(hit ? hoverSim.bones[hoverBone].name : null);
+    this.app.hud(hit ? this.app.boneLabel(hoverSim, hoverBone) : null);
   }
 
   // Alt+click in the Pose / Face tool picks the exact bone (twist and helper bones too)
@@ -467,8 +659,12 @@ export class Interaction {
       // a face part (the jaw and the tongue even in the body pick mode) gets the face gizmo
       if (K.isFace(name)) this.selectFaceBone(simId, name);
       else this.selectBone(simId, name);
-    } else if (this.tool === 'move') this.selectPlace(simId);
-    else this.refreshHandles();
+    } else if (this.tool === 'move') {
+      // the Move tool: that part's arrows (as T gives), never the whole sim
+      if (K.isFace(name)) this.selectFaceBone(simId, name);
+      else this.selectBone(simId, name);
+      this.moveSelected({ quiet: true });
+    } else this.refreshHandles();
     this.app.emitSelection();
   }
 
@@ -596,6 +792,199 @@ export class Interaction {
     return false;
   }
 
+  // T: arrows on the picked part - it moves, the rest of the sim stays. The hips shift with the feet planted, a hand
+  // or foot (or its forearm or calf) is pulled with its arm or leg, any other part by bending the joints above it; a
+  // face or extra part, a prop and the circle get their own arrows. Only the circle moves the whole sim.
+  // -> true when there are arrows now.
+  moveSelected({ quiet = false } = {}) {
+    const a = this.active, say = (t, hold = 1400) => { if (!quiet) this.app.hud(t, { hold }); };
+    if (a && a.kind === 'place') { this.selectRoot(a.simId, 'translate'); return true; }
+    if (a && a.kind === 'custom') {
+      const k = a.modes.indexOf('translate');
+      if (k < 0) { say('This one only turns'); return false; }
+      a.mode = k; this.vp.gizmo.setMode('translate'); say('Arrows: move it');
+      return true;
+    }
+    if (a && (a.kind === 'hips' || a.kind === 'pull' || a.kind === 'limb')) return true;          // already has its arrows
+    const sel = this.app.store.selected;
+    const simId = a && a.simId || sel.sim, bone = a && a.kind === 'bone' ? a.bone : sel.bone;
+    if (!simId || !bone) { say('Click a body part first, or the circle at a sim\'s feet to move the whole sim', 2200); return false; }
+    const v = this.views().get(simId);
+    if (!v || !v.bone(bone)) return false;
+    const name = K.label(bone);
+    if (K.isFace(bone)) {
+      const lim = K.faceLimits(bone);
+      if (lim && !lim.move.some(Boolean)) { say(`${name} only turns`); return false; }
+      this.faceGizmo[bone] = 'move';
+      this.selectFaceBone(simId, bone);
+      say('Arrows: move it (R turns it)');
+      return true;
+    }
+    if (K.isExtra(bone)) {
+      if (K.isTwist(bone)) { say(`${name} only turns`); return false; }
+      this.faceGizmo[bone] = 'move';
+      this.selectBone(simId, bone);
+      say('Arrows: move it (R turns it)');
+      return true;
+    }
+    this.multi = [];
+    if (HIPS.includes(bone)) {
+      this.selectPartMove(simId, { kind: 'hips', bone });
+      say('Arrows: move the hips - the feet stay, the body follows (R turns them)');
+      return true;
+    }
+    if (LIMB_OF[bone]) {
+      const limb = LIMB_OF[bone];
+      this.selectPartMove(simId, { kind: 'limb', limb, bone });
+      say(`Arrows: move the ${LIMB_LABEL[limb].toLowerCase()} - the ${/hand/.test(limb) ? 'arm' : 'leg'} follows (R turns it)`);
+      return true;
+    }
+    const P = PULL[bone];
+    if (!P || !P.chain.every(n => v.bone(n))) { say(`${name} only turns`); return false; }
+    this.selectPartMove(simId, { kind: 'pull', bone, pull: P });
+    say(`Arrows: move the ${name.toLowerCase()} (R turns it)`);
+    return true;
+  }
+
+  // R: rings on the picked part (or the circle's turn ring). -> false when the caller should switch to the Pose tool
+  // (a body part is then picked again with its rings).
+  turnSelected() {
+    const a = this.active, say = t => this.app.hud(t, { hold: 1400 });
+    if (!a) return false;
+    if (a.kind === 'place') { this.selectRoot(a.simId, 'rotate'); return true; }
+    if (a.kind === 'custom') {
+      const k = a.modes.indexOf('rotate');
+      if (k < 0) { say('This one only moves'); return true; }
+      a.mode = k; this.vp.gizmo.setMode('rotate'); say('Rings: turn it');
+      return true;
+    }
+    if (a.kind !== 'bone' || this.tool === 'ik' || this.tool === 'move') return false;
+    if (a.face) {
+      const lim = K.faceLimits(a.bone);
+      if (lim && !lim.turn.some(Boolean)) { say(`${K.label(a.bone)} only moves`); return true; }
+      this.faceGizmo[a.bone] = 'turn';
+      this.selectFaceBone(a.simId, a.bone);
+      say('Rings: turn it (T moves it)');
+      return true;
+    }
+    if (a.extra) { this.faceGizmo[a.bone] = 'turn'; this.selectBone(a.simId, a.bone); say('Rings: turn it (T moves it)'); return true; }
+    return false;
+  }
+
+  // The picked part with arrows, moved as T says (active: {kind: 'hips' | 'limb' | 'pull', bone, limb?, pull?}).
+  selectPartMove(simId, active) {
+    const v = this.views().get(simId);
+    if (!v) return;
+    this.pauseForEdit();
+    this.active = { simId, ...active };
+    const at = active.kind === 'hips' ? v.worldPos('b__Pelvis__')
+      : active.kind === 'limb' ? v.worldPos(LIMBS[active.limb][2]) : spaceToWorld(v, this._pullEnd(v, active.pull));
+    this.proxy.position.copy(at);
+    this.proxy.quaternion.identity();
+    const gz = this.vp.gizmo;
+    gz.setMode('translate'); gz.setSpace('world'); gz.setSize(0.75);
+    gz.showX = gz.showY = gz.showZ = true;
+    gz.attach(this.proxy);
+  }
+
+  // Where a pulled part is held (sim space): the joint at its far end, or a point along its own length.
+  _pullEnd(v, P) {
+    if (P.tip && v.bone(P.tip)) return spacePos(v, v.bone(P.tip));
+    const b = v.bone(P.chain[0]), rest = v.restByName && v.restByName[b.name];
+    // along the bone: the way it continues from its parent at rest, turned with it
+    const dir = rest ? rest.pos.clone().applyQuaternion(rest.quat.clone().invert()) : new THREE.Vector3(1, 0, 0);
+    if (dir.lengthSq() < 1e-10) dir.set(1, 0, 0);
+    return spacePos(v, b).add(dir.normalize().multiplyScalar(P.len || 0.05).applyQuaternion(spaceQuat(v, b)));
+  }
+
+  // Pull a part to `target` (sim space) by turning the joints of its chain, nearest first, a little at a time so the
+  // bend spreads over them (cyclic coordinate descent). Elbow-like joints only bend about their own Z. Nothing moves
+  // but turns, so nothing stretches. -> true when a natural limit stopped a joint.
+  _pullSolve(v, P, target) {
+    const bones = P.chain.map(n => v.bone(n));
+    const limits = this.limitsOn() && !this.app.altDown;
+    const share = bones.length > 1 ? 0.5 : 1, id = new THREE.Quaternion();
+    let hit = false;
+    for (let it = 0; it < 14; it++) {
+      for (const b of bones) {
+        const J = spacePos(v, b);
+        const from = this._pullEnd(v, P).sub(J), to = target.clone().sub(J);
+        let q;
+        if (HINGE[b.name]) {
+          const ax = new THREE.Vector3(0, 0, 1).applyQuaternion(spaceQuat(v, b));
+          from.addScaledVector(ax, -from.dot(ax)); to.addScaledVector(ax, -to.dot(ax));
+          if (from.lengthSq() < 1e-10 || to.lengthSq() < 1e-10) continue;
+          q = new THREE.Quaternion().setFromAxisAngle(ax, from.angleTo(to) * (Math.sign(from.clone().cross(to).dot(ax)) || 1));
+        } else {
+          if (from.lengthSq() < 1e-10 || to.lengthSq() < 1e-10) continue;
+          q = new THREE.Quaternion().setFromUnitVectors(from.normalize(), to.normalize());
+        }
+        rotateInSpace(v, b, id.clone().slerp(q, share));
+        if (limits && clampToLimits(v, b)) hit = true;
+      }
+      if (this._pullEnd(v, P).distanceToSquared(target) < 1e-8) break;
+    }
+    return hit;
+  }
+
+  // Moving the hips: where the feet, the neck and the head were when the drag started, and the bones it changes as
+  // they were then (each step of the drag starts again from there, so nothing drifts).
+  beginHipShift(v) {
+    if (!v) return null;
+    const feet = {};
+    for (const limb of ['L foot', 'R foot']) {
+      const f = v.bone(LIMBS[limb][2]);
+      if (f) feet[limb] = { pos: spacePos(v, f), q: spaceQuat(v, f) };
+    }
+    const neck = v.bone('b__Neck__'), head = v.bone('b__Head__');
+    const keep = [...HIPS, 'b__Spine1__', 'b__Spine2__', 'b__Head__', ...LIMBS['L foot'], ...LIMBS['R foot']].filter(n => v.bone(n));
+    return { feet, neck: neck ? spacePos(v, neck) : null, head: head ? spaceQuat(v, head) : null, proxy0: this.proxy.position.clone(),
+      start: keep.map(n => [n, v.bone(n).position.clone(), v.bone(n).quaternion.clone()]) };
+  }
+
+  // The hips moved by `d` (sim space) since the drag started, as a body does it: each foot stays where it stood (the
+  // leg bends to it, and when a straight leg can't reach any more the hips drop a little), the back bends so the chest
+  // and head stay where they were, and the head keeps looking the same way. A pinned foot is left to its pin.
+  shiftHips(v, S, sim, d) {
+    for (const [n, p, q] of S.start) { v.bone(n).position.copy(p); v.bone(n).quaternion.copy(q); }
+    this.moveHips(v, d);
+    const planted = Object.keys(S.feet).filter(limb => !(sim.pins && sim.pins[limb]));
+    v.space.updateWorldMatrix(true, false);
+    const up = UP.clone().applyQuaternion(v.space.getWorldQuaternion(new THREE.Quaternion()).invert());
+    let drop = 0;
+    for (const limb of planted) {
+      const [a, b, c] = LIMBS[limb].map(n => v.bone(n));
+      const A = spacePos(v, a), B = spacePos(v, b), L = (A.distanceTo(B) + B.distanceTo(spacePos(v, c))) * 0.999;
+      const D = A.sub(S.feet[limb].pos), du = D.dot(up), c2 = D.lengthSq() - L * L;
+      if (c2 <= 0) continue;
+      const disc = du * du - c2;
+      if (disc >= 0) drop = Math.max(drop, du - Math.sqrt(disc));
+    }
+    if (drop > 0) this.moveHips(v, up.clone().multiplyScalar(-drop));
+    for (const limb of planted) {
+      this.solveLimb(v, LIMBS[limb], S.feet[limb].pos);
+      setSpaceQuat(v, v.bone(LIMBS[limb][2]), S.feet[limb].q);
+    }
+    const spine = ['b__Spine0__', 'b__Spine1__', 'b__Spine2__'].map(n => v.bone(n)).filter(Boolean);
+    const neck = v.bone('b__Neck__');
+    if (S.neck && neck && spine.length) {
+      // the turn that brings the neck back over the hips, spread evenly over the back (a few passes: the joints differ)
+      for (let it = 0; it < 4; it++) {
+        const P0 = spacePos(v, spine[0]);
+        const from = spacePos(v, neck).sub(P0), to = S.neck.clone().sub(P0);
+        if (from.lengthSq() < 1e-8 || to.lengthSq() < 1e-8 || from.distanceToSquared(to) < 4e-6) break;
+        const part = new THREE.Quaternion().slerp(new THREE.Quaternion().setFromUnitVectors(from.normalize(), to.normalize()), 1 / spine.length);
+        for (const b of spine) rotateInSpace(v, b, part);
+      }
+    }
+    if (S.head && v.bone('b__Head__')) setSpaceQuat(v, v.bone('b__Head__'), S.head);
+    if (this.limitsOn() && !this.app.altDown) {
+      let hit = false;
+      for (const n of ['b__Spine0__', 'b__Spine1__', 'b__Spine2__', 'b__Neck__', 'b__Head__']) if (v.bone(n) && clampToLimits(v, v.bone(n))) hit = true;
+      if (hit) this.limitHud();
+    }
+  }
+
   // The look-at ring: drag it and both eyes follow.
   selectEyes(simId) {
     const t = this.eyeTarget;
@@ -696,11 +1085,19 @@ export class Interaction {
       const pin = sim.pins[a.limb];
       if (Array.isArray(pin)) sim.pins[a.limb] = target.toArray();
       else if (pin && pin.at) pin.at = target.toArray();
+      // Symmetry: the other arm or leg does the same (unless it is pinned or holding on)
+      if (this.app.mirrorEdit && !(sim.pins && sim.pins[OTHER_LIMB[a.limb]])) for (const n of chain) this.app.mirrorLive(a.simId, n);
       K.twist(this.app, { sim, v });
     } else if (a.kind === 'hips') {
-      const d = worldToSpace(v, this.proxy.position).sub(worldToSpace(v, this.lastProxy));
-      this.moveHips(v, d);
+      if (this.hipShift) this.shiftHips(v, this.hipShift, sim, worldToSpace(v, this.proxy.position).sub(worldToSpace(v, this.hipShift.proxy0)));
+      else this.moveHips(v, worldToSpace(v, this.proxy.position).sub(worldToSpace(v, this.lastProxy)));
       this.lastProxy.copy(this.proxy.position);
+      this.resolvePins(sim, v);
+      K.twist(this.app, { sim, v });
+      this.followHolders(a.simId);
+    } else if (a.kind === 'pull') {
+      if (this._pullSolve(v, a.pull, worldToSpace(v, this.proxy.position))) this.limitHud();
+      if (this.app.mirrorEdit) for (const n of a.pull.chain) this.app.mirrorLive(a.simId, n);
       this.resolvePins(sim, v);
       K.twist(this.app, { sim, v });
       this.followHolders(a.simId);
@@ -1032,6 +1429,15 @@ export class Interaction {
         this.proxy.position.copy(x.mesh.position);
       }
       x.mesh.children.forEach(r => r.lookAt(this.vp.camera.position));
+    }
+    this._syncRoots();
+    // the arrows stay on the part being moved (or the circle) while it plays, is scrubbed or undone
+    const a = this.active, v = a && a.simId && this.views().get(a.simId);
+    if (v && !this.vp.dragging) {
+      if (a.kind === 'place') { const m = this.rootMeshes.get(a.simId); if (m) this.proxy.position.set(m.group.position.x, 0, m.group.position.z); }
+      else if (a.kind === 'hips' && a.bone) this.proxy.position.copy(v.worldPos('b__Pelvis__'));
+      else if (a.kind === 'limb' && a.bone) this.proxy.position.copy(v.worldPos(LIMBS[a.limb][2]));
+      else if (a.kind === 'pull') this.proxy.position.copy(spaceToWorld(v, this._pullEnd(v, a.pull)));
     }
     if (this.faceHandles.length) this._placeFace();
   }

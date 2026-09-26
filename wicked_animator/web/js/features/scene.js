@@ -400,7 +400,7 @@ export function install(app) {
   add('helpRows', () => [
     { group: 'Seeing better', keys: ['Alt', 'Z'], text: 'See-through: the other sims turn see-through' },
     { group: 'Seeing better', keys: ['Alt', 'B'], text: 'Show bones like Blender - click a bone to pick it' },
-    { group: 'Seeing better', keys: 'Place (M)', text: 'Seats and lying spots show on the furniture - click one to sit or lie there' },
+    { group: 'Seeing better', keys: 'Move (M)', text: 'Seats and lying spots show on the furniture - click one to sit or lie there' },
   ]);
 
   // Every place's surface and spots are read once in the background (one at a time, when the app is idle): a ready

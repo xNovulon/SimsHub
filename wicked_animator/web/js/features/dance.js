@@ -165,7 +165,7 @@ export function makeDance(app, st) {
   app.frameSims({ fromFront: true });
   app.timeline.fit();
   app._projectLoaded();
-  toast(`${p.name}: ${ph.beats} beats at ${ph.bpm} BPM. Pose it on the beats (the Beats row), then Share -> Send dance to game.${lap ? ' Seat the watcher with the Place tool.' : ''}`, 'ok');
+  toast(`${p.name}: ${ph.beats} beats at ${ph.bpm} BPM. Pose it on the beats (the Beats row), then Share -> Send dance to game.${lap ? ' Seat the watcher with the Move tool.' : ''}`, 'ok');
   return p;
 }
 

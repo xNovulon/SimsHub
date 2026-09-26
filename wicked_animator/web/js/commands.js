@@ -33,7 +33,7 @@ export function commands(app) {
   add('Actions', 'record', 'Record a video', click('btn-record'), { icon: 'rec', words: 'render capture clip' });
   add('Tools', 'tool-r', 'Pose tool', () => app.setTool('rotate'), { icon: 'rotate', keys: ['R'], words: 'rotate' });
   add('Tools', 'tool-g', 'Drag tool', () => app.setTool('ik'), { icon: 'hand', keys: ['G'], words: 'ik grab limbs' });
-  add('Tools', 'tool-m', 'Place tool', () => app.setTool('move'), { icon: 'move', keys: ['M'], words: 'translate whole sim' });
+  add('Tools', 'tool-m', 'Move tool', () => app.setTool('move'), { icon: 'move', keys: ['M'], words: 'translate place whole sim circle root' });
   if (document.querySelector('#tool-seg [data-tool="face"]')) add('Tools', 'tool-f', 'Face tool', () => app.setTool('face'), { icon: 'face', keys: ['Shift', 'F'], words: 'face bones brows lips' });
   add('View', 'showcase', 'Showcase', click('btn-showcase'), { icon: 'turn', sub: 'the camera circles the sims', words: 'turntable orbit cinematic' });
   add('View', 'ghosts', 'Ghosts', click('btn-onion'), { icon: 'ghost', words: 'onion skin' });

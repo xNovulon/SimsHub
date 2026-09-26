@@ -157,7 +157,7 @@ export function renderPose(app, root) {
     h('button', { class: 'btn small', disabled: !sim, onclick: () => app.setMirrorEdit(!app.mirrorEdit), title: 'Pose both sides at once (X)' }, icon('mirror'), app.mirrorEdit ? 'Symmetry: on' : 'Symmetry: off'),
     h('button', { class: 'btn small', disabled: !app.store.project.sims.length, onclick: () => app.mirrorAnimation(), title: 'Every key of every sim, left and right swapped - it becomes a new animation' }, icon('mirror'), 'Mirror the whole animation'));
   root.append(section(['Posing', sim ? h('span', { class: 'count' }, sim.label) : ''],
-    h('div', { class: 'hint' }, h('b', {}, 'Pose'), ' - click a body part, turn it with the coloured rings. ', h('b', {}, 'Drag'), ' - pull hands, feet or hips; knees and elbows follow. ', h('b', {}, 'Place'), ' - move or turn the whole sim.'),
+    h('div', { class: 'hint' }, h('b', {}, 'Pose'), ' - click a body part, turn it with the coloured rings. ', h('b', {}, 'Drag'), ' - pull hands, feet or hips; knees and elbows follow. ', h('b', {}, 'Move'), " - click a body part to move it. The pink circle at a sim's feet moves the whole sim."),
     tools,
     h('div', { class: 'hint' }, 'Pinned hands and feet stay put when the body moves - pin them in the right panel or Alt+click a dot in Drag.')));
 }

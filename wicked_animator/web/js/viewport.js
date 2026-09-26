@@ -107,8 +107,9 @@ export class Viewport {
     floor.name = 'floor';
     this.scene.add(floor);
     this.floor = floor;
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.055, 0.075, 40), new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.85 }));
-    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.004;
+    // the object's centre (where WickedWhims puts the animation): white, so it isn't taken for a sim's pink circle
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.07, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.003;
     this.scene.add(ring);
     this.origin = ring;
   }
@@ -258,7 +259,7 @@ export class Viewport {
     this._animateCamera(end, center, 0, { duration: 1.1, ease: t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2) });
   }
 
-  // The pink origin ring pulses out once over the floor (800 ms).
+  // The object's centre ring pulses out once over the floor (800 ms).
   pulseOrigin() {
     const r = this.origin, m = r && r.material;
     if (!r || reduced()) return;
@@ -267,8 +268,8 @@ export class Viewport {
     const step = dt => {
       t += dt / 0.8;
       r.scale.setScalar(1 + 8 * (1 - Math.pow(1 - Math.min(1, t), 3)));
-      m.opacity = 0.85 * (1 - Math.min(1, t));
-      if (t >= 1) { r.scale.setScalar(1); m.opacity = 0.85; const i = this.onFrame.indexOf(step); if (i >= 0) this.onFrame.splice(i, 1); this._pulse = null; }
+      m.opacity = 0.55 * (1 - Math.min(1, t));
+      if (t >= 1) { r.scale.setScalar(1); m.opacity = 0.55; const i = this.onFrame.indexOf(step); if (i >= 0) this.onFrame.splice(i, 1); this._pulse = null; }
     };
     this._pulse = step;
     this.onFrame.push(step);

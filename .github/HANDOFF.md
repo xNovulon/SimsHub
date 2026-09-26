@@ -170,7 +170,25 @@ python3 tools/checks/own_sounds/smoke_ui.py
 python3 tools/checks/bodyfit/smoke_ui.py
 ```
 
-`tools/checks/lib/fake_game_server.py` stands in for the game, so the UI runs without it.
+`tools/checks/lib/fake_game_server.py` stands in for the game, so the UI runs without it (its sims are box-shaped
+stand-ins on the real skeleton).
+
+Playwright checks (Node's `playwright` package; `pw.js` opens the app, `{ scene: 'couple' }` starts from the couple):
+
+```
+node tools/checks/posetools/pose_tools.js      # R turns, T moves the picked part, the circle at a sim's feet moves the whole sim
+node tools/checks/clothes/ui_smoke.js          # clothes preview, incl. the hover glow and selection tint on worn clothes
+```
+
+## Posing: R, T and the circle
+- R gives the picked part its rings, T its arrows (`Interaction.turnSelected` / `moveSelected`). T never moves the whole
+  sim: the hips shift with the feet planted and the back bent so the chest and head stay (`shiftHips`; a straight leg
+  drops the hips a little), a hand, foot, forearm or calf is pulled with its arm or leg (two-bone IK), and any other part
+  is pulled by turning the joints above it (`PULL`, `_pullSolve`). Only bones turn - no new position tracks in the export.
+- Each sim has a pink circle on the floor under its hips (`_syncRoots`): drawn over everything, picked before anything
+  else, dragged to slide the whole sim (every key). The white ring is the object's centre (where WickedWhims puts the
+  animation). The M tool is now called Move: a click picks the part to move; the circle moves the whole sim.
+- The Drag tool's hips dot still carries the legs along (lifting a sim); only T on the hips plants the feet.
 
 ## Owner's PC
 After the next release, the owner downloads both apps once from the README buttons and opens each one. They take

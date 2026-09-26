@@ -47,9 +47,9 @@ export function renderScene(app, root) {
   const count = k => spots.filter(x => x.action === k).length;
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
   root.append(section('Where it happens', grid,
-    h('div', { class: 'hint' }, `WickedWhims will offer it on: `, h('b', {}, (p.locations || []).map(nice).join(', ') || '-'), '. The pink ring is the object\'s centre. Add more places in Details.'),
+    h('div', { class: 'hint' }, `WickedWhims will offer it on: `, h('b', {}, (p.locations || []).map(nice).join(', ') || '-'), '. The white ring is the object\'s centre. Add more places in Details.'),
     spots.length ? h('div', { class: 'hint' }, h('b', {}, [count('sit') ? plural(count('sit'), 'seat') : '', count('lie') ? plural(count('lie'), 'lying spot') : ''].filter(Boolean).join(' · ')),
-      ' - press ', h('kbd', {}, 'M'), ' (Place) and click one: the selected sim sits or lies exactly there.') : null));
+      ' - press ', h('kbd', {}, 'M'), ' (Move) and click one: the selected sim sits or lies exactly there.') : null));
   root.append(tip('Next, pick a ready-made pose in step 2 - both sims are placed for you, then you only fine-tune.'));
 }
 
