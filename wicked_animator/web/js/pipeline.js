@@ -446,15 +446,18 @@ export class Pipeline {
   // ---------------------------------------------------------------- the whole frame
   // `overrides`: show a pending (unkeyed) pose - only while paused, where it is being worked on.
   apply(frame, { physics = true, overrides = !this.app.playing } = {}) {
+    const p = this.project;
+    // past the last frame is the "room" (paused playhead only): held, not wrapped - the pose is simply frame
+    // length-1's, exactly as if the loop stopped there. Playback/physics/export never pass a frame this high.
+    const evalFrame = p.length > 0 ? Math.min(frame, p.length - 1) : frame;
     const all = this.entries();
-    for (const e of all) this.body(e, frame, all, overrides);     // pass A
-    this.holdsAll(all, frame);                                    // pass B: holds first,
-    for (const e of all) this.late(e, frame, all, false);         // then the rest,
-    this.holdsAfter(all, frame);                                  // and holds on parts that moved since
-    this.openings(all, frame);
+    for (const e of all) this.body(e, evalFrame, all, overrides);     // pass A
+    this.holdsAll(all, evalFrame);                                    // pass B: holds first,
+    for (const e of all) this.late(e, evalFrame, all, false);         // then the rest,
+    this.holdsAfter(all, evalFrame);                                  // and holds on parts that moved since
+    this.openings(all, evalFrame);
     if (physics) {
-      const p = this.project;
-      for (const e of all) if (this.editing !== e.sim.id) applyFrame(e.v, this.phys.get(e.sim.id), frame, p.length, p.loop);
+      for (const e of all) if (this.editing !== e.sim.id) applyFrame(e.v, this.phys.get(e.sim.id), evalFrame, p.length, p.loop);
     }
     return all;
   }

@@ -4,7 +4,7 @@ import { Viewport } from './viewport.js';
 import { Sim } from './sim.js';
 import { api, projectFileName, RECOVERY_SLOT } from './api.js';
 import { Store, newSim, newProject, localStorageGet, localStorageSet, localStorageRemove, BODY_TYPES, uid } from './state.js';
-import { evaluate, evaluateFace, sortKeys, blendPoses, EASE_INFO, EASE_CURVE, validCurve, setRig } from './animation.js';
+import { evaluate, evaluateFace, sortKeys, blendPoses, EASE_INFO, EASE_CURVE, validCurve, setRig, roomEnd } from './animation.js';
 import { Interaction } from './interact.js';
 import { Timeline } from './timeline.js';
 import * as KO from './keyops.js';
@@ -94,7 +94,7 @@ class App {
     // the app. Hooks run in the order they were registered.
     this.hooks = {
       afterApply: [], tick: [], frameSet: [], playing: [], bake: [], beforeBake: [], beforeSave: [], projectLoaded: [],
-      simRemoved: [], viewCreated: [], viewsSynced: [], traySimAdded: [], furnitureBuilt: [], selection: [], keys: [], retime: [],
+      simRemoved: [], viewCreated: [], viewsSynced: [], traySimAdded: [], furnitureBuilt: [], selection: [], keys: [], retime: [], fitFloor: [],
       menus: { key: [], lane: [], sound: [], ruler: [] },
       exportChecks: [], soundOpts: [], bodyOverride: [], imported: [],
       sections: { scene: [], pose: [], motion: [], body: [], face: [], sounds: [], details: [], share: [] },
@@ -956,7 +956,10 @@ class App {
   }
 
   setFrame(f) {
-    const nf = Math.max(0, Math.min(this.store.project.length - 1, Math.round(f)));
+    const p = this.store.project;
+    // paused, the playhead may sit in the room past the loop's end (to look at it, or to key it); playing never does
+    const cap = (this.playing ? p.length : roomEnd(p)) - 1;
+    const nf = Math.max(0, Math.min(cap, Math.round(f)));
     if (nf !== Math.round(this.store.frame) && this.pipeline.overrides.size) {
       this.pipeline.overrides.clear();
       toast('Unkeyed changes were dropped - turn on Auto key or press K to keep a pose.');
@@ -1107,6 +1110,7 @@ class App {
     const frame = Math.round(this.store.frame);
     const face = !body && this.interact.tool === 'face';
     this._keyOne(sim, v, frame, { face });
+    this._applyFit(frame);
     this.afterEdit();
     toast(face ? `Face key set for ${sim.label} at ${(frame / 30).toFixed(2)} s.` : `Key set for ${sim.label} at ${(frame / 30).toFixed(2)} s.`, 'ok');
   }
@@ -1119,6 +1123,7 @@ class App {
       if (v) this._keyOne(s, v, frame, { face });
     }
     this.pipeline.overrides.clear();
+    this._applyFit(frame);
     this.afterEdit();
     toast(`${face ? 'Face keys' : 'Keyed every sim'} at ${(frame / 30).toFixed(2)} s.`, 'ok');
   }
@@ -1134,6 +1139,7 @@ class App {
     this.timeline.flash(sim.id, key.frame, 'del');
     this.emit('keyed', { simId: sim.id, frame: key.frame, kind: 'del' });
     this.keysChanged();
+    this._applyFit();
     this.afterEdit();
   }
 
@@ -1226,7 +1232,7 @@ class App {
       this.store.checkpoint(key.faceOnly ? 'Delete face key' : 'Delete key'); sim.keys.splice(sim.keys.indexOf(key), 1);
       this.timeline.flash(sim.id, key.frame, 'del');
       this.emit('keyed', { simId: sim.id, frame: key.frame, kind: 'del' });
-      this.keysChanged(); this.afterEdit();
+      this.keysChanged(); this._applyFit(); this.afterEdit();
     };
     const copyFace = () => {
       this.faceClipboard = { face: key.face ? { ...key.face } : null, faceBones: key.faceBones ? clone(key.faceBones) : null };
@@ -1248,7 +1254,7 @@ class App {
       sim.keys = sim.keys.filter(k => k.frame !== f);
       sim.keys.push(this._copyKey(key, f)); sortKeys(sim.keys);
       this.timeline.flash(sim.id, f, 'add');
-      this.keysChanged(); this.afterEdit();
+      this.keysChanged(); this._applyFit(f); this.afterEdit();
     };
     const id = KO.kid(sim.id, key.frame);
     const holdLabel = { 0.25: 'Hold ¼ s', 0.5: 'Hold ½ s', 1: 'Hold 1 s' };
@@ -1359,6 +1365,7 @@ class App {
     const L = this.store.project.length;
     if ((df > 0 && r.max >= L - 1) || (df < 0 && r.min <= 0)) { toast(df > 0 ? 'The keys are at the end of the loop.' : 'The keys are at the start of the loop.'); return; }
     const rep = this._selOp('Move keys', (p, sel) => KO.moveSel(p, sel, df));
+    this._applyFit();
     if (rep && rep.replaced.length) toast(`${this._plural(rep.replaced.length, 'key')} replaced - Ctrl+Z brings ${rep.replaced.length > 1 ? 'them' : 'it'} back.`);
   }
 
@@ -1369,6 +1376,7 @@ class App {
     const gone = info.keys.map(x => [x.sim.id, x.key.frame]);
     const rep = this._selOp(`Delete ${this._plural(n, info.count ? 'key' : 'item')}`, (p, sel) => KO.deleteSel(p, sel));
     if (!rep) return;
+    this._applyFit();
     for (const [id, f] of gone.slice(0, 40)) if (!this.store.sim(id)?.keys.some(k => k.frame === f)) this.timeline.flash(id, f, 'del');
     this.timeline.clearSel();
     const parts = [];
@@ -1487,7 +1495,7 @@ class App {
     }
     this.timeline.pruneSel();
     this.pipeline.overrides.clear();
-    this.keysChanged(); this.afterEdit();
+    this.keysChanged(); this._applyFit(); this.afterEdit();
     const msg = before === after ? `Nothing to take out - every key is needed for this motion (within ${tol}°).`
       : `${before} keys → ${after} keys. It moves at most ${maxDeg.toFixed(1)}° from before.`;
     if (!quiet) toast(msg, before === after ? '' : 'ok');
@@ -1583,7 +1591,7 @@ class App {
     const rep = KO.pasteClip(p, work, frame, { targets });
     this.pipeline.overrides.clear();
     this.timeline.sel = rep.sel;
-    this.keysChanged(); this.afterEdit();
+    this.keysChanged(); this._applyFit(); this.afterEdit();
     this.timeline.pop([...rep.sel]);
     this.selectionChanged();
     const secs = (frame / (p.fps || 30)).toFixed(2);
@@ -1611,7 +1619,7 @@ class App {
     this.store.checkpoint('In-between key');
     for (const s of ok) { KO.inBetween(p, s, f, t); this.timeline.flash(s.id, f, 'add'); this.emit('keyed', { simId: s.id, frame: f, kind: 'add' }); }
     this.pipeline.overrides.clear();
-    this.keysChanged(); this.afterEdit();
+    this.keysChanged(); this._applyFit(); this.afterEdit();
     toast(`In-between key at ${(f / (p.fps || 30)).toFixed(2)} s${ok.length > 1 ? ` for ${this._plural(ok.length, 'sim')}` : ''} - ${Math.round(t * 100)}% of the way to the next key.`, 'ok');
   }
 
@@ -1650,7 +1658,7 @@ class App {
     if (!k) { this.store.undoStep(); return toast('There is no room for a hold before the next key.'); }
     this.timeline.flash(simId, k.frame, 'add');
     this.pipeline.overrides.clear();
-    this.keysChanged(); this.afterEdit();
+    this.keysChanged(); this._applyFit(); this.afterEdit();
     toast(`${sim.label} holds the pose until ${(k.frame / (p.fps || 30)).toFixed(2)} s (it drifts a little, so it never looks frozen).`, 'ok');
   }
 
@@ -1689,7 +1697,7 @@ class App {
     for (const r of bad) { const s = this.store.sim(r.simId); if (s) KO.fixLoop(p, s, r.kind); }
     this.pipeline.overrides.clear();
     this.timeline.pruneSel();
-    this.keysChanged(); this.afterEdit();
+    this.keysChanged(); this._applyFit(); this.afterEdit();
     toast(`Loop fixed for ${bad.map(r => this.store.sim(r.simId)?.label).filter(Boolean).join(', ')} - it flows back into the start now.`, 'ok');
   }
 
@@ -1727,7 +1735,7 @@ class App {
     this.store.checkpoint('Make the end match the start');
     let n = 0;
     for (const s of sims) if (KO.makeEndMatchStart(p, s)) { n++; this.timeline.flash(s.id, p.length - 1, 'add'); }
-    this.keysChanged(); this.afterEdit();
+    this.keysChanged(); this._applyFit(); this.afterEdit();
     toast(n ? 'The last frame now matches the first.' : 'Nothing to change.', n ? 'ok' : '');
   }
 
@@ -3418,7 +3426,10 @@ class App {
   // or faster (motions keep their whole number of strokes). 'keep': everything stays at its time and the speed
   // stays the same - making it shorter cuts the end off (a pose that would be lost moves to the new last frame),
   // and motions get more or fewer strokes (still whole numbers, so it keeps looping cleanly).
+  // A retime is always a deliberate length (typed by hand, or a mocap/video take stretching the project to match
+  // it - capture/keys.js's applyToSim calls this the same way) - "Fit to keys" never moves it again on its own.
   _retimeProject(p, newLen, mode) {
+    p.fitLength = false;
     const oldLen = p.length, r = newLen / oldLen, last = newLen - 1;
     const info = { moved: 0, lostKeys: 0, lostSounds: 0 };
     const scale = f => Math.max(0, Math.min(last, f >= oldLen - 1 ? last : Math.round(f * r)));
@@ -3460,12 +3471,41 @@ class App {
     return info;
   }
 
+  // ---------------------------------------------------------------- fit to keys
+  // The loop stops and repeats only as long as the keys placed: after every hand edit of body keys, the length
+  // becomes the last body key over all sims plus that sim's own last gap - a "smooth return" back to the first pose,
+  // never below whatever else is timed, never below 12 frames. Off for Magic/imports/mocap and old saves (they keep
+  // the length they were given), and off the moment someone types a length by hand. Nothing else moves: keys keep
+  // their frames.
+  // frame: when given (K / Key pose / double-click), a key placed in the room while Fit is off still grows the loop
+  // to just past it (no gap-based extension) - "with Fit off it grows to include the key" (plan item 3).
+  _applyFit(frame = null) {
+    const p = this.store.project;
+    if (p.fitLength === false) {
+      if (frame !== null && frame >= p.length) this._retimeLengthOnly(p, frame + 1);
+      return;
+    }
+    const floors = this.runHook('fitFloor', p);
+    const n = KO.fitLength(p, floors);
+    if (n === null || n === p.length) return;
+    this._retimeLengthOnly(p, n);
+  }
+  // Set p.length to exactly `n` - no retiming, no key moves (unlike _retimeProject, which stretches/cuts keys).
+  _retimeLengthOnly(p, n) {
+    p.length = Math.max(12, Math.min(3000, Math.round(n)));
+    this.pipeline.overrides.clear();
+    this.refreshAll();
+    this.timeline.fit();
+    this.physicsChanged();
+  }
+
   setLength(newLen, mode = localStorageGet('lengthMode', 'stretch')) {
     const p = this.store.project, oldLen = p.length;
     newLen = Math.max(12, Math.min(3000, Math.round(newLen)));
     if (newLen === oldLen) { this._showLength(); return; }
     const busy = p.sims.some(s => s.keys.length > 1 || (s.sounds || []).length || (s.layers || []).length) || (Array.isArray(p.events) && p.events.length);
     this.store.checkpoint(newLen > oldLen ? 'Longer loop' : 'Shorter loop');
+    p.fitLength = false;   // typing a length by hand is a deliberate choice - Fit no longer moves it
     const before = this.store.peekUndo();
     const depth = this.store.undo.length;
     this.setPlayRange(null, { quiet: true });
@@ -3510,6 +3550,10 @@ class App {
     const p = this.store.project;
     $('tl-seconds-in').value = (p.length / p.fps).toFixed(1);
     $('tl-frames-note').textContent = `${p.length} frames`;
+    const on = p.fitLength !== false;
+    const fitBtn = $('btn-fit-length');
+    fitBtn.classList.toggle('on', on);
+    fitBtn.title = on ? 'Fit to keys - on: the loop follows the last key automatically' : 'Fit to keys - off: the length stays where it was set';
   }
 
   // ---------------------------------------------------------------- UI
@@ -3704,7 +3748,7 @@ class App {
       this.vp.gizmo.detach(); this.interact.active = null; this.pipeline.overrides.clear();
       // undo/redo can take away the selected sim, or shorten the loop under the playhead
       if (!this.store.sim()) this.store.selected = { sim: this.store.project.sims[0] ? this.store.project.sims[0].id : null, bone: null };
-      this.store.frame = Math.max(0, Math.min(Math.round(this.store.frame), this.store.project.length - 1));
+      this.store.frame = Math.max(0, Math.min(Math.round(this.store.frame), roomEnd(this.store.project) - 1));
       if (this.playRange && this.playRange[1] >= this.store.project.length) this.playRange = null;
       this._edited();
       this.timeline && this.timeline.pruneSel();
@@ -3852,6 +3896,14 @@ class App {
       this.setLength((+e.target.value || p.length / p.fps) * p.fps);
     };
     $('tl-seconds-in').addEventListener('keydown', e => { if (e.key === 'Escape') { this._showLength(); e.target.blur(); } });
+    $('btn-fit-length').onclick = () => {
+      const p = this.store.project, turningOn = p.fitLength === false;
+      this.store.checkpoint(turningOn ? 'Fit to keys on' : 'Fit to keys off');
+      p.fitLength = turningOn;
+      if (turningOn) this._applyFit();      // fits at once, same undo step
+      this._edited(); this.store.setDirty(true); this._showLength();
+      toast(turningOn ? 'Fit to keys on - the loop follows the last key.' : 'Fit to keys off - the length stays put.');
+    };
     window.addEventListener('keydown', e => this._key(e));
     // Shift+E: an in-between key (Blender's breakdowner key). It is taken before the fly camera sees it - except over
     // the 3D view, where E still flies up (Shift = slowly).

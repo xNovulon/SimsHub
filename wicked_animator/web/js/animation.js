@@ -135,6 +135,13 @@ export const reverseCurve = c => [1 - c[2], 1 - c[3], 1 - c[0], 1 - c[1]].map(v 
 
 export function sortKeys(keys) { keys.sort((a, b) => a.frame - b.frame); return keys; }
 
+// ---------------------------------------------------------------- room past the loop's end (spec: "Fit to keys")
+// The timeline always shows some space past the loop, dimmed, so the end reads clearly as an end. About 1s or a
+// third of the length, whichever is more. Playback/export/physics/sounds never go past `p.length` - only the
+// paused playhead, and adding a key there, may.
+export function roomFrames(p) { return Math.max(Math.round(p.fps || 30), Math.round((p.length || 0) / 3)); }
+export function roomEnd(p) { return (p.length || 0) + roomFrames(p); }
+
 // The keys around `frame` (with loop wrap-around) and how far between the two it is.
 function around(keys, frame, length, loop) {
   const n = keys.length;

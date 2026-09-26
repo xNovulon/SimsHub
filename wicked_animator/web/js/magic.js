@@ -366,6 +366,7 @@ export async function makeMagic(app, { recipe, place, intensity = 0.55, seconds 
   p.category = r.kind;
   p.tags = [...r.tags];
   p.length = Math.round(seconds * 30);
+  p.fitLength = false;             // Magic's length is deliberate - Fit to keys never moves it
   p.loops = r.kind === 'CLIMAX' ? 1 : 10;
   // a finish makes it a one-time Climax of this act (spec_game 3)
   const climax = !!finish && finish !== 'none';

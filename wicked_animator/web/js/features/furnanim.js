@@ -864,6 +864,15 @@ export function install(app) {
       }
     }
   });
+  // Fit to keys: the loop never gets shorter than the furniture's own last hand-placed key.
+  add('fitFloor', p => {
+    let last = -Infinity;
+    for (const pt of Object.values((p.furnAnim && p.furnAnim.parts) || {})) {
+      if (!pt || !Array.isArray(pt.keys) || !pt.keys.length) continue;
+      last = Math.max(last, Math.max(...pt.keys.map(k => k.f)));
+    }
+    return last;
+  });
   // Send to game: the blanket and pillows as the bed's own clip (the game bed's bones), worked out frame by frame the
   // way the game will play the sims - with the bed where WickedWhims puts it (its own movement only shows here)
   add('bake', (payload, p, opts = {}) => {

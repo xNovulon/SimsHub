@@ -123,6 +123,7 @@ export function makeDance(app, st) {
   p.category = 'TEASING';
   p.tags = ['DANCE'];
   p.length = ph.frames;
+  p.fitLength = false;             // beat-locked - Fit to keys never moves it
   p.loops = Math.max(1, Math.min(99, st.loops | 0 || 4));
   p.furniture = lap ? (st.seat || 'chair_living') : 'floor';
   const furn = (app.furniture || []).find(f => f.id === p.furniture);
@@ -317,7 +318,7 @@ function tempoSection(app, root) {
   const toggleSong = h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: song.on, onchange: e => { song.on = e.target.checked; if (song.on) songPlay(app); else songStop(); } }), 'Play the song with it');
   root.append(section(['Dance tempo', h('span', { class: 'count' }, `${d.bpm} BPM`)],
     h('div', { class: 'hint' }, `${d.beats || 16} beats a loop${fits ? ` - ${(ph.frames / (p.fps || 30)).toFixed(2)} s, exactly on the beat.` : ` - the loop is ${p.length} frames, the beats need ${ph.frames}.`}`),
-    fits ? null : h('button', { class: 'btn small soft', type: 'button', onclick: () => { app.store.checkpoint('Fit the loop to the beat'); p.length = ph.frames; app.store.setDirty(true); app.refreshAll(); app.timeline.fit(); } }, icon('loop'), `Make the loop ${ph.frames} frames`),
+    fits ? null : h('button', { class: 'btn small soft', type: 'button', onclick: () => { app.store.checkpoint('Fit the loop to the beat'); p.length = ph.frames; p.fitLength = false; app.store.setDirty(true); app.refreshAll(); app.timeline.fit(); } }, icon('loop'), `Make the loop ${ph.frames} frames`),
     song.buffer ? toggleSong : h('div', { class: 'hint' }, 'Tip: "Make a strip-club dance" can listen to a song and play it along here (it never goes into the mod).')));
 }
 

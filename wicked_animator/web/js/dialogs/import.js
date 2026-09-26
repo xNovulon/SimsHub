@@ -85,6 +85,7 @@ export function importKeys(app, preview, every, from, length, replace, { smooth 
     made.push({ sim: s, player, from, length, keys });
   });
   p.length = length;
+  p.fitLength = false;             // sample-derived - Fit to keys never moves it
   p.loop = true;
   p.name = anim.name + ' (my version)';
   p.category = anim.category || p.category;

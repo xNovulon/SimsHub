@@ -9,7 +9,7 @@
 // scrolls the lanes up and down (the ruler stays put).
 // Other features add rows between the ruler and the lanes (addRow), marks in a sim's lane (marks) and read the lane
 // geometry from laneTop() - never hard-coded.
-import { EASE_INFO } from './animation.js';
+import { EASE_INFO, roomEnd } from './animation.js';
 import { MOTIONS } from './motion.js';
 import { voiceLength } from './face.js';
 import * as KO from './keyops.js';
@@ -200,9 +200,10 @@ export class Timeline {
 
   fit() {
     const w = this.canvas.clientWidth - GUTTER - 24;
-    this.pxPerFrame = Math.max(1.5, Math.min(26, w / Math.max(10, this.store.project.length)));
+    const p = this.store.project;
+    this.pxPerFrame = Math.max(1.5, Math.min(26, w / Math.max(10, roomEnd(p))));
     this.scroll = 0;
-    this._fitLength = this.store.project.length;
+    this._fitLength = p.length;                   // the loop's length, not the room's - see main.js's re-fit check
     this.draw();
     this.app.curves?.shown && this.app.curves.draw();
   }
@@ -327,7 +328,8 @@ export class Timeline {
     return { row, sim };
   }
 
-  _clampFrame(f) { return Math.max(0, Math.min(this.store.project.length - 1, f)); }
+  // Interactive frame picks (scrub, click, drag) may land in the room past the loop's end, but never past it.
+  _clampFrame(f) { return Math.max(0, Math.min(roomEnd(this.store.project) - 1, f)); }
 
   _down(e) {
     if (e.button !== 0) return;
@@ -517,6 +519,7 @@ export class Timeline {
       if (d.moved) {
         for (const s of this.store.project.sims) s.keys.sort((a, b) => a.frame - b.frame);
         const rep = d.rep || { replaced: [], joined: [] };
+        this.app._applyFit();      // dragged/stretched keys: the loop follows their new last frame and gap
         this.app.afterEdit();
         this.pop([...this.sel]);
         if (rep.replaced && rep.replaced.length) toast(`${rep.replaced.length} key${rep.replaced.length > 1 ? 's were' : ' was'} replaced - Ctrl+Z brings ${rep.replaced.length > 1 ? 'them' : 'it'} back.`);
@@ -648,6 +651,7 @@ export class Timeline {
     const col = n => css.getPropertyValue(n).trim();
     const line = col('--line'), muted = col('--muted'), text = col('--text');
     const endX = this.xAt(p.length);
+    const roomX = this.xAt(roomEnd(p));            // the room past the loop's end always shows a little, dimmed
     const LN = this.lane, sy = v => v * LN / LANE;
     const lanesTop = this.lanesTop;
     const now = performance.now();
@@ -655,9 +659,9 @@ export class Timeline {
     const sel = this.sel;
     const range = this.app.playRange;
 
-    // lanes (kept below the ruler and the extra rows when they scroll)
+    // lanes (kept below the ruler and the extra rows when they scroll) - nothing is drawn past the room's end
     g.save();
-    g.beginPath(); g.rect(0, lanesTop, w, hgt - lanesTop); g.clip();
+    g.beginPath(); g.rect(0, lanesTop, Math.min(w, roomX), hgt - lanesTop); g.clip();
     p.sims.forEach((s, r) => {
       const y = this.top(r);
       if (y > hgt || y + LN < lanesTop) return;
@@ -680,9 +684,16 @@ export class Timeline {
       g.strokeStyle = line; g.beginPath(); g.moveTo(0, y + LN + 0.5); g.lineTo(w, y + LN + 0.5); g.stroke();
     });
 
-    // past the end of the loop
-    g.fillStyle = 'rgba(0,0,0,0.3)';
-    if (endX < w) g.fillRect(Math.max(GUTTER, endX), lanesTop, w - Math.max(GUTTER, endX), hgt - lanesTop);
+    // the room past the loop's end: dimmed, clearly not part of the loop, with the end itself marked
+    if (endX < roomX) {
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.fillRect(Math.max(GUTTER, endX), lanesTop, Math.min(w, roomX) - Math.max(GUTTER, endX), hgt - lanesTop);
+    }
+    if (endX >= GUTTER && endX <= w) {
+      g.strokeStyle = muted; g.lineWidth = 1; g.setLineDash([3, 3]);
+      g.beginPath(); g.moveTo(Math.round(endX) + 0.5, lanesTop); g.lineTo(Math.round(endX) + 0.5, hgt); g.stroke();
+      g.setLineDash([]);
+    }
     // outside the play range: dimmed
     if (range) {
       g.fillStyle = 'rgba(0,0,0,0.18)';
@@ -878,6 +889,7 @@ export class Timeline {
     // ruler (shared with the Curves view)
     this._geo = drawRuler(g, { x0: GUTTER, w, h: hgt, xAt: f => this.xAt(f), pxPerFrame: this.pxPerFrame, scroll: this.scroll, length: p.length,
       frame: this.store.frame, playing: !!this.app.playing, range, loopBadge: this._loopBadge(), summary: this._summary(), css });
+    this._geo.endX = endX; this._geo.roomEndX = roomX;   // for tests: where the loop ends and where the room ends
 
     // dragging keys: a dashed guide down the lanes and a bubble with the frame and how far it moved
     if (drag) {

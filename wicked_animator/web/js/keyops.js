@@ -747,6 +747,40 @@ export function simplifyKeys(keys, { tolDeg = 1.5, tolMm = 2, tolFace = 0.03, le
   return { keys: A.sortKeys(result), removed, maxDeg, before: n, after: n - removed };
 }
 
+// ---------------------------------------------------------------- fit to keys ("stop and loop only as long as the
+// keys placed"). Pure: the caller (main.js) gathers extraFloors (sounds/events/face/pins/features' own fitFloor
+// hook) since this file has no access to runHook. Returns the fitted length, or null when there are fewer than
+// two body keys anywhere (no change).
+export function fitLength(project, extraFloors = [], { min = 12 } = {}) {
+  let totalBody = 0;
+  for (const sim of project.sims) totalBody += sim.keys.filter(isBody).length;
+  if (totalBody < 2) return null;
+
+  let bodyCandidate = 0;
+  for (const sim of project.sims) {
+    const body = sim.keys.filter(isBody).sort((a, b) => a.frame - b.frame);
+    if (!body.length) continue;
+    const last = body[body.length - 1];
+    const gap = body.length >= 2 ? last.frame - body[body.length - 2].frame : 0;
+    bodyCandidate = Math.max(bodyCandidate, last.frame + Math.max(0, gap));
+  }
+
+  let otherFloor = 0;
+  for (const sim of project.sims) {
+    for (const snd of sim.sounds || []) otherFloor = Math.max(otherFloor, snd.frame + 1);
+    for (const k of sim.keys) if (k.faceOnly || (k.faceBones && (Object.keys(k.faceBones.rot || {}).length || Object.keys(k.faceBones.pos || {}).length)) || k.face) otherFloor = Math.max(otherFloor, k.frame + 1);
+    for (const p of Object.values(sim.pins || {})) {
+      if (p && !Array.isArray(p) && typeof p.to === 'number') otherFloor = Math.max(otherFloor, p.to + 1);
+    }
+  }
+  for (const ev of project.events || []) {
+    otherFloor = Math.max(otherFloor, (typeof ev.end === 'number' ? ev.end : ev.frame) + 1);
+  }
+  for (const f of extraFloors) if (Number.isFinite(f)) otherFloor = Math.max(otherFloor, f + 1);
+
+  return Math.max(min, bodyCandidate, otherFloor);
+}
+
 // ---------------------------------------------------------------- rig data (mirror, placement)
 const _rigCache = new WeakMap();
 const IDQ = new THREE.Quaternion();

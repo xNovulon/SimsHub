@@ -18,6 +18,7 @@ export function newProject() {
     furniture: 'floor',
     locations: ['FLOOR'],
     length: 90,
+    fitLength: true,            // the loop length follows the last body key; typing a length turns this off
     fps: 30,
     loop: true,
     autoCurve: 'clamped',       // "Auto smooth" never overshoots; projects saved before this keep 'legacy' (Store.load)
@@ -166,6 +167,8 @@ export class Store {
     this.project = Object.assign(newProject(), project);
     // saved before "Auto smooth" was clamped: it keeps the old curve, so nothing moves until the user switches
     if (!project || !('autoCurve' in project)) this.project.autoCurve = 'legacy';
+    // saved before "Fit to keys" existed: a deliberate loop must never change length behind the owner's back
+    if (!project || !('fitLength' in project)) this.project.fitLength = false;
     this.project.refs = Array.isArray(project && project.refs) ? project.refs.filter(r => r && r.file && r.kind) : [];
     if (!Array.isArray(this.project.events)) this.project.events = [];
     // a project from before faces could be posed by hand: move the jaw and tongue into the face channel and keep
