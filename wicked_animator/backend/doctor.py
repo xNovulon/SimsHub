@@ -43,12 +43,13 @@ import xml.etree.ElementTree as ET
 import zlib
 
 from dbpf import read_index, read_resource
+import mergelist
 from clipfmt import fnv64
 import gamelog
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.normpath(os.path.join(HERE, '..', 'cache', 'doctor'))
-CACHE_VERSION = 4
+CACHE_VERSION = 6                # 6: which mod inside a merged file brings a rig, body or motion
 
 T_CLIP, T_RIG, T_CASP, T_SNIPPET, T_STBL = 0x6B20C4F3, 0x8EAF13DE, 0x034AEECB, 0x7DF2169C, 0x220557DA
 T_OBJD, T_COBJ, T_SIMDATA, T_OBJTUNING = 0xC0DB5AE7, 0x319E4F1D, 0x545AC67A, 0xB61DE6B4
@@ -366,7 +367,7 @@ def nude_parts(ww_tuning):
 def package_facts(path, nude):
     """What the doctor needs from one package, from its index (plus WickedWhims' animation snippets)."""
     facts = {'clips': {}, 'objects': [], 'rig': False, 'nude': [], 'anims': [], 'ww': 0, 'blocked': False,
-             'error': None, 'entries': 0}
+             'error': None, 'entries': 0, 'from': {}, 'clip_from': {}}
     try:
         idx = read_index(path)
     except Exception as ex:
@@ -374,20 +375,33 @@ def package_facts(path, nude):
         return facts
     facts['entries'] = len(idx)
     snippets, stbls = [], []
+    culprits = []                                   # (key, what) of the rig / nude bodies, to name their mod in a merge
     for e in idx:
         t = e['type']
         if t == T_CLIP:
             facts['clips'][e['inst'] & LOW] = (e['size'], e['mem'])
+            culprits.append(((t, e['group'], e['inst']), 'clip'))
         elif t in OBJECT_TYPES:
             facts['objects'].append(e['inst'] & LOW)
         elif t == T_RIG and (e['inst'] & LOW) == AURIG:
             facts['rig'] = True
+            culprits.append(((t, e['group'], e['inst']), 'rig'))
         elif t == T_CASP and e['inst'] in nude:
             facts['nude'].append(e['inst'])
+            culprits.append(((t, e['group'], e['inst']), e['inst']))
         elif t == T_SNIPPET and 0 < e['mem'] <= 16_000_000:
             snippets.append(e)
         elif t == T_STBL and ((e['inst'] >> 56) & 0xFF) == 0:
             stbls.append(e)
+    if culprits:
+        names = mergelist.sources_of(path, idx, [k for k, _ in culprits])
+        for k, what in culprits:
+            if k not in names:
+                continue
+            if what == 'clip':
+                facts['clip_from'][k[2] & LOW] = names[k]
+            else:
+                facts['from'].setdefault('rig' if what == 'rig' else '%016X' % what, []).append(names[k])
     xmls = []
     if snippets:
         try:
@@ -959,6 +973,38 @@ def _parkable(rel):
     return not is_known(rel)
 
 
+def _who(rel, fa, clips):
+    """How a file is named in a motion clash: the mods inside a merged file that hold those motions, with the file
+    ('WW_Pack.package (inside m1.package)'), else the file itself."""
+    base = rel.rsplit('/', 1)[-1]
+    got = fa.get('clip_from') or {}
+    names = {}
+    for c in clips:
+        n = got.get(c)
+        if n:
+            names[n] = names.get(n, 0) + 1
+    if not names:
+        return base
+    top = sorted(names, key=lambda n: -names[n])
+    shown = ', '.join(top[:3]) + (' and %d more' % (len(top) - 3) if len(top) > 3 else '')
+    return '%s (inside %s)' % (shown, base)
+
+
+def _culprit_items(rel, fa, whats):
+    """Card lines for one file: the mods inside it that cause the clash when it is a merge (with the merged file named),
+    else the file itself."""
+    names = []
+    for w in whats:
+        for n in (fa.get('from') or {}).get(w, []):
+            if n not in names:
+                names.append(n)
+    if not names:
+        return [{'label': rel.rsplit('/', 1)[-1], 'detail': 'Mods/' + rel, 'file': rel, 'action': _park_action(rel)}]
+    merged = rel.rsplit('/', 1)[-1]
+    return [{'label': n, 'detail': 'Inside the merged file Mods/%s - unmerge it in Sims Hub (Library), then park this one' % rel,
+             'file': rel, 'action': {'kind': 'reveal', 'label': 'Show me', 'file': rel}} for n in names]
+
+
 def _park_action(rel):
     return {'kind': 'park', 'label': 'Park this file', 'file': rel} if _parkable(rel) else None
 
@@ -966,14 +1012,27 @@ def _park_action(rel):
 def _conflicts(pk, nude):
     """Rig clashes, body clashes and clip-name clashes between the packages in pk ({rel: facts}). WickedWhims' own
     files and the user's own tools never count as a rig or body clash; clip pairs keep them (see _package_cards)."""
-    rigs = [rel for rel, fa in pk.items() if fa['rig'] and not is_known(rel.replace('(set aside) ', '', 1))]
-    slots = {}
-    for rel, fa in pk.items():
+    def inside(fa, what):
+        # the mods a merged file got this from (None: not a merge, or not in its merge list)
+        return (fa.get('from') or {}).get(what)
+
+    def foreign(rel, fa, what):
         if is_known(rel.replace('(set aside) ', '', 1)):
-            continue
+            return False
+        names = inside(fa, what)
+        return not names or any(not is_known(n) for n in names)
+
+    rigs = [rel for rel, fa in pk.items() if fa['rig'] and foreign(rel, fa, 'rig')]
+    slots, makers = {}, {}
+    for rel, fa in pk.items():
         for inst in fa['nude']:
+            what = '%016X' % inst
+            if not foreign(rel, fa, what):
+                continue
             slot = nude.get(inst, ('body', ''))[0]
             slots.setdefault(slot, {}).setdefault(rel, set()).add(nude.get(inst, ('', '?'))[1])
+            # who really makes this body: the mod inside a merge, else the file itself
+            makers.setdefault(slot, set()).update(n.lower() for n in (inside(fa, what) or [rel.rsplit('/', 1)[-1]]))
     holders = {}
     for rel in sorted(pk):
         for inst, sz in pk[rel]['clips'].items():
@@ -991,7 +1050,8 @@ def _conflicts(pk, nude):
                 p[0] += 1
                 if sa != sb:
                     p[1] += 1
-    return rigs, {s: v for s, v in slots.items() if len(v) > 1}, pairs
+    # the same body mod merged into several files is one body, not a clash
+    return rigs, {s: v for s, v in slots.items() if len(v) > 1 and len(makers.get(s, ())) > 1}, pairs
 
 
 def _package_cards(pk, game, nude, where='mods'):
@@ -1009,14 +1069,14 @@ def _package_cards(pk, game, nude, where='mods'):
                       'title': "Another mod changes WickedWhims' skeleton",
                       'text': "These files carry their own copy of the sims' skeleton (the rig). It fights WickedWhims' "
                               'rig: penises, tongues and hips stretch or float. Park them.',
-                      'items': [{'label': r.rsplit('/', 1)[-1], 'detail': 'Mods/' + r, 'file': r, 'action': _park_action(r)} for r in rigs]})
+                      'items': [it for r in rigs for it in _culprit_items(r, pk[r], ['rig'])]})
     for slot, files in sorted(body.items()):
         cards.append({'id': 'body:' + slot, 'level': 'red', 'group': 'clash', 'sort': 6, 'need': len(files) - 1,
                       'title': 'More than one body for the %s' % slot,
                       'text': 'These files all replace the same nude %s. Only one of them shows, so bodies look wrong or '
                               'change at random. Keep the one you like and park the others.' % slot,
-                      'items': [{'label': r.rsplit('/', 1)[-1], 'detail': 'Mods/' + r, 'file': r, 'action': _park_action(r)}
-                                for r in sorted(files)]})
+                      'items': [it for r in sorted(files)
+                                for it in _culprit_items(r, pk[r], ['%016X' % i for i in pk[r]['nude'] if nude.get(i, ('body',))[0] == slot])]})
     # clip names used by two packs (the biggest overlaps; the rest in one line). Two known files (WickedWhims' own,
     # the user's own tools) never make a card; with one known file, the other one is the one to park. The Sims Hub's
     # fast packs are merged copies on purpose and the Hub decides what sits next to them, so they make no card at all.
@@ -1028,7 +1088,9 @@ def _package_cards(pk, game, nude, where='mods'):
         cards.append({'id': 'clips:more', 'level': 'yellow', 'group': 'clash', 'sort': 8.5,
                       'title': '%d more pairs of packs share motion names' % len(rest),
                       'text': 'The biggest overlaps are listed above; these are smaller.',
-                      'items': [{'label': '%s + %s' % (a.rsplit('/', 1)[-1], b.rsplit('/', 1)[-1]), 'detail': '%d motions' % n}
+                      'items': [{'label': '%s + %s' % (_who(a, pk[a], set(pk[a]['clips']) & set(pk[b]['clips'])),
+                                                        _who(b, pk[b], set(pk[a]['clips']) & set(pk[b]['clips']))),
+                                 'detail': '%d motions' % n}
                                 for (a, b), (n, d) in rest[:40]]})
     for (a, b), (n, differ) in ranked[:12]:
         if n < 1:
@@ -1038,7 +1100,8 @@ def _package_cards(pk, game, nude, where='mods'):
         na = {(x['name'].lower(), x['author'].lower()) for x in pk[a]['anims']}
         nb = {(x['name'].lower(), x['author'].lower()) for x in pk[b]['anims']}
         shared = len(na & nb)
-        fa, fb = older.rsplit('/', 1)[-1], newer.rsplit('/', 1)[-1]
+        both = set(pk[a]['clips']) & set(pk[b]['clips'])
+        fa, fb = _who(older, pk[older], both), _who(newer, pk[newer], both)
         kept = older if is_known(older) else (newer if is_known(newer) else None)
         if kept and target:
             fix = ' Park %s - %s is one of %s own files and stays.' % (
