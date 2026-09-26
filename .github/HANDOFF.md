@@ -31,6 +31,8 @@ overwritten.
   (`gh workflow run build-apps.yml --ref main`) when the commit touches something it watches - never otherwise.
 - GitHub never lets the bot's token change files in `.github/workflows/`. A commit that edits a workflow can't be
   promoted by the gate: let its checks pass on `dev`, then push that same commit to `main` by hand.
+- Tested on 2026-09-26: a deliberately broken `home.js` pushed to `dev` failed the syntax check and never reached
+  `main`.
 
 ## Branches
 | Branch | State |
