@@ -524,6 +524,7 @@ class App {
     for (const [id, v] of this.simViews) if (!ids.has(id)) { this.disposeView(v); this.simViews.delete(id); }
     for (const s of p.sims) {
       simBody(s);
+      if ('_loading' in s) delete s._loading;          // left in animations saved before (see _loadTray)
       let v = this.simViews.get(s.id);
       // a Tray sim has its own body shape (loaded once, then kept)
       if (s.tray && !this.assets.bodies['tray:' + s.id]) this._loadTray(s);
@@ -578,9 +579,12 @@ class App {
     return (this._texReady && this._texReady.get(key)) || Promise.resolve(false);
   }
 
+  // A Tray sim's own body (and with it her hair and look), once per sim. What is loading is kept here, never on the
+  // sim itself: the sim is saved (autosave, recovery), and a "loading" left in a saved sim made her come back bald.
   async _loadTray(s) {
-    if (s._loading) return;
-    s._loading = true;
+    this._trayLoading = this._trayLoading || new Set();
+    if (this._trayLoading.has(s.id)) return;
+    this._trayLoading.add(s.id);
     try {
       const r = await api.traySim(s.tray.id, s.tray.index);
       this.assets.bodies['tray:' + s.id] = r.body;
@@ -588,7 +592,7 @@ class App {
       this.syncViews();
       this.applyPoses();
     } catch (e) { toast(`Could not load ${s.tray.name}'s body: ${e.message}`, 'err'); }
-    delete s._loading;
+    finally { this._trayLoading.delete(s.id); }
   }
 
   async addTraySim(trayId, index, name) {
