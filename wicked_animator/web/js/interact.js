@@ -1118,6 +1118,9 @@ export class Interaction {
           if (m !== a.bone && this.limitsOn() && !this.app.altDown && v.bone(m)) clampToLimits(v, v.bone(m));
         }
         if (hit) this.limitHud();
+        // turning a bone of a pinned arm or leg (feet pinned to a seat's floor spots): the pin goes where the hand or
+        // foot now is, instead of the solver pulling it back every step (which flipped the knee from side to side)
+        for (const n of touched) this.carryPin(sim, v, n);
         this.resolvePins(sim, v);
         K.twist(this.app, { sim, v });              // the wrist follows the hand live
         this.followHolders(a.simId);
@@ -1300,6 +1303,17 @@ export class Interaction {
       all = all || pl.entries();
       pl.holds({ sim: s, v: w }, Math.round(this.app.store.frame), all);
       K.twist(this.app, { sim: s, v: w });
+    }
+  }
+
+  // A fixed pin whose arm or leg contains `bone` moves to that limb's end as it is now (a hold on the partner stays).
+  carryPin(sim, v, bone) {
+    for (const [limb, chain] of Object.entries(LIMBS)) {
+      if (!chain.includes(bone) || !sim.pins) continue;
+      const pin = sim.pins[limb], end = v.bone(chain[2]);
+      if (!end) continue;
+      if (Array.isArray(pin)) sim.pins[limb] = spacePos(v, end).toArray();
+      else if (pin && Array.isArray(pin.at) && !isHold(pin)) pin.at = spacePos(v, end).toArray();
     }
   }
 

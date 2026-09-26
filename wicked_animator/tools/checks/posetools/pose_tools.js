@@ -343,6 +343,36 @@ async function startServer() {
       return `rings X, Y, Z shown; tipped ${r.tilt.toFixed(1)}° (asked 30), the keys changed, undo put it back (${r.back.toFixed(2)}° off)`;
     });
 
+    await step('R on the thigh of a pinned leg swings the leg (the pin follows), the knee never flips side', async () => {
+      const r = await page.evaluate(async () => {
+        const T = await import('three');
+        const app = window.app, I = app.interact, gz = app.vp.gizmo, t = window.__t, id = t.sim(), s = app.store.sim(id), v = app.simViews.get(id);
+        app.setView('front');
+        const foot0 = t.wp('b__L_Foot__');
+        s.pins = s.pins || {}; s.pins['L foot'] = null;
+        I.togglePin(id, 'L foot');                                  // pinned where it is
+        app.store.selected = { sim: id, bone: 'b__L_Thigh__' }; I.selectBone(id, 'b__L_Thigh__');
+        const side = () => { const h = t.wp('b__L_Thigh__'), k = t.wp('b__L_Calf__'), f = t.wp('b__L_Foot__');
+          const a = new T.Vector3(...h), c = new T.Vector3(...f), b = new T.Vector3(...k); const ax = c.clone().sub(a).normalize();
+          const off = b.clone().sub(a).sub(ax.multiplyScalar(b.clone().sub(a).dot(ax))); return off; };
+        const s0 = side(); let flips = 0, prev = s0.clone();
+        gz.dispatchEvent({ type: 'mouseDown' });
+        const bone = v.bone('b__L_Thigh__');
+        for (let k = 0; k < 24; k++) {
+          bone.quaternion.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), T.MathUtils.degToRad(70 / 24)));
+          I.proxy.quaternion.copy(bone.quaternion);
+          gz.dispatchEvent({ type: 'objectChange' });
+          const now = side(); if (now.lengthSq() > 1e-6 && prev.lengthSq() > 1e-6 && now.dot(prev) < 0) flips++; if (now.lengthSq() > 1e-6) prev = now;
+        }
+        gz.dispatchEvent({ type: 'mouseUp' });
+        const foot1 = t.wp('b__L_Foot__'), pin = s.pins['L foot'];
+        app.undo();
+        return { moved: Math.hypot(foot1[0] - foot0[0], foot1[1] - foot0[1], foot1[2] - foot0[2]), flips,
+          pinAtFoot: Array.isArray(pin) ? Math.hypot(...pin.map((x, i) => x - foot1[i])) : null };
+      });
+      if (!(r.moved > 0.2 && r.flips === 0 && r.pinAtFoot !== null && r.pinAtFoot < 0.02)) throw new Error(JSON.stringify(r));
+      return `the foot swung ${(r.moved * 100).toFixed(0)} cm, the pin went with it, the knee never flipped`;
+    });
     await step('the Move tool (M) moves the part clicked, never the whole sim', async () => {
       const r = await page.evaluate(() => {
         const app = window.app, t = window.__t, id = t.sim();
