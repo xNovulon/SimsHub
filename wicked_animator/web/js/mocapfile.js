@@ -1,7 +1,8 @@
-// "Import a motion file": a BVH from a mocap library (CMU, Mixamo converted to BVH) or a free AI video tool
-// (Rokoko Vision, DeepMotion, Plask) put on a sim as keys. The file is read in the browser (nothing is uploaded or
-// written), turned into a capture take and put on through the capture's own pipeline (capture/bvh.js solveFile ->
-// capture/keys.js applyToSim), so it behaves like "Copy real moves": one Ctrl+Z takes it all back.
+// "Import a motion file": a BVH or FBX from a mocap library (CMU, Mixamo) or a free AI video tool (Rokoko Vision,
+// DeepMotion, Plask) put on a sim as keys. The file is read in the browser (nothing is uploaded or written), turned
+// into a capture take and put on through the capture's own pipeline (capture/bvh.js solveFile -> capture/keys.js
+// applyToSim), so it behaves like "Copy real moves": one Ctrl+Z takes it all back. FBX goes through capture/fbx.js
+// (three.js's FBXLoader, loaded only when an FBX is opened), which hands over the same kind of motion a BVH gives.
 // Opened by features/mocapfile.js (Pose step, Library, Ctrl+K, a .bvh dropped on the stage).
 import * as THREE from 'three';
 import { h, icon, modal, toast, choiceBar } from './ui.js';
@@ -21,6 +22,9 @@ const saveOpts = o => { try { localStorage.setItem(OPTS_KEY, JSON.stringify(o));
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion');
 
 let current = null;          // the open dialog (a second open only hands it the file)
+let fbxMod = null;
+const loadFbx = () => (fbxMod = fbxMod || import('./capture/fbx.js'));
+const looksFBX = (name, head) => /\.fbx$/i.test(name || '') || /^Kaydara FBX Binary/.test(head) || /^; FBX/.test(head);
 
 export function isOpen() { return !!(current && !current.closed); }
 
@@ -46,10 +50,10 @@ class MotionFileDialog {
     this.input = h('input', { type: 'file', accept: '.bvh,.fbx', class: 'mf-input', onchange: () => { const f = this.input.files && this.input.files[0]; this.input.value = ''; if (f) this.load(f); } });
     const m = modal({
       title: 'Import a motion file',
-      text: 'A BVH file from a motion-capture library or a free AI video tool (Rokoko Vision, DeepMotion, Plask) becomes keys on a sim.',
+      text: 'A BVH or FBX file from a motion-capture library or a free AI video tool (Rokoko Vision, DeepMotion, Plask, Mixamo) becomes keys on a sim.',
       body: h('div', {}, this.input, this.root),
       wide: true,
-      onClose: () => { this.closed = true; cancelAnimationFrame(this._raf); if (current === this) current = null; },
+      onClose: () => { this.closed = true; cancelAnimationFrame(this._raf); this._dropFbx(); if (current === this) current = null; },
       buttons: [
         { label: 'Cancel', kind: 'ghost' },
         { label: 'Make keys', kind: 'primary', onClick: () => this.makeKeys() },
@@ -68,6 +72,7 @@ class MotionFileDialog {
   async load(file) {
     this.error = null; this.warnings = [];
     this.file = file; this.bvh = null; this.info = null;
+    this._dropFbx();
     this.busy = 'Reading ' + file.name + '...';
     this.render();
     try {
@@ -75,27 +80,59 @@ class MotionFileDialog {
       const head = await file.slice(0, 64).text();
       const fmt = formatProblem(file.name, head);
       if (fmt) throw new BVHError(fmt);
-      const text = await file.text();
-      if (this.closed || this.file !== file) return;
-      const bvh = parseBVH(text);
-      const info = analyze(bvh);
-      this.warnings = bvh.warnings.slice();
-      if (info.missing.length) {
-        throw new BVHError(`This skeleton isn't one the app recognises: it can't find the ${info.missing.slice(0, 6).join(', ')}${info.missing.length > 6 ? '...' : ''}. `
-          + 'Files from Mixamo, CMU, Rokoko, DeepMotion, Plask, Daz and 3ds Max Biped skeletons work; a skeleton with other joint names needs to be renamed first.');
+      if (looksFBX(file.name, head)) {
+        const [F, buffer] = await Promise.all([loadFbx(), file.arrayBuffer()]);
+        if (this.closed || this.file !== file) return;
+        const fbx = await F.readFBX(buffer);
+        if (this.closed || this.file !== file) { fbx.dispose(); return; }
+        this.fbx = fbx;
+        this.fbxBinary = /^Kaydara FBX Binary/.test(head);
+        // several animations in the file: the longest one first (the others are in the "Animation" list)
+        const longest = fbx.stacks.reduce((b, st, i) => (st.seconds > fbx.stacks[b].seconds ? i : b), 0);
+        this._useMotion(fbx.motion(longest), longest);
+      } else {
+        const text = await file.text();
+        if (this.closed || this.file !== file) return;
+        this._useMotion(parseBVH(text), null);
       }
-      this.bvh = bvh; this.info = info;
-      const dur = (bvh.frames - 1) * bvh.frameTime;
-      this.from = 0;
-      this.len = Math.min(dur, MAX_SECONDS);
-      if (dur > MAX_SECONDS) this.warnings.push(`The file is ${secs(dur)} s long; up to ${MAX_SECONDS} s are read at once - pick the part below.`);
-      this.frame = 0;
     } catch (e) {
       if (!(e instanceof BVHError)) console.error('motion file', e);
       this.error = e instanceof BVHError ? e.message : 'That file could not be read: ' + (e && e.message ? e.message : e);
     }
     this.busy = null;
     this.render();
+  }
+
+  // a motion read from the file (a BVH, or one animation of an FBX): recognised and ready, or a plain message
+  _useMotion(bvh, stack) {
+    const info = analyze(bvh);
+    this.warnings = (bvh.warnings || []).slice();
+    if (info.missing.length) {
+      throw new BVHError(`This skeleton isn't one the app recognises: it can't find the ${info.missing.slice(0, 6).join(', ')}${info.missing.length > 6 ? '...' : ''}. `
+        + 'Files from Mixamo, CMU, Rokoko, DeepMotion, Plask, Daz and 3ds Max Biped skeletons work; a skeleton with other joint names needs to be renamed first.');
+    }
+    this.bvh = bvh; this.info = info; this.stack = stack;
+    const dur = (bvh.frames - 1) * bvh.frameTime;
+    this.from = 0;
+    this.len = Math.min(dur, MAX_SECONDS);
+    if (dur > MAX_SECONDS) this.warnings.push(`The file is ${secs(dur)} s long; up to ${MAX_SECONDS} s are read at once - pick the part below.`);
+    this.frame = 0;
+    this._fit = null;
+  }
+
+  // another animation of the same FBX file
+  _pickStack(i) {
+    if (!this.fbx || i === this.stack) return;
+    try { this.error = null; this._useMotion(this.fbx.motion(i), i); } catch (e) {
+      this.bvh = null;
+      this.error = e instanceof BVHError ? e.message : 'That animation could not be read: ' + (e && e.message ? e.message : e);
+    }
+    this.render();
+  }
+
+  _dropFbx() {
+    if (this.fbx) { try { this.fbx.dispose(); } catch { /* gone */ } }
+    this.fbx = null; this.stack = null;
   }
 
   // ---------------------------------------------------------------- the dialog
@@ -120,16 +157,24 @@ class MotionFileDialog {
     this.clock = h('span', { class: 'mf-clock' });
     const fingers = info.fingers.L || info.fingers.R;
     const facts = [
+      this.fbx ? `FBX file (${this.fbxBinary ? 'binary' : 'text'})` : 'BVH file',
       `${info.style === 'Other' ? 'Skeleton' : info.style + ' skeleton'} · ${info.joints} joints`,
       `${bvh.frames.toLocaleString()} frames at ${Math.round(bvh.fps * 100) / 100} fps (${secs(dur)} s)`,
       `${info.restPose} · ${info.up} · ${info.units}`,
       fingers ? 'Has fingers' : 'No fingers (hands follow the wrists)',
     ];
+    if (this.fbx && this.fbx.meshes) facts.push('The model in the file is left out; only its skeleton\'s motion is used');
+    let stackSel = null;
+    if (this.fbx && this.fbx.stacks.length > 1) {
+      stackSel = h('select', { class: 'mf-stack' }, this.fbx.stacks.map((st, i) => h('option', { value: i, selected: i === this.stack }, `${st.name} (${secs(st.seconds)} s)`)));
+      stackSel.addEventListener('change', () => this._pickStack(+stackSel.value));
+    }
     const left = h('div', { class: 'mf-left' },
       h('div', { class: 'mf-stage' }, this.canvas),
       h('div', { class: 'mf-bar' }, this.playBtn, this.scrub, this.clock),
       h('div', { class: 'mf-file' }, icon('mf-bvh'), h('b', { title: this.file.name }, this.file.name),
         h('button', { class: 'btn small ghost', onclick: () => this.input.click() }, 'Another file')),
+      stackSel ? h('label', { class: 'field mf-stack-field' }, h('span', {}, `Animation (${this.fbx.stacks.length} in this file)`), stackSel) : null,
       h('ul', { class: 'mf-facts' }, facts.map(f => h('li', {}, f))));
     // the part
     const start = h('input', { class: 'text', type: 'number', min: 0, max: Math.max(0, dur - 0.1).toFixed(1), step: 0.1, value: secs(this.from) });
@@ -192,19 +237,19 @@ class MotionFileDialog {
   }
 
   _pick() {
-    const zone = h('div', { class: 'mf-drop', tabindex: '0', role: 'button', 'aria-label': 'Choose a BVH file',
+    const zone = h('div', { class: 'mf-drop', tabindex: '0', role: 'button', 'aria-label': 'Choose a BVH or FBX file',
       onclick: () => this.input.click(), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.input.click(); } } },
     h('span', { class: 'mf-drop-icon' }, icon('mf-bvh')),
-    h('b', {}, 'Drop a .bvh file here'),
+    h('b', {}, 'Drop a .bvh or .fbx file here'),
     h('span', {}, 'or click to choose one'),
-    h('button', { class: 'btn soft', type: 'button', onclick: e => { e.stopPropagation(); this.input.click(); } }, icon('folder'), 'Choose a BVH file'));
+    h('button', { class: 'btn soft', type: 'button', onclick: e => { e.stopPropagation(); this.input.click(); } }, icon('folder'), 'Choose a motion file'));
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('over'));
     zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) this.load(f); });
     return h('div', { class: 'mf-pick' }, zone,
       h('ul', { class: 'mf-tips' },
-        h('li', {}, h('b', {}, 'BVH files. '), 'DeepMotion, Plask and Rokoko Vision offer BVH next to FBX when you download; pick BVH. The CMU mocap library comes as BVH too.'),
-        h('li', {}, h('b', {}, 'FBX can\'t be read here. '), 'Mixamo only downloads FBX - convert it to BVH first (for example with Blender\'s BVH export).'),
+        h('li', {}, h('b', {}, 'BVH or FBX, '), 'the formats mocap libraries and tools such as Mixamo, DeepMotion, Plask and Rokoko Vision export; the CMU mocap library comes as BVH.'),
+        h('li', {}, h('b', {}, 'FBX 2010 or newer '), '(version 7, binary or text). A file with several animations lets you pick one; a model or textures in the file are left out.'),
         h('li', {}, 'Adults only. The file is read on this PC and never uploaded.')));
   }
 

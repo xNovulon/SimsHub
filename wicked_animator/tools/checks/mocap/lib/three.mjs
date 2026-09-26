@@ -43,11 +43,14 @@ export async function useThree() {
   if (done) return;
   const file = findThree();
   const url = pathToFileURL(file).href;
+  // 'three/addons/...' -> examples/jsm/... (index.html's importmap does the same on the CDN)
+  const addons = pathToFileURL(path.join(path.dirname(path.dirname(file)), 'examples', 'jsm')).href + '/';
   const web = pathToFileURL(path.join(WEB, 'js')).href + '/';
   // the app's own files are ES modules (the browser reads them so); older Node versions would guess CommonJS
   register('data:text/javascript,' + encodeURIComponent(`
     export async function resolve(spec, ctx, next) {
       if (spec === 'three') return { url: ${JSON.stringify(url)}, shortCircuit: true };
+      if (spec.startsWith('three/addons/')) return { url: ${JSON.stringify(addons)} + spec.slice(13), shortCircuit: true };
       return next(spec, ctx);
     }
     export async function load(url, ctx, next) {

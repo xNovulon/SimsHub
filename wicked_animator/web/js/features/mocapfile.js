@@ -1,6 +1,6 @@
-// "Import a motion file" (BVH) in the app: a button under the Pose step's "Copy real moves" (next to From a video /
-// webcam / photo), a card in the Library, Ctrl+K commands, a Help row, and a .bvh (or .fbx, which gets the "export
-// BVH instead" message) dropped anywhere on the window. The dialog (web/js/mocapfile.js) loads only when used.
+// "Import a motion file" (BVH, FBX) in the app: a button under the Pose step's "Copy real moves" (next to From a
+// video / webcam / photo), a card in the Library, Ctrl+K commands, a Help row, and a .bvh or .fbx dropped anywhere on
+// the window. The dialog (web/js/mocapfile.js) loads only when used.
 // Everything registers through app.hooks and the DOM, so main.js, index.html and features/capture.js stay untouched.
 import { h, icon, section, addIcon } from '../ui.js';
 
@@ -17,9 +17,9 @@ const open = (app, file = null) => load().then(m => m.openMotionFile(app, { file
 const isMotionFile = f => /\.(bvh|fbx)$/i.test((f && f.name) || '');
 
 function button(app, cls) {
-  return h('button', { class: cls, 'data-mocapfile': 'open', title: 'A BVH file from a mocap library or a free AI tool (Rokoko Vision, DeepMotion, Plask)', onclick: () => open(app) },
+  return h('button', { class: cls, 'data-mocapfile': 'open', title: 'A BVH or FBX file from a mocap library or a free AI tool (Rokoko Vision, DeepMotion, Plask, Mixamo)', onclick: () => open(app) },
     h('span', { class: 'mf-entry-icon' }, icon('mf-bvh')),
-    h('span', { class: 'mf-entry-text' }, h('b', {}, 'From a motion file'), h('small', {}, 'BVH from mocap or AI tools (Rokoko, DeepMotion, Plask)')));
+    h('span', { class: 'mf-entry-text' }, h('b', {}, 'From a motion file'), h('small', {}, 'BVH or FBX from mocap or AI tools (Mixamo, Rokoko, DeepMotion, Plask)')));
 }
 
 export function install(app) {
@@ -45,18 +45,18 @@ export function install(app) {
     if (lib && !lib.querySelector('[data-mocapfile]')) {
       lib.append(h('div', { class: 'mf-lib' },
         h('div', { class: 'mf-lib-text' }, h('b', {}, 'Have a motion file?'),
-          h('span', {}, 'Import a BVH from a mocap library or a free AI tool and turn it into keys you can change.')),
+          h('span', {}, 'Import a BVH or FBX from a mocap library or a free AI tool and turn it into keys you can change.')),
         h('button', { class: 'btn soft small', 'data-mocapfile': 'library', onclick: () => open(app) }, icon('mf-bvh'), 'Import a motion file')));
     }
   } catch (e) { console.error('motion file: library card', e); }
 
   add('commands', a => [
-    { group: 'Actions', id: 'mocap-file', label: 'Import a motion file (BVH)', icon: 'mf-bvh', sub: 'mocap or AI tools: Rokoko Vision, DeepMotion, Plask, CMU',
-      words: 'bvh mocap motion capture file import rokoko deepmotion plask mixamo cmu fbx animation keys', run: () => open(a) },
+    { group: 'Actions', id: 'mocap-file', label: 'Import a motion file (BVH, FBX)', icon: 'mf-bvh', sub: 'mocap or AI tools: Mixamo, Rokoko Vision, DeepMotion, Plask, CMU',
+      words: 'bvh fbx mocap motion capture file import rokoko deepmotion plask mixamo cmu animation keys', run: () => open(a) },
   ]);
   add('helpRows', () => [
-    { group: 'Copy real moves', keys: ['Ctrl', 'K'], text: 'Type "motion file" to import a BVH from a mocap library or an AI tool' },
-    { group: 'Copy real moves', keys: 'Drop a .bvh file', text: 'on the stage to put its moves on the selected sim' },
+    { group: 'Copy real moves', keys: ['Ctrl', 'K'], text: 'Type "motion file" to import a BVH or FBX from a mocap library or an AI tool' },
+    { group: 'Copy real moves', keys: 'Drop a .bvh or .fbx file', text: 'on the stage to put its moves on the selected sim' },
   ]);
 
   // a .bvh / .fbx dropped anywhere: the dialog (before the stage's own drop, which only takes pictures and videos)

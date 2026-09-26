@@ -1,0 +1,172 @@
+; FBX 7.4.0 project file
+; Hand-written test file: a 3-bone arm (Shoulder > Elbow > Wrist > WristEnd), 3 frames at 30 fps.
+; The Elbow has a joint orient (PreRotation 0,0,90), so its rest turn is not zero and the Wrist offset is in its
+; turned frame. World places, worked out by hand (FBX default order XYZ = Rz*Ry*Rx):
+;   frame 0: elbow (10,0,0)  wrist (20,0,0)   end (25,0,0)
+;   frame 1: shoulder Z 90, elbow Z 90:        elbow (0,10,0)   wrist (-10,10,0)  end (-15,10,0)
+;   frame 2: shoulder moved (1,2,3), Y 90 Z 90: elbow (1,2,-7)   wrist (1,2,-17)   end (1,2,-22)
+FBXHeaderExtension:  {
+	FBXHeaderVersion: 1003
+	FBXVersion: 7400
+}
+GlobalSettings:  {
+	Version: 1000
+	Properties70:  {
+		P: "UpAxis", "int", "Integer", "",1
+		P: "UnitScaleFactor", "double", "Number", "",1
+		P: "TimeMode", "enum", "", "",6
+	}
+}
+Objects:  {
+	Model: 1001, "Model::Shoulder", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,0,0
+		}
+	}
+	Model: 1002, "Model::Elbow", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "RotationActive", "bool", "", "",1
+			P: "PreRotation", "Vector3D", "Vector", "",0,0,90
+			P: "Lcl Translation", "Lcl Translation", "", "A",10,0,0
+		}
+	}
+	Model: 1003, "Model::Wrist", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-10,0
+		}
+	}
+	Model: 1004, "Model::WristEnd", "LimbNode" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,-5,0
+		}
+	}
+	AnimationStack: 2001, "AnimStack::Arm test", "" {
+		Properties70:  {
+			P: "LocalStop", "KTime", "Time", "",3079077200
+		}
+	}
+	AnimationLayer: 2002, "AnimLayer::BaseLayer", "" {
+	}
+	AnimationCurveNode: 3001, "AnimCurveNode::T", "" {
+	}
+	AnimationCurveNode: 3002, "AnimCurveNode::R", "" {
+	}
+	AnimationCurveNode: 3003, "AnimCurveNode::R", "" {
+	}
+	AnimationCurve: 4001, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,0,1
+		}
+	}
+	AnimationCurve: 4002, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,0,2
+		}
+	}
+	AnimationCurve: 4003, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,0,3
+		}
+	}
+	AnimationCurve: 4004, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,0,0
+		}
+	}
+	AnimationCurve: 4005, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,0,90
+		}
+	}
+	AnimationCurve: 4006, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,90,90
+		}
+	}
+	AnimationCurve: 4007, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,0,0
+		}
+	}
+	AnimationCurve: 4008, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,0,0
+		}
+	}
+	AnimationCurve: 4009, "AnimCurve::", "" {
+		Default: 0
+		KeyVer: 4009
+		KeyTime: *3 {
+			a: 0,1539538600,3079077200
+		}
+		KeyValueFloat: *3 {
+			a: 0,90,0
+		}
+	}
+}
+Connections:  {
+	C: "OO",1001,0
+	C: "OO",1002,1001
+	C: "OO",1003,1002
+	C: "OO",1004,1003
+	C: "OO",2002,2001
+	C: "OO",3001,2002
+	C: "OO",3002,2002
+	C: "OO",3003,2002
+	C: "OP",3001,1001, "Lcl Translation"
+	C: "OP",3002,1001, "Lcl Rotation"
+	C: "OP",3003,1002, "Lcl Rotation"
+	C: "OP",4001,3001, "d|X"
+	C: "OP",4002,3001, "d|Y"
+	C: "OP",4003,3001, "d|Z"
+	C: "OP",4004,3002, "d|X"
+	C: "OP",4005,3002, "d|Y"
+	C: "OP",4006,3002, "d|Z"
+	C: "OP",4007,3003, "d|X"
+	C: "OP",4008,3003, "d|Y"
+	C: "OP",4009,3003, "d|Z"
+}
