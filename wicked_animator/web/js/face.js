@@ -340,9 +340,10 @@ export function mergeFace(a, b) {
   return out;
 }
 
-// Natural blinking: about every 3.5 s, spread so it loops cleanly; each blink takes 7 frames.
+// Blinking now and then (only when switched on in the Face step): about every 3.5 s, spread so it loops cleanly; each
+// blink takes 7 frames.
 export function blinkAt(sim, frame, length, fps = 30) {
-  if (sim.body && sim.body.blink === false) return null;
+  if (!(sim.body && sim.body.blink === true)) return null;
   const count = Math.max(1, Math.round(length / fps / 3.5));
   let seed = 0;
   for (const c of String(sim.id)) seed = (seed * 31 + c.charCodeAt(0)) % 1000;

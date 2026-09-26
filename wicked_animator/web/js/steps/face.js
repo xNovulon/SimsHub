@@ -99,6 +99,6 @@ export function renderFace(app, root) {
 
   const b = simBody(sim);
   root.append(section('Talking', toggleRow('Mouth moves while they talk', 'Voice sounds (moans, words) open and close the mouth by themselves', b.talk.mouth !== false, on => app.setBody(sim.id, x => { x.talk.mouth = on; })),
-    toggleRow('Blink now and then', 'Natural blinking every few seconds', b.blink !== false, on => app.setBody(sim.id, x => { x.blink = on; })),
+    toggleRow('Blink now and then', 'The eyes close for a moment every few seconds', b.blink === true, on => app.setBody(sim.id, x => { x.blink = on; })),
     h('button', { class: 'btn block', onclick: () => app.showStep('sounds') }, icon('mic'), 'Add voices and moans')));
 }

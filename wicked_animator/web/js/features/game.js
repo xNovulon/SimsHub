@@ -227,6 +227,13 @@ export function install(app) {
   // ---------------------------------------------------------------- Send to game
   add('bake', (payload, p, { views } = {}) => bakeMoments(app, payload, p, views));
   add('exportChecks', p => exportChecks(app, p));
+  // nothing moves: every sim has one pose and no motion - in the game it stands still in that pose
+  add('exportChecks', p => {
+    const moves = s => (s.keys || []).filter(k => !k.faceOnly).length > 1 || (s.layers || []).some(l => l && l.on !== false);
+    if (!p.sims.length || p.sims.some(moves)) return [];
+    return [{ level: 'warn', text: 'Nothing moves yet: each sim has one pose, so in the game they hold it. Add keys on the timeline (K) or a Motion.',
+      fix: { label: 'Add a Motion', run: () => app.showStep('motion') } }];
+  });
 
   // ---------------------------------------------------------------- keys, menus, palette, help
   add('keys', (e, info) => {

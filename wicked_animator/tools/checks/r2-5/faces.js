@@ -488,6 +488,7 @@ async function panelShot(page, file, sel) {
       checks.push(['C3 the voice line is added as the sim\'s voice sound (lipsync: true)', !!cue && cue.kind === 'voice' && cue.lipsync === true, cue]);
       const talk = M.face.talkAt(F, start + 10, p.length, p.loop, 30);
       checks.push(['C3 automatic talking steps aside for a lip-synced sound', talk === null, talk]);
+      F.body = { ...(F.body || {}), blink: true };           // blinking is off unless switched on
       let blinks = 0; for (let f = 0; f < p.length; f++) if (M.face.blinkAt(F, f, p.length, 30)) blinks++;
       checks.push(['C3 blinking keeps going', blinks > 0, blinks]);
       // the keys are face keys: the body is untouched

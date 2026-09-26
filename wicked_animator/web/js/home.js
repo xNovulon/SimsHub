@@ -184,7 +184,7 @@ export async function showHome(app) {
     h('div', { class: 'starts how' },
       ...[['1', 'Pose', 'One click on a ready pose (cowgirl, missionary, doggy...). Drag hands and feet to adjust - pinned ones stay put.'],
         ['2', 'Move', 'Add Thrust, Ride or Head bob. Set how often and how hard. It loops perfectly by itself.'],
-        ['3', 'It comes alive', 'Physics, opening holes, blinking, faces and sounds are automatic - switch any of them off.'],
+        ['3', 'It comes alive', 'Physics, opening holes, faces and sounds are automatic - switch any of them off.'],
         ['4', 'Play it', 'Send to game, restart The Sims 4, pick it in WickedWhims. Or export a mod to share.']].map(([n, t, s]) =>
         h('div', { class: 'start static' }, h('div', { class: 'ic num' }, h('b', {}, n)), h('b', {}, t), h('small', {}, s)))));
   root.append(inner);

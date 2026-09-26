@@ -437,6 +437,7 @@ const results = {};
       const small = fwd.angleTo(t2.clone().sub(eb.getWorldPosition(new THREE.Vector3()))) * 180 / Math.PI;
       // blinking gives way to lids posed shut (creator style), and the clamp keeps lids under 46 deg
       app.pipeline.editing = null;
+      s.body.blink = true;                                   // blinking is off unless switched on
       const lidShut = T.mulAxis(v.restByName.b__L_UpLid__.quat.toArray(), [0, 0, 1], 40);
       s.keys[0].faceBones = { rot: { b__L_UpLid__: lidShut, b__R_UpLid__: T.mulAxis(v.restByName.b__R_UpLid__.quat.toArray(), [0, 0, 1], 40) }, pos: {} };
       const z = n => R.animation.twistAngle(v.restByName[n].quat, v.bone(n).quaternion, new THREE.Vector3(0, 0, 1)) * 180 / Math.PI;
