@@ -11,10 +11,32 @@ flagged account. Don't use it.
 - The Hub's start modes are named "Quick Start" and "Full Start". The README has no emojis.
 - Keep replies to the owner short and plain.
 
+## Releasing: push to dev, never to main
+Both apps auto-update every user straight from `main` (Updater.cs, `speedkit/hub/update.py`), so a broken `main` is a
+broken app for everyone the moment they open it. That happened on 2026-09-26: a lost `)` in
+`wicked_animator/web/js/home.js` reached `main` and every copy of the animator opened to "Could not start" - nothing
+had checked the apps' JavaScript, and nothing had opened either app in a real page first.
+
+The fix is a gate (`.github/workflows/dev-gate.yml`): work goes on `dev`, never straight to `main`. Every push to
+`dev` runs the checks below (`checks` job), and only if every one of them passes does `main` fast-forward to that
+commit by itself (`promote` job) - a plain `git push`, so a `dev` that has diverged from `main` is refused, never
+overwritten.
+- **Syntax**: every `.js` under each app's web UI actually parses (`tools/ci/check_js_syntax.py` - what
+  `python -m compileall` can't check, since it only reads Python) and every `.py` in both apps compiles.
+- **Boot smoke test** (`tools/ci/smoke.py`, Playwright + Chromium, headless): starts the Hub in example-data mode and
+  the animator against its stand-in game server, opens each one for real, visits every page, and fails on anything
+  that stops it rendering. Run it yourself with `python tools/ci/smoke.py` (add `--hub` or `--animator` for just
+  one); needs `pip install playwright && python -m playwright install chromium` once.
+- Because `git push` with the bot's token doesn't trigger other workflows, `promote` starts `build-apps.yml` itself
+  (`gh workflow run build-apps.yml --ref main`) when the commit touches something it watches - never otherwise.
+- GitHub never lets the bot's token change files in `.github/workflows/`. A commit that edits a workflow can't be
+  promoted by the gate: let its checks pass on `dev`, then push that same commit to `main` by hand.
+
 ## Branches
 | Branch | State |
 | --- | --- |
-| `main` | Live. This is what users and auto-updates get. |
+| `main` | Live. This is what users and auto-updates get. Only `dev-gate.yml`'s `promote` job pushes here. |
+| `dev` | Where work happens. Push here; the gate promotes it to `main` once the checks pass. |
 | `next` | Released: its clothing preview is in `main`. Nothing left on it. |
 | `wip/fbx-import` | FBX motion-file import. Unfinished. Builds on `next`. |
 | `wip/hub-translations` | Hub in 6 languages. Unfinished: Spanish was started, the rest isn't done. Builds on `next`. |

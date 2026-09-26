@@ -1,0 +1,120 @@
+# The release gate. Both apps auto-update every user straight from `main` (shared/desktop/Updater.cs,
+# sims_hub/speedkit/hub/update.py reading it through the GitHub API), so nothing broken should ever land there. Work
+# goes on `dev` instead; this runs on every push to it, and only when every check below passes does the `promote`
+# job fast-forward `main` to that commit (a plain `git push`, never --force - if `dev` and `main` have diverged, git
+# itself refuses the push instead of overwriting anything).
+#
+# This is the gate that a one-character syntax error in wicked_animator/web/js/home.js got past on 2026-09-26: it
+# reached `main` and every copy of the animator opened to "Could not start". `python -m compileall` only reads
+# Python, so nothing here checked the apps' JavaScript, and nothing had opened either app in a real page before main
+# updated everyone. checks now does both (tools/ci/check_js_syntax.py, tools/ci/smoke.py).
+name: Check dev, then promote it to main
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+# a promotion queues behind the one running before it rather than racing it - two pushes fast-forwarding main at
+# the same time is exactly what this is meant to prevent
+concurrency:
+  group: promote-main
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    # both apps are Windows-first (WebView2, .NET) - this is the closest a runner gets to a user's PC, and it's
+    # already what build-apps.yml builds on
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Playwright
+        shell: pwsh
+        run: |
+          pip install playwright
+          if ($LASTEXITCODE -ne 0) { throw "could not install Playwright" }
+          python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw "could not install Chromium" }
+
+      # python -m compileall never reads a .js file - this is the other half of "does it even parse"
+      - name: Syntax - JavaScript (both apps' web UI)
+        shell: pwsh
+        run: |
+          python tools/ci/check_js_syntax.py
+          if ($LASTEXITCODE -ne 0) { throw "a .js file does not parse - see above" }
+
+      - name: Syntax - Python (both apps)
+        shell: pwsh
+        run: |
+          python -m compileall -q wicked_animator sims_hub
+          if ($LASTEXITCODE -ne 0) { throw "a .py file does not compile - see above" }
+
+      # opens each app for real in headless Chromium and fails on anything that stops it rendering - the check that
+      # would have caught home.js's syntax error before it ever reached a user
+      - name: Boot smoke test (both apps)
+        shell: pwsh
+        run: |
+          python tools/ci/smoke.py
+          if ($LASTEXITCODE -ne 0) { throw "the boot smoke test failed - see the PASS/FAIL table above" }
+
+  promote:
+    needs: checks
+    runs-on: windows-latest
+    # only this job touches main or starts another workflow - checks itself stays read-only
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fast-forward main to this commit
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $sha = $env:GITHUB_SHA
+
+          # main's tip before we move it, so we can tell afterwards whether build-apps.yml needs a run
+          git fetch origin main --depth 1
+          if ($LASTEXITCODE -ne 0) { throw "could not read main's current commit" }
+          $oldMain = git rev-parse FETCH_HEAD
+
+          # a plain (non---force) push only ever fast-forwards a branch; git refuses it by itself if dev and main
+          # have diverged, instead of overwriting anything
+          git push origin "$sha`:main"
+          if ($LASTEXITCODE -ne 0) { throw "main is not a fast-forward from dev - merge or rebase dev onto main first" }
+          Write-Host "main -> $sha"
+
+          # a push made with GITHUB_TOKEN doesn't trigger other workflows, so build-apps.yml is started here by
+          # hand - but only when something it actually watches changed. Read straight out of its own `paths:` list
+          # (rather than a hand-copied one) so the two can never quietly drift apart - a path added there and
+          # forgotten here would mean that change fast-forwards to main but the apps never get rebuilt for it.
+          $buildAppsYml = Get-Content .github/workflows/build-apps.yml -Raw
+          if ($buildAppsYml -notmatch '(?ms)^\s*paths:\s*\r?\n((?:\s*-\s*.+\r?\n?)+)') { throw "could not find build-apps.yml's paths: list" }
+          $watched = [regex]::Matches($matches[1], "^\s*-\s*'([^']+)'", 'Multiline') | ForEach-Object {
+            $raw = $_.Groups[1].Value
+            if ($raw.EndsWith('/**')) { $raw.Substring(0, $raw.Length - 2) } else { $raw }   # 'dir/**' -> 'dir/' (a prefix), a bare file path stays as-is
+          }
+          if (-not $watched) { throw "build-apps.yml's paths: list looks empty - refusing to guess, so a real change doesn't silently go unbuilt" }
+          $changed = git diff --name-only $oldMain $sha
+          $hit = @()
+          foreach ($c in $changed) { foreach ($w in $watched) { if ($c -eq $w -or $c.StartsWith($w)) { $hit += $c; break } } }
+          if ($hit) {
+            Write-Host "build-apps.yml watches what changed here - starting it:"
+            $hit | ForEach-Object { Write-Host "  $_" }
+            gh workflow run build-apps.yml --ref main
+            if ($LASTEXITCODE -ne 0) { throw "could not start build-apps.yml" }
+          } else {
+            Write-Host "nothing build-apps.yml watches changed - not starting it"
+          }
