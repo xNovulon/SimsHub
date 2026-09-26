@@ -10,6 +10,22 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FlyControls } from './flycam.js';
 import { installStage } from './stage.js';
 
+// A skinned mesh keeps the bounds of the pose it was first raycast in (three r160), so a foot or shin posed far from
+// there (lying down, legs raised) was never hit. Before a pick: bounds around the skeleton as it is now, padded for
+// the skin, hair and clothes around the bones - cheap (bones only), and the triangles are still tested exactly.
+const _inv = new THREE.Matrix4(), _bp = new THREE.Vector3(), _bb = new THREE.Box3();
+function poseBounds(m) {
+  if (!m.skeleton || !m.skeleton.bones.length) return;
+  m.updateWorldMatrix(true, false);
+  _inv.copy(m.matrixWorld).invert();
+  _bb.makeEmpty();
+  for (const b of m.skeleton.bones) _bb.expandByPoint(_bp.setFromMatrixPosition(b.matrixWorld).applyMatrix4(_inv));
+  if (_bb.isEmpty()) return;
+  m.boundingSphere = _bb.getBoundingSphere(m.boundingSphere || new THREE.Sphere());
+  m.boundingSphere.radius += 0.45;
+  m.boundingBox = null;
+}
+
 export class Viewport {
   constructor(canvas) {
     this.canvas = canvas;
@@ -295,7 +311,9 @@ export class Viewport {
     const r = this.canvas.getBoundingClientRect();
     this.pointer.set(((event.clientX - r.left) / r.width) * 2 - 1, -((event.clientY - r.top) / r.height) * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    return this.raycaster.intersectObjects(objects.filter(o => o.visible), true)[0] || null;
+    const shown = objects.filter(o => o.visible);
+    for (const o of shown) if (o.isSkinnedMesh) poseBounds(o);
+    return this.raycaster.intersectObjects(shown, true)[0] || null;
   }
 
   // ---------------------------------------------------------------- motion trail
