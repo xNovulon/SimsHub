@@ -218,7 +218,9 @@ by independent creators.
 
 No, and it's better if it isn't. The Hub only changes your Mods folder while the game is closed. Wicked Animator
 doesn't need the game running either, but The Sims 4 has to be installed, because the app uses the game's own bodies
-and sounds.
+and sounds. It finds the game by itself. If it can't, it asks you to show it the folder.
+
+Your Tray sims and Mods folder only show up after you've started The Sims 4 once.
 
 #### Can the Hub break or delete my CC?
 
