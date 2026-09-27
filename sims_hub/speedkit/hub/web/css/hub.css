@@ -727,6 +727,29 @@ details.more[open] > :not(summary) { animation: rise .3s var(--ease) both; }
 .cc-facts th { text-align: left; color: var(--faint); font-weight: 600; padding: 7px 14px 7px 0; white-space: nowrap; vertical-align: top; width: 1%; }
 .cc-facts td { padding: 7px 0; overflow-wrap: anywhere; }
 .save .cc-save-btn { align-self: flex-start; margin: -4px 0 0 -8px; }
+/* a save's shortcut: its line on the card and its window */
+.save .save-links { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin: -4px 0 0 -8px; min-width: 0; }
+.save .save-links .cc-save-btn { margin: 0; }
+.sc-line { display: inline-flex; align-items: center; gap: 7px; padding: 0 8px; min-width: 0; color: var(--muted); font-size: var(--fs-xs); }
+.sc-line > svg { width: 14px; height: 14px; flex: none; color: var(--accent-ink); }
+.sc-line > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sc-avatar { width: 44px; height: 44px; border-radius: 13px; flex: none; display: grid; place-items: center; font-size: 19px; font-weight: 800; color: #fff; background: var(--grad); box-shadow: 0 8px 20px rgba(255, 79, 154, .3), inset 0 1px 0 rgba(255, 255, 255, .35); text-shadow: 0 1px 2px rgba(80, 0, 50, .3); }
+.sc-places { display: flex; flex-wrap: wrap; gap: 8px; }
+.sc-places.sm { margin-top: 10px; }
+.sc-place { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .03); color: var(--text); font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast); }
+.sc-places.sm .sc-place { padding: 6px 11px; font-size: 12px; }
+.sc-place svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.sc-place span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sc-place:hover { border-color: var(--accent-line); background: rgba(255, 255, 255, .06); }
+.sc-place:active { transform: scale(.97); }
+.sc-place.on { border-color: var(--accent-line); background: rgba(255, 79, 154, .1); box-shadow: inset 0 0 0 1px rgba(255, 79, 154, .25); }
+.sc-place.on svg { color: var(--accent-ink); }
+.sc-place:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.sc-path { display: flex; align-items: center; gap: 8px; margin-top: 12px; min-width: 0; color: var(--faint); font-size: var(--fs-xs); }
+.sc-path svg { width: 14px; height: 14px; flex: none; }
+.sc-path > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sc-body .note { margin-top: 12px; }
+.sc-body ~ footer .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .card.cc-tray { margin-top: var(--s-4); }
 .modal.wide.cc-wide { width: min(980px, 100%); height: min(760px, calc(100vh - 40px)); }
 .cc-tabs { display: flex; gap: 4px; padding: 8px 26px 0; border-bottom: 1px solid var(--line); flex: none; }

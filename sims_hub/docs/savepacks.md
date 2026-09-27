@@ -73,6 +73,18 @@ this save's pack (building or updating it first; a changed save costs a refresh 
 "save_guid", "save_pack", "switched"}`. `current()` reports `'save'` with `save_slot` when exactly one save
 pack is at the Mods root. Undoing the switch also puts back the packs the update had brought home.
 
+## A save's shortcut
+
+`speedkit/hub/saveshortcut.py`. After a save was played, the Saves page asks once whether to make
+"Play <save name>.lnk" (on the Desktop, in Documents, or any folder picked with Browse); "Not now" is
+remembered for that save, and its card keeps "Make a shortcut" / "Shortcut on your Desktop · Move". The
+shortcut runs `pythonw -m speedkit.hub --play save:<slot>` (`launcher.play_save`): it opens Sims Hub.exe
+(or, without it, the Hub's own server and window), waits for its engine and starts the `play` task for that
+save. The open page picks the task up (it asks `/api/ping` every 1.5 s while idle) and shows its progress; the
+switch is quick because the save's pack is kept (only what changed since is redone). What was made is kept in
+`%LOCALAPPDATA%\NovulonSimsHub\save_shortcuts.json`, the save's letter icon in `shortcut_icons\`.
+Checks: `tests/test_save_shortcut.py` (temp folders only).
+
 ## Measured on the real library (2026-09-24, read-only, private copies of every cache)
 
 627 loaded packages (259 GB, 755,662 CAS parts); 187 parked in Fast mode (250.4 GB), 440 kept (366 CAS parts).

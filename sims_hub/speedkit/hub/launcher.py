@@ -10,15 +10,19 @@ r"""Open Novulon's Sims Hub with no console window at all (what the Desktop shor
    install folders each), then the default browser - as an app window (--app) with its own browser profile in
    %LOCALAPPDATA%\NovulonSimsHub\browser, so it gets its own taskbar entry and remembers its size.
 Problems are shown in a small Windows message box (there is no console to print to).
+
+    pythonw -m speedkit.hub --play save:Slot_00000014     what a save's shortcut runs (play_save, saveshortcut.py)
 """
 import ctypes
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 
 APP = "Novulon's Sims Hub"
@@ -169,6 +173,99 @@ def update_first(port):
         update.run(commit=commit)
     except Exception:                     # noqa: BLE001 - the Hub opens as it is
         pass
+
+
+EXE = os.path.join(ROOT, 'Sims Hub.exe')
+APP_MUTEX = 'Local\\Novulon.SimsHub'      # held while the desktop app (Sims Hub.exe) is open
+SAVE_TARGET = re.compile(r'^save:Slot_[0-9A-Fa-f]{8}$')
+
+
+def app_open():
+    """Is the desktop app open (its single-instance mutex exists)?"""
+    if os.name != 'nt':
+        return False
+    k = ctypes.windll.kernel32
+    h = k.OpenMutexW(0x00100000, False, APP_MUTEX)        # SYNCHRONIZE
+    if h:
+        k.CloseHandle(h)
+        return True
+    return False
+
+
+def start_task(port, action, args, timeout=10):
+    """POST /api/task -> (status code, reply)."""
+    body = json.dumps({'action': action, 'args': args}).encode('utf-8')
+    req = urllib.request.Request('http://127.0.0.1:%d/api/task' % port, data=body, method='POST',
+                                 headers={'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as ex:
+        try:
+            return ex.code, json.loads(ex.read())
+        except ValueError:
+            return ex.code, {}
+    except (OSError, ValueError):
+        return 0, {}
+
+
+def _app_ready(port, before, seconds):
+    """Wait for the desktop app's own engine: the app is open and the Hub answers - a Hub that answered before the
+    app started counts only once it was replaced (the app stops an idle one) or when it was busy (the app keeps it)."""
+    end = time.time() + seconds
+    while time.time() < end:
+        info = hub_info(port, 0.5)
+        if info and app_open() and (before is None or before.get('busy') or info.get('pid') != before.get('pid')):
+            return True
+        time.sleep(0.4)
+    return False
+
+
+def play_save(port, target):
+    """What a save's shortcut runs (saveshortcut.py): open the Hub and start 'Play this save' for that save. The
+    Hub's window shows the progress; the game starts when the Mods folder is ready."""
+    if not SAVE_TARGET.match(target or ''):
+        message("This shortcut doesn't name a save. Make it again from the Saves page of Novulon's Sims Hub.")
+        return 2
+    use_app = os.path.isfile(EXE) and not os.environ.get('SIMS_HUB_NO_APP')
+    try:
+        if use_app:
+            # the app first (an open one comes to the front and this copy ends at once; a closed one starts, and
+            # an old copy left from an update is replaced), and the task only once its engine answers
+            was_open, before = app_open(), hub_info(port)
+            proc = subprocess.Popen([EXE], cwd=ROOT, creationflags=DETACHED_PROCESS if os.name == 'nt' else 0,
+                                    close_fds=True)
+            try:
+                proc.wait(timeout=8)
+                ended = True
+            except subprocess.TimeoutExpired:
+                ended = False
+            ready = wait_ready(port, 90) if was_open and ended else _app_ready(port, before, 300)
+        else:
+            update_first(port)
+            ready = ping(port) or (start_server(port) and wait_ready(port))
+    except OSError as ex:
+        message("Novulon's Sims Hub could not start (%s). Please try once more." % ex)
+        return 1
+    if not ready:
+        message("Novulon's Sims Hub didn't start in time. Open it, then press 'Play this save' on the Saves page.")
+        return 1
+    code, reply = start_task(port, 'play', {'target': target})
+    if not use_app:
+        wins = hub_windows()
+        if not (wins and focus(wins[0])):
+            try:
+                open_window('http://127.0.0.1:%d/#saves' % port)
+            except OSError:
+                pass
+    if code == 409:
+        message((reply.get('message') or 'The Hub is busy right now.') + ' Open the shortcut again when it is done.',
+                error=False)
+        return 1
+    if code != 200 or not reply.get('ok'):
+        message(reply.get('message') or "The save couldn't be started. Open the Hub and press 'Play this save'.")
+        return 1
+    return 0
 
 
 def open_hub(port, stub=False, profile=PROFILE):

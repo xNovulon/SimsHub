@@ -81,6 +81,8 @@ const S = {
   mergePlan: null,
   page: 'home',
   taskId: null,
+  shortcuts: null, places: [],     // each save's shortcut (saveshortcut.py) and the one-click places for it
+  seen: new Set(),                 // tasks this window shows (or showed)
 };
 const st = () => S.status || {};
 const gameFound = () => { const g = st().game; return !g || g.found !== false; };
@@ -365,7 +367,7 @@ function renderSaves() {
         ${isNum(s.cc_missing) && s.cc_missing > 0 ? `<button type="button" class="chip warn linkish-chip" data-act="save-cc" data-slot="${esc(s.slot)}" data-tab="missing" title="CC this save uses that isn't in your Mods folder any more - click to see what's missing">${ic('warn')}${num(s.cc_missing)} missing</button>` : ''}</div>
       <div class="extra">${s.problem ? `${ic('warn')}${esc(s.problem)}` : extra}</div>
       ${care.saveLine(s)}
-      ${saveCcButton(s)}
+      <div class="save-links">${saveCcButton(s)}${shortcutLine(s)}</div>
       <button class="btn primary block" data-act="play" data-target="save:${esc(s.slot)}"${canPlay() ? '' : ' disabled'}>
         ${ic('play')}${why ? esc(why) : 'Play this save'}</button>
     </div>`;
@@ -732,6 +734,7 @@ async function ensureSaves(force = false) {
   S.savesLoading = false;
   S.saves = r.busy ? null : r.http === 200 ? r : { ok: false, message: r.message };
   if (['saves', 'home'].includes(S.page)) render();
+  ensureShortcuts(force);
 }
 
 async function ensureInbox(force = false) {
@@ -791,6 +794,9 @@ async function runTask(action, args = {}, opts = {}) {
 
 async function watchTask(id, opts) {
   S.taskId = id;
+  S.seen.add(id);
+  const playSlot = opts.action === 'play' && /^save:/.test((opts.args || {}).target || '') ? opts.args.target.slice(5) : null;
+  const playName = playSlot && (saveBySlot(playSlot) || {}).name;
   renderTop(); render();
   const ov = Overlay(opts.action ? (TITLES[opts.action] || (() => 'Working...'))(opts.args || {}) : 'Working...',
     { onClose: opts.afterClose });
@@ -837,6 +843,7 @@ async function watchTask(id, opts) {
     return view;
   }
   ov.finish(view);
+  if (playSlot && res.ok && view.state !== 'failed') askShortcut(playSlot, playName);
   return view;
 }
 
@@ -1006,6 +1013,15 @@ async function confirmRestore() {
   if (yes) runTask('graphics_restore', { apply: true });
 }
 
+function pathCrumbs(path) {
+  const out = [];
+  if (!path) return out;
+  const parts = path.replace(/\\+$/, '').split('\\');
+  let acc = '';
+  parts.forEach((p, i) => { acc = i === 0 ? p + '\\' : (acc.endsWith('\\') ? acc : acc + '\\') + p; out.push({ label: p, path: acc }); });
+  return out;
+}
+
 // "Find The Sims 4": the Hub's own folder browser
 function openFinder(startPath = '') {
   const F ={ data: null, hist: [], loading: true, err: '', saving: '', saved: '', sugs: null };
@@ -1043,14 +1059,7 @@ function openFinder(startPath = '') {
       F.saving = ''; F.err = r.message || "That folder isn't The Sims 4."; draw();
     }
   }
-  function crumbs(path) {
-    const out = [];
-    if (!path) return out;
-    const parts = path.replace(/\\+$/, '').split('\\');
-    let acc = '';
-    parts.forEach((p, i) => { acc = i === 0 ? p + '\\' : (acc.endsWith('\\') ? acc : acc + '\\') + p; out.push({ label: p, path: acc }); });
-    return out;
-  }
+  const crumbs = pathCrumbs;
   function draw() {
     if (F.saved) {
       body.innerHTML = `<div class="saved"><div class="big">${ic('check')}</div><b>${esc(F.saved)}</b><span class="muted">You're all set to play.</span></div>`;
@@ -1120,6 +1129,172 @@ function openFinder(startPath = '') {
   return m;
 }
 
+// ------------------------------------------------------------------------------------------ a save's shortcut
+// saveshortcut.py: "Play <save>" opens the Hub, sets the Mods folder up for that save (quick: its pack is kept) and
+// starts the game. Asked once after a save is played ("Not now" is remembered); the card makes or moves it.
+const scOf = slot => (S.shortcuts && S.shortcuts[slot]) || null;
+const folderName = p => String(p || '').replace(/\\+$/, '').split('\\').pop() || p;
+const samePath = (a, b) => !!a && !!b && String(a).replace(/\\+$/, '').toLowerCase() === String(b).replace(/\\+$/, '').toLowerCase();
+const scWhere = sc => sc.place === 'Desktop' ? 'on your Desktop' : sc.place === 'Documents' ? 'in your Documents' : `in ${folderName(sc.folder)}`;
+
+async function ensureShortcuts(force = false) {
+  if (S.shortcuts && !force) return S.shortcuts;
+  const r = await call('shortcuts');
+  if (r.http === 200 && r.ok) { S.shortcuts = r.shortcuts || {}; S.places = r.places || []; }
+  else if (!S.shortcuts) S.shortcuts = {};
+  if (S.page === 'saves') render();
+  return S.shortcuts;
+}
+
+function shortcutLine(s) {
+  if (!S.shortcuts) return '';
+  const sc = scOf(s.slot);
+  if (sc && sc.exists) {
+    return `<span class="sc-line" title="${esc(sc.path || '')}">${ic('pc')}<span>Shortcut ${esc(scWhere(sc))}</span>
+      <button class="linkish" data-act="shortcut" data-slot="${esc(s.slot)}">Move</button></span>`;
+  }
+  return `<button class="btn small ghost" data-act="shortcut" data-slot="${esc(s.slot)}">${ic('pc')}Make a shortcut</button>`;
+}
+
+async function askShortcut(slot, name) {
+  await ensureShortcuts(true);
+  const sc = scOf(slot);
+  if (sc && (sc.exists || sc.declined)) return;
+  if (!name) { const m = /'(.+)'\s*$/.exec((st().profile || {}).label || ''); name = m ? m[1] : ''; }
+  shortcutDialog(slot, name || slot, { asked: true });
+}
+
+function shortcutDialog(slot, name, { asked = false } = {}) {
+  const sc = scOf(slot) || {};
+  const moving = !!sc.exists;
+  const places = S.places || [];
+  const D = { folder: moving ? sc.folder : (places[0] && places[0].path) || '', view: 'ask', data: null, hist: [],
+    loading: false, err: '', busy: false, done: '' };
+  const letter = (String(name || '?').trim()[0] || '?').toUpperCase();
+  const m = modal(`<header><div class="sc-avatar">${esc(letter)}</div><div class="grow"><h2></h2><p></p></div>
+      <button class="icon-btn" data-d="close" title="Close">${ic('x')}</button></header>
+    <div class="body finder sc-body"></div><footer></footer>`, { wide: true });
+  const body = $('.body', m.el), foot = $('footer', m.el);
+  const norm = p => /^[A-Za-z]:$/.test(p || '') ? p + '\\' : (p || '');
+
+  async function go(path, push = true) {
+    if (push && D.data && D.data.ok !== false) D.hist.push(D.data.path || '');
+    D.loading = true; D.err = ''; draw();
+    const r = await call('browse' + (path ? '?path=' + encodeURIComponent(norm(path)) : ''));
+    D.loading = false;
+    if (r.http === 200 && r.ok !== false) D.data = r;
+    else {
+      D.err = r.message || "That folder can't be opened.";
+      if (!D.data) D.data = { ok: true, path: '', drives: r.drives || [], entries: [] };
+    }
+    draw();
+  }
+  async function browse() {
+    D.view = 'browse'; D.hist = []; D.data = null; draw();
+    await go('', false);
+    if (D.folder) await go(D.folder);
+  }
+  async function make() {
+    D.busy = true; D.err = ''; draw();
+    const r = await call('shortcut', { slot, name, folder: D.folder });
+    D.busy = false;
+    if (r.http === 200 && r.ok) {
+      S.shortcuts = Object.assign({}, S.shortcuts, { [slot]: r });
+      D.done = r.message || 'Done.';
+      draw();
+      render();
+      setTimeout(m.close, 1700);
+    } else { D.err = r.message || "The shortcut couldn't be made there."; draw(); }
+  }
+  async function skip() {
+    m.close();
+    const r = await call('shortcut/skip', { slot });
+    if (r.ok) { S.shortcuts = Object.assign({}, S.shortcuts, { [slot]: { slot, exists: false, declined: true } }); render(); }
+  }
+  function draw() {
+    const h2 = $('header h2', m.el), p = $('header p', m.el);
+    if (D.done) {
+      body.innerHTML = `<div class="saved"><div class="big">${ic('check')}</div><b>${esc(D.done)}</b>
+        <span class="muted">Open it any time to play "${esc(name)}".</span></div>`;
+      foot.classList.add('hidden');
+      return;
+    }
+    if (D.view === 'browse') {
+      h2.textContent = 'Pick a folder';
+      p.textContent = 'Open the folder you want the shortcut in, then press "Use this folder".';
+      const d = D.data || {}, path = d.path || '';
+      const trail = pathCrumbs(path);
+      const shown = trail.length > 4 ? [trail[0], null, ...trail.slice(-2)] : trail;
+      let h = `<div class="crumbs"><button class="icon-btn" data-d="back" title="Back"${D.hist.length ? '' : ' disabled'}>${ic('back')}</button>
+        <button class="icon-btn" data-d="up" title="Up one folder"${path ? '' : ' disabled'}>${ic('up')}</button>
+        <div class="trail"><button data-d="go" data-path="" class="${path ? '' : 'cur'}">${ic('pc')} This PC</button>
+        ${shown.map((c, i) => c === null ? `${ic('chev')}<span class="ell">…</span>` : `${ic('chev')}<button data-d="go" data-path="${esc(c.path)}" class="${i === shown.length - 1 ? 'cur' : ''}" title="${esc(c.path)}">${esc(c.label)}</button>`).join('')}</div></div>`;
+      if (places.length) {
+        h += `<div class="sc-places sm">${places.map(pl => `<button class="sc-place" data-d="go" data-path="${esc(pl.path)}">${ic(pl.key === 'desktop' ? 'pc' : 'folder')}${esc(pl.label)}</button>`).join('')}</div>`;
+      }
+      if (D.err) h += `<div class="note err">${ic('warn')}<span>${esc(D.err)}</span></div>`;
+      if (D.loading) h += `<div class="state"><div class="spinner sm"></div>Opening...</div>`;
+      else if (!path) {
+        const drives = d.drives || [];
+        h += drives.length ? `<div class="drives">${drives.map(x => `<button class="drive" data-d="go" data-path="${esc(norm(x.path || x.name))}">${ic('drive')}<div class="grow">
+            <b>${esc(x.label ? `${x.label} (${String(x.name).replace(/\\$/, '')})` : x.name)}</b><span>${isNum(x.free_gb) ? gb(x.free_gb) + ' free' : ''}</span></div></button>`).join('')}</div>`
+          : `<div class="state">No drives were found.</div>`;
+      } else {
+        const entries = d.entries || [];
+        h += entries.length ? `<div class="folder-list">${entries.map(e => `<div class="frow">
+            <button class="row-btn" data-d="go" data-path="${esc(e.path)}" title="${esc(e.path)}">${ic('folder', 'f')}<span class="name">${esc(e.name)}</span>${ic('chev', 'c')}</button></div>`).join('')}</div>`
+          : `<div class="state">No folders inside - you can use this one.</div>`;
+      }
+      body.innerHTML = h;
+      foot.innerHTML = `<span class="hint">${path ? esc(path) : 'Pick a drive'}</span><button class="btn ghost" data-d="ask">Back</button>
+        <button class="btn primary" data-d="use"${path && !D.loading ? '' : ' disabled'}>Use this folder</button>`;
+      return;
+    }
+    h2.textContent = moving ? 'Move the shortcut' : 'Make a shortcut for this save?';
+    p.textContent = `Open "${name}" straight from a shortcut. It sets up only the CC this save uses and starts the game - quick, because the Hub remembers what the save uses.`;
+    const custom = D.folder && !places.some(pl => samePath(pl.path, D.folder));
+    body.innerHTML = `<div class="lbl">Put it in</div>
+      <div class="sc-places">${places.map(pl => `<button class="sc-place${samePath(pl.path, D.folder) ? ' on' : ''}" data-d="place" data-path="${esc(pl.path)}">${ic(pl.key === 'desktop' ? 'pc' : 'folder')}${esc(pl.label)}</button>`).join('')}
+        <button class="sc-place${custom ? ' on' : ''}" data-d="browse" title="Pick any folder">${ic('folder')}<span>${custom ? esc(folderName(D.folder)) : 'Browse...'}</span></button></div>
+      ${D.folder ? `<div class="sc-path" title="${esc(D.folder)}">${ic('folder')}<span>${esc(D.folder)}</span>${custom ? '<button class="linkish" data-d="browse">Change</button>' : ''}</div>` : ''}
+      ${moving ? `<div class="sc-path">${ic('pc')}<span>Now ${esc(scWhere(sc))}</span></div>` : ''}
+      ${D.err ? `<div class="note err">${ic('warn')}<span>${esc(D.err)}</span></div>` : ''}`;
+    const same = moving && samePath(D.folder, sc.folder);
+    const no = asked && !moving ? ['skip', 'Not now'] : ['close', 'Cancel'];
+    foot.innerHTML = `<button class="btn ghost" data-d="${no[0]}">${no[1]}</button>
+      <button class="btn primary" data-d="make"${D.busy || !D.folder || same ? ' disabled' : ''}>${ic('pc')}${D.busy ? 'Making...' : moving ? 'Move it here' : 'Make shortcut'}</button>`;
+  }
+  m.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-d]');
+    if (!b || b.disabled) return;
+    const d = b.dataset.d;
+    if (d === 'close') m.close();
+    else if (d === 'skip') skip();
+    else if (d === 'make') make();
+    else if (d === 'place') { D.folder = b.dataset.path; D.err = ''; draw(); }
+    else if (d === 'browse') browse();
+    else if (d === 'ask') { D.view = 'ask'; draw(); }
+    else if (d === 'use' && D.data && D.data.path) { D.folder = D.data.path; D.view = 'ask'; D.err = ''; draw(); }
+    else if (d === 'go') go(b.dataset.path);
+    else if (d === 'back' && D.hist.length) go(D.hist.pop(), false);
+    else if (d === 'up' && D.data) go(D.data.parent || '');
+  });
+  draw();
+  return m;
+}
+
+// A save's shortcut starts 'Play this save' from outside this window (launcher.play_save): show it here too.
+async function pickUpOutsideTask() {
+  if (busy() || document.hidden || !S.status) return;
+  const p = await call('ping');
+  if (!p.busy || busy()) return;
+  const cur = await call('task/current');
+  if (cur.http === 200 && cur.state === 'running' && cur.action === 'play' && !busy() && !S.seen.has(cur.id)) {
+    watchTask(cur.id, { action: cur.action, args: cur.args || {} });
+  }
+}
+setInterval(pickUpOutsideTask, 1500);
+
 // ------------------------------------------------------------------------------------------ toasts
 function toast(text, kind = '') {
   if (!text) return;
@@ -1160,6 +1335,11 @@ const ACTS = {
   undo: () => confirmUndo(),
   open: btn => openThing(btn.dataset.what),
   'find-game': () => openFinder(),
+  shortcut: async btn => {
+    const slot = btn.dataset.slot, s = saveBySlot(slot);
+    await ensureShortcuts();
+    shortcutDialog(slot, (s && s.name) || slot);
+  },
 };
 
 document.addEventListener('click', e => {

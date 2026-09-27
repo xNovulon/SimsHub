@@ -25,6 +25,10 @@ API
   POST /api/patchday/seen | /api/errors/seen | /api/batchfix/open {"rel"}
   tasks: set_aside {"rels", "why"} | put_back {"rels"} | backup_saves | restore_saves {"backup"} | batch_fix_scan
   GET  /api/cc..., /api/saves/<slot>/cc, POST /api/cc/open   the CC browser (see its section below)
+  A save's own shortcut (saveshortcut.py; with example data nothing is written):
+  GET  /api/shortcuts                {"shortcuts": {slot: {exists, path, folder, place, declined}}, "places"}
+  POST /api/shortcut {"slot", "name", "folder"?}   make it (default: the Desktop), or move it to folder
+  POST /api/shortcut/skip {"slot"}   "Not now": the Hub doesn't ask again for that save
 
 A finished task is 'done' when its result says ok, and 'failed' when it says not ok or raised.
 """
@@ -43,7 +47,7 @@ from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from speedkit.hub import care_routes
+from speedkit.hub import care_routes, saveshortcut
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, 'web')
@@ -341,6 +345,54 @@ class Hub:
             return {'ok': False, 'message': "The library report couldn't be opened."}
 
 
+# ---------------------------------------------------------------------------------------------- a save's shortcut
+FAKE_DESKTOP = 'C:\\Users\\You\\Desktop'
+
+
+def _fake_shortcuts(hub):
+    if not hasattr(hub, 'fake_shortcuts'):
+        hub.fake_shortcuts = {}
+    return hub.fake_shortcuts
+
+
+def shortcut_list(hub):
+    if hub.mode == 'stub':
+        return {'ok': True, 'shortcuts': dict(_fake_shortcuts(hub)),
+                'places': [{'key': 'desktop', 'label': 'Desktop', 'path': FAKE_DESKTOP},
+                           {'key': 'documents', 'label': 'Documents', 'path': 'C:\\Users\\You\\Documents'}]}
+    return saveshortcut.all_info()
+
+
+def shortcut_post(hub, route, body):
+    slot = body.get('slot')
+    if not isinstance(slot, str) or not saveshortcut.SLOT_RX.match(slot):
+        raise BadRequest('Pick a save first.')
+    name, folder = body.get('name'), body.get('folder')
+    if not isinstance(name, str) or len(name) > 200:
+        name = slot
+    if folder is not None and (not isinstance(folder, str) or len(folder) > 1024 or '\x00' in folder):
+        raise BadRequest('Pick a folder first.')
+    if hub.mode == 'stub':
+        fake = _fake_shortcuts(hub)
+        if route == 'shortcut/skip':
+            fake[slot] = {'slot': slot, 'exists': False, 'declined': True}
+            return {'ok': True, 'message': 'Preview: nothing was written.'}
+        where = folder or FAKE_DESKTOP
+        place = 'Desktop' if where == FAKE_DESKTOP else where
+        fake[slot] = {'slot': slot, 'exists': True, 'declined': False, 'folder': where, 'place': place,
+                      'path': where.rstrip('\\') + '\\' + saveshortcut.file_name(name, slot) + '.lnk'}
+        return dict(fake[slot], ok=True, message='Preview: nothing was written.')
+    try:
+        if route == 'shortcut/skip':
+            return saveshortcut.decline(slot)
+        return saveshortcut.make(slot, name, folder or None)
+    except saveshortcut.ShortcutError as ex:
+        return {'ok': False, 'message': str(ex)}
+    except Exception:
+        _log(hub, 'shortcut failed:\n%s' % traceback.format_exc())
+        return {'ok': False, 'message': "The shortcut couldn't be made. Try another folder."}
+
+
 # ---------------------------------------------------------------------------------------------- HTTP
 def _json(obj):
     return json.dumps(obj, separators=(',', ':'), default=str).encode('utf-8')
@@ -461,6 +513,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._ok(hub.graphics(refresh))
         if route == 'inbox':
             return self._ok(hub.inbox_preview(refresh))
+        if route == 'shortcuts':
+            return self._ok(shortcut_list(hub))
         if route == 'browse':
             path = q.get('path') or None
             if path is not None and (len(path) > 1024 or '\x00' in path):
@@ -491,6 +545,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._ok({'ok': True, 'task': task.id})
         if route == 'open':
             return self._ok(hub.open(body.get('what')))
+        if route in ('shortcut', 'shortcut/skip'):
+            return self._ok(shortcut_post(hub, route, body))
         if route == 'game_path':
             path = body.get('path')
             if not isinstance(path, str) or not path.strip() or len(path) > 1024 or '\x00' in path:

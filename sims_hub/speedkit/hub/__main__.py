@@ -3,6 +3,7 @@
     python  -m speedkit.hub            serve on 127.0.0.1:8766 (opens nothing by itself)
     python  -m speedkit.hub --open     make sure the server runs (in the background, no console) and open the window
     pythonw -m speedkit.hub            the same as --open: what the Desktop shortcut runs
+    pythonw -m speedkit.hub --play save:Slot_00000014   what a save's shortcut runs: open the Hub and play that save
     options: --serve (just serve, even under pythonw), --port N, --stub (example data)
 
 The __main__ guard matters: the engine may use worker processes (Windows 'spawn' re-imports this module)."""
@@ -16,6 +17,7 @@ def main(argv=None):
     how = ap.add_mutually_exclusive_group()
     how.add_argument('--open', action='store_true', help='start the server if needed and open the Hub window')
     how.add_argument('--serve', action='store_true', help='only serve (the default for python.exe)')
+    how.add_argument('--play', metavar='save:SLOT', help="open the Hub and play that save (a save's shortcut)")
     ap.add_argument('--port', type=int, help='port (default 8766, or SIMS_HUB_PORT)')
     ap.add_argument('--stub', action='store_true', help='show example data instead of using the engine')
     ap.add_argument('--profile', help=argparse.SUPPRESS)          # the window's browser profile (tests)
@@ -24,6 +26,9 @@ def main(argv=None):
         os.environ['SIMS_HUB_API'] = 'stub'
     if args.port:
         os.environ['SIMS_HUB_PORT'] = str(args.port)
+    if args.play:
+        from speedkit.hub import launcher
+        return launcher.play_save(int(os.environ.get('SIMS_HUB_PORT', '8766')), args.play)
     windowed = os.path.basename(sys.executable or '').lower() == 'pythonw.exe'
     if args.open or (windowed and not args.serve):
         from speedkit.hub import launcher
