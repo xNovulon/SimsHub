@@ -1360,9 +1360,19 @@ class App {
   }
   _plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
 
+  // Ctrl+A: every key; with sounds on the timeline, a bar offers to take them along too (they then move with the keys)
   selectAllKeys() {
     this.timeline.selectAll();
-    toast(`${this._plural(this.timeline.sel.size, 'key')} selected - drag one to move them all, or right-click for more.`);
+    const keys = this.timeline.sel.size;
+    const sounds = this.store.project.sims.flatMap(s => (s.sounds || []).map(x => KO.sndId(s.id, x)));
+    if (!sounds.length) {
+      toast(`${this._plural(keys, 'key')} selected - drag one to move them all, or right-click for more.`);
+      return;
+    }
+    choiceBar(`${this._plural(keys, 'key')} selected.`, [{ label: `Select the ${this._plural(sounds.length, 'sound')} too`, primary: true, onClick: () => {
+      this.timeline.selectOnly([...this.timeline.sel, ...sounds]);
+      toast(`${this._plural(keys, 'key')} and ${this._plural(sounds.length, 'sound')} selected - drag one to move them all.`);
+    } }]);
   }
   clearKeySelection() { this.timeline.clearSel(); }
 

@@ -69,6 +69,26 @@ const PINK = '#ff4f9a', BLUE = '#57b8ff', PURPLE = '#a78bfa';
       return `"${label}" -> ${k[1].label} has a key at 60`;
     });
 
+    await step('Ctrl+A selects every key, and a bar offers the sounds too; they then move with the keys', async () => {
+      await page.evaluate(() => { const s = app.store.project.sims[0]; s.sounds = [{ frame: 10, name: 'WET_PL_1', kind: 'wet', auto: false }]; app.timeline.draw(); });
+      const [x, y] = await at(0, 0);
+      await page.mouse.click(x, y); await P.sleep(120);                              // focus the timeline
+      await page.keyboard.press('Control+a'); await P.sleep(250);
+      const bar = await page.evaluate(() => { const b = document.querySelector('.choice-bar'); return b ? { text: b.innerText, sel: app.timeline.sel.size } : null; });
+      if (!bar) throw new Error('no bar after Ctrl+A');
+      await page.evaluate(() => { const b = [...document.querySelectorAll('.choice-bar button')].find(x => /sound/.test(x.innerText)); b.click(); });
+      await P.sleep(150);
+      const r = await page.evaluate(async () => {
+        const KO = await import('/js/keyops.js'), p = app.store.project;
+        const sel = [...app.timeline.sel], hasSound = sel.some(id => id.startsWith('s|'));
+        const keysBefore = p.sims.map(s => s.keys.map(k => k.frame));
+        KO.moveSel(p, app.timeline.sel, 5);
+        return { hasSound, count: sel.length, sound: p.sims[0].sounds[0].frame, keysBefore, keysAfter: p.sims.map(s => s.keys.map(k => k.frame)) };
+      });
+      if (!(/key/.test(bar.text) && r.hasSound && r.sound === 15 && r.keysAfter[0][0] === r.keysBefore[0][0] + 5)) throw new Error(JSON.stringify({ bar, r }));
+      return `bar: "${bar.text.split('\n')[0]}"; after the button ${r.count} selected, sound moved 10 -> ${r.sound} with the keys`;
+    });
+
     await step('colours follow the body, not the order: pink female, blue male, purple female with penis', async () => {
       const r = await page.evaluate(async () => {
         const { newProject } = await import('/js/state.js');
