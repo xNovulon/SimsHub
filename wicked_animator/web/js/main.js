@@ -3477,18 +3477,25 @@ class App {
   // never below whatever else is timed, never below 12 frames. Off for Magic/imports/mocap and old saves (they keep
   // the length they were given), and off the moment someone types a length by hand. Nothing else moves: keys keep
   // their frames.
-  // frame: when given (K / Key pose / double-click), a key placed in the room while Fit is off still grows the loop
-  // to just past it (no gap-based extension) - "with Fit off it grows to include the key" (plan item 3).
+  // With Fit off, keys, sounds or moments put in the room (a key placed, moved or pasted there - `frame` is the one
+  // just placed) still grow the loop to just past the last of them (no gap-based extension): nothing is ever left
+  // outside the loop, where it would not play or export.
   _applyFit(frame = null) {
     const p = this.store.project;
-    if (p.fitLength === false) {
-      if (frame !== null && frame >= p.length) this._retimeLengthOnly(p, frame + 1);
-      return;
-    }
+    const grow = () => {
+      let last = frame !== null ? frame : -1;
+      for (const s of p.sims) {
+        for (const k of s.keys) last = Math.max(last, k.frame);
+        for (const x of s.sounds || []) last = Math.max(last, x.frame);
+      }
+      for (const e of p.events || []) last = Math.max(last, typeof e.end === 'number' ? e.end - 1 : e.frame);
+      if (last >= p.length) this._retimeLengthOnly(p, last + 1);
+    };
+    if (p.fitLength === false) { grow(); return; }
     const floors = this.runHook('fitFloor', p);
     const n = KO.fitLength(p, floors);
-    if (n === null || n === p.length) return;
-    this._retimeLengthOnly(p, n);
+    if (n === null) { grow(); return; }          // too few keys to fit: still nothing left past the end
+    if (n !== p.length) this._retimeLengthOnly(p, n);
   }
   // Set p.length to exactly `n` - no retiming, no key moves (unlike _retimeProject, which stretches/cuts keys).
   _retimeLengthOnly(p, n) {

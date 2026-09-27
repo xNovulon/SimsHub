@@ -263,18 +263,39 @@ async function startServer() {
         // exactly what timeline.js's _up() does for a completed key drag: checkpoint, KO.moveSel, then _applyFit
         app.store.checkpoint('Move key');
         const sel = new Set([`k|${s.id}|20`]);
-        // KO.moveSel keeps the whole selection inside the current loop (L-1), same as a real drag can never pull a
-        // key past the loop's own end - it lands at 29 (length 30 -> max frame 29), gap becomes 29-10=19
+        // a key may be dragged into the room past the loop's end (the owner: moving a key must land where it is
+        // dropped) - it lands at 35, the gap becomes 35-10=25, and the loop grows to 35+25=60
         KO.moveSel(app.store.project, sel, 15);
         app._applyFit();
         app.afterEdit();
         return { len: app.store.project.length, frames: s.keys.map(k => k.frame).sort((a, b) => a - b) };
       });
       const after = await page.evaluate(() => window.app.store.undo.length);
-      if (!(r2.len === 48 && after === before + 1)) throw new Error(JSON.stringify({ r2, before, after }));
+      if (!(r2.len === 60 && r2.frames.join() === '0,10,35' && after === before + 1)) throw new Error(JSON.stringify({ r2, before, after }));
       const back = await page.evaluate(() => { window.app.undo(); return window.app.store.project.length; });
       if (back !== 30) throw new Error('undo did not restore the pre-drag length: ' + back);
-      return `dragging the last key to frame 29 (gap 19) grew the loop to ${r2.len}, undo restored ${back}`;
+      return `dragging the last key into the room, to frame 35 (gap 25), grew the loop to ${r2.len}, undo restored ${back}`;
+    });
+
+    await step('Fit off: a key moved or pasted past the end grows the loop to just past it (never left outside)', async () => {
+      await page.evaluate(() => { window.app.newScene(false, false, 'couple', null); });
+      await P.sleep(300);
+      await page.evaluate(() => { window.__L.keyAt(10); window.__L.keyAt(20); });   // -> length 30
+      const r = await page.evaluate(async () => {
+        const app = window.app, KO = await import('/js/keyops.js'), s = window.__L.simA(), p = app.store.project;
+        p.fitLength = false;
+        app.store.checkpoint('Move key');
+        KO.moveSel(p, new Set([`k|${s.id}|20`]), 22);                       // 20 -> 42, in the room of a 30-frame loop
+        app._applyFit(); app.afterEdit();
+        const moved = { len: p.length, frames: s.keys.map(k => k.frame).sort((a, b) => a - b) };
+        app.copySelectedKeys && app.timeline.selectOnly && app.timeline.selectOnly([`k|${s.id}|42`]);
+        app.copySelectedKeys();
+        app.setFrame(p.length + 10);                                        // the room of the 43-frame loop
+        app.pasteKeys();
+        return { moved, pasted: { len: p.length, frames: s.keys.map(k => k.frame).sort((a, b) => a - b) } };
+      });
+      if (!(r.moved.len === 43 && r.moved.frames.join() === '0,10,42' && r.pasted.frames.includes(53) && r.pasted.len === 54)) throw new Error(JSON.stringify(r));
+      return `moved to 42: loop ${r.moved.len}; pasted at 53: loop ${r.pasted.len} (keys ${r.pasted.frames.join(', ')})`;
     });
 
     await step('playback never enters the room', async () => {

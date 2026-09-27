@@ -124,27 +124,31 @@ function settle(project, moved, report) {
 }
 
 // ---------------------------------------------------------------- move and stretch (spec 4.2)
+// The last frame a key may be moved or pasted to: the room past the loop's end counts - the loop then grows to take
+// it in (main.js _applyFit), so a key dropped there is never cut or pulled back to the old end.
+export const lastKeyFrame = project => A.roomEnd(project) - 1;
+
 export function moveSel(project, sel, df) {
-  const r = readSel(project, sel), L = project.length;
+  const r = readSel(project, sel), E = lastKeyFrame(project);
   const report = { sel: new Set(), replaced: [], joined: [], merged: 0, df: 0 };
   if (!r.keys.length && !r.sounds.length && !r.events.length) return report;
   df = Math.round(df);
-  df = clamp(df, -r.min, L - 1 - r.max);          // the whole selection stays inside the loop (spacing never changes)
+  df = clamp(df, -r.min, E - r.max);              // the whole selection stays on the timeline (spacing never changes)
   report.df = df;
   const moved = r.keys.map(({ sim, key }) => { const old = key.frame; key.frame += df; return { sim, key, old }; });
   settle(project, moved, report);
   for (const { sim, snd } of r.sounds) { snd.frame += df; snd.auto = false; report.sel.add(sndId(sim.id, snd)); }
-  for (const ev of r.events) { ev.frame += df; if (typeof ev.end === 'number') ev.end = clamp(ev.end + df, ev.frame, L); report.sel.add(evId(ev)); }
+  for (const ev of r.events) { ev.frame += df; if (typeof ev.end === 'number') ev.end = clamp(ev.end + df, ev.frame, E + 1); report.sel.add(evId(ev)); }
   for (const m of moved) if (m.sim.keys.includes(m.key)) report.sel.add(kid(m.sim.id, m.key.frame));
   for (const m of report.joined) report.sel.add(kid(m.simId, m.frame));
   return report;
 }
 
 export function scaleSel(project, sel, pivot, s) {
-  const r = readSel(project, sel), L = project.length;
+  const r = readSel(project, sel), E = lastKeyFrame(project);
   const report = { sel: new Set(), replaced: [], joined: [], merged: 0, s };
   s = Math.max(0.05, s);
-  const nf = f => clamp(Math.round(pivot + (f - pivot) * s), 0, L - 1);
+  const nf = f => clamp(Math.round(pivot + (f - pivot) * s), 0, E);
   const moved = r.keys.map(({ sim, key }) => { const old = key.frame; key.frame = nf(old); return { sim, key, old }; });
   settle(project, moved, report);
   for (const { sim, snd } of r.sounds) { snd.frame = nf(snd.frame); snd.auto = false; report.sel.add(sndId(sim.id, snd)); }
@@ -233,14 +237,14 @@ export function copySel(project, sel) {
 // targets: Map(row index -> sim). flip(key copy) mirrors a pasted key in place (paste mirrored). The pasted keys and
 // sounds come back as the new selection.
 export function pasteClip(project, clip, at, { targets, flip = null } = {}) {
-  const L = project.length;
+  const E = lastKeyFrame(project);
   const report = { sel: new Set(), dropped: 0, replaced: 0, pasted: 0 };
   (clip.rows || []).forEach((row, i) => {
     const sim = targets && targets.get(i);
     if (!sim) return;
     for (const k of row.keys || []) {
       const f = at + k.df;
-      if (f < 0 || f > L - 1) { report.dropped++; continue; }
+      if (f < 0 || f > E) { report.dropped++; continue; }
       let key = { frame: f, ease: k.ease || 'auto', pose: clone(k.pose) };
       if (k.curve && k.ease === 'custom') key.curve = k.curve.slice();
       if (k.type === 'breakdown') key.type = 'breakdown';
@@ -262,7 +266,7 @@ export function pasteClip(project, clip, at, { targets, flip = null } = {}) {
     A.sortKeys(sim.keys);
     for (const s of row.sounds || []) {
       const f = at + s.df;
-      if (f < 0 || f > L - 1) { report.dropped++; continue; }
+      if (f < 0 || f > E) { report.dropped++; continue; }
       const snd = { frame: f, name: s.name, kind: s.kind, auto: false };
       sim.sounds = sim.sounds || [];
       sim.sounds.push(snd);
@@ -339,10 +343,9 @@ export function pushKey(project, sim, key, amount) {
 
 // A copy of the pose a little later, drifting 8% toward the next key, so a held pose never looks frozen.
 export function movingHold(project, sim, key, frames) {
-  const L = project.length;
   const { next, nf } = neighbours(project, sim, key.frame, { exclude: key });
   let f = key.frame + Math.max(1, Math.round(frames));
-  f = Math.min(f, L - 1);
+  f = Math.min(f, lastKeyFrame(project));
   if (next && nf !== null) f = Math.min(f, nf - 1);
   if (f <= key.frame) return null;
   const hold = { frame: f, ease: key.ease || 'auto', pose: next && next !== key ? A.blendPoses(key.pose, next.pose, 0.08) : clone(key.pose) };
