@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Viewport } from './viewport.js';
 import { Sim } from './sim.js';
 import { api, projectFileName, RECOVERY_SLOT } from './api.js';
-import { Store, newSim, newProject, localStorageGet, localStorageSet, localStorageRemove, BODY_TYPES, uid } from './state.js';
+import { Store, newSim, newProject, recolorSim, localStorageGet, localStorageSet, localStorageRemove, BODY_TYPES, uid } from './state.js';
 import { evaluate, evaluateFace, sortKeys, blendPoses, EASE_INFO, EASE_CURVE, validCurve, setRig, roomEnd } from './animation.js';
 import { Interaction } from './interact.js';
 import { Timeline } from './timeline.js';
@@ -1277,6 +1277,13 @@ class App {
     ].filter(Boolean), 'menus.key', ctx);
   }
 
+  // "Paste keys here" on a sim's row, or "Paste Female 1's keys onto Male 1" when the copied keys are another sim's
+  _pasteHereLabel(sim) {
+    const clip = this.keyClip, rows = (clip && clip.rows) || [];
+    const from = rows.length === 1 && clip.projectUid === this.store.project.uid && this.store.sim(rows[0].simId);
+    return from && from.id !== sim.id ? `Paste ${from.label}'s keys onto ${sim.label}` : 'Paste keys here';
+  }
+
   laneMenu(x, y, sim, frame) {
     const p = this.store.project;
     const nb = KO.neighbours(p, sim, frame);
@@ -1284,7 +1291,7 @@ class App {
     this._menu(x, y, [
       { label: `Key ${sim.label} here`, icon: 'key', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.keyPose(sim.id); } },
       between ? { label: 'In-between key here', icon: 'key', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.insertInBetween([sim.id]); } } : null,
-      this.keyClip ? { label: 'Paste keys here', icon: 'paste', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.pasteKeys({ target: sim.id }); } } : null,
+      this.keyClip ? { label: this._pasteHereLabel(sim), icon: 'paste', onClick: () => { this.selectSim(sim.id); this.setFrame(frame); this.pasteKeys({ target: sim.id }); } } : null,
       { label: 'Paste pose here', icon: 'paste', onClick: () => { if (!this.clipboard) return toast('Copy a pose first.'); this.selectSim(sim.id); this.setFrame(frame); this.pastePose(sim.id); } },
       { label: 'Add a sound here', icon: 'sound', onClick: () => { this.setFrame(frame); this.addSoundDialog(sim.id); } },
       '-',
@@ -1540,12 +1547,16 @@ class App {
     this.refreshPanels();
   }
 
-  // Which sim each copied row goes to: one row -> the selected sim (or `target`); several rows -> the same sims when
-  // it is the same animation, else the project's sims in order (same body first).
+  // Which sim each copied row goes to. Keys copied in this animation go back onto the sim they came from, whichever
+  // sim is selected (a female's keys never land on the male by a plain Ctrl+V); only `target` - "Paste keys here" on
+  // another sim's row - puts them on another sim. From another animation: one row -> the selected sim; several rows
+  // -> the project's sims in order (same body first).
   _pasteTargets(clip, target = null) {
     const p = this.store.project, map = new Map(), rows = clip.rows || [];
+    const own = clip.projectUid === p.uid;
     if (rows.length === 1) {
-      const s = this.store.sim(target || this.store.selected.sim) || p.sims[0];
+      const s = this.store.sim(target) || (own && p.sims.find(x => x.id === rows[0].simId))
+        || this.store.sim(this.store.selected.sim) || p.sims[0];
       if (s) map.set(0, s);
       return map;
     }
@@ -1905,6 +1916,7 @@ class App {
     const copy = JSON.parse(JSON.stringify(src));
     const p = this.store.project;
     Object.assign(copy, newSim(p, src.frame), { keys: copy.keys, pins: copy.pins, layers: copy.layers, body: copy.body, sounds: [], skin: src.skin, gender: src.gender, label: src.label + ' copy' });
+    delete copy.colorPicked;                  // the copy gets its own colour (newSim), not the original's pick
     p.sims.push(copy);
     this.refreshAll();
   }
@@ -1914,6 +1926,7 @@ class App {
     const s = this.store.sim(id);
     s.frame = frame;
     s.gender = BODY_TYPES[frame]?.gender || s.gender;
+    recolorSim(this.store.project, s);        // its colour follows the new body (unless one was picked by hand)
     if (s.body) s.body.physics = undefined;
     simBody(s);
     // voice lines follow the body: lines of the other gender are taken off
@@ -1933,7 +1946,7 @@ class App {
 
   toggleVisible(id) { const s = this.store.sim(id); s.visible = s.visible === false; this.syncViews(); this.refreshPanels(); this.interact.refreshHandles(); }
   setSkin(id, c) { this.store.checkpoint(); this.store.sim(id).skin = c; this.syncViews(); this.refreshPanels(); }
-  setColor(id, c) { this.store.checkpoint(); this.store.sim(id).color = c; this.syncViews(); this.refreshAll(); }
+  setColor(id, c) { this.store.checkpoint(); const s = this.store.sim(id); s.color = c; s.colorPicked = true; this.syncViews(); this.refreshAll(); }
 
   setFurniture(id) {
     this.store.checkpoint('Change the place');

@@ -45,6 +45,29 @@ export const BODY_TYPES = {
   yf_futa: { label: 'Female with penis', short: 'F+', gender: 'MALE' },
 };
 
+// A sim's colour in the app follows its body - female pink, male blue, a female body with a penis purple - and a
+// second sim of the same body takes a colour none of those three uses. A colour picked by hand (colorPicked) stays.
+const BODY_COLOR = { yf: SIM_COLORS[0], ym: SIM_COLORS[1], yf_futa: SIM_COLORS[3] };
+const SPARE_COLORS = [...SIM_COLORS.filter(c => !Object.values(BODY_COLOR).includes(c)), ...Object.values(BODY_COLOR)];
+function colorFor(frame, taken) {
+  const want = BODY_COLOR[frame] || SPARE_COLORS[0];
+  return !taken.has(want) ? want : (SPARE_COLORS.find(c => !taken.has(c)) || want);
+}
+// Every sim without a colour of its own picked again, in order (after a load, a body change, a copy).
+export function recolorSims(project) {
+  const taken = new Set(project.sims.filter(s => s.colorPicked).map(s => s.color));
+  for (const s of project.sims) {
+    if (s.colorPicked) continue;
+    s.color = colorFor(s.frame, taken);
+    taken.add(s.color);
+  }
+  return project;
+}
+// Just this sim's colour picked again for its body (a body change), the others keeping theirs.
+export function recolorSim(project, sim) {
+  if (!sim.colorPicked) sim.color = colorFor(sim.frame, new Set(project.sims.filter(x => x !== sim).map(x => x.color)));
+}
+
 export function newSim(project, frame = 'yf') {
   const k = project.sims.length;
   // "Female 2", never a second "Female 1" (a female body with a penis is also called Female)
@@ -57,7 +80,7 @@ export function newSim(project, frame = 'yf') {
     label: `${word} ${n}`,
     frame,
     gender: BODY_TYPES[frame]?.gender || 'BOTH',
-    color: SIM_COLORS[k % SIM_COLORS.length],
+    color: colorFor(frame, new Set(project.sims.map(s => s.color))),
     skin: SKIN_TONES[(k * 3 + 1) % SKIN_TONES.length],
     keys: [],
     pins: {},
@@ -181,6 +204,7 @@ export class Store {
       for (const k of s.keys) { if (!k.ease) k.ease = 'auto'; cleanKey(k); }
     }
     migrateProject(this.project);
+    recolorSims(this.project);          // colours follow the bodies (older saves coloured sims by their order)
     this.undo.length = 0; this.redo.length = 0; this.undoChars = 0;
     this.frame = 0;
     this.selected = { sim: this.project.sims[0] ? this.project.sims[0].id : null, bone: null };
