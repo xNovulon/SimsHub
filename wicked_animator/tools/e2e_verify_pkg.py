@@ -173,7 +173,7 @@ def verify_anim(pkg, idx, snip, bake, label, expect_next=None, expect_random=Non
       [root.get('c'), root.get('n'), root.get('s'), snip['inst']])
     C(f'{label}: one animation in the snippet', len(anims) == 1, len(anims))
     a = anims[0]
-    C(f'{label}: display name / author', a.get('animation_raw_display_name') == bake['name'] and a.get('animation_author') == bake['author'],
+    C(f'{label}: display name / author', a.get('animation_raw_display_name') == bake['name'] and a.get('animation_author') == W.credited(bake['author']),
       [a.get('animation_raw_display_name'), a.get('animation_author')])
     C(f'{label}: category', a.get('animation_category') == bake['category'], a.get('animation_category'))
     C(f'{label}: locations', a.get('animation_locations') == ', '.join(bake['locations']), a.get('animation_locations'))

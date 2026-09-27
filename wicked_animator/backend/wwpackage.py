@@ -3,7 +3,7 @@ uses (class WickedWoohooAnimationPackage), in a plain uncompressed .package file
 
 Nothing here touches the game, so it is tested offline.
 """
-import re, struct
+import os, re, struct
 from xml.sax.saxutils import escape
 
 SNIPPET = 0x7DF2169C
@@ -24,6 +24,46 @@ def fnv64(text):
 
 def instance_id(name):
     return fnv64(name) | 0x8000000000000000   # high bit: custom content, never an EA id
+
+
+# ------------------------------------------------------------------ the credit in WickedWhims' own lists
+# WickedWhims shows an animation's own picture in its animation lists when animation_display_icon names one (its
+# SexAnimationInstance.get_picker_row uses it instead of the category icon; its own icons are PNG resource keys too),
+# and the author in the line under the name. Every animation made here carries the Wicked Animator logo (one shared PNG
+# resource, data/wickedwhims_icon.png, 128 px, from web/img/logo.svg) and the credit after its author. File, stage and
+# clip names keep the plain author.
+T_PNG = 0x2F7D0004
+ICON_FILE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'wickedwhims_icon.png'))
+ICON_INSTANCE = instance_id('Novulon_WickedAnimator_Icon_1')      # a new picture gets a new name (and key)
+ICON_KEY = '%08x:%08x:%016x' % (T_PNG, 0, ICON_INSTANCE)
+CREDIT ="Made with Novulon's Wicked Animator"
+CREDIT_SEP = ' · '
+
+
+def credited(author):
+    """The author as WickedWhims shows it: 'Novulon · Made with Novulon's Wicked Animator'."""
+    author = (author or '').strip()
+    if not author:
+        return CREDIT
+    return author if author.endswith(CREDIT) else author + CREDIT_SEP + CREDIT
+
+
+def plain_author(text):
+    """The author without the credit (reading our own animations back from a package)."""
+    text = (text or '').strip()
+    if text.endswith(CREDIT_SEP + CREDIT):
+        return text[:-len(CREDIT_SEP + CREDIT)].strip()
+    return '' if text == CREDIT else text
+
+
+def icon_resource():
+    """(type, group, instance, png bytes) of the logo WickedWhims shows next to the animation, or None."""
+    try:
+        with open(ICON_FILE, 'rb') as f:
+            data = f.read()
+    except OSError:
+        return None
+    return (T_PNG, 0, ICON_INSTANCE, data)
 
 
 def safe_name(text):
@@ -228,7 +268,10 @@ def animation_xml(anim):
     moments list is an <L> of <U> items, as WickedWhims' template writes it)."""
     lines = []
     lines.append(_t('animation_raw_display_name', anim['name'], 6))
-    lines.append(_t('animation_author', anim['author'], 6))
+    if anim.get('icon'):
+        # the picture WickedWhims shows next to the name (a resource key: type:group:instance)
+        lines.append(_t('animation_display_icon', anim['icon'], 6))
+    lines.append(_t('animation_author', anim.get('author_display') or anim['author'], 6))
     lines.append(_t('animation_locations', ', '.join(anim['locations']), 6))
     if anim.get('custom_locations'):
         # custom-content furniture WickedWhims finds by its object id (with animation_locations NONE)
@@ -350,4 +393,5 @@ def animation_package(anim):
     """(file name, package bytes) for one animation."""
     name = 'FitStudio_' + safe_name(anim['author']) + '_' + safe_name(anim['name'])
     xml = snippet_xml(name, [anim]).encode('utf-8')
-    return name + '.package', build_package([(SNIPPET, 0, instance_id(name), xml)])
+    icon = icon_resource() if anim.get('icon') == ICON_KEY else None
+    return name + '.package', build_package([(SNIPPET, 0, instance_id(name), xml)] + ([icon] if icon else []))

@@ -44,6 +44,7 @@ import traceback
 import xml.etree.ElementTree as ET
 
 import doctor as D
+from wwpackage import plain_author        # our own animations carry a credit after the author
 from dbpf import read_index, read_resource
 
 CACHE_VERSION = 1
@@ -224,7 +225,7 @@ def parse_xml(data):
                 f = _fields(p)
                 props.append({'clip': _txt(f, 'prop_animation_clip_name'), 'geo': _txt(f, 'prop_geometry_state')})
             out.append({'display': _txt(d, 'animation_display_name'), 'raw': _txt(d, 'animation_raw_display_name'),
-                        'author': _txt(d, 'animation_author'), 'locations': _txt(d, 'animation_locations', 'NONE'),
+                        'author': plain_author(_txt(d, 'animation_author')), 'locations': _txt(d, 'animation_locations', 'NONE'),
                         'custom': _txt(d, 'animation_custom_locations'), 'category': _txt(d, 'animation_category'),
                         'obj_clip': _txt(d, 'object_animation_clip_name'), 'obj_geo': _txt(d, 'object_geometry_state'),
                         'obj_mat': _txt(d, 'object_material_state'), 'version': _txt(d, 'animation_version', '1'),

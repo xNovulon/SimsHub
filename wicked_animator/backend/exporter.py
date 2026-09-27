@@ -626,7 +626,13 @@ def animation_resources(project, metas=None, present=None):
     anim = {'name': name, 'author': author, 'category': category, 'loops': loops, 'naked': project.get('naked', 'ALL'),
             'locations': project.get('locations') or ['FLOOR'], 'actors': actors_xml, 'tags': tags,
             'stage': base, 'next_stages': nxt, 'random': random_ok, 'act': project.get('act'),
-            'negative_offset': hold / fps if hold else 0}
+            'negative_offset': hold / fps if hold else 0,
+            # WickedWhims' lists show the Wicked Animator logo next to it and the credit after the author
+            'author_display': W.credited(author)}
+    icon = W.icon_resource()
+    if icon:
+        anim['icon'] = W.ICON_KEY
+        resources.append(icon)
     if props_xml:
         anim['props'] = props_xml
     if bed_clip:

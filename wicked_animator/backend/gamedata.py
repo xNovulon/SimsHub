@@ -11,6 +11,7 @@ from clipfmt import parse_clip, decode_frames, decode_track, fnv32, fnv64
 from rigfmt import parse_rig
 from geomfmt import parse_geom
 import gamefind
+from wwpackage import plain_author        # our own animations carry a credit after the author
 
 HOME = gamefind.HOME
 SIMS_DIR = gamefind.SIMS_DIR           # Documents\Electronic Arts\The Sims 4 (wherever Windows keeps Documents)
@@ -345,7 +346,7 @@ def _parse_animation_xml(xml):
             a = {
                 'raw_name': _field(an, 'animation_raw_display_name'),
                 'name_key': _field(an, 'animation_display_name'),
-                'author': _field(an, 'animation_author'),
+                'author': plain_author(_field(an, 'animation_author')),
                 'locations': [x.strip() for x in _field(an, 'animation_locations').split(',') if x.strip()],
                 'category': _field(an, 'animation_category'),
                 'tags': [x.strip().upper() for x in _field(an, 'animation_tags').replace(';', ',').split(',') if x.strip()],

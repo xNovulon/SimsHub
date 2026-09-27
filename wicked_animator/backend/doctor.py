@@ -46,6 +46,7 @@ from dbpf import read_index, read_resource
 import mergelist
 from clipfmt import fnv64
 import gamelog
+from wwpackage import plain_author        # our own animations carry a credit after the author
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.normpath(os.path.join(HERE, '..', 'cache', 'doctor'))
@@ -258,7 +259,7 @@ def parse_animation_xml(xml):
                 actors.append({'clip': _field(a, 'animation_clip_name') or _field(a, 'animation_name'),
                                'type': _field(a, 'animation_type'), 'genders': [g for g in genders if g], 'prefs': prefs})
             out.append({'name': _field(an, 'animation_raw_display_name'), 'name_key': _field(an, 'animation_display_name'),
-                        'author': _field(an, 'animation_author'), 'locations': _field(an, 'animation_locations'),
+                        'author': plain_author(_field(an, 'animation_author')), 'locations': _field(an, 'animation_locations'),
                         'custom': _field(an, 'animation_custom_locations'), 'category': _field(an, 'animation_category'),
                         'actors': actors})
     return out
