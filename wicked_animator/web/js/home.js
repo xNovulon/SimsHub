@@ -3,7 +3,7 @@
 // and cards other parts of the app add (app.hooks.homeCards) fill whole rows. Going between Home and the editor is a
 // View Transition (the logo flies to the top bar; a clicked animation's picture grows into the stage).
 import { h, icon, confirmBox, contextMenu, toast, emitWA } from './ui.js';
-import { SUPPORT_URL, hasSupport } from './support.js';
+import { SUPPORT_URL, SITE_URL, hasSupport } from './support.js';
 import { api } from './api.js';
 import { KINDS } from './tags.js';
 import { maybeTour } from './tour.js';
@@ -171,6 +171,7 @@ export async function showHome(app) {
       h('img', { src: 'img/logo.svg', class: 'logo', alt: '' }),
       h('div', {}, h('h1', {}, 'Novulon\'s ', h('span', {}, 'Wicked Animator')), h('p', {}, 'Make WickedWhims animations without Blender - pose, add motion, send to the game.')),
       h('div', { class: 'grow' }),
+      h('a', { class: 'btn ghost', href: SITE_URL, target: '_blank', rel: 'noopener', title: "Novulon's site: both apps and what's new", style: { textDecoration: 'none' } }, icon('globe'), 'Novulon site'),
       hasSupport() ? h('a', { class: 'btn ghost coffee', href: SUPPORT_URL, target: '_blank', rel: 'noopener', title: 'Support the animator' }, icon('coffee'), 'Buy me a coffee') : null,
       h('button', { class: 'btn ghost', onclick: () => app.open() }, icon('open'), 'Open...'),
       app.store.project.sims.length ? h('button', { class: 'btn primary', onclick: () => hideHome(app) }, hasWork ? `Continue "${app.store.project.name}"` : 'Go to the editor', icon('arrow')) : null),

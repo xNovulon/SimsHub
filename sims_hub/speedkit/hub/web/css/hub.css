@@ -836,6 +836,13 @@ img, a, svg { -webkit-user-drag: none; }
 .coffee-btn:hover { background: rgba(251, 191, 36, .18); border-color: rgba(251, 191, 36, .6); transform: translateY(-1px); }
 .coffee-btn.hidden { display: none; }
 @media (max-width: 900px) { .coffee-btn span { display: none; } .coffee-btn { padding: 0 9px; } }
+/* Novulon's site, next to it: the same pill, in the Hub's own violet */
+.site-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px 0 11px; border-radius: 999px; font-weight: 700;
+  font-size: var(--fs-sm); color: #e3d4ff; background: rgba(168, 85, 247, .1); border: 1px solid rgba(168, 85, 247, .35); text-decoration: none;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast); }
+.site-btn svg { width: 17px; height: 17px; }
+.site-btn:hover { background: rgba(168, 85, 247, .18); border-color: rgba(168, 85, 247, .6); transform: translateY(-1px); }
+@media (max-width: 900px) { .site-btn span { display: none; } .site-btn { padding: 0 9px; } }
 
 /* links inside notes */
 .note a { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
