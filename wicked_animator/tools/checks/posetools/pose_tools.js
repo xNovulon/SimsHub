@@ -343,6 +343,27 @@ async function startServer() {
       return `rings X, Y, Z shown; tipped ${r.tilt.toFixed(1)}° (asked 30), the keys changed, undo put it back (${r.back.toFixed(2)}° off)`;
     });
 
+    await step('R while holding the circle turns the sim 45° per press (Shift+R back), no rings; undo puts it back', async () => {
+      await page.evaluate(() => { const app = window.app; app.vp.stopCamera && app.vp.stopCamera(); app.setTool('rotate'); app.setView('top'); });
+      await P.sleep(900);
+      const s = await page.evaluate(() => { const t = window.__t, m = window.app.interact.rootMeshes.get(t.sim()); return t.screen([m.group.position.x, 0.004, m.group.position.z]); });
+      const f0 = await facing();
+      const before = await page.evaluate(() => ({ mode: window.app.vp.gizmo.mode, active: (window.app.interact.active || {}).kind || null }));
+      await page.mouse.move(s[0], s[1]);
+      await page.mouse.down();
+      await page.keyboard.press('r'); await P.sleep(80);
+      await page.keyboard.press('r'); await P.sleep(80);
+      await page.keyboard.press('Shift+R'); await P.sleep(80);
+      const held = await page.evaluate(() => ({ mode: window.app.vp.gizmo.mode, active: (window.app.interact.active || {}).kind || null }));
+      await page.mouse.up(); await P.sleep(200);
+      const f1 = await facing();
+      await page.evaluate(() => window.app.undo()); await P.sleep(200);
+      const f2 = await facing();
+      const turned = turnBy(f0.yaw, f1.yaw), back = turnBy(f0.yaw, f2.yaw), moved = Math.hypot(f1.hips[0] - f0.hips[0], f1.hips[2] - f0.hips[2]);
+      if (!(Math.abs(Math.abs(turned) - 45) < 2 && moved < 0.02 && Math.abs(back) < 0.5 && held.mode === before.mode && held.active === before.active))
+        throw new Error(JSON.stringify({ turned, moved, back, held, before }));
+      return `R, R, Shift+R while holding: turned ${Math.abs(turned).toFixed(1)}° in place (${(moved * 100).toFixed(1)} cm), the tool unchanged; undo: ${Math.abs(back).toFixed(2)}° off`;
+    });
     await step('R on the thigh of a pinned leg swings the leg (the pin follows), the knee never flips side', async () => {
       const r = await page.evaluate(async () => {
         const T = await import('three');

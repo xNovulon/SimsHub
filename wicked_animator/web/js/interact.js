@@ -351,12 +351,34 @@ export class Interaction {
       } else this.proxy.position.copy(p.sub(drag.grab));
       gz.dispatchEvent({ type: 'objectChange' });
     };
+    // R while the circle is held: the sim turns 45 degrees on the spot (Shift+R the other way), the way something
+    // carried in build mode turns - the turn ring (a click on the circle, then R) stays for turning by hand
+    const key = ev => {
+      if (ev.code !== 'KeyR' || ev.ctrlKey || ev.metaKey || ev.altKey || ev.repeat) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      const v = this.views().get(simId), m = this.rootMeshes.get(simId);
+      if (!v || !m) return;
+      if (!drag.on && !drag.turned) { this.app.beginEdit(simId); this.app.store.checkpoint('Turn the sim'); }
+      drag.turned = true;
+      const pivot = worldToSpace(v, drag.on ? this.proxy.position : m.group.position);
+      this.placeSim(simId, { turn: (ev.shiftKey ? -1 : 1) * Math.PI / 4, pivot });
+      this.app.store.setDirty(true);
+      this.followHolders(simId);
+      this.app.applyPoses(false);
+      this.placeHandles();
+      this.app.hud('Turned 45° - R again turns more, Shift+R the other way', { hold: 1400 });
+    };
     const up = () => {
       c.removeEventListener('pointermove', move, true);
       c.removeEventListener('pointerup', up, true);
       c.removeEventListener('pointercancel', up, true);
+      window.removeEventListener('keydown', key, true);
       try { c.releasePointerCapture(e.pointerId); } catch { /* already released */ }
-      if (!drag.on) return;                     // no move: the click that follows picks the circle
+      if (!drag.on) {                           // no move: the click that follows picks the circle
+        if (drag.turned) this.app.afterEdit();
+        return;
+      }
       this.downAt = null;
       gz.dispatchEvent({ type: 'mouseUp' });
       gz.dispatchEvent({ type: 'dragging-changed', value: false });
@@ -364,6 +386,7 @@ export class Interaction {
     c.addEventListener('pointermove', move, true);
     c.addEventListener('pointerup', up, true);
     c.addEventListener('pointercancel', up, true);
+    window.addEventListener('keydown', key, true);
   }
 
   // One circle per shown sim, kept under its hips on the floor every frame. Hidden only while a video is filmed (and
