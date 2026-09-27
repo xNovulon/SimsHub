@@ -78,6 +78,7 @@ const S = {
   graphics: null, graphicsLoading: false,
   inbox: null, inboxLoading: false,
   plan: null,
+  mergePlan: null,
   page: 'home',
   taskId: null,
 };
@@ -131,7 +132,7 @@ function ccNow() {
 }
 
 // ------------------------------------------------------------------------------------------ pages
-const PAGES = { home: renderHome, saves: renderSaves, library: renderLibrary, performance: renderPerformance, tools: renderTools };
+const PAGES = { home: renderHome, saves: renderSaves, merge: renderMerge, library: renderLibrary, performance: renderPerformance, tools: renderTools };
 
 function pageName() {
   const p = location.hash.replace(/^#/, '').split(/[?&]/)[0];
@@ -152,7 +153,7 @@ function route() {
 function loadForPage() {
   if (!S.status) return;
   if (S.page === 'saves' || (S.page === 'home' && st().profile && st().profile.name === 'save')) ensureSaves();
-  if (S.page === 'library') ensureInbox();
+  if (S.page === 'library' || S.page === 'merge') ensureInbox();
   if (S.page === 'performance') ensureGraphics();
   care.load(S.page);
 }
@@ -371,10 +372,8 @@ function renderSaves() {
   }).join('')}</div>${care.savesSection()}` + trayCcCard();
 }
 
-// -------------------------------------------------------------------------------- Library
-function renderLibrary() {
-  if (!S.status) return S.statusErr ? errorBlock(S.statusErr) : loadingBlock('Looking at your library...');
-  const lib = st().library || {};
+// -------------------------------------------------------------------------------- Merge
+function inboxCard() {
   const ib = S.inbox;
   const items = (ib && ib.ok && ib.items) || [];
   const stateOf = i => String(i.status || '').toLowerCase();
@@ -389,21 +388,71 @@ function renderLibrary() {
       <span class="n" title="${esc(i.name)}">${esc(i.name)}</span><span class="r" title="${esc(i.reason || '')}">${
         stateOf(i) === 'refused' ? `<span class="chip warn">Can't be added</span> ` : stateOf(i) === 'skipped' ? '<span class="chip">Skipped</span> ' : ''}${esc(i.reason || '')}</span></div>`).join('')}
       ${waiting.length > 12 ? `<div class="muted" style="padding:4px 2px">and ${num(waiting.length - 12)} more</div>` : ''}</div>`;
-  const plan = S.plan;
-  return `<div class="page-head"><div class="grow"><h1>Your <span>CC library</span></h1>
-      <p>${isNum(lib.packages) ? `${num(lib.packages)} CC and mod files, ${gb(lib.gb)} in total.` : 'Add new downloads, free up space, and see what you have.'}</p></div></div>
-    ${ccSlot()}
-
-    <div class="lib-more">
-    <div class="card"><div class="card-head"><div class="ic">${ic('download')}</div><div class="grow"><h2>Add new downloads</h2>
-      <p>Drop new CC and mods in this folder, then press <b>Add to game</b>.</p></div></div>
+  return `<div class="card"><div class="card-head"><div class="ic">${ic('download')}</div><div class="grow"><h2>Add and merge new downloads</h2>
+      <p>Drop new CC and mods in this folder, then press <b>Add to game</b>. New CC is merged into fewer files as it's added.</p></div></div>
       <div class="path-box">${ic('folder', 'fold')}<span class="path">${esc((ib && ib.inbox_path) || 'Finding your Inbox folder...')}</span>
         <button class="btn small" data-act="open" data-what="inbox">${ic('folder')}Open folder</button></div>
       ${inboxBody}
       <div class="actions"><button class="btn primary" data-act="inbox-apply"${addable.length && !noChange ? '' : ' disabled'}>${ic('check')}Add to game${addable.length ? ` (${num(addable.length)})` : ''}</button>
         <button class="btn ghost" data-act="inbox-refresh"${S.inboxLoading ? ' disabled' : ''}>${ic('refresh')}Look again</button></div>
+    </div>`;
+}
+
+function mergeTime(lo, hi) {
+  if (!isNum(lo) && !isNum(hi)) return '—';
+  const f = s => s < 1 ? `${Math.round(s * 1000)} ms` : `${s.toFixed(1).replace(/\.0$/, '')} s`;
+  return !isNum(hi) || lo === hi ? f(lo) : `${f(lo)}-${f(hi)}`;
+}
+
+function mergeLeftAlone(p) {
+  const left = p.left_alone || [];
+  if (!left.length) return '';
+  return `<details class="more"><summary>What's left alone, and why</summary><ul class="details">
+    ${left.slice(0, 10).map(x => `<li>${plural(x.files, 'file')} ${esc(x.label)}</li>`).join('')}</ul></details>`;
+}
+
+function renderMerge() {
+  if (!S.status) return S.statusErr ? errorBlock(S.statusErr) : loadingBlock('Checking your mods...');
+  const noChange = busy() || gameRunning();
+  const p = S.mergePlan;
+  let planBody;
+  if (!p) {
+    planBody = `<div class="actions"><button class="btn primary" data-act="merge-plan"${noChange ? ' disabled' : ''}>${ic('search')}Check what can be merged</button></div>`;
+  } else if (!p.ok || !p.groups) {
+    planBody = `<div class="empty" style="padding:14px 2px 0">${esc(p.message || "That couldn't be checked right now.")}</div>
+      ${p.ok ? mergeLeftAlone(p) : ''}
+      <div class="actions"><button class="btn ghost" data-act="merge-plan"${noChange ? ' disabled' : ''}>${ic('search')}Check again</button></div>`;
+  } else {
+    planBody = `<div class="plan"><div><b>${num(p.files)}</b><span>loose CC files</span></div>
+        <div><b>${num(p.groups)}</b><span>bigger file${p.groups === 1 ? '' : 's'}</span></div>
+        <div><b>${mergeTime(p.seconds_low, p.seconds_high)}</b><span>faster to start</span></div></div>
+      ${mergeLeftAlone(p)}
+      <div class="actions"><button class="btn primary" data-act="merge-confirm"${noChange ? ' disabled' : ''}>${ic('layers')}Merge ${plural(p.groups, 'file')}</button>
+        <button class="btn ghost" data-act="merge-plan"${noChange ? ' disabled' : ''}>${ic('search')}Check again</button></div>`;
+  }
+  return `<div class="page-head"><div class="grow"><h1><span>Merge</span> your CC</h1>
+      <p>Puts your loose CC into fewer, bigger files - the game opens them faster at every start.</p></div></div>
+
+    <div class="card"><div class="card-head"><div class="ic">${ic('merge')}</div><div class="grow"><h2>Merge your CC</h2>
+      <p>Safe: script mods are never touched, and nothing is deleted. <b>Undo last change</b> on the Tools page puts everything back.</p></div></div>
+      ${planBody}
     </div>
 
+    ${inboxCard()}`;
+}
+
+// -------------------------------------------------------------------------------- Library
+function renderLibrary() {
+  if (!S.status) return S.statusErr ? errorBlock(S.statusErr) : loadingBlock('Looking at your library...');
+  const lib = st().library || {};
+  const plan = S.plan;
+  const noChange = busy() || gameRunning();
+  return `<div class="page-head"><div class="grow"><h1>Your <span>CC library</span></h1>
+      <p>${isNum(lib.packages) ? `${num(lib.packages)} CC and mod files, ${gb(lib.gb)} in total.` : 'See what you have, and free up space.'}</p></div></div>
+    ${ccSlot()}
+    <div class="note">${ic('info')}<span>Adding new downloads and merging your CC into fewer files moved to the <a href="#merge">Merge page</a>.</span></div>
+
+    <div class="lib-more">
     <div class="card"><div class="card-head"><div class="ic pink">${ic('broom')}</div><div class="grow"><h2>Free up space</h2>
       <p>Removes extra copies of the same CC. Your game looks the same, and it can be undone.</p></div></div>
       ${plan && plan.ok ? `<div class="plan"><div><b>${planSize(plan)}</b><span>can be freed</span></div><div><b>${num(plan.copies)}</b><span>extra copies</span></div>
@@ -474,7 +523,8 @@ function renderPerformance() {
 
     <div class="card"><div class="card-head"><div class="ic blue">${ic('clock')}</div><div class="grow"><h2>How long the game takes to start</h2>
       <p>Every start, from Play to the main menu.</p></div></div>
-      ${loadTimes()}</div>
+      ${loadTimes()}
+      <div class="note">${ic('info')}<span>Loose CC files also slow down every start. <a href="#merge">Merge your CC</a> into fewer files.</span></div></div>
 
     <div class="card"><div class="card-head"><div class="ic green">${ic('gauge')}</div><div class="grow"><h2>Find what makes your game lag</h2>
       <p>A lag meter that names the mods slowing your game down.</p></div>
@@ -587,6 +637,7 @@ function describeChange(j) {
     title = { fast: 'Switched to Quick Start', full: 'Switched to Full Start', studio: 'Switched to Studio mode', custom: 'Switched to your own mix' }[m[1].toLowerCase()]
       || 'Switched to one save';
   } else if (j.kind === 'inbox' && (m = /^(\d+) download/.exec(note))) title = `Added ${plural(+m[1], 'new download')}`;
+  else if (j.kind === 'merge' && (m = /^(\d+) merged files? from (\d+)/i.exec(note))) title = `Merged ${plural(+m[2], 'file')} into ${num(+m[1])}`;
   else if (j.kind === 'settings' && /max quality/i.test(note)) title = 'Graphics: Max Quality, lag fixed';
   else if (j.kind === 'settings' && /restore|put back/i.test(note)) title = 'Graphics: old file put back';
   else if (j.kind === 'install' && /^uninstall/i.test(note)) title = 'Removed the SpeedKit Monitor';
@@ -686,11 +737,11 @@ async function ensureSaves(force = false) {
 async function ensureInbox(force = false) {
   if (S.inboxLoading || (S.inbox && !force)) return;
   S.inboxLoading = true;
-  if (force) { S.inbox = null; if (S.page === 'library') render(); }
+  if (force) { S.inbox = null; if (S.page === 'library' || S.page === 'merge') render(); }
   const r = await call('inbox' + (force ? '?refresh=1' : ''));
   S.inboxLoading = false;
   S.inbox = r.busy ? null : r;
-  if (S.page === 'library') render();
+  if (S.page === 'library' || S.page === 'merge') render();
 }
 
 async function ensureGraphics(force = false) {
@@ -717,11 +768,13 @@ const TITLES = {
   cleanup_plan: () => 'Checking for extra copies', cleanup_apply: () => 'Freeing up space',
   graphics_tune: a => a.apply ? 'Fixing the graphics lag' : 'Checking your graphics',
   graphics_restore: () => 'Putting your old graphics back', report: () => 'Making your library report',
+  merge_plan: () => 'Checking what can be merged', merge_apply: () => 'Merging your CC into fewer files',
 };
 const DONE = {
   play: r => r.launched ? 'The Sims 4 is starting!' : 'All set', prepare: () => 'All set', undo_last: () => 'Change undone',
   inbox: () => 'New downloads added', cleanup_plan: () => 'Check finished', cleanup_apply: () => 'Space freed up',
   graphics_tune: () => 'Graphics fixed', graphics_restore: () => 'Your old graphics are back', report: () => 'Your report is ready',
+  merge_plan: () => 'Check finished', merge_apply: () => 'CC merged',
 };
 
 async function runTask(action, args = {}, opts = {}) {
@@ -760,11 +813,14 @@ async function watchTask(id, opts) {
   }
   S.taskId = null;
   const res = view.result || {};
+  const readOnly = ['cleanup_plan', 'merge_plan', 'report'].includes(opts.action);
   // what changed: forget what the pages show, then ask again
-  if (opts.action !== 'cleanup_plan' && opts.action !== 'report') { S.saves = null; S.graphics = null; S.inbox = null; }
+  if (!readOnly) { S.saves = null; S.graphics = null; S.inbox = null; }
   S.savesLoading = S.graphicsLoading = S.inboxLoading = false;
-  if (opts.action !== 'cleanup_plan' && opts.action !== 'report') care.afterTask();
+  if (!readOnly) care.afterTask();
   if (opts.action === 'cleanup_apply' && res.ok) S.plan = null;
+  if (opts.action === 'merge_apply' && res.ok) S.mergePlan = null;
+  if (opts.action === 'merge_plan') S.mergePlan = res;
   refreshStatus(true).then(loadForPage);
   if (opts.action === 'cleanup_plan' && res.ok) {
     S.plan = res;
@@ -914,6 +970,18 @@ async function confirmCleanup() {
     ok: `Free up ${planSize(p)}`, cancel: 'Not now',
   });
   if (yes) runTask('cleanup_apply');
+}
+
+async function confirmMerge() {
+  const p = S.mergePlan;
+  if (!p || !p.ok || !p.groups) return;
+  const yes = await confirmBox({
+    title: `Merge ${plural(p.groups, 'file')}?`,
+    text: `${num(p.files)} loose CC files go into ${plural(p.groups, 'bigger file')}. Your game will look exactly the same.`,
+    what: `<div class="confirm-what"><b>Script mods are never merged</b><span>Nothing is deleted, and <b>Undo last change</b> on the Tools page puts everything back.</span></div>`,
+    ok: `Merge ${plural(p.groups, 'file')}`, cancel: 'Not now',
+  });
+  if (yes) runTask('merge_apply');
 }
 
 async function confirmUndo() {
@@ -1073,7 +1141,7 @@ const ACTS = {
     btn.classList.add('spin');
     await refreshStatus(true);
     if (S.page === 'saves') await ensureSaves(true);
-    if (S.page === 'library') await ensureInbox(true);
+    if (S.page === 'library' || S.page === 'merge') await ensureInbox(true);
     if (S.page === 'performance') await ensureGraphics(true);
     await care.load(S.page, true);
     btn.classList.remove('spin');
@@ -1084,6 +1152,8 @@ const ACTS = {
   'saves-refresh': () => ensureSaves(true),
   'inbox-refresh': () => ensureInbox(true),
   'inbox-apply': () => runTask('inbox', { apply: true }),
+  'merge-plan': () => runTask('merge_plan'),
+  'merge-confirm': () => confirmMerge(),
   'cleanup-plan': () => runTask('cleanup_plan'),
   'cleanup-confirm': () => confirmCleanup(),
   report: () => runTask('report'),
@@ -1726,7 +1796,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !b
 setInterval(() => { if (!document.hidden && !busy()) refreshStatus(); }, 8000);
 
 async function previewHooks() {
-  // only with example data: lets the screenshot tests open a dialog (?open=finder|undo|cleanup|restore)
+  // only with example data: lets the screenshot tests open a dialog (?open=finder|undo|cleanup|restore|merge)
   const q = new URLSearchParams(location.search), what = q.get('open');
   if (!what || !(st().hub && st().hub.preview)) return;
   if (what === 'finder') openFinder(q.get('path') || '');
@@ -1741,6 +1811,11 @@ async function previewHooks() {
   if (what === 'undo') confirmUndo();
   if (what === 'restore') confirmRestore();
   if (what === 'cleanup') { S.plan = { ok: true, copies: 4210, gb: 18.2, rewritten: 57, removed: 12 }; render(); confirmCleanup(); }
+  if (what === 'merge') {
+    S.mergePlan = { ok: true, files: 182, groups: 12, files_saved: 170, seconds_low: 0.09, seconds_high: 1.7, left_alone: [] };
+    render();
+    confirmMerge();
+  }
 }
 
 // patch day, game errors, save backups, load-time savings (care.js): its helpers, buttons, titles and change kinds

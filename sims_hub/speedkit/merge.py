@@ -83,6 +83,10 @@ OTHER_ARCHIVES = ('.rar', '.7z', '.tar', '.gz', '.tgz', '.bz2', '.xz')
 PARKED_NOTE = ' - put into the parked folder "%s" (it is parked whole; it loads after switching to full)'
 INBOX_RESERVED = {'_done', '_staging'}
 INBOX_IGNORED = {'desktop.ini', 'thumbs.db', '.ds_store'}
+# per-file start-up cost a merge saves (research/research_results.json -> merging: 0.13-0.59 ms/file with the file
+# system cache warm or cold, up to ~16 ms/file on the very first open after writing, most of it Defender's
+# on-access scan); this module's own docstring already gives the rounded range these constants encode.
+MS_PER_FILE_LOW, MS_PER_FILE_HIGH = 0.5, 10.0
 # The other chat's switch: what its 'lean' keeps in Mods. Merging one of those files would take it out of the lean
 # (studio) set, because the merged file is not on the KEEP list. Read from its source (never executed); this copy
 # (2026-09-24) is used when the file is missing or cannot be parsed.
@@ -119,6 +123,12 @@ def rank(t):
     if t in BULK_TYPES:
         return 8
     return 6
+
+
+def seconds_saved(files_saved):
+    """(low, high) seconds saved at every game start by having files_saved fewer loose packages to open
+    (MS_PER_FILE_LOW-MS_PER_FILE_HIGH ms per file)."""
+    return files_saved * MS_PER_FILE_LOW / 1000, files_saved * MS_PER_FILE_HIGH / 1000
 
 
 def category_of(types, kind):
@@ -377,6 +387,8 @@ class MergePlan:
         rbytes = Counter()
         for pid, r in self.excluded.items():
             rbytes[r.split(':')[0]] += self.sizes.get(pid, 0)
+        files_saved = sum(len(g.sources) - 1 for g in self.groups)
+        lo, hi = seconds_saved(files_saved)
         return {
             'roots': list(self.roots), 'target_bytes': self.target_bytes, 'max_bytes': self.max_bytes,
             'ignore_namemap': self.ignore_namemap,
@@ -384,7 +396,7 @@ class MergePlan:
             'groups': len(self.groups), 'packages_merged': sum(len(g.sources) for g in self.groups),
             'source_bytes': sum(g.src_bytes for g in self.groups),
             'merged_files_estimated_bytes': sum(g.est for g in self.groups),
-            'files_saved': sum(len(g.sources) - 1 for g in self.groups),
+            'files_saved': files_saved, 'seconds_saved_low': lo, 'seconds_saved_high': hi,
             'mergeable_but_alone': len(self.alone),
             'excluded': len(self.excluded),
             'excluded_by_reason': dict(reasons.most_common()),

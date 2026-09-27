@@ -179,6 +179,7 @@ class Tasks(Base):
     def test_play_a_save_and_every_action(self):
         for action, args in [('play', {'target': 'save:Slot_00000014'}), ('prepare', {'target': 'studio'}),
                              ('inbox', {'apply': True}), ('cleanup_plan', {}), ('cleanup_apply', {}), ('report', {}),
+                             ('merge_plan', {}), ('merge_apply', {}),
                              ('graphics_restore', {'apply': True}), ('graphics_tune', {'apply': True}), ('undo_last', {})]:
             with self.subTest(action):
                 code, _, r = self.post('/api/task', {'action': action, 'args': args})

@@ -33,8 +33,11 @@ PAGES = [
     ('home_1280x720', '/#home', (1280, 720), ['Quick Start']),
     ('saves', '/#saves', (1440, 1000), ['Wicked Nights', '12,480 CC items', 'Play this save', 'Novulon · Del Sol Valley']),
     ('saves_1100x700', '/#saves', (1100, 700), ['Legacy Challenge']),
-    ('library', '/#library', (1440, 1200), ['Add new downloads', 'Sentate_Venus_Dress.package', 'Free up space', 'Library report', 'Inbox']),
-    ('performance', '/#performance', (1440, 2000), ['How far away sims keep full detail', 'speedkit.lag', 'faster', 'Graphics']),
+    ('library', '/#library', (1440, 1200), ['Merge page', 'Free up space', 'Library report']),
+    ('merge', '/#merge', (1440, 1100), ['Merge your CC', 'Check what can be merged', 'Add and merge new downloads',
+                                       'Sentate_Venus_Dress.package', 'script mods are never touched']),
+    ('performance', '/#performance', (1440, 2000), ['How far away sims keep full detail', 'speedkit.lag', 'faster', 'Graphics',
+                                                    'Merge your CC']),
     ('tools', '/#tools', (1440, 1250), ["Open Novulon's Wicked Animator", 'Undo last change', 'Switched to Full Start', 'E:\\The Sims 4',
                                          'Added 3 new downloads', 'Installed the SpeedKit Monitor', 'Removed extra copies of CC']),
     ('tools_900x800', '/#tools', (900, 800), ['Recent changes']),
@@ -43,6 +46,7 @@ PAGES = [
     ('finder_game_folder', '/?open=finder&path=E%3A%5CThe%20Sims%204#home', (1440, 1000), ['This folder is The Sims 4', 'Game', 'Data']),
     ('confirm_undo', '/?open=undo#tools', (1440, 1000), ['Undo the last change?', 'Switched to Full Start', 'Keep it']),
     ('confirm_cleanup', '/?open=cleanup#library', (1440, 1000), ['Free up 18.2 GB?', '4,210']),
+    ('confirm_merge', '/?open=merge#merge', (1440, 1000), ['Merge 12 files?', '182 loose CC files', 'Script mods are never merged']),
 ]
 # pages that need the example data changed first: name -> (url, size, must show, setup(state))
 SPECIAL = {

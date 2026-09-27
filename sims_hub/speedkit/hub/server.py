@@ -71,10 +71,12 @@ ACTIONS = {
     'inbox': 'adding your new downloads', 'cleanup_plan': 'checking for extra copies',
     'cleanup_apply': 'freeing up space', 'graphics_tune': 'fixing the graphics',
     'graphics_restore': 'putting your old graphics back', 'report': 'making the library report',
+    'merge_plan': 'checking what can be merged', 'merge_apply': 'merging your CC into fewer files',
 }
 # the engine functions the contract gives a progress callback (its @_safe wrappers hide their signatures, so the
 # contract decides; graphics_tune/graphics_restore take none)
-TAKES_PROGRESS = {'list_saves', 'play', 'prepare', 'undo_last', 'inbox', 'cleanup_plan', 'cleanup_apply', 'report'}
+TAKES_PROGRESS = {'list_saves', 'play', 'prepare', 'undo_last', 'inbox', 'cleanup_plan', 'cleanup_apply', 'report',
+                  'merge_plan', 'merge_apply'}
 # patch day, game errors, save backups (care_routes.py)
 ACTIONS.update(care_routes.ACTIONS)
 TAKES_PROGRESS |= care_routes.TAKES_PROGRESS

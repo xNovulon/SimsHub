@@ -1343,6 +1343,143 @@ def inbox(apply=False, progress=None):
             'warnings': rep.get('warnings') or []}
 
 
+# ------------------------------------------------------------------------------------------ merge (the CC already in Mods)
+# merge.plan_merge's excluded-reason keys (the part before ':'), in plain words. A file's own count is said
+# elsewhere, so these read as what follows "N files ..." (e.g. "12 files are already merged.").
+_MERGE_REASONS = {
+    'script companion': 'are script mods, kept exactly as they are',
+    'load-order name': 'have a name that decides when they load, so merging could change that',
+    'conflict': "hold content that differs from another copy of the same item",
+    'undecidable': "have another copy of the same item that can't be read",
+    'already merged': 'are already merged',
+    'next to a script': 'sit next to a script mod, so they stay untouched with it',
+    'studio set': 'are kept out on their own for Studio mode',
+    'parked folder': 'are set aside as a whole folder',
+    'parking manifest': "have a set-aside list that can't be read right now",
+    'shadowed': 'exist twice (once set aside, once in Mods)',
+    'not loaded': "sit too deep in folders for the game to load them",
+    'unreadable': "can't be read",
+    'speedkit': "belong to SpeedKit itself",
+    'fitstudio': "belong to Novulon's Wicked Animator",
+    'unclassified': 'have not been sorted yet',
+    'empty': 'have nothing in them',
+    'already big': 'are already as big as a merged file gets',
+    'changed': 'changed on disk since the last check',
+    'deleted entries': 'are damaged',
+    'key twice': 'are damaged',
+}
+
+
+def _merge_reason_label(key):
+    return _MERGE_REASONS.get(key) or _plainify(key.replace('_', ' '))
+
+
+def _merge_plan_cached(tell):
+    """Like _dedup_plan: the plan for the library as it is now, cached by a fingerprint of the library listing
+    so a check right after another one (or the apply that follows it) does not rescan and replan from scratch."""
+    from . import merge
+    lib = _library()
+    lib.scan()
+    tell('merge', None, 'Working out what can be merged')
+    key = ('merge_plan', F.listing_fingerprint(F.library_listing_index(F._view(lib))))
+    with _lock:
+        hit = _cache.get(key)
+    if hit:
+        return lib, hit[1]
+    plan = merge.plan_merge(lib, cache_path=_cfg['hash_cache'], companions_cache=_cfg['companions_cache'])
+    with _lock:
+        _cache[key] = (time.time(), plan)
+    return lib, plan
+
+
+def _merge_left_alone(plan, s):
+    # more than one plan_merge reason can share the same plain-word label (e.g. 'deleted entries' and 'key
+    # twice' both read "are damaged"): combine those into one row instead of showing the same line twice
+    by_label = {}
+    for r, n in s['excluded_by_reason'].items():
+        row = by_label.setdefault(_merge_reason_label(r), {'files': 0, 'bytes': 0})
+        row['files'] += n
+        row['bytes'] += s['excluded_bytes_by_reason'].get(r) or 0
+    if plan.alone:
+        row = by_label.setdefault('have nothing else of their kind to merge with', {'files': 0, 'bytes': 0})
+        row['files'] += len(plan.alone)
+        row['bytes'] += sum(plan.sizes.get(pid, 0) for pid in plan.alone)
+    left = [{'label': label, 'files': row['files'], 'gb': _gb(row['bytes'])} for label, row in by_label.items()]
+    left.sort(key=lambda x: -x['files'])
+    return left
+
+
+@_safe
+def merge_plan(progress=None):
+    """What merging the loose CC already in your mods would do (read-only). Returns {'ok', 'message', 'files',
+    'groups', 'gb', 'files_saved', 'seconds_low', 'seconds_high', 'left_alone': [{'label', 'files', 'gb'}]}."""
+    tell = _Progress(progress)
+    tell('merge', 0.0, 'Checking your mods')
+    lib, plan = _merge_plan_cached(tell)
+    try:
+        s = plan.summary()
+        left = _merge_left_alone(plan, s)
+    finally:
+        lib.close()
+    tell('merge', 1.0, 'Done')
+    if not s['groups']:
+        return {'ok': True, 'message': 'Nothing can be merged right now (see why below).' if left else
+                'Nothing can be merged right now.', 'files': 0, 'groups': 0, 'gb': 0.0, 'files_saved': 0,
+                'seconds_low': 0.0, 'seconds_high': 0.0, 'left_alone': left}
+    msg = ('%d loose CC files can be merged into %d file%s - %d fewer to open every time the game starts.'
+          % (s['packages_merged'], s['groups'], '' if s['groups'] == 1 else 's', s['files_saved']))
+    return {'ok': True, 'message': msg, 'files': s['packages_merged'], 'groups': s['groups'],
+            'gb': _gb(s['source_bytes']), 'files_saved': s['files_saved'],
+            'seconds_low': round(s['seconds_saved_low'], 2), 'seconds_high': round(s['seconds_saved_high'], 2),
+            'left_alone': left, 'warnings': [_plainify(w) for w in s['warnings']]}
+
+
+@_safe
+def merge_apply(progress=None):
+    """Merge the loose CC now in your mods into fewer, bigger files. One change that 'Undo last change' reverses.
+    Returns {'ok', 'message', 'journal'}."""
+    from . import merge
+    tell = _Progress(progress)
+    if _game_running():
+        return {'ok': False, 'message': 'The Sims 4 is running. Close it first.', 'journal': None}
+    tell('merge', 0.0, 'Checking your mods')
+    lib, plan = _merge_plan_cached(tell)
+    try:
+        s = plan.summary()
+        if not s['groups']:
+            return {'ok': True, 'message': 'There is nothing to merge right now.', 'journal': None}
+        tell('merge', 0.1, 'Merging your CC into fewer files')
+
+        written = [False]
+
+        def _tell_merge(*a):
+            # apply_merge reports each merged file as (step, n, total, name); its BEFORE-merge and AFTER-merge
+            # invariant checks both report the hash work they depend on with a different shape (label, done,
+            # total, nbytes, tbytes) - all three land here. The before-check runs first (nothing written yet)
+            # and the after-check runs last, so 'written' (set once a file has actually been written) is what
+            # tells the two apart; without it they looked identical and the progress bar jumped near 100% for
+            # the before-check, then back down once writing started.
+            if len(a) == 4:
+                written[0] = True
+                _, n, total, name = a
+                tell('merge', 0.2 + 0.6 * (n / max(1, total)), 'Writing %s' % name)
+            elif len(a) >= 3:
+                if written[0]:
+                    tell('merge', 0.8 + 0.2 * (a[1] / max(1, a[2])), 'Checking the game will load the same CC')
+                else:
+                    tell('merge', 0.1 + 0.1 * (a[1] / max(1, a[2])), 'Merging your CC into fewer files')
+        with _run_lock:
+            res = merge.apply_merge(plan, lib, dry_run=False, journal_home=_home(), check_game=_cfg['check_game'],
+                                    cache_path=_cfg['hash_cache'], progress=_tell_merge)
+    finally:
+        lib.close()
+    _cache.clear()
+    tell('merge', 1.0, 'Done')
+    msg = ('Merged %d files into %d. Your game will look exactly the same, and it can be undone.'
+          % (s['packages_merged'], s['groups']))
+    return {'ok': True, 'message': msg, 'journal': res.get('journal')}
+
+
 # ------------------------------------------------------------------------------------------ duplicate clean-up
 def _norm_path(p):
     return os.path.normcase(os.path.abspath(p))

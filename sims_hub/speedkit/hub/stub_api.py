@@ -280,6 +280,39 @@ def inbox(apply=False, progress=None):
             'inbox_path': path}
 
 
+_MERGE = {
+    'files': 182, 'groups': 12, 'gb': 24.6, 'files_saved': 170, 'seconds_low': 0.09, 'seconds_high': 1.7,
+    'left_alone': [
+        {'label': 'are script mods, kept exactly as they are', 'files': 340, 'gb': 41.2},
+        {'label': 'are already merged', 'files': 165, 'gb': 96.8},
+        {'label': 'have a name that decides when they load, so merging could change that', 'files': 6, 'gb': 0.1},
+        {'label': 'have nothing else of their kind to merge with', 'files': 28, 'gb': 3.4},
+    ],
+}
+
+
+def merge_plan(progress=None):
+    _run(progress, [('merge', 'Checking your mods'), ('merge', 'Working out what can be merged')])
+    m = dict(_MERGE)
+    msg = ('%d loose CC files can be merged into %d files - %d fewer to open every time the game starts.'
+          % (m['files'], m['groups'], m['files_saved']))
+    return dict(m, ok=True, message=msg)
+
+
+def merge_apply(progress=None):
+    bad = _busy()
+    if bad:
+        return dict(bad, journal=None)
+    m = _MERGE
+    _run(progress, [('check', 'Making sure the game is closed'), ('merge', 'Merging your CC into fewer files'),
+                    ('verify', 'Checking the game will load the same CC')])
+    jid = _journal('merge', '%d merged files from %d packages' % (m['groups'], m['files']))
+    with _lock:
+        STATE['library']['packages'] = max(0, STATE['library']['packages'] - m['files_saved'])
+    return {'ok': True, 'message': 'Merged %d files into %d. Your game will look exactly the same, and it can be '
+            'undone.' % (m['files'], m['groups']), 'journal': jid}
+
+
 def cleanup_plan(progress=None):
     _run(progress, [('scan', 'Looking at your CC library'), ('compare', 'Finding CC stored more than once'),
                     ('plan', 'Working out what can go safely')])

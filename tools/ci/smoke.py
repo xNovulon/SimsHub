@@ -98,7 +98,7 @@ def check_hub(shots):
                 page.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))
                 page.on('console', lambda m: errors.append('console: ' + m.text)
                         if m.type == 'error' and 'net::ERR_FAILED' not in m.text else None)
-                for name in ('home', 'saves', 'library', 'performance', 'tools'):
+                for name in ('home', 'saves', 'merge', 'library', 'performance', 'tools'):
                     try:
                         page.goto(base + '#' + name, timeout=20000)
                         # the page's own head element (title + intro line), or Home's (its own markup) - the

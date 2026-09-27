@@ -402,7 +402,6 @@ code.cheat { font-family: var(--mono); font-size: 13px; padding: 2px 8px; border
 .lib-more { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); margin-top: var(--s-4); }
 .lib-more > .card { margin-top: 0; display: flex; flex-direction: column; }
 .lib-more > .card .actions { margin-top: auto; padding-top: var(--s-5); }
-.lib-more > .card:first-child { grid-column: 1 / -1; }
 
 /* ---------------------------------------------------------------- performance */
 .gfx-state { display: flex; align-items: center; gap: 14px; margin-top: var(--s-5); padding: 14px 16px; border-radius: var(--r-md); background: rgba(255, 255, 255, .03); border: 1px solid var(--line); }

@@ -105,12 +105,14 @@ that needs a Sims 4 Studio batch fix and tells you which fix to run.
 
 ### More it can do
 
+- **Merge your CC.** Combines the loose CC you already have into fewer, bigger files, so the game has less to open at
+  every start. Script mods are never merged, nothing is deleted, and it can be undone.
 - **Clean up duplicates.** Removes identical copies of the same CC, including copies hidden inside merged files. Your
   game shows exactly the same CC afterwards, just with less to load.
 - **Unmerge.** Splits a merged file back into the original files. Works on merges made with Sims 4 Studio, Sims 4 Mod
   Manager or the Hub.
 - **Add new downloads.** Put new CC and mods in one folder and press a button. The Hub puts everything in the right
-  place and merges CC so the game has fewer files to open. Script mods are never merged or changed.
+  place, merging new CC into the Merge page's fewer, bigger files. Script mods are never merged or changed.
 
 ### Is it safe?
 
