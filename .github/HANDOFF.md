@@ -64,6 +64,66 @@ The animator redesign was stopped before anything was saved, so it has to be red
     ends such a copy when the app is opened again.
 - `wicked_animator/data/ww_example_objects.json` is WickedWhims' list of places, uploaded by the owner. Keep it.
 
+## Novulon (Sims 4 script mod)
+A script mod, separate from the Hub and the animator: an in-game menu (`novulon.menu` / a "Novulon" pie-menu wedge
+on any computer or tablet) for browsing, filtering and editing Sims - a Sim browser MC Command Center doesn't have,
+plus household/gameplay/cheats/settings tools and an opt-in Adult section built on WickedWhims. Lives under
+`sims_hub/ingame/novulon/` (the mod's own code, subpackage per feature: `menukit/`, `sims/`, `household/`,
+`gameplay/`, `relationships/`, `compat/`, `adult/`, `settings_ui/`) and `sims_hub/tools/novulon_*` (the id registry,
+the API-existence manifest/checker, and the two build scripts). Full menu tree: `sims_hub/ingame/novulon/../design`
+docs kept the design; the shipped tree is the source of truth, and `MENU.md`-style trees belong in a design
+scratchpad, not this repo.
+
+**How it's built** - two artifacts, both from `sims_hub/`:
+```
+python tools/build_novulon.py            # dist/Novulon.ts4script (compiles ingame/novulon/** with the
+                                          #   game's own Python 3.7.0 - tools/game_python.py, magic 3394)
+python tools/build_novulon_package.py    # dist/Novulon_Tuning.package (the pie-menu interaction, one
+                                          #   STBL string table, one RAW DDS icon - tools/dbpf.py writer)
+```
+Both need the game installed at the path `tools/game_python.py`/`pyc37.py` read from (this machine:
+`E:/The Sims 4`) - they compile with and verify against the game's own files, never a copied `.pyc`.
+
+**Install**: `sims_hub/speedkit/novulon_install.py` (dry-run by default, `--apply` to actually copy both files
+into `<Sims 4>\Mods\`, quarantining any older copies first, refusing while the game is running). Not wired into
+the Hub's own automatic install yet, on purpose - it ships as an explicit step so a broken build never lands in
+a player's Mods folder before this mod has a release track of its own. A Hub button that turns this on is planned,
+not built.
+
+**Testing** (`sims_hub/tests/test_novulon_*.py`, from `sims_hub/`):
+```
+python -m unittest discover -s tests -p "test_novulon_*.py"   # 551 tests, no game needed (Tier 1/4)
+python tools/novulon_tier2_runner.py                            # imports every real module inside the
+                                                                  #   game's own Python (Tier 2)
+python tools/novulon_api_check.py                                # checks every EA name the code cites
+                                                                  #   still exists in the installed build
+                                                                  #   (Tier 3) - re-run after any game
+                                                                  #   patch, not just after a code change
+```
+Full protocol, including the Tier 5 live-game smoke test, is in `sims_hub/ingame/novulon/TESTING.md`. Every EA
+name the mod uses is checked against this machine's own installed game files and listed in
+`sims_hub/tools/novulon_api_manifest/`; an API that couldn't be verified was left out of the menu rather than
+guessed at (see "Open items" below).
+
+**Open items**
+- Three Household rows never shipped: **Sell All Inventory** and **Transfer Selected** have no verified
+  command (only **Purge All Inventory** does); a v1.1 pass needs its own `pyc37.py --outline` session over
+  `objects/components/sim_inventory_component.pyc`.
+- Cheats' **Teleport to Me** was cut for the same reason (the only verified reposition command takes raw world
+  coordinates, not a target Sim) - the Sim Card's own **Teleport to Me** (Sims tile, per-Sim actions) does work,
+  reading the active Sim's live position instead.
+- A few Gameplay rows (Career Reset Branch, the Add Gig `sim_filter` argument, per-occult population control) and
+  the Sim Card's trait/aspiration/career/skill/relationship detail panels are still V1.1 - no verified command or
+  disassembled data shape yet, tracked inline in the relevant files' own docstrings.
+- Ghost/Servo/Plant Sim Advanced-filter chips need their own detection-mechanism pass (trait-based, unconfirmed);
+  the seven confirmed occult types ship instead.
+- Row status uses text badges (`"Vampire · Elder · Pregnant"`), not icon chips - whether `SimPickerRow` can carry
+  real icon badges is unconfirmed.
+- Family-relation detection (blocking only a V2 fertility-pairing feature, not anything in V1) still needs a
+  `family_tree_service` disassembly pass.
+- Adult's WickedWhims settings front door only covers boolean settings (menukit has no verified numeric/text
+  input widget yet); its per-switch "Stop Everything" duration is indefinite, not a timed re-enable.
+
 ## Next steps, in order
 1. Done: `next` is released into `main`.
 2. **Finish FBX import** (`wip/fbx-import`).
