@@ -28,13 +28,16 @@ def instance_id(name):
 
 # ------------------------------------------------------------------ the credit in WickedWhims' own lists
 # WickedWhims shows an animation's own picture in its animation lists when animation_display_icon names one (its
-# SexAnimationInstance.get_picker_row uses it instead of the category icon; its own icons are PNG resource keys too),
-# and the author in the line under the name. Every animation made here carries the Wicked Animator logo (one shared PNG
-# resource, data/wickedwhims_icon.png, 128 px, from web/img/logo.svg) and the credit after its author. File, stage and
-# clip names keep the plain author.
+# SexAnimationInstance.get_picker_row uses it instead of the category icon), and the author in the line under the name.
+# The key is PNG-typed like WickedWhims' own, but the game draws the picture from the DDS resource with the same
+# instance (type 0x00B2D882, 'DST5' - how WickedWhims ships its 128 px icons; a PNG resource alone shows a llama).
+# Every animation made here carries the Wicked Animator logo (data/wickedwhims_icon.dds, 128 px, made from
+# data/wickedwhims_icon.png by tools/make_ww_icon.py) and the credit after its author. File, stage and clip names keep
+# the plain author.
 T_PNG = 0x2F7D0004
-ICON_FILE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'wickedwhims_icon.png'))
-ICON_INSTANCE = instance_id('Novulon_WickedAnimator_Icon_1')      # a new picture gets a new name (and key)
+T_IMG = 0x00B2D882
+ICON_FILE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'wickedwhims_icon.dds'))
+ICON_INSTANCE = instance_id('Novulon_WickedAnimator_Icon_2')      # a new picture gets a new name (and key)
 ICON_KEY = '%08x:%08x:%016x' % (T_PNG, 0, ICON_INSTANCE)
 CREDIT ="Made with Novulon's Wicked Animator"
 CREDIT_SEP = ' · '
@@ -57,13 +60,13 @@ def plain_author(text):
 
 
 def icon_resource():
-    """(type, group, instance, png bytes) of the logo WickedWhims shows next to the animation, or None."""
+    """(type, group, instance, DDS bytes) of the logo WickedWhims shows next to the animation, or None."""
     try:
         with open(ICON_FILE, 'rb') as f:
             data = f.read()
     except OSError:
         return None
-    return (T_PNG, 0, ICON_INSTANCE, data)
+    return (T_IMG, 0, ICON_INSTANCE, data)
 
 
 def safe_name(text):
