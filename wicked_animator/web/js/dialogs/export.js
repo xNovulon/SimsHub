@@ -23,8 +23,9 @@ export function exportChecks(app) {
   if (!p.author) add('error', 'Add a creator name - WickedWhims shows "by ..." and needs it.', () => app.showStep('details'), 'author');
   if (!(p.locations || []).length) add('error', 'Pick at least one place it is offered on.', () => app.showStep('details'));
   if (!p.sims.length) add('error', 'Add at least one sim.', () => app.showStep('scene'));
-  // a face key alone is not a pose: every sim needs a body key
-  if (p.sims.some(s => !s.keys.some(k => !k.faceOnly))) add('error', 'Every sim needs at least one pose.', () => app.showStep('pose'));
+  // a face key alone is not a pose: every sim needs a body key, or - every one of them deleted on purpose - a held
+  // base pose (sim.basePose, set when the last body key went) to bake instead
+  if (p.sims.some(s => !s.keys.some(k => !k.faceOnly) && !s.basePose)) add('error', 'Every sim needs at least one pose.', () => app.showStep('pose'));
   if (p.category === 'CLIMAX' && (p.loops || 10) > 2) add('info', 'Climax animations usually play once: set "Plays for" to 1 in Details.', () => app.showStep('details'));
   if ((p.tags || []).length === 0) add('info', 'No tags yet - tags help people find it in WickedWhims.', () => app.showStep('details'));
   if (!p.sims.some(s => (s.sounds || []).length || (s.autoVoice && s.autoVoice.on))) add('info', 'No sounds - "Place sounds for me" in step 6 adds a sound on every stroke.', () => app.showStep('sounds'));

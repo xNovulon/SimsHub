@@ -188,18 +188,20 @@ export function reverseSel(project, sel) {
   return report;
 }
 
-// A sim never loses its last body key: when all of them are selected the earliest one stays.
-export function deleteSel(project, sel) {
+// A sim's body keys may all go: when a delete would take the last of them, the pose they showed (at `frame`, the
+// playhead - falling back to the earliest key's own frame when the caller has none to give) is kept as sim.basePose,
+// so the sim holds still instead of jumping to the bind pose (Pipeline.keyed() falls back to it).
+export function deleteSel(project, sel, frame = null) {
   const r = readSel(project, sel);
-  const report = { deleted: 0, kept: [], sounds: 0, events: 0 };
+  const report = { deleted: 0, cleared: [], sounds: 0, events: 0 };
   const bySim = new Map();
   for (const x of r.keys) { if (!bySim.has(x.sim)) bySim.set(x.sim, new Set()); bySim.get(x.sim).add(x.key); }
   for (const [sim, set] of bySim) {
     const body = sim.keys.filter(isBody);
     if (body.length && body.every(k => set.has(k))) {
-      const first = body.reduce((a, b) => (b.frame < a.frame ? b : a));
-      set.delete(first);
-      report.kept.push(sim.label);
+      const f = frame !== null ? frame : body[0].frame;
+      sim.basePose = A.evaluate(body, f, project.length, project.loop, project.autoCurve) || sim.basePose || null;
+      report.cleared.push(sim.label);
     }
     report.deleted += set.size;
     sim.keys = sim.keys.filter(k => !set.has(k));

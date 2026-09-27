@@ -64,6 +64,9 @@ function haloTexture() {
   return HALO;
 }
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion();
+// A gizmo drag resumed after a pause (see the gizmo's 'mouseDown' below): the object's fresh world transform, and
+// where its world position was before the resync (so the grabbed point can be kept exactly where it was in space).
+const _dragWP = new THREE.Vector3(), _dragWQ = new THREE.Quaternion(), _dragWS = new THREE.Vector3(), _dragOldWP = new THREE.Vector3();
 
 export class Interaction {
   constructor(app) {
@@ -120,13 +123,32 @@ export class Interaction {
     });
     const gz = this.vp.gizmo;
     gz.addEventListener('mouseDown', () => {
-      // never pose while it plays: every played frame would get a key. The gizmo is only offered when paused
-      // (select* pause first); this is the safety net, and the drag then starts from the paused pose.
+      // never pose while it plays: every played frame would get a key. A part already picked keeps its gizmo while
+      // it plays (setPlaying no longer detaches it), so grabbing a ring or arrow mid-playback lands here - the
+      // pointerdown that triggered this already made TransformControls capture its drag-start snapshot, from the
+      // *playing* pose; beginEdit below then re-poses the sim to the paused (keys-only) one, out from under it.
+      // Resync the whole snapshot to that new pose - not just the object's own quaternion/position, but the world
+      // reference (worldPositionStart) and the grabbed point (pointStart) TransformControls measures the drag
+      // against - or the drag keeps computing against the stale pre-pause point and stops following the mouse
+      // (TransformControlsPlane recentres on the object's *live* world position every frame regardless of that).
       if (this.app.playing) {
         this.app.setPlaying(false);
-        if (this.active) this.app.beginEdit(this.active.simId);
+        const a0 = this.active;
+        if (a0) this.app.beginEdit(a0.simId);
         const o = gz.object;
-        if (o && gz._quaternionStart) { gz._quaternionStart.copy(o.quaternion); gz._positionStart.copy(o.position); }
+        if (o && gz._quaternionStart) {
+          gz._quaternionStart.copy(o.quaternion);
+          gz._positionStart.copy(o.position);
+          // a bone's own matrixWorld only rebuilds itself from its parent's (already-stale) one: refresh the whole
+          // sim from its root so a bone deep in the chain (an elbow, a knee) decomposes correctly below
+          const v = a0 && a0.kind === 'bone' && this.views().get(a0.simId);
+          if (v) v.group.updateMatrixWorld(true); else o.updateMatrixWorld(true);
+          _dragOldWP.copy(gz.worldPositionStart);
+          o.matrixWorld.decompose(_dragWP, _dragWQ, _dragWS);
+          gz.pointStart.add(_dragOldWP).sub(_dragWP);         // the point grabbed in the plane stays that same point
+          gz.worldPositionStart.copy(_dragWP);
+          gz.worldQuaternionStart.copy(_dragWQ);
+        }
       }
       this.dragFrame = Math.round(this.app.store.frame);     // the frame this drag edits
       const a0 = this.active;
@@ -1280,6 +1302,10 @@ export class Interaction {
     for (const k of sim.keys) edit(k.pose);
     const ov = this.app.pipeline.overrides.get(simId);
     if (ov) edit(ov.pose);
+    // a sim with no body keys shows sim.basePose (Pipeline.keyed()'s fallback): move/turn it too, or the whole-sim
+    // drag would look fine while it lasts and then snap straight back the moment anything re-applies the pose
+    // (scrubbing, undo, save/load, export) since nothing on disk would have moved.
+    if (sim.basePose) edit(sim.basePose);
     if (move) { this.moveHips(v, move); this.movePins(sim, move); }
     if (turn) { this.turnHips(v, turn, piv); this.turnPins(sim, turn, piv); }
   }

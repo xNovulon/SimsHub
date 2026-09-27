@@ -124,11 +124,13 @@ export class Pipeline {
   // The keyed pose at `frame`. A pending pose (posed, not keyed yet) only counts where hand-posing sees it: the
   // paused view and the edit tools. Playback, physics, trails, automatic sounds and the export pass
   // `useOverrides = false`, so an unkeyed change never ends up in the game as a one-frame twitch.
+  // A sim with no body keys at all (every one deleted) holds sim.basePose instead - the pose it showed just before
+  // the last key went (set by keyops.deleteSel / main.js's key-delete paths), never the rig's bind pose.
   keyed(sim, frame, useOverrides = true) {
     const ov = useOverrides && this.overrides.get(sim.id);
     if (ov && ov.pose && ov.frame === Math.round(frame)) return ov.pose;
     const p = this.project;
-    return evaluate(sim.keys, frame, p.length, p.loop, p.autoCurve);
+    return evaluate(sim.keys, frame, p.length, p.loop, p.autoCurve) || sim.basePose || null;
   }
 
   // The keys with the arms and / or the head a few frames late (sim.lag = {arms, head}, 0-8 frames): they reach

@@ -988,7 +988,9 @@ class App {
         this.pipeline.overrides.clear();
         toast('Unkeyed changes were dropped - turn on Auto key or press K to keep a pose.');
       }
-      this.vp.gizmo.detach(); this.interact.active = null; this.pipeline.simulateIfNeeded();
+      // a part already picked stays picked (its rings/arrows keep following it as it plays): grabbing one while it
+      // plays is the gizmo's own mouseDown safety net (interact.js), not something to prevent here by detaching
+      this.pipeline.simulateIfNeeded();
       this.audio.ensure();
       this.audio.preload(this.store.project.sims.flatMap(s => (s.sounds || []).map(x => x.name)));
       this._playStart = this.store.frame - 0.001;
@@ -1072,10 +1074,16 @@ class App {
   keysChanged() { this._edited(); this.applyPoses(); this.timeline.draw(); this.physicsChanged(); }
   layersChanged(done = true) { this.store.setDirty(true); this._edited(); this.timeline.draw(); if (done) { this.physicsChanged(); this.updateTrail(); } }
 
-  // physics and trails are recomputed a moment after the last change
+  // physics and trails are recomputed a moment after the last change - but never while a gizmo drag is live: a
+  // resim reposes every sim for a moment (Pipeline.simulate() walks the whole timeline), which would fight the
+  // drag for a bone it briefly touches. afterEdit() (always called on mouseUp) arms this again once the drag ends,
+  // so the deferred resim is only delayed, never dropped.
   physicsChanged() {
     clearTimeout(this._physT);
-    this._physT = setTimeout(() => { if (this.pipeline.simulateIfNeeded()) this.applyPoses(false); }, 260);
+    this._physT = setTimeout(() => {
+      if (this.vp.dragging) return;
+      if (this.pipeline.simulateIfNeeded()) this.applyPoses(false);
+    }, 260);
   }
 
   // K: keep the pose at this frame. In the Face tool it keys the face (a face key where the body has no key);
@@ -1135,15 +1143,18 @@ class App {
     const sim = this.store.sim(simId);
     const key = this.currentKey(sim);
     if (!key) return toast('No key on this frame for the selected sim.');
-    // a sim always keeps one body key (face keys can all go)
-    if (!key.faceOnly && sim.keys.filter(k => !k.faceOnly).length === 1) return toast('That is its only key - a sim needs at least one pose.');
+    // a sim's body keys may all go: the pose this last one shows is kept as sim.basePose, so it holds still
+    // instead of jumping to the bind pose (Pipeline.keyed() falls back to it)
+    const clearing = !key.faceOnly && sim.keys.filter(k => !k.faceOnly).length === 1;
     this.store.checkpoint('Delete key');
+    if (clearing) sim.basePose = clone(key.pose);
     sim.keys.splice(sim.keys.indexOf(key), 1);
     this.timeline.flash(sim.id, key.frame, 'del');
     this.emit('keyed', { simId: sim.id, frame: key.frame, kind: 'del' });
     this.keysChanged();
     this._applyFit();
     this.afterEdit();
+    if (clearing) toast('All keys removed - the pose stays as shown.', 'ok');
   }
 
   jumpKey(dir) {
@@ -1231,11 +1242,14 @@ class App {
     const setEase = ease => this.setEase(sim.id, key.frame, ease);
     const eases = this._easeItems(key.ease || 'auto', setEase, () => this.timingEditor(sim.id, key.frame, x, y));
     const del = () => {
-      if (!key.faceOnly && sim.keys.filter(k => !k.faceOnly).length < 2) return toast('A sim needs at least one key.');
-      this.store.checkpoint(key.faceOnly ? 'Delete face key' : 'Delete key'); sim.keys.splice(sim.keys.indexOf(key), 1);
+      const clearing = !key.faceOnly && sim.keys.filter(k => !k.faceOnly).length === 1;
+      this.store.checkpoint(key.faceOnly ? 'Delete face key' : 'Delete key');
+      if (clearing) sim.basePose = clone(key.pose);
+      sim.keys.splice(sim.keys.indexOf(key), 1);
       this.timeline.flash(sim.id, key.frame, 'del');
       this.emit('keyed', { simId: sim.id, frame: key.frame, kind: 'del' });
       this.keysChanged(); this._applyFit(); this.afterEdit();
+      if (clearing) toast('All keys removed - the pose stays as shown.', 'ok');
     };
     const copyFace = () => {
       this.faceClipboard = { face: key.face ? { ...key.face } : null, faceBones: key.faceBones ? clone(key.faceBones) : null };
@@ -1394,7 +1408,7 @@ class App {
     const n = info.count + info.sounds.length + info.events.length;
     if (!n) return this.deleteKey();
     const gone = info.keys.map(x => [x.sim.id, x.key.frame]);
-    const rep = this._selOp(`Delete ${this._plural(n, info.count ? 'key' : 'item')}`, (p, sel) => KO.deleteSel(p, sel));
+    const rep = this._selOp(`Delete ${this._plural(n, info.count ? 'key' : 'item')}`, (p, sel) => KO.deleteSel(p, sel, this.store.frame));
     if (!rep) return;
     this._applyFit();
     for (const [id, f] of gone.slice(0, 40)) if (!this.store.sim(id)?.keys.some(k => k.frame === f)) this.timeline.flash(id, f, 'del');
@@ -1403,7 +1417,7 @@ class App {
     if (rep.deleted) parts.push(this._plural(rep.deleted, 'key'));
     if (rep.sounds) parts.push(this._plural(rep.sounds, 'sound'));
     if (rep.events) parts.push(this._plural(rep.events, 'moment'));
-    toast(`Deleted ${parts.join(', ') || 'nothing'}.${rep.kept.length ? ` Kept one key for ${rep.kept.join(', ')} - a sim needs a pose.` : ''}`, 'ok');
+    toast(`Deleted ${parts.join(', ') || 'nothing'}.${rep.cleared.length ? ' All keys removed - the pose stays as shown.' : ''}`, 'ok');
   }
 
   reverseSelectedKeys() {
@@ -2261,6 +2275,9 @@ class App {
     for (const key of s.keys) fix(key.pose);
     const ov = this.pipeline.overrides.get(simId);
     if (ov) fix(ov.pose);
+    // a sim with no body keys shows sim.basePose (Pipeline.keyed()'s fallback for the whole timeline): move/turn it
+    // too, or it would look moved only until the next pose re-apply snaps it back (nothing on disk would have moved)
+    if (s.basePose) fix(s.basePose);
     if (angle) this.interact.turnPins(s, angle, pivot);
     if (offset) this.interact.movePins(s, offset);
   }
