@@ -32,7 +32,7 @@ T_INTERACTION = 0xE882D22F
 T_STBL = 0x220557DA
 T_DDS = 0x00B2D882
 
-COMMAND = 'novulon.open_menu'
+COMMAND = 'novulon.menu'          # must be a command ingame/novulon/commands.py registers
 MENU_TITLE = 'Novulon'
 MENU_HOVER = 'Open the Novulon menu.'
 
@@ -79,10 +79,14 @@ def verify(dist=DIST):
                 display = root.findtext("T[@n='display_name']")
                 if display is None or int(display, 16) != ids.STR_MENU_TITLE:
                     problems.append('display_name does not match STR_MENU_TITLE')
-                icon_field = root.findtext("T[@n='pie_menu_icon']")
+                icon_field = novulon_tuning.icon_key_of(root)
                 icon_inst = icon_field.split(':')[-1] if icon_field else ''
                 if not icon_field or int(icon_inst, 16) != (ids.ICON_PIE_MENU_32 & 0xFFFFFFFFFFFFFFFF):
                     problems.append('pie_menu_icon does not point at ICON_PIE_MENU_32')
+                if novulon_tuning.command_of(root) != COMMAND:
+                    problems.append('the do_command extra does not run %s' % COMMAND)
+                if root.findtext("E[@n='target_type']") != 'OBJECT':
+                    problems.append('target_type is not the enum OBJECT')
             stbl_entry = byi.get(ids.STBL_MAIN_EN)
             if stbl_entry is None or stbl_entry.t != T_STBL:
                 problems.append('STBL resource missing or wrong type')

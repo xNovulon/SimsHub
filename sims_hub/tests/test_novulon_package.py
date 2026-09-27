@@ -62,10 +62,25 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(root.get('m'), 'interactions.base.immediate_interaction')
             display = int(root.findtext("T[@n='display_name']"), 16)
             self.assertEqual(display, ids.STR_MENU_TITLE)
-            icon_field = root.findtext("T[@n='pie_menu_icon']")
+            # the shapes the game's tuning loader needs (as MC Command Center's working entry has them): a field
+            # written flat is dropped, and a flat basic_extras made the game raise "'NoneType' has no 'factory'"
+            icon_field = root.findtext("V[@n='pie_menu_icon']/V[@t='resource_key']/U[@n='resource_key']/T[@n='key']")
+            self.assertTrue(icon_field and icon_field.lower().startswith('2f7d0004:80000000:'), icon_field)
             self.assertEqual(int(icon_field.split(':')[-1], 16), ids.ICON_PIE_MENU_32)
-            command = root.findtext(".//T[@n='command']")
+            self.assertIsNone(root.find("T[@n='pie_menu_icon']"))
+            command = root.findtext("L[@n='basic_extras']/V[@t='do_command']/U[@n='do_command']/T[@n='command']")
             self.assertEqual(command, bnp.COMMAND)
+            self.assertEqual(root.findtext("E[@n='target_type']"), 'OBJECT')
+            self.assertIsNone(root.find("T[@n='target_type']"))
+            self.assertEqual(bnp.verify(self.dist), [])
+
+    def test_the_entry_runs_a_command_the_mod_registers(self):
+        # the first build ran 'novulon.open_menu', which nothing registered: clicking Novulon did nothing
+        import re
+        src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                'ingame', 'novulon', 'commands.py'), encoding='utf-8').read()
+        registered = re.findall(r"@sims4\.commands\.Command\('([^']+)'", src)
+        self.assertIn(bnp.COMMAND, registered)
 
     def test_stbl_has_the_two_menu_strings(self):
         from tools import novulon_stbl
