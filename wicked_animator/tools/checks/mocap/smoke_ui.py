@@ -4,7 +4,7 @@
 
 Starts backend/server.py on the port (default: the first free one from 8793; never 8765/8766/8777), opens the app and checks, with no console errors:
   1. the app starts and the plug-in is installed (features/mocapfile.js, its stylesheet)
-  2. Pose step: "From a motion file" sits right under the "Copy real moves" buttons and opens the dialog
+  2. Pose step: "From a motion file" sits in its own "Motion files" section and opens the dialog
   3. a .bvh chosen in the dialog is read (skeleton, frames, rest pose shown) and "Make keys" puts keys on the sim
      (the animation takes the part's length; one Ctrl+Z takes it back)
   4. Ctrl+K "motion file" finds the command and opens the dialog; Esc closes it
@@ -163,7 +163,7 @@ def main():
             page.wait_for_selector('[data-mocapfile="open"]', timeout=10000)
             where = page.evaluate("""(() => { const b = document.querySelector('[data-mocapfile="open"]');
                 const prev = b.previousElementSibling; return prev ? prev.className + ' | ' + b.closest('.section, section, div').textContent.slice(0, 60) : 'none'; })()""")
-            row('2. Pose step: the button sits right under "Copy real moves"', 'cap-entry' in where, where)
+            row('2. Pose step: the button sits in its own "Motion files" section', 'Motion files' in where, where)
             page.evaluate("document.querySelector('[data-mocapfile=\"open\"]').scrollIntoView({block: 'center'})")
             page.wait_for_timeout(300)
             page.screenshot(path=os.path.join(a.shots, 'pose_step.png'))

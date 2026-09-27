@@ -1,4 +1,4 @@
-// Motion files (BVH) for "Copy real moves": a .bvh from a mocap library (CMU, Mixamo converted to BVH) or a free AI
+// Motion files (BVH): a .bvh from a mocap library (CMU, Mixamo converted to BVH) or a free AI
 // video tool (Rokoko Vision, DeepMotion, Plask) becomes the same kind of "take" the video capture makes, so it goes
 // through the capture pipeline unchanged: clean.js (30 fps, optional smoothing) -> retarget.js (the solver, hips
 // place, floor, sticky feet) -> keys.js (loop, keys on a sim).

@@ -139,8 +139,7 @@ guessed at (see "Open items" below).
    - Add checks that every catalog has the same keys and placeholders, and that no English text is left in the UI.
 4. **Finish the animator translations** (`wip/animator-translations`).
    - First fix the 4 files with conflict markers.
-   - Then do the same work as step 3, with catalogs in `wicked_animator/web/i18n/`. Leave the "Say it" parser in
-     English.
+   - Then do the same work as step 3, with catalogs in `wicked_animator/web/i18n/`.
 5. **Redesign the animator.**
    - Aim for a premium look that's easy to use: a design system, a stronger Home screen, a clear step bar, a
      polished timeline, dialogs and motion that respects reduced-motion.
@@ -176,10 +175,11 @@ guessed at (see "Open items" below).
     hand holds and 3 rows fail. Delete the cache file to rebuild it.
   - r2-1/editing check 1: at 1366x768 the timeline is 106 px tall and the second sim's lane is half out of view, so
     the box drag misses it. It fails the same way on the pushed version.
-  - r1d/capture steps 7 and 8: the stand-in video stays at 0% "read" in headless Chrome, and the step times out.
-    Same on the pushed version. Steps 3-6, 7a-7c and 7i pass.
 - The animator opens on an empty scene. Checks that expect the couple pass `scene: 'couple'` to `harness.open`
   (or call `app.newScene(false, false, 'couple')`).
+- The owner asked to remove "Say it, see it" (a sentence into an animation) and "Film it, play it" (a video or the
+  webcam into an animation) entirely (2026-09-27): their code, the MediaPipe download, their checks and every
+  mention are gone. Importing a BVH motion file stays: it keeps web/js/capture/{bvh,clean,keys,retarget,rigpose}.js.
 - The owner asked for "a normal app, not a browser". Both apps are Windows programs that draw with WebView2; the
   browser menu, text highlighting, dragging and pinch zoom are turned off. A native rewrite was not started.
 - The owner asked for the animator to be "separated from Sims Hub". They are separate programs (own folder, exe,
@@ -215,7 +215,6 @@ python3 tools/checks/clothes/test_clothes.py
 python3 tools/checks/wired/backend_check.py
 python3 tools/checks/wwversion/ww_version_check.py
 node tools/checks/mocap/bvh_check.mjs
-node tools/checks/r3-5/sayit_check.js
 node tools/checks/r3-4/beat_check.js
 node tools/checks/wired/proptrack_check.js
 ```

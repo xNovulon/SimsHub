@@ -1,7 +1,7 @@
-// "Import a motion file" (BVH) in the app: a button under the Pose step's "Copy real moves" (next to From a video /
-// webcam / photo), a card in the Library, Ctrl+K commands, a Help row, and a .bvh (or .fbx, which gets the "export
-// BVH instead" message) dropped anywhere on the window. The dialog (web/js/mocapfile.js) loads only when used.
-// Everything registers through app.hooks and the DOM, so main.js, index.html and features/capture.js stay untouched.
+// "Import a motion file" (BVH) in the app: a "Motion files" section in the Pose step, a card in the Library, Ctrl+K
+// commands, a Help row, and a .bvh (or .fbx, which gets the "export BVH instead" message) dropped anywhere on the
+// window. The dialog (web/js/mocapfile.js) loads only when used. Everything registers through app.hooks and the DOM,
+// so main.js and index.html stay untouched.
 import { h, icon, section, addIcon } from '../ui.js';
 
 // the icons this uses (added to the app's sprite sheet once)
@@ -29,14 +29,9 @@ export function install(app) {
   const hk = app.hooks || {};
   const add = (name, fn) => { if (Array.isArray(hk[name])) hk[name].push(fn); };
 
-  // Pose step: right under the capture's three buttons (its own section when "Copy real moves" isn't there)
+  // Pose step: its own section
   if (hk.sections && Array.isArray(hk.sections.pose)) {
-    hk.sections.pose.push((a, root) => {
-      const btn = button(a, 'mf-entry-btn');
-      const cap = root.querySelector('.cap-entry');
-      if (cap) cap.after(btn);
-      else root.append(section('Copy real moves', btn));
-    });
+    hk.sections.pose.push((a, root) => { root.append(section('Motion files', button(a, 'mf-entry-btn'))); });
   }
 
   // Library: a card under the search list
@@ -55,8 +50,8 @@ export function install(app) {
       words: 'bvh mocap motion capture file import rokoko deepmotion plask mixamo cmu fbx animation keys', run: () => open(a) },
   ]);
   add('helpRows', () => [
-    { group: 'Copy real moves', keys: ['Ctrl', 'K'], text: 'Type "motion file" to import a BVH from a mocap library or an AI tool' },
-    { group: 'Copy real moves', keys: 'Drop a .bvh file', text: 'on the stage to put its moves on the selected sim' },
+    { group: 'Motion files', keys: ['Ctrl', 'K'], text: 'Type "motion file" to import a BVH from a mocap library or an AI tool' },
+    { group: 'Motion files', keys: 'Drop a .bvh file', text: 'on the stage to put its moves on the selected sim' },
   ]);
 
   // a .bvh / .fbx dropped anywhere: the dialog (before the stage's own drop, which only takes pictures and videos)
@@ -64,9 +59,9 @@ export function install(app) {
     const files = [...((e.dataTransfer && e.dataTransfer.files) || [])];
     const f = files.find(isMotionFile);
     if (!f) return;
-    // another dialog is open (the capture studio, the reference picker...): leave it to that one, unless it's ours
+    // another dialog is open (the reference picker...): leave it to that one, unless it's ours
     const ours = !!(loaded && loaded.isOpen());
-    if (!ours && document.querySelector('#modal-root .backdrop:not(.leaving), .cap-backdrop')) return;
+    if (!ours && document.querySelector('#modal-root .backdrop:not(.leaving)')) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     const zone = document.getElementById('drop-zone');

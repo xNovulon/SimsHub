@@ -177,8 +177,7 @@ See each piece a sim is wearing, and take pieces off one at a time or all at onc
 
 - **Magic Animation.** Pick a position and a place, and you get a finished, moving animation with sound in one click.
   Change anything you like from there.
-- **Say it.** Type a sentence describing what should happen, and the app builds it for you.
-- **Copy real movement.** Film yourself, use your webcam, or load a motion-capture file, and a sim copies the movement.
+- **Motion-capture files.** Load a BVH file from a mocap library or an AI tool, and a sim copies the movement.
 - **Posing that behaves.** Joints stay within natural limits, a hand can hold on to the other sim and follow them, and
   you can select several body parts and move them together.
 - **Smooth loops.** Easing curves, ghost frames, motion trails and tools to make a loop join up without a jump.

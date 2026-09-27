@@ -10,7 +10,7 @@ It is backend/server.py with four things swapped in memory before it starts:
   - gamedata.body(frame): one box per bone for the woman, the man and the futa body (the man's and the futa's with
     penis meshes, the woman's with the "NudeBottom_AF" part), skinned to that rig;
   - poses.presets(): every couple ready pose of backend/poses.py COUPLE as the two sims standing face to face (so
-    Magic, Say it and the ready poses have something to start from - the poses themselves mean nothing);
+    Magic and the ready poses have something to start from - the poses themselves mean nothing);
   - /api/status answers without a game folder, and /api/game says the stand-in game is there (so the app starts).
 Every other route is the real one: game-data routes still say "The Sims 4 install not found", which is what the
 checks want to see the app handle - also on a PC that has the game (WICKED_GAME_DIR points at an empty folder).

@@ -1,4 +1,4 @@
-// Small helpers the game-data plug-ins share (features/ea.js, refit.js, props.js, dance.js, sayit.js): asking the
+// Small helpers the game-data plug-ins share (features/ea.js, refit.js, props.js, dance.js): asking the
 // server for JSON, and saying in plain words why game data could not be read.
 
 // GET or POST JSON. Errors carry the status and the server's own message (err.status, err.body).

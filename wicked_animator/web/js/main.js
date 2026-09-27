@@ -3129,7 +3129,7 @@ class App {
   voiceSets(sim) { return VOICE_SETS.map(([id, t]) => [id, t, this.voicePool(sim, id).length]).filter(x => x[2] > 0); }
 
   // Random voices (autovoice.js): switched on per sim, not baked into sim.sounds - so they never sit on the
-  // timeline. `randomVoices` is kept under its old name (features/sayit.js and older checks call it) but now just
+  // timeline. `randomVoices` is kept under its old name (older checks call it) but now just
   // turns the switch on for this kind and pace; the scheduler (autoVoiceCuesFor) picks the actual moments.
   randomVoices(simId, set, everySeconds, { quiet = false } = {}) {
     const s = this.store.sim(simId);

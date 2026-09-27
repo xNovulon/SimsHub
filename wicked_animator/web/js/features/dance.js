@@ -371,7 +371,7 @@ export function install(app) {
   add('sections.share', (a, root) => danceSection(a, root));
   add('sections.motion', (a, root) => tempoSection(a, root));
   add('projectLoaded', () => refresh());
-  add('viewsSynced', () => refresh());        // Magic and Say it load a new animation without "projectLoaded"
+  add('viewsSynced', () => refresh());        // Magic loads a new animation without "projectLoaded"
   add('exportChecks', p => (p.dance ? [{ level: 'warn', text: 'This is a strip-club dance: "Send dance to game" in the Share step makes it one. Send to game makes a normal animation.' }] : []));
   add('playing', on => { if (on) songPlay(app); else songStop(); });
   add('tick', (dt, frame, { playing, wrapped } = {}) => { if (playing && wrapped && song.src) songPlay(app); });

@@ -535,7 +535,7 @@ function stickFeet(rp, poses, ts, floorY) {
   return spans;
 }
 
-// One frame, quickly (the live preview while reading, the webcam mirror, a photo): no filtering.
+// One frame, quickly: no filtering.
 export function solveOne(solver, take, person, i, opts = {}) {
   const r = solveTake({ ...take, t: take.t.subarray ? take.t.subarray(i, i + 1) : [take.t[i]], people: take.people.map(pe => sliceFrame(pe, i)) }, person, solver, { ...opts, stick: false, smoothRot: false });
   return r.poses[0];

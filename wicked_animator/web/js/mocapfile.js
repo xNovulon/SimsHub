@@ -1,7 +1,7 @@
 // "Import a motion file": a BVH from a mocap library (CMU, Mixamo converted to BVH) or a free AI video tool
 // (Rokoko Vision, DeepMotion, Plask) put on a sim as keys. The file is read in the browser (nothing is uploaded or
 // written), turned into a capture take and put on through the capture's own pipeline (capture/bvh.js solveFile ->
-// capture/keys.js applyToSim), so it behaves like "Copy real moves": one Ctrl+Z takes it all back.
+// capture/keys.js applyToSim): one Ctrl+Z takes it all back.
 // Opened by features/mocapfile.js (Pose step, Library, Ctrl+K, a .bvh dropped on the stage).
 import * as THREE from 'three';
 import { h, icon, modal, toast, choiceBar } from './ui.js';

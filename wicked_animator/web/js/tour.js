@@ -64,8 +64,7 @@ export function openHelp(app = window.app) {
       ...extraBlocks,
       h('div', { class: 'help-h' }, 'Comfort'),
       h('div', { class: 'toggle-row help-motion' }, h('div', {}, h('b', {}, 'Reduce motion'), h('span', {}, 'No sliding, bouncing or confetti - things simply appear. The camera still moves where it helps you see.')),
-        toggle(reduceMotionOn(), on => setReduceMotion(on))),
-      h('p', { class: 'credits' }, 'Motion capture uses MediaPipe © Google LLC, Apache License 2.0.')),
+        toggle(reduceMotionOn(), on => setReduceMotion(on)))),
     buttons: [{ label: 'Show the tour again', kind: 'ghost', onClick: () => { localStorageSet('tourDone', false); setTimeout(() => maybeTour(window.app), 100); } }, { label: 'Got it', kind: 'primary' }],
   });
 }

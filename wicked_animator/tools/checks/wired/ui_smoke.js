@@ -1,5 +1,4 @@
-// The newly wired features in the running app (Playwright, no game needed): Say it, Move to another place / Make
-// versions, strip-club dances, props, the game's own animations and idles, and the Doctor's Browse tab.
+// The newly wired features in the running app (Playwright, no game needed): Move to another place / Make versions, strip-club dances, props, the game's own animations and idles, and the Doctor's Browse tab.
 //   node tools/checks/wired/ui_smoke.js [--port 8792] [--keep]
 // Starts tools/checks/lib/fake_game_server.py on the port (a stand-in rig and bodies, a throw-away home folder),
 // opens the app, and for each feature: its Home card / palette command / step section opens, the no-game case says
@@ -89,85 +88,36 @@ function boxMesh(w, h, d, { surface = null, slots = [] } = {}) {
     // ---------------------------------------------------------------- boot
     await step('app boots with every plug-in', async () => {
       const r = await page.evaluate(() => ({ features: [...document.querySelectorAll('link[data-feature]')].map(l => l.getAttribute('href')),
-        g: ['wickedEA', 'wickedSayIt', 'wickedRefit', 'wickedProps', 'wickedDance', 'wickedDoctor'].filter(k => !window[k]) }));
+        g: ['wickedEA', 'wickedRefit', 'wickedProps', 'wickedDance', 'wickedDoctor'].filter(k => !window[k]) }));
       if (r.g.length) throw new Error('not installed: ' + r.g.join(', '));
       return `css: ${r.features.join(', ')}`;
     });
     await step('Home: the new cards are there', async () => {
       const ids = await page.evaluate(() => [...document.querySelectorAll('#home [data-card]')].map(e => e.dataset.card));
-      const want = ['sayit', 'ea-library', 'dance', 'doctor'];
+      const want = ['ea-library', 'dance', 'doctor'];
       const miss = want.filter(x => !ids.includes(x));
       if (miss.length) throw new Error('missing ' + miss.join(', ') + ' in ' + ids.join(','));
       return ids.join(', ');
     });
     await step('palette (Ctrl+K): the new commands are listed', async () => {
       const ids = await page.evaluate(async () => { const m = await import('/js/commands.js'); return m.allCommands(window.app).map(c => c.id); });
-      const want = ['sayit', 'ea-library', 'dance-new', 'doctor-browse', 'refit-move', 'refit-versions', 'prop-add'];
+      const want = ['ea-library', 'dance-new', 'doctor-browse', 'refit-move', 'refit-versions', 'prop-add'];
       const miss = want.filter(x => !ids.includes(x));
       if (miss.length) throw new Error('missing ' + miss.join(', '));
       await page.keyboard.press('Control+KeyK');
       await page.waitForSelector('.palette input', { timeout: 4000 });
-      await page.keyboard.type('say it');
-      await page.waitForFunction(() => /Say it/.test(document.querySelector('.palette-list')?.innerText || ''), null, { timeout: 4000 });
-      await page.keyboard.press('Enter');
-      await page.waitForSelector('.sayit-modal', { timeout: 4000 });
-      await closeDialogs();
-      return 'Ctrl+K -> "say it" -> Enter opens Say it';
+      await page.keyboard.type('game animations');
+      await page.waitForFunction(() => /Game animations/.test(document.querySelector('.palette-list')?.innerText || ''), null, { timeout: 4000 });
+      await page.keyboard.press('Escape');
+      return 'Ctrl+K -> "game animations" is listed';
     });
 
-    // ---------------------------------------------------------------- Say it
-    await step('Say it: the sentence becomes chips', async () => {
-      await page.click('#home [data-card="sayit"]');
-      await page.waitForSelector('.sayit-input');
-      await page.fill('.sayit-input', 'slow cowgril on the sofa, she\'s teasing him, 5 seconds');
-      const chips = await page.$$eval('.sayit-chip', els => els.map(e => e.innerText.replace(/\s+/g, ' ')));
-      const notes = await page.$eval('.sayit-notes', e => e.innerText);
-      for (const want of ['Cowgirl', 'Sofa', 'Teasing', 'Slow', '5 s']) if (!chips.some(c => c.includes(want))) throw new Error(`no ${want} chip: ${chips.join(' | ')}`);
-      if (!/cowgril.*cowgirl/i.test(notes)) throw new Error('the spelling fix is not shown: ' + notes);
-      await shot('sayit');
-      return chips.join(' | ');
-    });
-    await step('Say it: a sentence about minors is refused', async () => {
-      await page.fill('.sayit-input', 'a teen and her boyfriend on the bed');
-      const r = await page.evaluate(() => ({ text: document.querySelector('.sayit-refused').innerText, hidden: document.querySelector('.sayit-refused').classList.contains('hidden'),
-        disabled: document.querySelector('.sayit-modal footer .btn.primary').disabled, chips: document.querySelectorAll('.sayit-chip').length }));
-      if (r.hidden || !r.disabled || r.chips) throw new Error(JSON.stringify(r));
-      return r.text;
-    });
-    await step('Say it: a chip can be changed by clicking it', async () => {
-      await page.fill('.sayit-input', 'slow cowgirl on the sofa, 5 seconds, eye contact');
-      await page.click('.sayit-chip[data-slot="place"]');
-      await page.waitForSelector('.ctx-menu');
-      await page.click('.ctx-menu button:has-text("Loveseat")');
-      await page.waitForFunction(() => /Loveseat/.test(document.querySelector('.sayit-chip[data-slot="place"]').innerText));
-      return 'Place: Sofa -> Loveseat';
-    });
-    await step('Say it: Make it builds the scene', async () => {
-      await page.click('.sayit-modal footer .btn.primary');
-      await page.waitForFunction(() => app.store.project.sayit && !document.querySelector('.sayit-modal'), null, { timeout: 30000 });
-      const r = await page.evaluate(() => { const p = app.store.project; return { furniture: p.furniture, length: p.length, sims: p.sims.length, spec: p.sayit.spec,
-        look: p.sims.filter(s => (s.layers || []).some(l => l.type === 'look')).length, layers: p.sims.map(s => (s.layers || []).map(l => l.type).join('+')), step: app.step }; });
-      if (r.furniture !== 'loveseat' || r.length !== 150 || r.sims !== 2 || r.spec.act !== 'cowgirl' || r.look !== 2) throw new Error(JSON.stringify(r));
-      return `loveseat, 150 frames, motions ${r.layers.join(' / ')}, eye contact on both`;
-    });
-    await step('Say it: a follow-up changes the same animation', async () => {
-      const before = await page.evaluate(() => ({ uid: app.store.project.uid, name: app.store.project.name, strokes: app.store.project.sims.flatMap(s => s.layers).find(l => ['ride', 'thrust'].includes(l.type)).params }));
-      await page.evaluate(() => window.wickedSayIt.open());
-      await page.waitForSelector('.sayit-input');
-      await page.fill('.sayit-input', 'much rougher and longer');
-      const label = await page.$eval('.sayit-modal footer .btn.primary', b => b.textContent);
-      if (label !== 'Change it') throw new Error('button says ' + label);
-      await page.click('.sayit-modal footer .btn.primary');
-      await page.waitForFunction(() => !document.querySelector('.sayit-modal'), null, { timeout: 30000 });
-      const after = await page.evaluate(() => ({ uid: app.store.project.uid, name: app.store.project.name, length: app.store.project.length, force: app.store.project.sayit.spec.force }));
-      if (after.uid !== before.uid || after.name !== before.name || after.length !== 225 || !(after.force > 0.55)) throw new Error(JSON.stringify({ before, after }));
-      return `same animation (${after.name}), 7.5 s, strength ${after.force}`;
-    });
-    await step('Say it: the Motion step offers "Change it in words"', async () => {
-      await page.evaluate(() => app.showStep('motion'));
-      const t = await page.$eval('#panel-body', e => e.textContent);
-      if (!/Made from your words/i.test(t) || !/Change it in words/.test(t)) throw new Error('no section: ' + JSON.stringify(await page.evaluate(() => ({ step: app.step, sayit: !!app.store.project.sayit, modals: document.querySelectorAll('#modal-root .backdrop').length, tail: document.querySelector('#panel-body').textContent.slice(-300) }))));
-      return 'section shown';
+    // ---------------------------------------------------------------- a moving animation for the steps below
+    await step('Magic: a slow cowgirl on the loveseat, 5 s', async () => {
+      await page.evaluate(async () => { const m = await import('/js/magic.js'); await m.makeMagic(window.app, { recipe: 'cowgirl', place: 'loveseat', intensity: 0.4, seconds: 5 }); });
+      await page.waitForFunction(() => app.store.project.sims.length === 2 && app.store.project.furniture === 'loveseat', null, { timeout: 30000 });
+      const r = await page.evaluate(() => ({ length: app.store.project.length, layers: app.store.project.sims.map(s => (s.layers || []).map(l => l.type).join('+')) }));
+      return `${r.length} frames, motions ${r.layers.join(' / ')}`;
     });
 
     // ---------------------------------------------------------------- the game's own animations and idles
