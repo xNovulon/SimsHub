@@ -45,20 +45,29 @@ function voiceSection(app, sim) {
   // only kinds this sim has voice lines for (its own adult voice), with how many there are
   const sets = app.sounds ? app.voiceSets(sim) : [];
   const who = sim.frame === 'ym' ? 'male' : 'female';
-  const setSel = h('select', { disabled: !sets.length }, sets.length ? sets.map(([v, t, n]) => h('option', { value: v }, `${t} (${n})`))
+  const av = sim.autoVoice, on = !!(av && av.on);
+  const setSel = h('select', { disabled: !sets.length }, sets.length ? sets.map(([v, t, n]) => h('option', { value: v, selected: v === (av && av.set) }, `${t} (${n})`))
     : h('option', { value: '' }, app.sounds ? `No ${who} voice lines found` : 'Reading your sounds...'));
-  setSel.onchange = () => setSel.blur();
-  const every = h('select', {}, [[1.5, 'Often'], [3, 'Now and then'], [6, 'Rarely']].map(([v, t]) => h('option', { value: v, selected: v === 3 }, t)));
-  every.onchange = () => every.blur();
+  const every = h('select', {}, [[1.5, 'Often'], [3, 'Now and then'], [6, 'Rarely']].map(([v, t]) => h('option', { value: v, selected: v === (av ? av.every : 3) }, t)));
+  // Random already on: changing Kind or How-often re-applies it live (there is no "add" button to click any more)
+  const reapply = () => { if (on) app.randomVoices(sim.id, setSel.value, +every.value); };
+  setSel.onchange = () => { setSel.blur(); reapply(); };
+  every.onchange = () => { every.blur(); reapply(); };
   const lines = app.voiceLines ? app.voiceLines.length : 0;
+  // a switch: lit (soft) while this sim's random voices are on
+  const toggle = h('button', { class: 'btn small' + (on ? ' soft' : ''), type: 'button', disabled: !sets.length, 'aria-pressed': String(on),
+    style: { flex: '1', minWidth: '0' }, title: on ? 'Turn random voices off' : 'Moans and lines at random moments',
+    onclick: () => (on ? app.clearAutoVoice(sim.id) : app.randomVoices(sim.id, setSel.value, +every.value)) }, icon(on ? 'check' : 'mic'), 'Random voices');
+  const shuffle = on ? h('button', { class: 'icon-btn sm', title: 'Shuffle - try another random pattern', onclick: () => app.shuffleAutoVoice(sim.id) }, icon('rotate')) : null;
   return section(['Voice', h('span', { class: 'count' }, sim.label)], simTabs(app),
     voicePicker(app, sim),
     h('div', { class: 'hint', style: { marginTop: '6px' } }, 'In the game each sim uses their own voice. This only sets what you hear here.'),
     h('div', { class: 'grid-2 voice-kind' }, h('label', { class: 'field' }, h('span', {}, 'Kind'), setSel), h('label', { class: 'field' }, h('span', {}, 'How often'), every)),
     h('div', { class: 'btn-grid' },
-      h('button', { class: 'btn small', disabled: !sets.length, onclick: () => app.randomVoices(sim.id, setSel.value, +every.value) }, icon('mic'), 'Add random voice'),
+      h('div', { class: 'voice-random', style: { display: 'flex', gap: '6px', alignItems: 'center', minWidth: '0' } }, toggle, shuffle),
       h('button', { class: 'btn small', onclick: () => app.addSoundDialog(sim.id) }, icon('plus'), 'Pick a sound here')),
-    h('div', { class: 'hint' }, `Let ${sim.label} moan or talk through the animation - random but natural. The mouth moves by itself.${lines ? ` ${lines.toLocaleString('en-US')} game voice lines.` : ''}`));
+    h('div', { class: 'hint' }, `Moans and lines play at random moments, spaced apart. They aren't on the timeline - Shuffle mixes them up.${lines ? ` ${lines.toLocaleString('en-US')} game voice lines.` : ''}`),
+    h('div', { class: 'hint' }, 'Pick a sound here plays one at this exact moment. It shows on the timeline, so you can drag it.'));
 }
 
 // Six round buttons: Voice 1-3 female, Voice 1-3 male. The sim's own glows in its colour; the other gender's are dim

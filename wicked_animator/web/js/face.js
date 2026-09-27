@@ -304,8 +304,10 @@ export function fadeOverlay(o, f) {
 // A voice sound the face was lip-synced to (`lipsync: true`) is left out: its face keys already move the mouth.
 // `style` is the project's face style: in 'creator' projects a voice line talks for as long as it really plays (its
 // `sec`, else setVoiceSeconds); 'classic' projects and callers that do not say keep the old length rule exactly.
-export function talkAt(sim, frame, length, loop, fps = 30, style = null) {
-  const cues = (sim.sounds || []).filter(s => s.kind === 'voice' && !s.lipsync);
+// `extra`: cues from outside sim.sounds (random voices - autovoice.js) that should talk too, without ever being
+// added to the sim's own list (so they stay off the timeline). Every existing caller omits it and is unaffected.
+export function talkAt(sim, frame, length, loop, fps = 30, style = null, extra = []) {
+  const cues = [...(sim.sounds || []), ...(extra || [])].filter(s => s.kind === 'voice' && !s.lipsync);
   if (!cues.length || sim.body?.talk?.mouth === false) return null;
   const real = style === 'creator';
   let best = null, bestOpen = -1;

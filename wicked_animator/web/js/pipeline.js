@@ -340,7 +340,10 @@ export class Pipeline {
     // talking and blinking give way where the hand-posed face already has the mouth open or the eyes shut
     const k = creator ? keyedAmounts(v) : null;
     // talking lasts each voice line's real length in creator-style projects (classic ones keep the old rule exactly)
-    let talk = talkAt(sim, frame, p.length, p.loop, p.fps, style), blink = blinkAt(sim, frame, p.length, p.fps);
+    // random voices (autovoice.js) talk too, without ever touching sim.sounds; bakeOther's throwaway app forwards
+    // autoVoiceCuesFor to the real one (main.js), so baking a saved-but-not-open animation moves the mouth for
+    // them exactly like the open one does
+    let talk = talkAt(sim, frame, p.length, p.loop, p.fps, style, this.app?.autoVoiceCuesFor?.(sim)), blink = blinkAt(sim, frame, p.length, p.fps);
     if (k && talk && k.jaw > 0) talk = fadeOverlay(talk, 1 - k.jaw);
     if (k && blink && k.lids > 0) blink = fadeOverlay(blink, 1 - k.lids);
     let face = mergeFace(mergeFace(sliders, talk), blink);

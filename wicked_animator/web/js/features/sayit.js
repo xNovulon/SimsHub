@@ -77,15 +77,16 @@ export function applyPlan(app, plan) {
       for (const key of faced.length ? faced : s.keys.filter(x => x.frame === 0)) key.face = { ...(key.face || {}), ...mix };
     }
   }
-  // 3. sounds and voices
-  if (!plan.sounds) for (const s of sims) s.sounds = [];
-  else if (plan.voices === 'none') for (const s of sims) s.sounds = (s.sounds || []).filter(x => x.kind !== 'voice');
+  // 3. sounds and voices (random voices - autovoice.js - live in sim.autoVoice, not sim.sounds: cleared the same
+  // way whenever manual voice sounds are)
+  if (!plan.sounds) for (const s of sims) { s.sounds = []; delete s.autoVoice; }
+  else if (plan.voices === 'none') for (const s of sims) { s.sounds = (s.sounds || []).filter(x => x.kind !== 'voice'); delete s.autoVoice; }
   else if (plan.voices && typeof plan.voices === 'object') {
     for (const s of sims) {
       if (!(part(s) in plan.voices)) continue;
       const v = plan.voices[part(s)];
       if (v === undefined) continue;
-      if (!v) { s.sounds = (s.sounds || []).filter(x => x.kind !== 'voice'); continue; }
+      if (!v) { s.sounds = (s.sounds || []).filter(x => x.kind !== 'voice'); delete s.autoVoice; continue; }
       if (typeof app.randomVoices === 'function') app.randomVoices(s.id, v.set, v.every, { quiet: true });
     }
   }

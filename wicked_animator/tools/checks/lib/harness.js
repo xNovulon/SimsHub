@@ -126,7 +126,7 @@ async function open(port, { w = 1366, h = 768, reducedMotion = false, intercept 
   const base = `http://127.0.0.1:${port}`;
   const browser = await puppeteerCore().launch({
     executablePath: CHROME, headless, protocolTimeout: 900000,
-    args: ['--use-angle=d3d11', '--enable-webgl', '--ignore-gpu-blocklist', `--window-size=${w},${h}`, ...args],
+    args: ['--use-angle=d3d11', '--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio', `--window-size=${w},${h}`, ...args],
   });
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });

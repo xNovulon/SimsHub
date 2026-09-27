@@ -44,7 +44,7 @@ const L = require('./lib');
         if (step === 'face') rows.push([`${w}: the Face step's Next button reads "Next: Sounds"`, r.next.includes('Next: Sounds'), r.next]);
         if (['pose', 'face', 'sounds'].includes(step)) {
           // the panel scrolled so its buttons show
-          const want = { pose: 'Add poses from a file', face: 'Make every expression editable', sounds: 'Add random voice' }[step];
+          const want = { pose: 'Add poses from a file', face: 'Make every expression editable', sounds: 'Pick a sound here' }[step];
           await page.evaluate(want => {
             const b = [...document.querySelectorAll('#panel-body .btn')].find(x => x.textContent.includes(want)) || document.querySelector('#panel-body .btn-grid');
             const body = document.getElementById('panel-body');

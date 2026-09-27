@@ -27,7 +27,7 @@ export function exportChecks(app) {
   if (p.sims.some(s => !s.keys.some(k => !k.faceOnly))) add('error', 'Every sim needs at least one pose.', () => app.showStep('pose'));
   if (p.category === 'CLIMAX' && (p.loops || 10) > 2) add('info', 'Climax animations usually play once: set "Plays for" to 1 in Details.', () => app.showStep('details'));
   if ((p.tags || []).length === 0) add('info', 'No tags yet - tags help people find it in WickedWhims.', () => app.showStep('details'));
-  if (!p.sims.some(s => (s.sounds || []).length)) add('info', 'No sounds - "Place sounds for me" in step 6 adds a sound on every stroke.', () => app.showStep('sounds'));
+  if (!p.sims.some(s => (s.sounds || []).length || (s.autoVoice && s.autoVoice.on))) add('info', 'No sounds - "Place sounds for me" in step 6 adds a sound on every stroke.', () => app.showStep('sounds'));
   for (const list of app.runHook ? app.runHook('exportChecks', p) : []) {
     for (const x of Array.isArray(list) ? list : []) {
       if (!x || !x.text) continue;

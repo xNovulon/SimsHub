@@ -33,7 +33,7 @@ async function open(port, { w = 1366, h = 768, intercept = true, allow = [], ext
   if (H.REFUSED.has(port)) throw new Error(`port ${port} belongs to someone else (the user's app, the Sims Hub or the verifier)`);
   const base = `http://127.0.0.1:${port}`;
   const { chromium } = playwright();
-  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+  const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio'] });
   const context = await browser.newContext({ viewport: { width: w, height: h } });
   const page = await context.newPage();
   const logs = [], writes = [];

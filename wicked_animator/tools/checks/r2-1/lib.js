@@ -55,7 +55,7 @@ async function launch(w = 1366, h = 768) {
   return puppeteer.launch({
     executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
     headless: 'new', protocolTimeout: 900000,
-    args: ['--use-angle=d3d11', '--enable-webgl', '--ignore-gpu-blocklist', `--window-size=${w},${h}`],
+    args: ['--use-angle=d3d11', '--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio', `--window-size=${w},${h}`],
   });
 }
 

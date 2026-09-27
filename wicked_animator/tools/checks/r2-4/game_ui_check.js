@@ -179,13 +179,15 @@ const check = (name, ok, detail) => { rows.push({ name, ok: !!ok, detail }); con
     C('Magic cowgirl: made, with no voice notes on either sim', ok && v(F).length === 0 && v(M).length === 0, { her: v(F).map(x => x.name), him: v(M).map(x => x.name) });
     app.randomVoices(F.id, 'woohoo', 2, { quiet: true });
     app.randomVoices(M.id, 'woohoo', 2, { quiet: true });
-    C('voices added in the Sounds step go on both', v(F).length > 0 && v(M).length > 0, { her: v(F).map(x => x.name), him: v(M).map(x => x.name) });
+    // random voices (autovoice.js): the switch turns on, but nothing is written to sim.sounds (not on the timeline)
+    C('the Sounds step\'s Random switch turns on for both, with no sounds on the timeline', F.autoVoice && F.autoVoice.on && M.autoVoice && M.autoVoice.on && v(F).length === 0 && v(M).length === 0, { F: F.autoVoice, M: M.autoVoice });
+    const her = app.autoVoiceCuesFor(F).map(x => x.name), him = app.autoVoiceCuesFor(M).map(x => x.name);
     app.audio.setMuted(false);
     app.setFrame(0);
     app.setPlaying(true);
     await window.__r24.sleep(3600);
     app.setPlaying(false);
-    return { checks: out, data: { her: v(F).map(x => x.name), him: v(M).map(x => x.name) } };
+    return { checks: out, data: { her, him } };
   });
   {
     const her = (magic.data && magic.data.her) || [], him = (magic.data && magic.data.him) || [];

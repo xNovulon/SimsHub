@@ -34,6 +34,7 @@ import { showHome, hideHome } from './home.js';
 import { ensureGame } from './findgame.js';
 import { openHelp, maybeTour } from './tour.js';
 import { SoundPlayer, VOICE_SETS, VOICE_FALLBACK, voiceCode, simVoiceCode, soundFitsSim } from './audio.js';
+import { autoVoiceSchedule } from './autovoice.js';
 import { openMagicDialog } from './magic.js';
 import { recordVideo } from './record.js';
 
@@ -906,12 +907,14 @@ class App {
     this.runHook('tick', dt, this.store.frame, { playing: this.playing, wrapped });
   }
 
-  // Sounds whose frame the playhead just passed, panned a little toward where each sim is on screen.
+  // Sounds whose frame the playhead just passed, panned a little toward where each sim is on screen. Random
+  // voices (autovoice.js) play here too, from their own schedule - never written into s.sounds.
   _playSounds(from, to) {
     if (this.audio.muted || this.speed < 0.5) return;
     const p = this.store.project;
     for (const s of p.sims) {
-      const hits = SoundPlayer.crossed(s.sounds, Math.floor(from), Math.floor(to), p.length);
+      const all = s.autoVoice && s.autoVoice.on ? [...(s.sounds || []), ...this.autoVoiceCuesFor(s)] : s.sounds;
+      const hits = SoundPlayer.crossed(all, Math.floor(from), Math.floor(to), p.length);
       if (!hits.length) continue;
       let pan = 0;
       const v = this.simViews.get(s.id);
@@ -3125,8 +3128,11 @@ class App {
   // [set, label, how many lines] for the sets this sim has lines for.
   voiceSets(sim) { return VOICE_SETS.map(([id, t]) => [id, t, this.voicePool(sim, id).length]).filter(x => x[2] > 0); }
 
+  // Random voices (autovoice.js): switched on per sim, not baked into sim.sounds - so they never sit on the
+  // timeline. `randomVoices` is kept under its old name (features/sayit.js and older checks call it) but now just
+  // turns the switch on for this kind and pace; the scheduler (autoVoiceCuesFor) picks the actual moments.
   randomVoices(simId, set, everySeconds, { quiet = false } = {}) {
-    const s = this.store.sim(simId), p = this.store.project;
+    const s = this.store.sim(simId);
     if (!s) return 0;
     // a kind with no lines for this sim falls back to a broader one (soft moans -> moans -> any voice)
     let used = null, pool = [];
@@ -3136,21 +3142,42 @@ class App {
       return 0;
     }
     this.store.checkpoint();
-    s.sounds = (s.sounds || []).filter(x => !(x.auto && x.kind === 'voice'));
-    const n = Math.max(1, Math.round(p.length / p.fps / everySeconds));
-    let seed = 7;
-    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
-    for (let k = 0; k < n; k++) {
-      const frame = Math.round(((k + 0.2 + rnd() * 0.6) / n) * p.length) % p.length;
-      const snd = pool[Math.floor(rnd() * pool.length)];
-      s.sounds.push({ frame, name: snd.name, kind: 'voice', auto: true });
-    }
+    s.autoVoice = { on: true, set, every: everySeconds, shuffle: (s.autoVoice && s.autoVoice.shuffle) || 0 };
     this.afterEdit();
     if (!quiet) {
       const setName = (VOICE_SETS.find(x => x[0] === used) || [])[1] || '';
-      toast(`${n} voice sound${n > 1 ? 's' : ''} added to ${s.label}${used !== set ? ` (${setName.toLowerCase()} - there were none of the kind you picked)` : ''} - the mouth moves with them.`, 'ok');
+      toast(`Random ${setName.toLowerCase() || 'voice'} on for ${s.label}${used !== set ? ' - there were none of the kind you picked' : ''} - the mouth moves with them.`, 'ok');
     }
-    return n;
+    return 1;
+  }
+
+  // Switches random voices off (its cues stop, sim.sounds is never touched by them either way).
+  clearAutoVoice(simId) {
+    const s = this.store.sim(simId);
+    if (!s || !s.autoVoice) return;
+    this.store.checkpoint();
+    delete s.autoVoice;
+    this.afterEdit();
+  }
+
+  // A new random pattern for this sim (same kind and pace, a different seed).
+  shuffleAutoVoice(simId) {
+    const s = this.store.sim(simId);
+    if (!s || !s.autoVoice || !s.autoVoice.on) return;
+    this.store.checkpoint();
+    s.autoVoice.shuffle = (s.autoVoice.shuffle || 0) + 1;
+    this.afterEdit();
+  }
+
+  // This sim's random-voice cues right now (autovoice.js): frame-independent, so one schedule serves every frame
+  // of a tick, a preview or a bake - recomputed only when something changed (editRev) or the project itself did
+  // (bakeOther bakes a different, saved project through the same App).
+  autoVoiceCuesFor(sim, project = this.store.project) {
+    if (this._avRev !== this.editRev || this._avProject !== project) {
+      this._avRev = this.editRev; this._avProject = project;
+      this._avSchedule = autoVoiceSchedule(this, project);
+    }
+    return (this._avSchedule && this._avSchedule.get(sim.id)) || [];
   }
 
   // ---------------------------------------------------------------- ghosts and trails
@@ -3358,9 +3385,10 @@ class App {
       }));
     };
     const tongueUsed = b.tongue !== false && (faces.some(f => (f.tongue || 0) > 0.05) || TONGUE.some(moved));
+    const hasVoice = (s.sounds || []).some(x => x.kind === 'voice') || !!(s.autoVoice && s.autoVoice.on);
     const mouthMoves = tongueUsed || MOUTH.some(moved) || faces.some(f => ['open', 'pout', 'bite', 'tongue'].some(k => (f[k] || 0) > 0.05))
       || (log || []).some(o => o && o.mouth && o.mouth.open > 0.05)
-      || ((b.talk && b.talk.mouth) !== false && (s.sounds || []).some(x => x.kind === 'voice'));
+      || ((b.talk && b.talk.mouth) !== false && hasVoice);
     return { mouthMoves, tongueUsed };
   }
 
@@ -3379,11 +3407,14 @@ class App {
       const v = views.get(s.id);
       const penis = s.frame === 'ym' || s.frame === 'yf_futa' || !!(v && v.hasPenis);
       const fl = (flags && flags[i]) || this._mouthFlags(s, openLog[i], v);
+      // random voices (autovoice.js) go into the exported sounds too - the game plays them baked at these moments,
+      // since nothing in WickedWhims re-randomizes a played clip (see autovoice.js's callers for why)
+      const sounds = s.autoVoice && s.autoVoice.on ? [...(s.sounds || []), ...this.autoVoiceCuesFor(s, p)] : (s.sounds || []);
       return {
         gender: s.gender, naked: nakedFor(p.category, s), tracks: tracks[i], body: s.frame,
         invisibleTeeth: openLog[i].some(o => o && o.mouth && o.mouth.by === 'penis' && o.mouth.open > 0.5),
         animatedVagina: s.frame === 'yf' && simBody(s).open.on && simBody(s).open.vagina !== false,
-        sounds: (s.sounds || []).map(x => ({ frame: x.frame, name: x.name, kind: x.kind })),
+        sounds: sounds.map(x => ({ frame: x.frame, name: x.name, kind: x.kind })),
         mouthMoves: !!fl.mouthMoves, tongueUsed: !!fl.tongueUsed,
         bareFeet: this.bareFeetOf(s, p), role: this.roleOf(s), strapon: !penis && !!s.strapon,
       };
@@ -3412,7 +3443,10 @@ class App {
         }
         views.set(s.id, new Sim(this.assets.rig, body, { color: s.color, skin: s.skin }));
       }
-      const pipeline = new Pipeline({ store: { project }, simViews: views });
+      // autoVoiceCuesFor so talkAt (pipeline.js) moves the mouth for this project's random voices too - without
+      // it the throwaway pipeline would only see sim.sounds, and a random-only sim would export with voice sound
+      // events but a still mouth
+      const pipeline = new Pipeline({ store: { project }, simViews: views, autoVoiceCuesFor: (sim, proj = project) => this.autoVoiceCuesFor(sim, proj) });
       return this.bake(project, { pipeline, views });
     } finally {
       for (const v of views.values()) this.disposeView(v);
