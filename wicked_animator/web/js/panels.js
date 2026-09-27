@@ -132,7 +132,7 @@ function soundSection(app, sim) {
   const sec = h('div', { class: 'insp-section' }, h('h4', {}, 'Sounds'));
   const list = h('div', { class: 'sound-list' });
   const sounds = [...(sim.sounds || [])].sort((a, b) => a.frame - b.frame);
-  if (!sounds.length) list.append(h('div', { class: 'hint' }, 'No sounds. "Auto sounds" finds the claps and wet strokes from how the bodies move.'));
+  if (!sounds.length) list.append(h('div', { class: 'hint' }, 'No sounds. "Auto sounds" puts a soft sound on every stroke, from how the bodies move.'));
   for (const s of sounds) {
     list.append(h('div', { class: 'sound-row' },
       h('span', { class: 'f' }, String(s.frame)),

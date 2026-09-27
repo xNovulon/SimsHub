@@ -1,5 +1,5 @@
 // Magic Animation: pick a position and a place, press one button - both sims are posed on the real furniture,
-// moving, with faces, physics, opening holes, claps and wet sounds - playing with sound in seconds. No voices: a few
+// moving, with faces, physics, opening holes, a soft sound on every stroke - playing with sound in seconds. No voices: a few
 // lines in a short loop repeat every few seconds in the game. Hands hold on to the partner by themselves (his hands on
 // her hips in cowgirl...), heads and eyes look at the partner, legs tremble at a hard finish, and a Finish can end it
 // (cum and drool).
@@ -421,7 +421,7 @@ export async function makeMagic(app, { recipe, place, intensity = 0.55, seconds 
   app.store.setDirty(true);
   app.refreshAll();
   app.pipeline.simulateIfNeeded(true);
-  // 6. sounds: claps and wet strokes from the contacts (no voices)
+  // 6. sounds: a soft sound on every stroke, from the contacts (no voices)
   app.autoSounds();
   // the finish: cum and drool at 70% of the loop (when the moments are there)
   if (climax) {

@@ -44,9 +44,10 @@ const L = require('./lib');
       let inside = 0, prev = grab(0);
       for (let k = 1; k < p.length; k++) { const cur = grab(k); inside = Math.max(inside, maxDiff(prev, cur)); prev = cur; }
       app.applyPoses(false);
-      return { wrap: maxDiff(f0, f90), seam: maxDiff(f89, f0), inside, length: p.length, layers: p.sims.map(s => s.layers.map(l => l.type).join('+')) };
+      // past the end is the timeline's room (Fit to keys): it shows the last frame, held - the loop itself wraps at length
+      return { room: maxDiff(f89, f90), seam: maxDiff(f89, f0), inside, length: p.length, layers: p.sims.map(s => s.layers.map(l => l.type).join('+')) };
     });
-    rows.push([`look + tremble + lag: apply(0) = apply(${loop.length}) within 0.1 deg`, loop.wrap <= 0.1, `${loop.wrap.toFixed(4)} deg (layers ${loop.layers.join(' / ')})`]);
+    rows.push([`look + tremble + lag: apply(${loop.length}) (past the end) holds the last frame within 0.1 deg`, loop.room <= 0.1, `${loop.room.toFixed(4)} deg (layers ${loop.layers.join(' / ')})`]);
     rows.push(['the step over the loop point is no bigger than the largest step inside', loop.seam <= loop.inside + 1e-6, `seam ${loop.seam.toFixed(2)} deg, inside max ${loop.inside.toFixed(2)} deg`]);
 
     // ---- look at: the head points at the target, the eyes stay in range

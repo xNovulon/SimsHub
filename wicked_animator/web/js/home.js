@@ -44,7 +44,7 @@ export function hideHome(app, { from = null } = {}) {
 function startCards(app) {
   const cards = [
     { id: 'magic', title: 'Magic Animation', badge: 'Beta', icon: 'wand', big: true, cls: 'magic-card',
-      text: 'Pick a position and a place - one click gives you a complete animation: posed on the real furniture, moving, with physics, faces, claps and wet sounds. Ready to send to the game.',
+      text: 'Pick a position and a place - one click gives you a complete animation: posed on the real furniture, moving, with physics, faces and a soft sound on every stroke. Ready to send to the game.',
       onClick: () => { hideHome(app); app.openMagic(); }, art: magicStrip(app) },
     { id: 'blank', title: 'Blank animation', icon: 'blank', wide: true, text: 'Start from scratch with an empty scene - add the sims you want.',
       onClick: () => app.newScene(true, true, 'empty', () => { hideHome(app); app.showStep('scene'); }) },

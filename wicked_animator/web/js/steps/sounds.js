@@ -13,7 +13,7 @@ export function renderSounds(app, root) {
   if (rail && !rail.title) rail.title = TITLE;
 
   root.append(section('Automatic sounds',
-    h('div', { class: 'hint', style: { marginTop: 0 } }, 'Finds where bodies hit (claps), where something goes in or slides (wet sounds) and places the right sounds on the timeline. Run it again after changing the motion.'),
+    h('div', { class: 'hint', style: { marginTop: 0 } }, 'Puts one soft sound on every stroke - where the bodies meet or something goes in - from how they move. Run it again after changing the motion.'),
     h('button', { class: 'btn primary block big', onclick: () => app.autoSounds() }, icon('wand'), 'Place sounds for me')));
 
   const sim = app.store.sim();

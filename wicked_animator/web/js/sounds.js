@@ -1,12 +1,11 @@
-// Automatic sounds: one wet sound on the deepest moment of every stroke, a clap there too when the hips meet, found
-// from how the sims move.
+// Automatic sounds: one wet sound on the deepest moment of every stroke, found from how the sims move. Where the hips
+// meet, that soft wet plap is the clap too - no louder slap on top of it (the owner's choice).
 import * as THREE from 'three';
 import { Sim } from './sim.js';
 
 // Preferred sounds per kind, best first; only names the catalogue knows are used, in this order. Wet kinds hold wet
 // strokes only (no impacts - those are claps - and no mouth sounds outside the mouth).
 const SETS = {
-  clap: ['Plaps_Normal', 'Slap_Sounds_01', 'Slap_Sounds_02', 'Slap_Sounds_03', 'PLAPS_2026_1', 'PLAPS_2026_2', 'plaps', 'bush_woohoo_getin_slap'],
   oral: ['Oj_Sounds_01', 'Oj_Sounds_02', 'Oj_Sounds_03', 'Oj_Sounds_04', 'Oj_Sounds_05', 'Oj_Sounds_06', 'Sx_Suck13F', 'Sx_Fastsuck9F', 'vo_romantic_kiss_succ_x'],
   vaginal: ['WET_PL_1', 'WET_PL_2', 'WET_PL_3', 'WET_PL_4', 'WET_PL_5', 'Sx_WetPump8F', 'E404P_wet_pussy'],
   anal: ['WET_PL_3', 'WET_PL_2', 'WET_PL_4', 'Sx_WetPump8F', 'WET_PL_1', 'WET_PL_5'],
@@ -28,10 +27,8 @@ const POINTS = {
   cleavage: { bone: 'b__Spine2__', from: ['b__CAS_L_Breast__', 'b__CAS_R_Breast__'], add: [0, -0.03, 0.06] },
 };
 
-// Stroke tuning: a stroke moves at least 6 mm and strokes are at least 0.2 s apart. A clap: on the deepest moment the
-// hips are within 17 cm of each other (the points sit a few cm inside the skin), after the stroke or the hips closed in
-// at 10 cm/s or more on the way there (slow, gentle strokes do not clap).
-const STROKE_M = 0.006, STROKE_S = 0.2, CLAP_NEAR = 0.17, CLAP_SPEED = 0.10;
+// Stroke tuning: a stroke moves at least 6 mm and strokes are at least 0.2 s apart.
+const STROKE_M = 0.006, STROKE_S = 0.2;
 
 let _offsets = null;
 function offsets(app) {
@@ -59,7 +56,7 @@ function pick(app, kind, n) {
   const known = new Set((app.sounds || []).map(s => s.name));
   const list = SETS[kind].filter(x => known.has(x));
   const names = list.length ? list : SETS[kind];
-  return names[n % Math.min(names.length, kind === 'clap' ? 4 : 6)];
+  return names[n % Math.min(names.length, 6)];
 }
 
 // The deepest moments of the strokes in a series (lower = deeper): minima of the lightly smoothed curve that stand out
@@ -164,19 +161,6 @@ export function autoSounds(app) {
   const mean = d => d.reduce((a, b) => a + b, 0) / d.length;
   const givers = sims.map((s, k) => k).filter(k => sims[k].gender === 'MALE' || views[k]?.hasPenis);
   const takers = sims.map((s, k) => k).filter(k => !givers.includes(k));
-  // a clap on a stroke's deepest moment: his front meets her butt or her front, and the stroke (`curve`) or the hips
-  // closed in fast on the way there. Both count: in doggy she pushes back while he thrusts, so the stroke itself looks
-  // slow while the hips meet hard.
-  const clapAt = (g, t, i, curve) => {
-    const G = track[g], T = track[t];
-    const hips = G.front.map((x, f) => Math.min(x.distanceTo(T.butt[f]), x.distanceTo(T.front[f])));
-    if (at(hips, i) > CLAP_NEAR) return;
-    let speed = 0;
-    for (let j = 1; j <= gap; j++) {
-      speed = Math.max(speed, at(curve, i - j) - at(curve, i - j + 1), at(hips, i - j) - at(hips, i - j + 1));
-    }
-    if (speed * (p.fps || 30) >= CLAP_SPEED) add(t, i, 'clap', 'clap');
-  };
   // 1. things going in: one wet sound on every stroke's deepest moment, in the opening that is really used
   let usedDepth = false;
   const prefer = actHoles(p);
@@ -197,23 +181,20 @@ export function autoSounds(app) {
       const set = by === 'finger' ? 'finger' : by === 'tongue' ? 'lick' : HOLE_KIND[hole];
       // the stroke curve: for a penis, how far the nearest giver's hips are from this opening (smooth and exact in
       // time); for anything else, how deep it is
-      let curve = null, giver = null;
+      let curve = null;
       if (by === 'penis') {
         let best = Infinity;
         for (const g of givers) {
           if (g === k) continue;
           const d = dist(track[g].genital, track[k][HOLE_POINT[hole]]);
-          if (mean(d) < best) { best = mean(d); curve = d; giver = g; }
+          if (mean(d) < best) { best = mean(d); curve = d; }
         }
       }
       if (!curve) curve = series.map(x => -x.d);
       // a finger or tongue counts only where it stays in for a moment (a one-frame touch is not a stroke)
       const run = i => { let a = 0, b = 0; while (a < n && at(series, i - a - 1).d > 0) a++; while (b < n && at(series, i + b + 1).d > 0) b++; return a + b + 1; };
       const deep = strokes(curve, STROKE_M, gap, p.loop).filter(i => by === 'penis' || (series[i].d > 0 && run(i) >= 3));
-      for (const i of deep) {
-        add(k, i, set, 'wet');
-        if (giver !== null && hole !== 'mouth') clapAt(giver, k, i, curve);
-      }
+      for (const i of deep) add(k, i, set, 'wet');
       // going in after being out for half a second or more (slipping out for a moment at the top of a stroke is not
       // a new entry): one sound as it enters, unless a stroke sound is right there
       const out = Math.round(0.5 * (p.fps || 30));
@@ -234,10 +215,7 @@ export function autoSounds(app) {
         const targets = { vaginal: dist(G.genital, T.genital), anal: dist(G.genital, T.anus), oral: dist(G.genital, T.mouth), breasts: dist(G.genital, T.cleavage) };
         const [kind, d] = Object.entries(targets).reduce((a, b) => (mean(b[1]) < mean(a[1]) ? b : a));
         if (mean(d) > 0.2) continue;
-        for (const i of strokes(d, STROKE_M, gap, p.loop)) {
-          add(t, i, kind, 'wet');
-          if (kind === 'vaginal' || kind === 'anal') clapAt(g, t, i, d);
-        }
+        for (const i of strokes(d, STROKE_M, gap, p.loop)) add(t, i, kind, 'wet');
       } else if (usedDepth || views[g]?.hasPenis) {
         // between her breasts
         const d = dist(G.genital, T.cleavage);

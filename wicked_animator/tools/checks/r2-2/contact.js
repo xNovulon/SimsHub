@@ -437,7 +437,7 @@ async function installHelpers(page) {
       C('A8 dragging her hips: his held hands follow at once (palm still 1.2 cm off her skin)', a8.limbs.length === 2 && Math.abs(a8.duringCm - 1.2) <= 0.8, a8);
 
       // A9 - Magic's other defaults: look at the partner, trembling legs at a hard finish, the Finish (moments), no voices
-      // (a few lines in a short loop repeat every few seconds in the game), one wet sound and one clap per stroke
+      // (a few lines in a short loop repeat every few seconds in the game), one soft wet sound per stroke and no loud clap on top
       const a9 = await page.evaluate(async () => {
         await R.magic('cowgirl', 'double_bed', { intensity: 0.9, finish: 'face' });
         const p = app.store.project, him = R.byFrame('ym'), her = R.byFrame('yf');
@@ -454,8 +454,8 @@ async function installHelpers(page) {
       C('A9 Magic: both look at each other (60%), her legs tremble at a hard finish', a9.her.includes('look@0.6') && a9.him.includes('look@0.6') && a9.her.includes('tremble'), a9);
       C('A9 Magic Finish "Face": a one-time Climax of the act with the cum moment', a9.moments ? (a9.category === 'CLIMAX' && a9.act === 'VAGINAL' && a9.loops === 1 && a9.events.includes('CUM:FACE')) : a9.category === 'CLIMAX', a9);
       C('A9 Magic adds no voices (not even with a Finish)', a9.herVoices === 0 && a9.himVoices === 0, { her: a9.herVoices, him: a9.himVoices });
-      C('A9 Magic cowgirl: one wet sound per stroke, each with a clap on the same frame', a9.wet.length > 0 && (!a9.strokes || a9.wet.length === a9.strokes)
-        && a9.wet.join() === a9.claps.join(), { wet: a9.wet, claps: a9.claps, strokes: a9.strokes });
+      C('A9 Magic cowgirl: one soft wet sound per stroke, no loud clap on top', a9.wet.length > 0 && (!a9.strokes || a9.wet.length === a9.strokes)
+        && a9.claps.length === 0, { wet: a9.wet, claps: a9.claps, strokes: a9.strokes });
 
       // A10 - Magic "Lap ride" on an armchair: he sits on the seat (feet on its foot spots), she sits on his lap; nothing
       // goes into the chair; a lying-length couple is not laid on a loveseat; nothing moves after Magic is done (the
@@ -730,7 +730,8 @@ async function installHelpers(page) {
           face: app.pipeline.lastFace.get(p.sims[0].id) };
       });
       results.D = d;
-      C(`D a lagged${d.look ? ', looking' : ''}${d.tremble ? ' and trembling' : ''} 90-frame loop: apply(0) = apply(90) within 0.1 degrees`, d.wrapDeg <= 0.1, d);
+      // (apply(90) is the timeline's room since Fit to keys: the last frame held, so the seam is measured as it plays)
+      C(`D a lagged${d.look ? ', looking' : ''}${d.tremble ? ' and trembling' : ''} 90-frame loop: the step from the last frame back to frame 0 is no bigger than any step inside`, d.seamDeg <= d.biggestDeg + 1e-3, d);
       C('D the step from frame 89 to 0 is no bigger than the biggest step inside the loop', d.seamDeg <= d.biggestDeg + 1e-6, { seam: d.seamDeg, biggest: d.biggestDeg });
       C('D look-at and tremble motions are there (R2-3) and run in pass B', d.look && d.tremble, { look: d.look, tremble: d.tremble, layers: d.layers });
 
