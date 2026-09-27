@@ -463,11 +463,15 @@ function momentsRow(app) {
     get label() { const n = list().length; return n ? `Moments · ${n}` : 'Moments'; },
     draw(g, ctx) {
       const evs = list();
-      const { x0, x1, y, h: hh, xAt, playing } = ctx;
+      const { x0, x1, y, h: hh, xAt, playing, hover } = ctx;
       const font = 'Plus Jakarta Sans, Segoe UI, sans-serif';
       if (!evs.length) {
-        g.fillStyle = 'rgba(255,255,255,0.26)'; g.font = `500 11px ${font}`; g.textBaseline = 'middle';
-        g.fillText('Right-click here to add cum, undressing, a condom coming off or an effect', x0 + 10, y + hh / 2 + 0.5);
+        // a short hint, and only while the pointer is actually here - empty, it stays quiet rather than looking
+        // like one big button the whole width of the row
+        if (hover) {
+          g.fillStyle = 'rgba(255,255,255,0.32)'; g.font = `500 11px ${font}`; g.textBaseline = 'middle';
+          g.fillText('Right-click to add a moment', x0 + 10, y + hh / 2 + 0.5);
+        }
         return;
       }
       g.save();

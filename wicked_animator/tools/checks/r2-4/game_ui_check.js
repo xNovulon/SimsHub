@@ -257,7 +257,9 @@ const check = (name, ok, detail) => { rows.push({ name, ok: !!ok, detail }); con
       const app = window.app, tl = app.timeline, r = tl.canvas.getBoundingClientRect();
       const e = app.store.project.events.find(x => x.type === 'CUM' && x.cum === 'FACE');
       app.timeline.fit();
-      return { x: r.left + tl.xAt(e.frame) + 6, y: r.top + 28 + 10, ppf: tl.pxPerFrame, id: e.id, from: e.frame };
+      // the Moments row's own top (it no longer sits right under the ruler - the key summary has its own row first)
+      const momentsTop = tl._rowTop(tl.rows.find(x => x.id === 'moments'));
+      return { x: r.left + tl.xAt(e.frame) + 6, y: r.top + momentsTop + 10, ppf: tl.pxPerFrame, id: e.id, from: e.frame };
     });
     await page.mouse.move(g.x, g.y);
     await page.mouse.down();

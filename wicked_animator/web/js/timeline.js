@@ -3,8 +3,9 @@
 // double-click to key, right-click for options.
 // Selecting keys (spec_editing 5): click a key, Ctrl+click adds, Shift+click takes every sim's key on that frame,
 // Ctrl+drag on the lanes draws a box. Dragging selected keys moves them (Alt+drag stretches them from the playhead,
-// the bracket's ends stretch from the other end). The ruler shows a diamond on every frame with keys, the play range
-// (Ctrl+drag in the ruler) and the loop badge.
+// the bracket's ends stretch from the other end). The ruler itself only shows the numbers, the play range (Ctrl+drag
+// in the ruler) and the loop badge; a diamond on every frame with keys sits in its own "All keys" row right below,
+// so it never crowds the numbers above it or the Moments row below it (dragging a diamond moves that whole column).
 // Lanes shrink a little when there are many sims; when even that doesn't fit, the wheel over the sim names
 // scrolls the lanes up and down (the ruler stays put).
 // Other features add rows between the ruler and the lanes (addRow), marks in a sim's lane (marks) and read the lane
@@ -16,6 +17,7 @@ import * as KO from './keyops.js';
 import { toast } from './ui.js';
 
 const GUTTER = 168, RULER = 28, LANE = 48, MIN_LANE = 34;
+const SUMMARY_ROW = 'key-summary';   // the ruler's key-summary diamonds: their own row, above the Moments row
 const SOUND_COL = { wet: '#60a5fa', clap: '#fbbf24', voice: '#ff7ab6', other: '#c9a7ff' };
 const FACE_PINK = '#ff7ab6';
 const RANGE = '#ffb547';
@@ -28,10 +30,11 @@ const clone = x => (typeof structuredClone === 'function' ? structuredClone(x) :
 const FONT = 'Plus Jakarta Sans, Segoe UI, sans-serif';
 const MONO = 'JetBrains Mono, monospace';
 
-// The seconds ruler with the playhead, the loop label and its badge, the play range and the key summary. Shared by
-// the Keys and the Curves view (curves.js), so both show the identical ruler. -> hit geometry {loopBadge, rangeX}
+// The seconds ruler: the playhead, the loop label and its badge, the play range and the tick numbers (the key
+// summary is a separate row - see Timeline._summaryRow). Shared by the Keys and the Curves view (curves.js), so
+// both show the identical ruler. -> hit geometry {loopBadge, rangeX}
 export function drawRuler(g, o) {
-  const { x0 = GUTTER, w, h, xAt, pxPerFrame, scroll = 0, length, frame, playing, range = null, loopBadge = null, summary = null, css } = o;
+  const { x0 = GUTTER, w, h, xAt, pxPerFrame, scroll = 0, length, frame, playing, range = null, loopBadge = null, css } = o;
   const col = n => css.getPropertyValue(n).trim();
   const line = col('--line'), muted = col('--muted'), faint = col('--faint');
   const endX = xAt(length);
@@ -84,15 +87,6 @@ export function drawRuler(g, o) {
     g.fillStyle = sec ? muted : faint;
     g.fillText(label, lx0, RULER / 2 - 2);
   }
-  // every frame with keys: a small diamond under the numbers (white when all its keys are selected)
-  if (summary) {
-    for (const [f, all] of summary) {
-      const x = xAt(f);
-      if (x < x0 - 4 || x > w + 4) continue;
-      g.save(); g.translate(x, RULER - 5); g.rotate(Math.PI / 4);
-      g.fillStyle = all ? '#ffffff' : 'rgba(163,155,178,0.75)'; g.fillRect(-2.6, -2.6, 5.2, 5.2); g.restore();
-    }
-  }
   // (hidden while the playhead's number sits on it, near the end of the loop)
   if (loopAt && !(showHead && loopAt.x < px + 17 && loopAt.x + loopAt.w > px - 17)) {
     g.fillStyle = '#ff4f9a'; g.font = `700 10px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle';
@@ -137,6 +131,7 @@ export class Timeline {
     this.pxPerFrame = 9;
     this.drag = null;
     this.hover = null;
+    this._hoverRow = null;   // the extension row the pointer is over right now (for a row's own hover-only drawing)
     this.rows = [];          // extra rows between the ruler and the lanes (addRow)
     this.marks = [];         // [{frame, to, simId, color, title}] ticks in a sim's lane; a click jumps there
     this.fx = [];            // key pops alive now
@@ -144,12 +139,13 @@ export class Timeline {
     this.box = null;         // box selection being drawn: {x0, y0, x1, y1, base}
     this.pops = new Map();   // id -> start time: keys that pop after a paste, stretch or reverse
     this._geo = {};
+    this.addRow(this._summaryRow());   // "All keys": its own lane, so it never crowds the ruler or the Moments row
     new ResizeObserver(() => this.draw()).observe(canvas);
     canvas.addEventListener('pointerdown', e => this._down(e));
     window.addEventListener('pointermove', e => this._move(e));
     window.addEventListener('pointerup', e => this._up(e));
     canvas.addEventListener('pointermove', e => this._hoverAt(e));
-    canvas.addEventListener('pointerleave', () => { this.hover = null; });
+    canvas.addEventListener('pointerleave', () => { this.hover = null; if (this._hoverRow) { this._hoverRow = null; this.draw(); } });
     canvas.addEventListener('wheel', e => this._wheel(e), { passive: false });
     canvas.addEventListener('contextmenu', e => this._context(e));
     canvas.addEventListener('dblclick', e => this._dbl(e));
@@ -162,7 +158,9 @@ export class Timeline {
   // ---------------------------------------------------------------- rows between the ruler and the lanes
   // row = {id, height, label, order, draw(g, ctx), hit(x, y, ctx) -> item|null, tooltip(item), onDown(item, e, ctx),
   //        onMove(item, frame, e, ctx), onUp(item, e, ctx), onContext(item|null, frame, e), onDblClick(item|null, frame, e)}
-  // ctx = {x0, x1, y, h, xAt(frame), frameAt(x), app, playing}. Returns a function that takes the row away again.
+  // ctx = {x0, x1, y, h, xAt(frame), frameAt(x), app, playing}; draw()'s ctx also carries `hover` (the pointer sits
+  // somewhere in this row right now), so a row can keep a hint out of the way until it is worth showing.
+  // Returns a function that takes the row away again.
   addRow(row) {
     if (!row || !row.id) throw new Error('timeline.addRow needs an id');
     this.rows = this.rows.filter(r => r.id !== row.id);
@@ -182,6 +180,40 @@ export class Timeline {
     let top = RULER;
     for (const r of this.rows) { const hh = r.height || 0; if (y >= top && y < top + hh) return r; top += hh; }
     return null;
+  }
+
+  // The key summary as its own row (order -100: always right under the ruler, above every feature row). A diamond
+  // per keyed frame (white when every sim's key there is selected); dragging one moves that whole column of keys,
+  // exactly like dragging a key in a lane. Kept apart from the ruler's numbers above and the Moments row below it -
+  // sharing 9 crowded pixels at the bottom of the ruler with the row below used to make the two easy to mix up.
+  _summaryRow() {
+    const nearestKeyFrame = x => {
+      let best = null, bestDx = 5;
+      for (const s of this.store.project.sims) for (const k of s.keys) {
+        const dx = Math.abs(this.xAt(k.frame) - x);
+        if (dx <= bestDx) { best = k.frame; bestDx = dx; }
+      }
+      return best;
+    };
+    return {
+      id: SUMMARY_ROW, height: 16, order: -100, label: 'All keys',
+      draw: (g, ctx) => {
+        const cy = ctx.y + ctx.h / 2;
+        for (const [f, all] of this._summary()) {
+          const x = ctx.xAt(f);
+          if (x < ctx.x0 - 4 || x > ctx.x1 + 4) continue;
+          g.save(); g.translate(x, cy); g.rotate(Math.PI / 4);
+          g.fillStyle = all ? '#ffffff' : 'rgba(163,155,178,0.75)'; g.fillRect(-2.8, -2.8, 5.6, 5.6); g.restore();
+        }
+      },
+      hit: (x, y, ctx) => {
+        void y;
+        if (x < ctx.x0) return null;
+        const f = nearestKeyFrame(x);
+        return f === null || f > this.store.project.length ? null : f;
+      },
+      onContext: (item, frame, e) => { this.app.rulerMenu?.(e.clientX, e.clientY, frame); },
+    };
   }
 
   // Lane height and how far the lanes can scroll, for the canvas' current size.
@@ -279,8 +311,7 @@ export class Timeline {
   _hit(x, y) {
     this._layout();
     const sims = this.store.project.sims;
-    const p = this.store.project;
-    // the ruler: the play range's x, the loop badge, the range ends, a key summary diamond
+    // the ruler: the play range's x, the loop badge, the range ends (the key summary lives in its own row, below)
     if (y < RULER && x > GUTTER) {
       const g = this._geo || {};
       if (g.rangeX && Math.hypot(x - g.rangeX.x, y - g.rangeX.y) <= g.rangeX.r) return { row: -1, rangeClear: true };
@@ -290,13 +321,6 @@ export class Timeline {
         if (Math.abs(x - this.xAt(range[0])) <= 5) return { row: -1, rangeEnd: 'a' };
         if (Math.abs(x - this.xAt(range[1])) <= 5) return { row: -1, rangeEnd: 'b' };
       }
-      if (y >= RULER - 9) {
-        const f = this.frameAt(x);
-        let best = null;
-        for (const s of sims) for (const k of s.keys) if (Math.abs(this.xAt(k.frame) - x) <= 5 && (best === null || Math.abs(this.xAt(k.frame) - x) < Math.abs(this.xAt(best) - x))) best = k.frame;
-        if (best !== null && best < p.length + 1) return { row: -1, summary: best };
-        void f;
-      }
       return { row: -1, ruler: true };
     }
     if (y >= RULER && y < this.lanesTop) {
@@ -304,6 +328,9 @@ export class Timeline {
       if (row) {
         let item = null;
         try { item = row.hit ? row.hit(x, y, this._rowCtx(row)) : null; } catch (err) { console.error(err); }
+        // the key summary row: a hit on a diamond acts exactly like the old in-ruler summary hit (drag the column);
+        // empty space in the row (no diamond under x) falls through to the generic row handling below (a scrub)
+        if (row.id === SUMMARY_ROW && item !== null) return { row: -1, summary: item };
         return { extra: row, item, row: -1 };
       }
     }
@@ -555,6 +582,9 @@ export class Timeline {
     const { x, y } = this._local(e);
     const h = this._hit(x, y);
     this.hover = h;
+    // a row's own draw() can look at ctx.hover (e.g. the Moments row's empty-state hint) - moving within the same
+    // row repaints nothing new, so only redraw when the hovered row itself changes (entering/leaving one)
+    if ((h.extra || null) !== this._hoverRow) { this._hoverRow = h.extra || null; this.draw(); }
     let c = h.key || h.sound || h.mark || h.summary !== undefined ? 'grab' : h.bracket || h.rangeEnd ? 'ew-resize' : h.loopBadge || h.rangeClear ? 'pointer'
       : x > GUTTER && y > RULER ? 'default' : x > GUTTER ? 'ew-resize' : 'pointer';
     const n = this.sel.size;
@@ -625,7 +655,7 @@ export class Timeline {
       return;
     }
     if (h.loopBadge) { this.app.loopMenu?.(e.clientX, e.clientY); return; }
-    if (y < RULER && x > GUTTER) { this.app.rulerMenu?.(e.clientX, e.clientY, h.summary !== undefined ? h.summary : frame); return; }
+    if (h.summary !== undefined || (y < RULER && x > GUTTER)) { this.app.rulerMenu?.(e.clientX, e.clientY, h.summary !== undefined ? h.summary : frame); return; }
     if (h.key) {
       const id = KO.kid(h.sim.id, h.key.frame);
       if (this.sel.has(id) && this.sel.size > 1 && this.app.selectionMenu) this.app.selectionMenu(e.clientX, e.clientY);
@@ -871,7 +901,8 @@ export class Timeline {
         g.beginPath(); g.rect(0, y, w, hh); g.clip();
         g.fillStyle = 'rgba(255,255,255,0.02)'; g.fillRect(0, y, w, hh);
         if (r.label) { g.fillStyle = muted; g.font = `600 11px ${FONT}`; g.textBaseline = 'middle'; g.fillText(r.label, 14, y + hh / 2); }
-        try { r.draw && r.draw(g, { x0: GUTTER, x1: w, y, h: hh, xAt: f => this.xAt(f), frameAt: x => this.frameAt(x), app: this.app, playing: !!this.app.playing }); }
+        const hovered = !!(this.hover && this.hover.extra === r);
+        try { r.draw && r.draw(g, { x0: GUTTER, x1: w, y, h: hh, xAt: f => this.xAt(f), frameAt: x => this.frameAt(x), app: this.app, playing: !!this.app.playing, hover: hovered }); }
         catch (err) { if (!r._warned) { r._warned = true; console.error(err); } }
         g.restore();
         g.strokeStyle = line; g.beginPath(); g.moveTo(0, y + hh + 0.5); g.lineTo(w, y + hh + 0.5); g.stroke();
@@ -888,7 +919,7 @@ export class Timeline {
 
     // ruler (shared with the Curves view)
     this._geo = drawRuler(g, { x0: GUTTER, w, h: hgt, xAt: f => this.xAt(f), pxPerFrame: this.pxPerFrame, scroll: this.scroll, length: p.length,
-      frame: this.store.frame, playing: !!this.app.playing, range, loopBadge: this._loopBadge(), summary: this._summary(), css });
+      frame: this.store.frame, playing: !!this.app.playing, range, loopBadge: this._loopBadge(), css });
     this._geo.endX = endX; this._geo.roomEndX = roomX;   // for tests: where the loop ends and where the room ends
 
     // dragging keys: a dashed guide down the lanes and a bubble with the frame and how far it moved
