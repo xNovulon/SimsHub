@@ -141,12 +141,12 @@ The app walks you through eight steps. You can jump between them at any time.
 
 1. **Scene.** Add your sims and pick where it happens: the floor, a bed, a sofa and many more. The bed, couch or chair
    can move too: slide it, tip it over or throw it, and the blanket follows the sims.
-2. **Pose.** Start from a ready-made pose, or drag hands and feet and let the body follow. Pick any part: R turns it,
-   T moves it.
+2. **Pose.** Drag hands and feet and let the body follow, or use a pose you saved. Pick any part: R turns it, T moves
+   it.
 3. **Motion.** Add movement with one click, or set your own keys on the timeline.
 4. **Body.** Physics, hair and clothes to check clipping, and body details like the erection and the tongue.
 5. **Face.** Ready expressions, blinking and lip-sync, or pose the brows, eyes and lips yourself.
-6. **Sounds.** Game sounds, sounds made by other creators, or your own audio files.
+6. **Sounds.** The game's own sounds, or your own audio files.
 7. **Details.** The name, the creator and where it can be played in the game.
 8. **Share.** Send it to your game, or package it as a mod to share with others.
 
@@ -176,8 +176,6 @@ See each piece a sim is wearing, and take pieces off one at a time or all at onc
 
 ### Tools that save you time
 
-- **Magic Animation.** Pick a position and a place, and you get a finished, moving animation with sound in one click.
-  Change anything you like from there.
 - **Motion-capture files.** Load a BVH file from a mocap library or an AI tool, and a sim copies the movement.
 - **Posing that behaves.** Joints stay within natural limits, a hand can hold on to the other sim and follow them, and
   you can select several body parts and move them together.
@@ -185,14 +183,12 @@ See each piece a sim is wearing, and take pieces off one at a time or all at onc
 
 ### Your first animation in a few minutes
 
-1. Open Wicked Animator and click **Magic Animation** on the home screen.
-2. Pick a position, where it happens and how fast it should be, then press **Make it**. Both sims are posed and
-   moving, with sounds.
-3. Play it and change whatever you like: drag a hand, move a key on the timeline, add voices in the Sounds step.
-4. Give it a name in the Details step.
+1. Open Wicked Animator and click **Blank animation** on the home screen.
+2. Pick where it happens in the Scene step, then pose both sims in the Pose step: drag a hand or a foot, or click a
+   body part and turn it.
+3. In the Motion step, add a thrust or a ride with one click. Play it and change whatever you like.
+4. Add the game's sounds on every stroke in the Sounds step, and give it a name in the Details step.
 5. Press **Send to game**, then start The Sims 4. It's in WickedWhims with your other animations.
-
-When you want more control, start with **Blank animation** instead and build it pose by pose.
 
 ### Getting it into the game
 

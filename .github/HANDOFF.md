@@ -156,7 +156,7 @@ guessed at (see "Open items" below).
      offsets, naked type per actor, climax and PULLED_OUT events).
 7. **Update the README screenshot** (`.github/assets/sims-hub-home.png`) once the text and design are final.
 8. **The owner tests in the game.** These were only tested without The Sims 4:
-   - Magic's claps and wet sounds (placed on each stroke's deepest moment; Magic adds no voices)
+   - the automatic claps and wet sounds (the game's own sounds, placed on each stroke's deepest moment)
    - a growing erection (the penis base's scale channel: does the game play bone scale?)
    - lips pulling along in oral animations
    - Tray sims' makeup and outfits, the clothes remover
@@ -273,7 +273,7 @@ node tools/checks/clothes/ui_smoke.js          # clothes preview, incl. the hove
 - project.furnAnim holds the keys; they stay inside the loop (a shorter loop cuts them, a stretched one takes them
   along: the `retime` hook). Checks: `node tools/checks/furnanim/furn_anim.js` (the editor) and
   `python3 tools/checks/bedanim/test_bed_export.py` (the bones in /api/furniture_mesh and the bed clip; needs the game).
-- Moving the whole piece doesn't move the sit/lie spots or Magic's placing: those stay where the game puts the object.
+- Moving the whole piece doesn't move the sit/lie spots: those stay where the game puts the object.
 - The Scene step has a Blanket section for beds ("Sims under it" / "Pulled back" / "Move it by hand").
 - The beds shown have no headboard or footboard (owner's request): `objmesh.SHOWN` picks the first one the game has -
   double: Eco Lifestyle mattress on pallets (241642), Outdoor Retreat air bed, then a base-game bed; single: Outdoor
