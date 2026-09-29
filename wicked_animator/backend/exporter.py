@@ -608,10 +608,16 @@ def animation_resources(project, metas=None, present=None):
         voices = voices or any(s.get('kind') == 'voice' for s in actor.get('sounds') or [])
         sounds += [s['name'] for s in actor.get('sounds') or [] if not _is_own(s['name'])]
         gender = actor.get('gender') or 'BOTH'
+        # the actor's WickedWhims "Roles" letter (Details step, Tags menu): a sim cast as BOTH shows as one letter
+        # unless it prefers a side, then WickedWhims shows both (e.g. "B/F") - an explicit choice from the app wins
+        # over the guess from its body; an old project with neither gets the same guess it always got.
+        chosen_pref = actor.get('prefGender')
+        chosen_pref = chosen_pref if chosen_pref in ('MALE', 'FEMALE') else None
+        pref_gender = chosen_pref or (PREF_GENDER.get(actor.get('body')) if gender == 'BOTH' else None)
         actors_xml.append({
             'clip': clip_name, 'gender': gender, 'naked': actor.get('naked'), 'body': actor.get('body'),
             'role': actor.get('role'), 'strapon': bool(actor.get('strapon')),
-            'pref_gender': PREF_GENDER.get(actor.get('body')) if gender == 'BOTH' else None,
+            'pref_gender': pref_gender,
             'nude_feet': bool(actor.get('bareFeet')) or category == 'FOOTJOB',
             'visible_tongue': bool(actor.get('tongueUsed')),
             'animated_vagina': bool(actor.get('animatedVagina')) and gender != 'MALE',
@@ -627,12 +633,11 @@ def animation_resources(project, metas=None, present=None):
             'locations': project.get('locations') or ['FLOOR'], 'actors': actors_xml, 'tags': tags,
             'stage': base, 'next_stages': nxt, 'random': random_ok, 'act': project.get('act'),
             'negative_offset': hold / fps if hold else 0,
-            # WickedWhims' lists show the Wicked Animator logo next to it and the credit after the author
+            # WickedWhims' animation picker keeps the default icon (or its own check mark on the one playing) for
+            # every animation that names no animation_display_icon (SexAnimationInstance.get_picker_row only shows
+            # the check mark when there is no custom icon) - so this never sets one; only the credit after the
+            # author names this app.
             'author_display': W.credited(author)}
-    icon = W.icon_resource()
-    if icon:
-        anim['icon'] = W.ICON_KEY
-        resources.append(icon)
     if props_xml:
         anim['props'] = props_xml
     if bed_clip:
@@ -651,9 +656,15 @@ def animation_resources(project, metas=None, present=None):
     warnings = warnings + checks
     xml = W.snippet_xml(base, [anim]).encode('utf-8')
     resources.insert(0, (W.SNIPPET, 0, W.instance_id(base), xml))
+    # what WickedWhims' own picker will show for this animation (Roles/Orientation/Duration) - for the app's own
+    # preview only; WickedWhims reads Roles and Duration straight from animation_genders/animation_pref_gender and
+    # the clip's own length, and works Orientation out itself at runtime (see wwpackage.py).
+    picker_seconds = W.picker_duration_seconds(ticks / fps, loops, anim['negative_offset'])
     return resources, {'base': base, 'uid': uid, 'clips': [a['clip'] for a in actors_xml], 'sounds': sorted(set(sounds)),
                        'next': nxt, 'next_names': next_names, 'random': random_ok, 'name': name, 'author': author,
                        'category': category, 'locations': anim['locations'], 'genders': [a['gender'] for a in actors_xml],
+                       'roles': W.roles_signature(actors_xml), 'orientation': W.orientation_signature(actors_xml),
+                       'picker_seconds': picker_seconds,
                        'warnings': warnings, 'events': n_events, 'props': props_info,
                        'prop_clips': [p['clip'] for p in props_xml], 'own_sounds': sorted(mine_names),
                        'fit_bodies': fitted, 'bed_clip': bed_clip}
@@ -914,7 +925,8 @@ def export(project, present=None):
     return {'path': path, 'package': info['base'] + '.package', 'clips': info['clips'], 'bytes': size,
             'next': info['next'], 'next_names': info['next_names'], 'random': info['random'], 'sound_kit': kit,
             'replaced': moved, 'warnings': warnings, 'own_sounds': len(info['own_sounds']),
-            'fit_bodies': len(info['fit_bodies'])}
+            'fit_bodies': len(info['fit_bodies']), 'roles': info['roles'], 'orientation': info['orientation'],
+            'picker_seconds': info['picker_seconds']}
 
 
 # ------------------------------------------------------------------ a mod to share

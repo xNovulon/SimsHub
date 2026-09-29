@@ -1,10 +1,11 @@
 // The Details tab: name, creator, kind, tags, places, undressing - what WickedWhims shows and sorts by.
 import { h, icon } from './ui.js';
-import { KINDS, TAG_GROUPS, tagLabel, kindForTags, NAKED_CHOICES, nakedFor } from './tags.js';
+import { KINDS, TAG_GROUPS, tagLabel, kindForTags, NAKED_CHOICES, nakedFor, rolesPreview, orientationPreview, guessedPrefGender } from './tags.js';
 import { WW_LOCATIONS } from './dialogs.js';
 import { localStorageSet } from './state.js';
 
 const ROLE_LABEL = { giver: 'Gives', receiver: 'Receives', both: 'Both' };
+const GENDER_CHOICES = [['FEMALE', 'Female'], ['MALE', 'Male'], ['BOTH', 'Either']];
 // where WickedWhims puts cum on a sim when the sex ends (sim.cumAfter: missing/'AUTO' | 'NONE' | [parts])
 const CUM_AFTER_PARTS = [['FACE', 'Face'], ['CHEST', 'Chest'], ['BELLY', 'Belly'], ['UPPER_BACK', 'Upper back'], ['LOWER_BACK', 'Lower back'],
   ['VAGINA', 'Vagina'], ['BUTT', 'Butt'], ['FEET', 'Feet']];
@@ -91,10 +92,21 @@ export function renderDetails(app, root) {
       onclick: () => change(() => { p.locations = locs.has(l) ? p.locations.filter(x => x !== l) : [...(p.locations || []), l]; }),
     }, nice(l)))));
 
-  // each sim in the game: undressing, its part in the act, bare feet, strap-on
+  // Roles & Orientation: what WickedWhims' own animation picker shows under the name (e.g. "Roles: M+F /
+  // Orientation: HE"), same as other creators' animations. Auto-filled from each sim's part below and editable there.
+  root.append(h('div', { class: 'section-title', style: { marginTop: '18px' } }, 'Roles'),
+    h('div', { class: 'ww-preview' }, `Roles: ${rolesPreview(p.sims)}  ·  Orientation: ${orientationPreview(p.sims)}`));
+
+  // each sim in the game: WickedWhims part, undressing, its part in the act, bare feet, strap-on
   const NAKED_LABEL = Object.fromEntries(NAKED_CHOICES);
   root.append(h('div', { class: 'section-title', style: { marginTop: '18px' } }, 'Each sim in the game'));
   for (const sim of p.sims) {
+    const gender = h('select', {}, GENDER_CHOICES.map(([v, t]) => h('option', { value: v, selected: (sim.gender || 'BOTH') === v }, t)));
+    gender.addEventListener('change', () => change(() => { sim.gender = gender.value; if (gender.value !== 'BOTH') delete sim.prefGender; }));
+    const guess = guessedPrefGender(sim);
+    const prefers = sim.gender === 'BOTH' ? h('select', {}, [['', `Auto${guess ? ` - ${guess === 'MALE' ? 'male' : 'female'}` : ''}`], ['FEMALE', 'Female'], ['MALE', 'Male']]
+      .map(([v, t]) => h('option', { value: v, selected: (sim.prefGender || '') === v }, t))) : null;
+    if (prefers) prefers.addEventListener('change', () => change(() => { if (prefers.value) sim.prefGender = prefers.value; else delete sim.prefGender; }));
     const auto = nakedFor(p.category, { gender: sim.gender });
     const sel = h('select', {}, NAKED_CHOICES.map(([v, t]) => h('option', { value: v, selected: (sim.naked || 'AUTO') === v },
       v === 'AUTO' ? `Auto - ${NAKED_LABEL[auto].toLowerCase()}` : t)));
@@ -112,6 +124,8 @@ export function renderDetails(app, root) {
     strap.addEventListener('change', () => change(() => { sim.strapon = strap.checked; }));
     root.append(h('div', { class: 'sim-game', style: { '--sim': sim.color } },
       h('b', { class: 'who' }, sim.label),
+      h('label', { class: 'field row' }, h('span', {}, 'Plays as'), gender),
+      prefers ? h('label', { class: 'field row' }, h('span', {}, 'Prefers'), prefers) : null,
       h('label', { class: 'field row' }, h('span', {}, 'Undressing'), sel),
       h('label', { class: 'field row' }, h('span', {}, 'In the act'), role),
       h('label', { class: 'check', title: feetAuto ? 'On by itself for footjobs and on beds and sofas' : '' }, feet, 'Bare feet', h('span', { class: 'muted small' }, feetAuto ? ' (on by itself here)' : '')),
@@ -132,7 +146,10 @@ export function renderDetails(app, root) {
   // how long it plays in the game
   const loops = h('input', { class: 'text', type: 'number', min: 1, max: 120, value: p.loops || 10 });
   loops.addEventListener('change', () => change(() => { p.loops = Math.max(1, +loops.value || 10); }, false));
+  // Duration exports on its own: WickedWhims reads it from this clip's own length x how many times it repeats
+  // (animation_loops), never a separate duration field - so this always matches what its picker will show.
+  const pickerSeconds = Math.ceil(p.length / (p.fps || 30) * (p.loops || 10));
   root.append(h('div', { class: 'section-title', style: { marginTop: '18px' } }, 'In the game'),
     h('label', { class: 'field' }, h('span', {}, 'How many times it repeats before moving on'), loops),
-    h('div', { class: 'hint' }, `One loop is ${(p.length / (p.fps || 30)).toFixed(1)} s, so it plays about ${Math.round(p.length / (p.fps || 30) * (p.loops || 10))} s in the game. Climax animations usually play once.`));
+    h('div', { class: 'hint' }, `One loop is ${(p.length / (p.fps || 30)).toFixed(1)} s. WickedWhims will show "Duration: ${pickerSeconds}s". Climax animations usually play once.`));
 }

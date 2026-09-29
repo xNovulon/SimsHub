@@ -3428,7 +3428,7 @@ class App {
       // since nothing in WickedWhims re-randomizes a played clip (see autovoice.js's callers for why)
       const sounds = s.autoVoice && s.autoVoice.on ? [...(s.sounds || []), ...this.autoVoiceCuesFor(s, p)] : (s.sounds || []);
       return {
-        gender: s.gender, naked: nakedFor(p.category, s), tracks: tracks[i], body: s.frame,
+        gender: s.gender, prefGender: s.gender === 'BOTH' ? s.prefGender : undefined, naked: nakedFor(p.category, s), tracks: tracks[i], body: s.frame,
         invisibleTeeth: openLog[i].some(o => o && o.mouth && o.mouth.by === 'penis' && o.mouth.open > 0.5),
         animatedVagina: s.frame === 'yf' && simBody(s).open.on && simBody(s).open.vagina !== false,
         sounds: sounds.map(x => ({ frame: x.frame, name: x.name, kind: x.kind })),

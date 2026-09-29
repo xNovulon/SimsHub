@@ -94,12 +94,13 @@ class Export(unittest.TestCase):
         path = r['path']
         self.assertTrue(path.startswith(TMP), path)
         idx = dbpf.read_index(path)
-        pic = [e for e in idx if e['type'] == W.T_IMG]
-        self.assertEqual([(e['group'], e['inst']) for e in pic], [(0, W.ICON_INSTANCE)])
-        self.assertEqual(dbpf.read_resource(path, pic[0])[:4], b'DDS ')
+        # no custom icon: WickedWhims' picker only puts its own check mark on the animation currently playing when
+        # the animation names no animation_display_icon (SexAnimationInstance.get_picker_row) - so exports never
+        # carry one (the Wicked Animator logo used to be embedded here; the credit stays in the author text instead).
+        self.assertEqual([e for e in idx if e['type'] == W.T_IMG], [])
         xml = next(dbpf.read_resource(path, e) for e in idx if e['type'] == W.SNIPPET)
         root = ET.fromstring(xml)
-        self.assertEqual(_field(root, 'animation_display_icon'), W.ICON_KEY)
+        self.assertIsNone(_field(root, 'animation_display_icon'))
         author = (proj.get('author') or '').strip() or 'Fit Studio'
         self.assertEqual(_field(root, 'animation_author'), W.credited(author))
         self.assertNotIn(W.CREDIT, os.path.basename(path))                             # names keep the plain author
@@ -107,8 +108,12 @@ class Export(unittest.TestCase):
         self.assertEqual(gamedata._parse_animation_xml(xml.decode('utf-8'))[0]['author'], author)
         self.assertEqual(doctor.parse_animation_xml(xml.decode('utf-8'))[0]['author'], author)
         self.assertEqual(wwlists.parse_xml(xml)[0]['author'], author)
+        # Roles/Orientation/Duration preview info (Details step): a solo actor with no gender chosen guesses BOTH
+        self.assertIn('roles', r)
+        self.assertIn('orientation', r)
+        self.assertGreaterEqual(r['picker_seconds'], 1)
 
-    def test_a_shared_mod_holds_the_icon_once(self):
+    def test_a_shared_mod_carries_no_icon(self):
         saved = X.EXPORTS
         X.EXPORTS = os.path.join(TMP, 'Exports')
         a, b = baked_project(with_bed=False, uid='u-credit-a'), baked_project(with_bed=False, uid='u-credit-b')
@@ -118,10 +123,12 @@ class Export(unittest.TestCase):
         finally:
             X.EXPORTS = saved
         idx = dbpf.read_index(r['package'])
-        self.assertEqual(sum(1 for e in idx if e['type'] == W.T_IMG), 1)
+        self.assertEqual(sum(1 for e in idx if e['type'] == W.T_IMG), 0)
         roots = [ET.fromstring(dbpf.read_resource(r['package'], e)) for e in idx if e['type'] == W.SNIPPET]
         self.assertEqual(len(roots), 2)
-        self.assertTrue(all(_field(x, 'animation_display_icon') == W.ICON_KEY for x in roots))
+        self.assertTrue(all(_field(x, 'animation_display_icon') is None for x in roots))
+        # each animation keeps its own author (the bundle's 'Novulon' is only the mod's title/README credit)
+        self.assertTrue(all(_field(x, 'animation_author') == W.credited(a['author']) for x in roots))
 
 
 if __name__ == '__main__':

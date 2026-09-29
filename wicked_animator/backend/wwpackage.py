@@ -3,7 +3,7 @@ uses (class WickedWoohooAnimationPackage), in a plain uncompressed .package file
 
 Nothing here touches the game, so it is tested offline.
 """
-import os, re, struct
+import math, os, re, struct
 from xml.sax.saxutils import escape
 
 SNIPPET = 0x7DF2169C
@@ -12,6 +12,7 @@ SNIPPET = 0x7DF2169C
 WW_WRITTEN_FOR = 'v185k'
 CATEGORIES = ('TEASING', 'HANDJOB', 'FOOTJOB', 'ORALJOB', 'VAGINAL', 'ANAL', 'CLIMAX')
 GENDERS = ('FEMALE', 'MALE', 'BOTH')
+GENDER_LETTER = {'FEMALE': 'F', 'MALE': 'M', 'BOTH': 'B'}
 
 
 def fnv64(text):
@@ -121,6 +122,64 @@ def role_of(actor):
     if r in ROLES:
         return r
     return 'giver' if has_penis(actor) or actor.get('gender') == 'MALE' else 'receiver'
+
+
+# ------------------------------------------------------------------ Roles / Orientation (WickedWhims' own picker text)
+# WickedWhims' animation picker shows a line like "Category: Vaginal | Author: ... / Roles: M+F / Orientation: HE /
+# Duration: 51s" for every animation (SexAnimationInstance.get_picker_row and get_gender_signature, in
+# wickedwhims/sex/animations/animation_instance.pyc; get_sex_gender_signature and SexualOrientation.get_signature,
+# in wickedwhims/sex/enums/sex_gender.pyc and sex_orientation.pyc - read from WickedWhims' own script, v185k).
+# Each actor's own animation_genders is one letter (F/M/B for FEMALE/MALE/BOTH); when animation_pref_gender is set
+# and differs from animation_genders (only meaningful when animation_genders is BOTH - real packages pair
+# "BOTH"+"FEMALE" for a sim that can be either but is cast as the receiver) WickedWhims shows both, e.g. "B/F".
+# Duration needs nothing extra: WickedWhims computes it itself from the actor's own clip length x animation_loops,
+# minus animation_negative_duration_offset (SexAnimationInstance.update_duration) - never a separate duration field.
+
+
+def gender_signature(gender, pref_gender=None):
+    """One actor's 'Roles' letter, exactly as WickedWhims' SexAnimationActor.get_gender_signature reads
+    animation_genders / animation_pref_gender: plain F/M/B, or 'B/F' 'B/M' when a preferred gender is set and
+    differs from the actor's own (gender defaults to BOTH, like an actor with no gender set)."""
+    letter = GENDER_LETTER.get(gender or 'BOTH', 'B')
+    if pref_gender and pref_gender != gender and pref_gender in GENDER_LETTER:
+        return '%s/%s' % (letter, GENDER_LETTER[pref_gender])
+    return letter
+
+
+def roles_signature(actors):
+    """The picker's whole 'Roles' text: each actor's gender_signature (actors: [{gender, pref_gender}]), joined
+    with '+' in actor order - e.g. 'M+F' or 'B/M+B/F'."""
+    return '+'.join(gender_signature(a.get('gender'), a.get('pref_gender')) for a in actors)
+
+
+def _effective_male(actor):
+    """Whether WickedWhims would count this actor on the 'male' side for orientation: its preferred gender when one
+    is set (a BOTH actor cast as male or female), else its own gender."""
+    return (actor.get('pref_gender') or actor.get('gender') or 'BOTH') == 'MALE'
+
+
+def orientation_signature(actors):
+    """The picker's 'Orientation' code (SexualOrientation.get_signature): 'HE' straight, 'HO' every actor resolves
+    to the same side, 'BI' a mixed group of three or more, '-' with fewer than two actors. WickedWhims computes this
+    itself at runtime from the actors' genders and interactions; this mirrors its dominant-orientation logic
+    (get_sims_dominant_sexual_orientation) for the app's own preview only - nothing is written to the package for it."""
+    if len(actors) < 2:
+        return '-'
+    male = [_effective_male(a) for a in actors]
+    if len(actors) == 2:
+        return 'HO' if male[0] == male[1] else 'HE'
+    if all(male) or not any(male):
+        return 'HO'
+    return 'BI'
+
+
+def picker_duration_seconds(single_loop_seconds, loops, negative_offset=0.0):
+    """The whole number of seconds WickedWhims' picker shows after 'Duration:' (SexAnimationInstance.update_duration
+    then math.ceil(get_duration()) in get_picker_row): one loop's own length x animation_loops, minus
+    animation_negative_duration_offset when that leaves time left, never below 1."""
+    seconds = max(0.0, float(single_loop_seconds)) * max(1, int(loops))
+    seconds -= max(0.0, float(negative_offset or 0))
+    return max(1, math.ceil(seconds)) if seconds > 0 else 1
 
 
 def interaction_pairs(actors):

@@ -69,3 +69,34 @@ export function nakedFor(kind, sim) {
   if (sim.naked && sim.naked !== 'AUTO') return sim.naked;
   return (AUTO_NAKED[kind] || AUTO_NAKED.VAGINAL)[sim.gender || 'BOTH'] || 'ALL';
 }
+
+// ---------------------------------------------------------------- Roles / Orientation (WickedWhims' own picker text)
+// What WickedWhims' animation picker shows for an animation: "Roles: M+F", "Orientation: HE" (SexAnimationActor.
+// get_gender_signature and SexualOrientation.get_signature, read from WickedWhims' own script - the same read backs
+// backend/wwpackage.py's gender_signature/roles_signature/orientation_signature). A preview only: WickedWhims builds
+// Roles from animation_genders/animation_pref_gender and works Orientation out itself at runtime; nothing extra is
+// exported for Orientation.
+const GENDER_LETTER = { FEMALE: 'F', MALE: 'M', BOTH: 'B' };
+// a BOTH sim with no explicit preference guesses from its body, same as exporter.py's PREF_GENDER
+const PREF_GENDER_BY_FRAME = { yf: 'FEMALE', yf_futa: 'FEMALE', ym: 'MALE' };
+
+export function guessedPrefGender(sim) {
+  if (sim.prefGender === 'MALE' || sim.prefGender === 'FEMALE') return sim.prefGender;
+  return sim.gender === 'BOTH' ? (PREF_GENDER_BY_FRAME[sim.frame] || null) : null;
+}
+
+export function genderSignature(gender, prefGender) {
+  const letter = GENDER_LETTER[gender] || 'B';
+  return prefGender && prefGender !== gender && GENDER_LETTER[prefGender] ? `${letter}/${GENDER_LETTER[prefGender]}` : letter;
+}
+
+export function rolesPreview(sims) {
+  return sims.map(s => genderSignature(s.gender || 'BOTH', guessedPrefGender(s))).join('+');
+}
+
+export function orientationPreview(sims) {
+  if (sims.length < 2) return '-';
+  const male = sims.map(s => (guessedPrefGender(s) || s.gender || 'BOTH') === 'MALE');
+  if (sims.length === 2) return male[0] === male[1] ? 'HO' : 'HE';
+  return male.every(Boolean) || male.every(v => !v) ? 'HO' : 'BI';
+}
