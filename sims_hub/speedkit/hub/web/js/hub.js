@@ -406,6 +406,16 @@ function mergeTime(lo, hi) {
   return !isNum(hi) || lo === hi ? f(lo) : `${f(lo)}-${f(hi)}`;
 }
 
+// Script mods are never merged: said on its own, where it can't be missed
+function mergeScriptsNote(p) {
+  const n = p.scripts || 0, k = p.script_files || 0;
+  if (!n && !k) return '';
+  const parts = [];
+  if (n) parts.push(plural(n, 'script mod'));
+  if (k) parts.push(`${plural(k, 'file')} that go${k === 1 ? 'es' : ''} with them`);
+  return `<div class="note">${ic('info')}<span>Skipped ${parts.join(' and ')}. Scripts can't be merged, so they stay exactly as they are.</span></div>`;
+}
+
 function mergeLeftAlone(p) {
   const left = p.left_alone || [];
   if (!left.length) return '';
@@ -422,13 +432,13 @@ function renderMerge() {
     planBody = `<div class="actions"><button class="btn primary" data-act="merge-plan"${noChange ? ' disabled' : ''}>${ic('search')}Check what can be merged</button></div>`;
   } else if (!p.ok || !p.groups) {
     planBody = `<div class="empty" style="padding:14px 2px 0">${esc(p.message || "That couldn't be checked right now.")}</div>
-      ${p.ok ? mergeLeftAlone(p) : ''}
+      ${p.ok ? mergeScriptsNote(p) + mergeLeftAlone(p) : ''}
       <div class="actions"><button class="btn ghost" data-act="merge-plan"${noChange ? ' disabled' : ''}>${ic('search')}Check again</button></div>`;
   } else {
     planBody = `<div class="plan"><div><b>${num(p.files)}</b><span>loose CC files</span></div>
         <div><b>${num(p.groups)}</b><span>bigger file${p.groups === 1 ? '' : 's'}</span></div>
         <div><b>${mergeTime(p.seconds_low, p.seconds_high)}</b><span>faster to start</span></div></div>
-      ${mergeLeftAlone(p)}
+      ${mergeScriptsNote(p)}${mergeLeftAlone(p)}
       <div class="actions"><button class="btn primary" data-act="merge-confirm"${noChange ? ' disabled' : ''}>${ic('layers')}Merge ${plural(p.groups, 'file')}</button>
         <button class="btn ghost" data-act="merge-plan"${noChange ? ' disabled' : ''}>${ic('search')}Check again</button></div>`;
   }
@@ -1992,7 +2002,7 @@ async function previewHooks() {
   if (what === 'restore') confirmRestore();
   if (what === 'cleanup') { S.plan = { ok: true, copies: 4210, gb: 18.2, rewritten: 57, removed: 12 }; render(); confirmCleanup(); }
   if (what === 'merge') {
-    S.mergePlan = { ok: true, files: 182, groups: 12, files_saved: 170, seconds_low: 0.09, seconds_high: 1.7, left_alone: [] };
+    S.mergePlan = { ok: true, files: 182, groups: 12, files_saved: 170, seconds_low: 0.09, seconds_high: 1.7, scripts: 3, script_files: 12, left_alone: [] };
     render();
     confirmMerge();
   }

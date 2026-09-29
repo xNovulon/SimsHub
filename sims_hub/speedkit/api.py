@@ -1277,7 +1277,7 @@ def _inbox_reason(it):
             return 'An update of a script mod you have: the new files replace the old ones.'
         if all(f.get('action') == 'duplicate' for f in files):
             return 'This script mod is already in your game.'
-        return 'A script mod (%d file%s): it goes into its own folder in Mods, untouched.' % (
+        return "A script mod (%d file%s). Scripts can't be merged, so it goes into its own folder in Mods as it is." % (
             len(files), '' if len(files) == 1 else 's')
     n = collections.Counter(f.get('action') for f in files)
     bits = []
@@ -1326,15 +1326,22 @@ def inbox(apply=False, progress=None):
         it['reason'] = _plainify(it['reason'])
     ready = [i for i in items if i['status'] not in ('skipped', 'refused')]
     held = len(items) - len(ready)
+    def is_script(i):
+        return any(str(f.get('file') or '').lower().endswith('.ts4script') for f in i['files'])
+    scripts_in = [i for i in (items if not apply else [i for i in items if i['status'] == 'done']) if is_script(i)
+                  and i['status'] not in ('skipped', 'refused')]
+    script_msg = (" %d %s script mod%s, added as %s: scripts can't be merged." % (
+        len(scripts_in), 'is a' if len(scripts_in) == 1 else 'are', '' if len(scripts_in) == 1 else 's',
+        'it is' if len(scripts_in) == 1 else 'they are')) if scripts_in else ''
     held_msg = (' %d cannot be added yet (see why).' % held) if held else ''
     if not items:
         msg = 'Your Inbox is empty. Drop downloads into it, then press this again.'
     elif apply:
         done = sum(1 for i in items if i['status'] == 'done')
-        msg = 'Added %d of %d downloads.%s' % (done, len(items), held_msg)
+        msg = 'Added %d of %d downloads.%s%s' % (done, len(items), script_msg, held_msg)
     elif ready:
-        msg = "%d download%s waiting. Press 'Add them to my game' to add %s.%s" % (
-            len(ready), ' is' if len(ready) == 1 else 's are', 'it' if len(ready) == 1 else 'them', held_msg)
+        msg = "%d download%s waiting. Press 'Add them to my game' to add %s.%s%s" % (
+            len(ready), ' is' if len(ready) == 1 else 's are', 'it' if len(ready) == 1 else 'them', script_msg, held_msg)
     else:
         msg = 'Nothing can be added yet.%s' % held_msg
     if rep.get('journal'):
@@ -1419,19 +1426,25 @@ def merge_plan(progress=None):
     try:
         s = plan.summary()
         left = _merge_left_alone(plan, s)
+        # script mods are never merged: said on their own line, with the packages kept next to them
+        scripts = len(lib.scripts('Mods'))
+        script_files = sum(n for r, n in s['excluded_by_reason'].items()
+                           if r in ('script companion', 'next to a script'))
     finally:
         lib.close()
     tell('merge', 1.0, 'Done')
     if not s['groups']:
         return {'ok': True, 'message': 'Nothing can be merged right now (see why below).' if left else
                 'Nothing can be merged right now.', 'files': 0, 'groups': 0, 'gb': 0.0, 'files_saved': 0,
-                'seconds_low': 0.0, 'seconds_high': 0.0, 'left_alone': left}
+                'seconds_low': 0.0, 'seconds_high': 0.0, 'left_alone': left, 'scripts': scripts,
+                'script_files': script_files}
     msg = ('%d loose CC files can be merged into %d file%s - %d fewer to open every time the game starts.'
           % (s['packages_merged'], s['groups'], '' if s['groups'] == 1 else 's', s['files_saved']))
     return {'ok': True, 'message': msg, 'files': s['packages_merged'], 'groups': s['groups'],
             'gb': _gb(s['source_bytes']), 'files_saved': s['files_saved'],
             'seconds_low': round(s['seconds_saved_low'], 2), 'seconds_high': round(s['seconds_saved_high'], 2),
-            'left_alone': left, 'warnings': [_plainify(w) for w in s['warnings']]}
+            'left_alone': left, 'scripts': scripts, 'script_files': script_files,
+            'warnings': [_plainify(w) for w in s['warnings']]}
 
 
 @_safe

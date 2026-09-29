@@ -1195,7 +1195,7 @@ class Story(unittest.TestCase):
         self.assert_plain([prev['message']] + [i['reason'] for i in prev['items']], 'inbox preview')
         why = {i['name']: i['reason'] for i in prev['items']}
         self.assertEqual(why['CareerOverhaulSuite_v1.5.zip'],
-                         'A script mod (3 files): it goes into its own folder in Mods, untouched.')
+                         "A script mod (3 files). Scripts can't be merged, so it goes into its own folder in Mods as it is.")
         self.assertEqual(why['DarcyDress_Extra.zip'], '1 new CC file, 1 already in your game.')
         before = Snapshot(self.sims).files()[0]
         r = self.task('inbox', apply=True)

@@ -58,6 +58,13 @@ class MergeApiTests(unittest.TestCase):
             self.assertIn('label', row)
             assert_plain(self, row['label'])
 
+    def test_plan_says_script_mods_are_skipped(self):
+        # the tree has Mods/scripts/Fake.ts4script with Fake_Tuning.package next to it: never merged, and the
+        # plan counts both so the page can say so on its own line
+        r = api.merge_plan()
+        self.assertEqual(r['scripts'], 1, r)
+        self.assertGreaterEqual(r['script_files'], 1, r)
+
     def test_plan_is_read_only(self):
         before = TM.tree_digest(self.t.sims)
         api.merge_plan()
