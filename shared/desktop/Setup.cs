@@ -1,12 +1,12 @@
-// Gets an app ready to open. The program is all anyone downloads:
-//   - opened from its app folder (the usual case): the folder is brought up to date (Updater.cs);
-//   - opened from anywhere else (a download): the app is installed in its usual place (Brand.InstallDir) - or that
-//     copy brought up to date - with Desktop and Start Menu shortcuts, and that copy is opened instead.
+// Gets an app ready to open. The program's folder is all anyone downloads (a zip):
+//   - opened from its app folder (the usual case: <app folder>\program): the folder is brought up to date (Updater.cs);
+//   - opened from anywhere else (the unpacked download): the app is installed in its usual place (Brand.InstallDir) -
+//     or that copy brought up to date - with Desktop and Start Menu shortcuts, and that copy is opened instead.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -63,10 +63,10 @@ public static class Setup
                 Path.Combine(b.DataDir, "update", "update.log"));
             return new Ready(null, null, true);
         }
-        var exe = Path.Combine(target, b.ExeName);
+        var exe = b.ProgramExe(target);
         try
         {
-            if (await ShouldPlaceSelf(exe)) await Task.Run(() => PlaceSelf(exe));
+            if (await ShouldPlaceSelf(exe)) await Task.Run(() => PlaceSelf(Path.GetDirectoryName(exe)));
         }
         catch (Exception ex)
         {
@@ -102,9 +102,9 @@ public static class Setup
     }
 
     // The first thing Main does. Opened as "<new program> --finish-update <app's program> <pid> [args]" by the program
-    // it replaces: waits for that one to end, puts itself in its place, opens it there and ends. -> true: Main returns.
-    // It holds the app's lock (mutexName) while it works, so opening the app meanwhile can't start a copy from the
-    // file being replaced.
+    // it replaces: waits for that one to end, puts its own folder in the place of that one's, opens it there and ends.
+    // -> true: Main returns. It holds the app's lock (mutexName) while it works, so opening the app meanwhile can't
+    // start a copy from the folder being replaced.
     public static bool FinishUpdate(string[] args, string mutexName)
     {
         if (args.Length < 3 || args[0] != FinishArg) return false;
@@ -130,21 +130,13 @@ public static class Setup
                 Updater.Log($"{Brand.Current.ExeName} was opened meanwhile: the update waits for the next start");
                 return true;
             }
-            // 2. the new program is copied next to the old one first, so the old one is only touched once the new
-            //    one is complete; the old one is moved aside (not deleted) and comes back if anything goes wrong
-            var fresh = target + ".new";
-            bool placed = Retry(() => File.Copy(Environment.ProcessPath, fresh, true), out var err)
-                && Retry(() => { if (File.Exists(target)) File.Move(target, target + ".old", true); }, out err)
-                && Retry(() => File.Move(fresh, target, true), out err);
-            if (placed) Updater.Log($"{Brand.Current.ExeName} updated");
-            else
-            {
-                Updater.Log($"could not put the new {Brand.Current.ExeName} in place: {err?.Message}");
-                if (!File.Exists(target) && File.Exists(target + ".old")) Retry(() => File.Move(target + ".old", target), out _);
-                try { File.Delete(fresh); } catch { }
-            }
+            // 2. the new folder takes the old one's place (SwapIn)
+            var dir = Path.GetDirectoryName(target);
+            if (SwapIn(AppContext.BaseDirectory, dir, out var err)) Updater.Log($"{Brand.Current.ExeName} updated");
+            else Updater.Log($"could not put the new {Brand.Current.ExeName} in place: {err?.Message}");
             // never nothing to open: the old program, wherever it is now
-            if (!File.Exists(target) && File.Exists(target + ".old")) run = target + ".old";
+            var aside = Path.Combine(dir + ".old", Path.GetFileName(target));
+            if (!File.Exists(target) && File.Exists(aside)) run = aside;
         }
         catch (Exception ex) { Updater.Log("update not finished: " + ex.Message); }
         finally
@@ -154,12 +146,54 @@ public static class Setup
         }
         try
         {
-            var psi = new ProcessStartInfo(run) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(target) };
+            var psi = new ProcessStartInfo(run) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(run) };
             foreach (var a in rest) psi.ArgumentList.Add(a);
             Process.Start(psi);
         }
         catch (Exception ex) { Ui.Fatal("The app was updated", "Open it again to use the new version.\n\n" + ex.Message); }
         return true;
+    }
+
+    // Puts the program folder `from` in the place of `dir`: copied next to it first (<dir>.new), so `dir` is only
+    // touched once the copy is complete; the old one is moved aside (<dir>.old, removed now or on a later start) and
+    // comes back if anything goes wrong. Only the build's own files are copied (build.txt lists them), so an unpacked
+    // download never brings along whatever else was next to it.
+    static bool SwapIn(string from, string dir, out Exception err)
+    {
+        err = null;
+        var files = Updater.Manifest(from);
+        if (files == null) { err = new InvalidDataException("the program has no list of its files (build.txt)"); return false; }
+        var fresh = dir + ".new";
+        var old = dir + ".old";
+        try { if (Directory.Exists(old)) Directory.Delete(old, true); } catch { }
+        bool placed = Retry(() => CopyBuild(from, fresh, files.Skip(1).Append("build.txt")), out err)
+            && Retry(() => { if (Directory.Exists(dir)) Directory.Move(dir, old); }, out err)
+            && Retry(() => Directory.Move(fresh, dir), out err);
+        if (!placed)
+        {
+            if (!Directory.Exists(dir) && Directory.Exists(old)) Retry(() => Directory.Move(old, dir), out _);
+            try { Directory.Delete(fresh, true); } catch { }
+            return false;
+        }
+        try { Directory.Delete(old, true); } catch { }      // still in use: Updater.CleanUp removes it later
+        return true;
+    }
+
+    // The listed files of a build, copied as plain bytes (so the copies don't carry the download's "from the internet"
+    // mark) into a fresh folder.
+    static void CopyBuild(string from, string to, IEnumerable<string> files)
+    {
+        if (Directory.Exists(to)) Directory.Delete(to, true);
+        var top = Path.GetFullPath(to).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        foreach (var rel in files)
+        {
+            var dst = Path.GetFullPath(Path.Combine(to, rel));
+            if (!dst.StartsWith(top, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("a file outside the program: " + rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(dst));
+            using var a = File.OpenRead(Path.Combine(from, rel));
+            using var b = File.Create(dst);
+            a.CopyTo(b);
+        }
     }
 
     // true once the process has ended (or was never there)
@@ -226,26 +260,17 @@ public static class Setup
         var self = Environment.ProcessPath;
         if (self == null || Updater.SamePath(self, exe)) return false;
         if (!File.Exists(exe)) return true;
+        var own = Updater.OwnBuild();
+        if (own == null || own == Updater.BuildOf(Path.GetDirectoryName(exe))) return false;
         using var http = Ui.Web(TimeSpan.FromSeconds(30));
-        var want = await Updater.PublishedSha(http);
-        return want != null && Sha256(self) == want && Sha256(exe) != want;
+        var pub = await Updater.Published(http);
+        return pub != null && pub.Value.Build == own;
     }
 
-    // Copied as plain bytes, so the copy doesn't carry the download's "from the internet" mark.
-    static void PlaceSelf(string exe)
+    static void PlaceSelf(string dir)
     {
-        var tmp = exe + ".new";
-        using (var from = File.OpenRead(Environment.ProcessPath))
-        using (var to = File.Create(tmp))
-            from.CopyTo(to);
-        File.Move(tmp, exe, true);
-        Ui.Log("setup.log", $"placed {exe}");
-    }
-
-    static string Sha256(string path)
-    {
-        using var f = File.OpenRead(path);
-        return Convert.ToHexString(SHA256.HashData(f)).ToLowerInvariant();
+        if (!SwapIn(AppContext.BaseDirectory, dir, out var err)) throw err ?? new IOException("the program could not be copied");
+        Ui.Log("setup.log", $"placed {dir}");
     }
 
     // "<Desktop>\<name>.lnk" and the Start Menu's, pointing at the app's program (replacing older ones of that name).

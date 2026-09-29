@@ -1,6 +1,7 @@
-# Builds both apps - "Wicked Animator.exe" and "Sims Hub.exe", each with .NET inside - whenever their desktop code
-# changes, and publishes them as the downloads on the "apps" release. Every installed copy swaps itself for a new
-# build the next time it opens (shared/desktop/Updater.cs).
+# Builds both apps - "Wicked Animator.exe" and "Sims Hub.exe", each a plain folder with .NET next to it (never packed
+# into one file: packed programs get flagged by virus scanners) - whenever their desktop code changes, and publishes
+# them as the downloads on the "apps" release: WickedAnimator.zip and SimsHub.zip. Every installed copy swaps itself
+# for a new build the next time it opens (shared/desktop/Updater.cs).
 name: Build the apps
 
 on:
@@ -36,37 +37,53 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          dotnet publish wicked_animator/desktop/WickedAnimator.csproj -c Release -o publish/animator -nologo -v:minimal
+          dotnet publish wicked_animator/desktop/WickedAnimator.csproj -c Release -o publish/WickedAnimator -nologo -v:minimal
           if ($LASTEXITCODE -ne 0) { throw "the animator did not build" }
-          dotnet publish sims_hub/desktop/SimsHub.csproj -c Release -o publish/hub -nologo -v:minimal
+          dotnet publish sims_hub/desktop/SimsHub.csproj -c Release -o publish/SimsHub -nologo -v:minimal
           if ($LASTEXITCODE -ne 0) { throw "the Hub did not build" }
-          Copy-Item "publish/animator/Wicked Animator.exe" WickedAnimator.exe
-          Copy-Item "publish/hub/Sims Hub.exe" SimsHub.exe
 
       # a program without its marker could never update itself again, so installed copies would refuse it
       - name: Check they can update themselves
         shell: pwsh
         run: |
-          python -c "import sys; bad = [f for f, m in (('WickedAnimator.exe', 'Novulon.WickedAnimator.AutoUpdate.v1'), ('SimsHub.exe', 'Novulon.SimsHub.AutoUpdate.v1')) if m.encode('utf-16-le') not in open(f, 'rb').read()]; sys.exit('no update marker in ' + ', '.join(bad) if bad else 0)"
+          python -c "import sys; bad = [f for f, m in (('publish/WickedAnimator/Wicked Animator.exe', 'Novulon.WickedAnimator.AutoUpdate.v1'), ('publish/SimsHub/Sims Hub.exe', 'Novulon.SimsHub.AutoUpdate.v1')) if m.encode('utf-16-le') not in open(f, 'rb').read()]; sys.exit('no update marker in ' + ', '.join(bad) if bad else 0)"
 
-      # each download with its checksum next to it: installed copies compare it with their own to know a new build
-      # is there. (Nothing is committed back to the repository.)
+      # build.txt in each program's folder: the build's id (from every file's SHA-256, so the same files give the same
+      # id and installed copies don't download it again), then the list of its files. Then the folder is zipped, and
+      # <name>.build holds the id and the zip's SHA-256: installed copies compare the id with their own.
+      - name: Zip the downloads
+        shell: pwsh
+        run: |
+          foreach ($name in 'WickedAnimator', 'SimsHub') {
+            $dir = (Resolve-Path "publish/$name").Path
+            $files = Get-ChildItem $dir -Recurse -File | ForEach-Object { $_.FullName.Substring($dir.Length + 1).Replace('\', '/') } | Sort-Object -CaseSensitive
+            $lines = foreach ($f in $files) { '{0} {1}' -f (Get-FileHash (Join-Path $dir $f) -Algorithm SHA256).Hash.ToLowerInvariant(), $f }
+            $id = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($lines -join "`n"))).ToLowerInvariant()
+            Set-Content -Path (Join-Path $dir 'build.txt') -Value (@($id) + $files) -Encoding ascii
+            [IO.Compression.ZipFile]::CreateFromDirectory($dir, "$PWD/$name.zip", [IO.Compression.CompressionLevel]::Optimal, $false)
+            $zip = (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+            Set-Content -Path "$name.build" -Value @($id, $zip) -Encoding ascii
+            Write-Host "$name build $id, zip $zip"
+          }
+
+      # the zips first, their .build after: a copy that sees a new build finds its zip. (Nothing is committed back.)
       - name: Publish the downloads
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          foreach ($f in 'WickedAnimator.exe', 'SimsHub.exe') {
-            (Get-FileHash $f -Algorithm SHA256).Hash.ToLowerInvariant() | Set-Content -Path "$f.sha256" -NoNewline -Encoding ascii
-          }
-          $files = 'WickedAnimator.exe', 'WickedAnimator.exe.sha256', 'SimsHub.exe', 'SimsHub.exe.sha256'
+          $files = 'WickedAnimator.zip', 'WickedAnimator.build', 'SimsHub.zip', 'SimsHub.build'
           gh release view apps *> $null
           if ($LASTEXITCODE -ne 0) {
             gh release create apps @files --title "Novulon's Sims 4 Apps" --notes-file .github/release-notes.md --latest
           } else {
-            # the programs first, their checksums after: a copy that sees the new checksum finds the new program
-            gh release upload apps WickedAnimator.exe SimsHub.exe --clobber
-            if ($LASTEXITCODE -eq 0) { gh release upload apps WickedAnimator.exe.sha256 SimsHub.exe.sha256 --clobber }
+            gh release upload apps WickedAnimator.zip SimsHub.zip --clobber
+            if ($LASTEXITCODE -eq 0) { gh release upload apps WickedAnimator.build SimsHub.build --clobber }
             if ($LASTEXITCODE -eq 0) { gh release edit apps --notes-file .github/release-notes.md --latest }
           }
           if ($LASTEXITCODE -ne 0) { throw "the downloads could not be published" }
+          # the single-file programs of earlier versions are gone for good
+          foreach ($old in 'WickedAnimator.exe', 'WickedAnimator.exe.sha256', 'SimsHub.exe', 'SimsHub.exe.sha256') {
+            gh release delete-asset apps $old --yes 2>$null
+          }
+          $global:LASTEXITCODE = 0

@@ -23,8 +23,8 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using Novulon.Desktop;
 
-// The update marker (Brand.Marker) also goes in the program's version details: the only text Windows keeps
-// uncompressed in the program file, where an update checks for it (Updater.cs).
+// The update marker (Brand.Marker) also goes in the program's version details, where an update checks for it
+// (Updater.cs).
 [assembly: System.Reflection.AssemblyTrademark("Novulon.SimsHub.AutoUpdate.v1")]
 
 namespace SimsHub;
@@ -52,7 +52,7 @@ static class App
         DesktopShortcut = Name, StartMenuShortcut = Name,
         Description = "Novulon's Sims Hub - fast loading, lag fixes and tidy mods for The Sims 4",
         IsAppFolder = d => File.Exists(Path.Combine(d, "speedkit", "hub", "server.py")),
-        RepoFolder = "sims_hub/", ReleaseAsset = "SimsHub.exe",
+        RepoFolder = "sims_hub/", ReleaseName = "SimsHub",
         Marker = "Novulon.SimsHub.AutoUpdate.v1",               // keep it the same as the AssemblyTrademark above
         // the program's source, tests, research notes and artwork: developers only. The Hub reads one research file.
         Skip = new[] { "desktop/", "tests/", "research/", "branding/", "docs/" },

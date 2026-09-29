@@ -59,3 +59,7 @@ sims_hub/tests/_hub_screens_redesign/
 
 # the game folder picked in the animator (Find The Sims 4)
 wicked_animator/config.json
+
+# the desktop programs built on this PC (desktop\build.ps1)
+wicked_animator/program/
+sims_hub/program/

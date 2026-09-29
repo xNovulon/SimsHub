@@ -16,15 +16,16 @@ public sealed class Brand
     public string Version { get; init; }         // shown on the splash card
     public string DataDir { get; init; }         // %LOCALAPPDATA%\... - logs, window place, update state
     public string InstallDir { get; init; }      // where the app lives on the PC (a download installs it here)
-    public string ExeName { get; init; }         // the program's file name in InstallDir
+    public string ExeName { get; init; }         // the program's file name (in ProgramFolder)
     public string DesktopShortcut { get; init; } // shortcut names (without .lnk)
     public string StartMenuShortcut { get; init; }
     public string Description { get; init; }     // the shortcuts' tooltip
     public Func<string, bool> IsAppFolder { get; init; }   // does this folder hold the app's files?
 
-    // GitHub: the app's folder in the repository, and its program in the "apps" release
+    // GitHub: the app's folder in the repository, and its program in the "apps" release: <ReleaseName>.zip (the
+    // program's folder) and <ReleaseName>.build (the build's id and the zip's SHA-256)
     public string RepoFolder { get; init; }      // "wicked_animator/"
-    public string ReleaseAsset { get; init; }    // "WickedAnimator.exe"
+    public string ReleaseName { get; init; }     // "WickedAnimator"
     // Every program of this app that can update itself carries this text; a download without it is never put in
     // place (it could never update again). Keep it the same in every version.
     public string Marker { get; init; }
@@ -43,6 +44,10 @@ public sealed class Brand
     public Color Muted { get; init; }
 
     public string Commit { get; set; }           // the GitHub version the app's folder has (short), when known
+
+    // The program is a plain folder - its own files next to Microsoft's .NET - in this folder of the app's folder
+    public const string ProgramFolder = "program";
+    public string ProgramExe(string root) => Path.Combine(root, ProgramFolder, ExeName);
 
     public static Stream Resource(string name) => Assembly.GetEntryAssembly()?.GetManifestResourceStream(name);
 

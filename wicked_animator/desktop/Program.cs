@@ -28,8 +28,8 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using Novulon.Desktop;
 
-// The update marker (Brand.Marker) also goes in the program's version details: the only text Windows keeps
-// uncompressed in the program file, where an update checks for it (Updater.cs).
+// The update marker (Brand.Marker) also goes in the program's version details, where an update checks for it
+// (Updater.cs).
 [assembly: System.Reflection.AssemblyTrademark("Novulon.WickedAnimator.AutoUpdate.v1")]
 
 namespace WickedAnimator;
@@ -62,7 +62,7 @@ static class App
         DesktopShortcut = "Wicked Animator", StartMenuShortcut = "Novulon's Wicked Animator",
         Description = "Novulon's Wicked Animator - make WickedWhims animations without Blender",
         IsAppFolder = d => File.Exists(Path.Combine(d, "backend", "server.py")) && Directory.Exists(Path.Combine(d, "web")),
-        RepoFolder = "wicked_animator/", ReleaseAsset = "WickedAnimator.exe",
+        RepoFolder = "wicked_animator/", ReleaseName = "WickedAnimator",
         Marker = "Novulon.WickedAnimator.AutoUpdate.v1",               // keep it the same as the AssemblyTrademark above
         Skip = new[] { "desktop/", "tools/" },          // the program's source and the developers' checks
         PythonCheck = "import numpy, PIL, google.protobuf",

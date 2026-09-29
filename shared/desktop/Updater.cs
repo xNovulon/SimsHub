@@ -7,9 +7,11 @@
 //    put in place - an update is never half-applied by a lost connection. Files that are not on GitHub (your own,
 //    caches, logs) are never touched; a file you changed yourself is copied to the update backup before it is
 //    replaced. Windows line ends (CRLF) count as the same text. Files only developers need (Brand.Skip) are left out.
-// 2. The program itself: the "apps" release on GitHub holds the newest build of each app, with its checksum next to
-//    it (<asset>.sha256). When this program is a different build, the new one is downloaded, checked, and swapped in -
-//    the app then opens again as it.
+// 2. The program itself: a plain folder (Brand.ProgramFolder) - the program's own files next to Microsoft's .NET,
+//    never packed into one file. The "apps" release on GitHub holds the newest build of each app as a zip of that
+//    folder, with <name>.build next to it (the build's id and the zip's SHA-256). When this program is a different
+//    build, the zip is downloaded, checked and unpacked, and the new folder takes this one's place - the app then
+//    opens again as it.
 //
 // A folder that is a git checkout of the repository is left to git (it is where the apps are worked on).
 // WICKED_NO_UPDATE=1 / SIMS_HUB_NO_UPDATE=1 turn updating off; NOVULON_UPDATE_BRANCH picks another branch (testing).
@@ -17,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -39,22 +42,19 @@ public static class Updater
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true, WriteIndented = true,
     };
 
-    // Staged: a new program is ready there - open it, and it puts itself in place (Setup.FinishUpdate).
+    // Staged: a new program is ready there - open it, and it puts its folder in place (Setup.FinishUpdate).
     // Changed: files replaced or removed.
     public record Result(string Staged, int Changed);
     static readonly Result Nothing = new(null, 0);
 
-    // Where a new program waits until the running one has ended. The running program's own file is never swapped:
-    // it is a single-file program that reads parts of itself from that file while it runs.
-    public static string StagedPath => Path.Combine(Dir, B.ExeName);
+    // Where a new program's folder waits until the running one has ended (a running program's files can't be replaced)
+    public static string StagedDir => Path.Combine(Dir, "program_new");
 
-    // What the folder has from GitHub: the commit, each file's git hash (to tell your own edits apart), and the
-    // program's hash (size|time|sha256, so it is only worked out again when the program changes).
+    // What the folder has from GitHub: the commit, and each file's git hash (to tell your own edits apart)
     sealed class State
     {
         public string Commit { get; set; }
         public Dictionary<string, string> Files { get; set; } = new();
-        public string Exe { get; set; }
     }
 
     // The commit the app's folder was last updated to (short), for the splash card; null before the first update.
@@ -76,7 +76,7 @@ public static class Updater
         {
             if (Disabled(root)) { Log($"{root} is a git checkout of {Owner}/{Repo}, or updating is off: not updated here"); return Nothing; }
             Directory.CreateDirectory(Dir);
-            RemoveOldExe();
+            CleanUp(root);
             using var http = Ui.Web(TimeSpan.FromSeconds(60));
             status("Checking for updates...");
             var commit = await LatestCommit(http);
@@ -84,7 +84,7 @@ public static class Updater
             int changed = 0;
             if (commit != null && commit != state.Commit)
                 changed = await Files(http, root, commit, state, status);
-            var staged = program ? await Program(http, root, state, status) : null;
+            var staged = program ? await Program(http, root, status) : null;
             return new Result(staged, changed);
         }
         catch (Exception ex)
@@ -186,70 +186,84 @@ public static class Updater
     }
 
     // -------------------------------------------------------------- 2. the program
-    // The published build, when this program is a different one: downloaded, checked and put in StagedPath.
-    // -> the staged program, or null.
-    static async Task<string> Program(HttpClient http, string root, State state, Action<string> status)
+    // The published build, when this program is a different one: its zip downloaded, checked and unpacked into
+    // StagedDir. -> the new program there, or null.
+    static async Task<string> Program(HttpClient http, string root, Action<string> status)
     {
         var self = Environment.ProcessPath;
-        var installed = Path.Combine(root, B.ExeName);
-        if (self == null || !SamePath(self, installed)) return null;    // e.g. a developer's build folder
-        var want = await PublishedSha(http);
-        if (want == null || want == ExeSha(self, state)) return null;   // offline, none published yet, or this one
+        if (self == null || !SamePath(self, B.ProgramExe(root))) return null;    // e.g. a developer's build folder
+        var own = OwnBuild();
+        if (own == null) return null;                                             // a build made on this PC
+        var pub = await Published(http);
+        if (pub == null || pub.Value.Build == own) return null;                   // offline, none published yet, or this one
 
-        Log($"a new {B.ExeName} is published ({want[..12]})");
-        var tmp = Path.Combine(Dir, "new.exe");
-        var url = ReleaseUrl(B.ReleaseAsset);
+        Log($"a new {B.ExeName} is published ({pub.Value.Build[..12]})");
+        var zip = Path.Combine(Dir, "new.zip");
         try
         {
             status("Updating...");
-            await Ui.Download(http, url, tmp);
-            var data = await File.ReadAllBytesAsync(tmp);
-            var got = Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
-            if (got != want) { Log($"the downloaded {B.ReleaseAsset} is not the published one yet ({got[..12]}) - next start"); return null; }
-            if (data.AsSpan().IndexOf(Encoding.Unicode.GetBytes(B.Marker)) < 0)
+            await Ui.Download(http, ReleaseUrl(B.ReleaseName + ".zip"), zip);
+            string got;
+            using (var f = File.OpenRead(zip)) got = Convert.ToHexString(SHA256.HashData(f)).ToLowerInvariant();
+            if (got != pub.Value.Zip) { Log($"the downloaded {B.ReleaseName}.zip is not the published one yet ({got[..12]}) - next start"); return null; }
+            if (Directory.Exists(StagedDir)) Directory.Delete(StagedDir, true);
+            ZipFile.ExtractToDirectory(zip, StagedDir);
+            var exe = Path.Combine(StagedDir, B.ExeName);
+            if (BuildOf(StagedDir) != pub.Value.Build || !File.Exists(exe)
+                || File.ReadAllBytes(exe).AsSpan().IndexOf(Encoding.Unicode.GetBytes(B.Marker)) < 0)
             {
-                Log($"not replacing {B.ExeName}: the published one cannot update itself");
+                Log($"not replacing {B.ExeName}: the published one is incomplete or cannot update itself");
+                Directory.Delete(StagedDir, true);
                 return null;
             }
-            File.Move(tmp, StagedPath, true);
             Log($"the new {B.ExeName} is ready; it goes in place once this one has ended");
-            return StagedPath;
+            return exe;
         }
         catch (Exception ex)
         {
             Log($"could not update {B.ExeName}: {ex.Message}");
+            try { if (Directory.Exists(StagedDir)) Directory.Delete(StagedDir, true); } catch { }
             return null;
         }
-        finally { try { File.Delete(tmp); } catch { } }
+        finally { try { File.Delete(zip); } catch { } }
     }
 
     static string ReleaseUrl(string asset) => $"https://github.com/{Owner}/{Repo}/releases/download/{ReleaseTag}/{asset}";
 
-    // The SHA-256 of the newest published build of this app (lower-case hex), or null (offline, none published yet).
-    public static async Task<string> PublishedSha(HttpClient http)
+    // The newest published build of this app: its id and the zip's SHA-256 (lower-case hex, the two lines of
+    // <name>.build), or null (offline, none published yet).
+    public static async Task<(string Build, string Zip)?> Published(HttpClient http)
     {
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-            var text = (await http.GetStringAsync(ReleaseUrl(B.ReleaseAsset + ".sha256"), cts.Token)).Trim().ToLowerInvariant();
-            if (text.Length >= 64 && text[..64].All(Uri.IsHexDigit)) return text[..64];
-            Log("the published checksum is not one");
+            var lines = (await http.GetStringAsync(ReleaseUrl(B.ReleaseName + ".build"), cts.Token))
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (lines.Length >= 2 && Hex64(lines[0]) && Hex64(lines[1])) return (lines[0].ToLowerInvariant(), lines[1].ToLowerInvariant());
+            Log("the published build is not readable");
         }
         catch (Exception ex) { Log("no published build found: " + ex.Message); }
         return null;
     }
 
-    static string ExeSha(string path, State state)
+    static bool Hex64(string s) => s.Length == 64 && s.All(Uri.IsHexDigit);
+
+    // build.txt in a program's folder: the build's id, then every file of the build (made when it is published).
+    // -> the files, or null (a build made on this PC has none).
+    public static string[] Manifest(string dir)
     {
-        var fi = new FileInfo(path);
-        var key = $"{fi.Length}|{fi.LastWriteTimeUtc.Ticks}|";
-        if (state.Exe != null && state.Exe.StartsWith(key)) return state.Exe[key.Length..];
-        using var f = File.OpenRead(path);
-        var sha = Convert.ToHexString(SHA256.HashData(f)).ToLowerInvariant();
-        state.Exe = key + sha;
-        try { SaveState(state); } catch { }
-        return sha;
+        try
+        {
+            var lines = File.ReadAllLines(Path.Combine(dir, "build.txt")).Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
+            return lines.Length >= 2 && Hex64(lines[0]) ? lines : null;
+        }
+        catch { return null; }
     }
+
+    // the build id of the program in a folder, or null
+    public static string BuildOf(string dir) => Manifest(dir)?[0].ToLowerInvariant();
+
+    public static string OwnBuild() => BuildOf(AppContext.BaseDirectory);
 
     // -------------------------------------------------------------- GitHub
     // The newest commit on the branch (its full hash), or null (offline, GitHub not answering, too many checks).
@@ -387,12 +401,21 @@ public static class Updater
         catch { }
     }
 
-    // the program moved aside by the last update, and the new one that put itself in place (they could not be
-    // removed while they ran)
-    static void RemoveOldExe()
+    // What updates left behind: the program's folder moved aside, a new one already in place, and the single-file
+    // program (and its ".old") that versions before the program's folder kept in the app's folder.
+    static void CleanUp(string root)
     {
-        try { var p = Environment.ProcessPath; if (p != null && File.Exists(p + ".old")) File.Delete(p + ".old"); } catch { }
-        try { if (File.Exists(StagedPath) && !SamePath(StagedPath, Environment.ProcessPath ?? "")) File.Delete(StagedPath); } catch { }
+        var self = Path.GetFullPath(AppContext.BaseDirectory);
+        var old = Path.Combine(root, Brand.ProgramFolder + ".old");
+        try { if (Directory.Exists(old)) Directory.Delete(old, true); } catch { }
+        try
+        {
+            if (Directory.Exists(StagedDir) && !self.StartsWith(Path.GetFullPath(StagedDir), StringComparison.OrdinalIgnoreCase))
+                Directory.Delete(StagedDir, true);
+        }
+        catch { }
+        foreach (var legacy in new[] { Path.Combine(root, B.ExeName), Path.Combine(root, B.ExeName + ".old") })
+            try { if (File.Exists(legacy) && !SamePath(legacy, Environment.ProcessPath ?? "")) File.Delete(legacy); } catch { }
     }
 
     // A git checkout of this repository (a .git folder here or above, pointing at it)

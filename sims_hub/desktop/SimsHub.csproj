@@ -15,10 +15,6 @@
     <ApplicationIcon>..\speedkit\hub\web\img\hub.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <PublishSingleFile>true</PublishSingleFile>
-    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
     <EnableAotAnalyzer>false</EnableAotAnalyzer>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
@@ -38,7 +34,7 @@
     <!-- Microsoft's WebView2 SDK 1.0.3179.45 (redistributable, signed by Microsoft) -->
     <Reference Include="Microsoft.Web.WebView2.Core"><HintPath>..\..\shared\desktop\lib\Microsoft.Web.WebView2.Core.dll</HintPath></Reference>
     <Reference Include="Microsoft.Web.WebView2.WinForms"><HintPath>..\..\shared\desktop\lib\Microsoft.Web.WebView2.WinForms.dll</HintPath></Reference>
-    <EmbeddedResource Include="..\..\shared\desktop\lib\WebView2Loader.dll" LogicalName="WebView2Loader.dll" />
+    <None Include="..\..\shared\desktop\lib\WebView2Loader.dll" Link="WebView2Loader.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <EmbeddedResource Include="..\speedkit\hub\web\img\hub.ico" LogicalName="logo.ico" />
     <EmbeddedResource Include="logo.png" LogicalName="logo.png" />
   </ItemGroup>

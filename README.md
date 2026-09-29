@@ -3,9 +3,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/xNovulon/SimsHub/releases/latest/download/SimsHub.exe"><img src="https://img.shields.io/badge/Download-Sims%20Hub-8b5cf6?style=for-the-badge&logo=windows&logoColor=white" alt="Download Sims Hub"></a>
+  <a href="https://github.com/xNovulon/SimsHub/releases/latest/download/SimsHub.zip"><img src="https://img.shields.io/badge/Download-Sims%20Hub-8b5cf6?style=for-the-badge&logo=windows&logoColor=white" alt="Download Sims Hub"></a>
   &nbsp;
-  <a href="https://github.com/xNovulon/SimsHub/releases/latest/download/WickedAnimator.exe"><img src="https://img.shields.io/badge/Download-Wicked%20Animator-ff4f9a?style=for-the-badge&logo=windows&logoColor=white" alt="Download Wicked Animator"></a>
+  <a href="https://github.com/xNovulon/SimsHub/releases/latest/download/WickedAnimator.zip"><img src="https://img.shields.io/badge/Download-Wicked%20Animator-ff4f9a?style=for-the-badge&logo=windows&logoColor=white" alt="Download Wicked Animator"></a>
 </p>
 
 Two free Windows apps for people who play The Sims 4 with a lot of mods.
@@ -14,7 +14,8 @@ Two free Windows apps for people who play The Sims 4 with a lot of mods.
 and helps you keep a big pile of CC tidy. **Wicked Animator** is for making your own WickedWhims animations, without
 learning Blender.
 
-You can use either one on its own. Each is a single download that sets itself up and keeps itself up to date.
+You can use either one on its own. Unzip the download and open the program inside: it sets itself up and keeps
+itself up to date.
 
 <br>
 

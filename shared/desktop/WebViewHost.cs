@@ -1,4 +1,4 @@
-// The window's web view (Microsoft Edge WebView2): its loader, which travels inside the program, and the WebView2
+// The window's web view (Microsoft Edge WebView2): its loader, which comes with the program (next to it), and the WebView2
 // runtime itself - part of Windows 11; on a PC without it, Microsoft's installer is downloaded and run quietly (for
 // this Windows user; no administrator needed) before the window opens.
 using System;
@@ -11,7 +11,6 @@ namespace Novulon.Desktop;
 
 public static class WebViewHost
 {
-    const string LoaderVersion = "1.0.3179.45";
     const string RuntimeSetupUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";   // Microsoft's Evergreen bootstrapper
     static bool _loaderSet;
 
@@ -58,23 +57,11 @@ public static class WebViewHost
         return await CoreWebView2Environment.CreateAsync(null, Path.Combine(Brand.Current.DataDir, "WebView2"), opts);
     }
 
-    // WebView2Loader.dll is written next to the window's data once, from inside the program
+    // WebView2Loader.dll (Microsoft's, SDK 1.0.3179.45) is in the program's folder
     static void SetLoader()
     {
         if (_loaderSet) return;
-        var dir = Path.Combine(Brand.Current.DataDir, "runtime", LoaderVersion);
-        var dll = Path.Combine(dir, "WebView2Loader.dll");
-        using (var s = Brand.Resource("WebView2Loader.dll"))
-        {
-            if (!File.Exists(dll) || new FileInfo(dll).Length != s.Length)
-            {
-                Directory.CreateDirectory(dir);
-                var tmp = dll + ".tmp";
-                using (var f = File.Create(tmp)) s.CopyTo(f);
-                File.Move(tmp, dll, true);
-            }
-        }
-        CoreWebView2Environment.SetLoaderDllFolderPath(dir);
+        CoreWebView2Environment.SetLoaderDllFolderPath(AppContext.BaseDirectory);
         _loaderSet = true;
     }
 
