@@ -104,7 +104,7 @@ function currentGroup(app) {
 }
 function defOf(app) { return (app.furniture || []).find(f => f.id === app.store.project.furniture) || null; }
 const movable = def => !!def && MOVABLE.has(def.kind);
-export const kindWord = def => KIND_WORD[def && def.kind] || 'Furniture';
+export const kindWord = def => (def && def.word) || KIND_WORD[def && def.kind] || 'Furniture';
 
 // Everything needed to move this piece: its box, and for a bed its handles (rest places in its own space), the
 // meshes that bend with them and how their bones map to the handles.

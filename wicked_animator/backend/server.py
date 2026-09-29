@@ -41,6 +41,7 @@ FURNITURE = [
     {'id': 'loveseat', 'label': 'Loveseat', 'locations': ['LOVESEAT'], 'kind': 'sofa', 'size': [1.7, 0.45, 0.95]},
     {'id': 'chair_living', 'label': 'Armchair', 'locations': ['CHAIR_LIVING'], 'kind': 'armchair', 'size': [0.95, 0.45, 0.9]},
     {'id': 'chair_dining', 'label': 'Dining chair', 'locations': ['CHAIR_DINING'], 'kind': 'chair', 'size': [0.5, 0.47, 0.5]},
+    {'id': 'toilet', 'label': 'Toilet', 'locations': ['TOILET'], 'kind': 'chair', 'word': 'Toilet', 'size': [0.55, 0.43, 0.68]},
     {'id': 'counter', 'label': 'Counter', 'locations': ['COUNTER'], 'kind': 'counter', 'size': [1.0, 0.92, 0.62]},
     {'id': 'table_dining', 'label': 'Dining table', 'locations': ['TABLE_DINING_2X', 'DESK'], 'kind': 'table', 'size': [1.9, 0.76, 0.95]},
     {'id': 'wall', 'label': 'Wall', 'locations': ['WALL'], 'kind': 'wall', 'size': [3.0, 2.8, 0.15]},

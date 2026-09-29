@@ -62,7 +62,8 @@ _NOT_ADULT = {'SWING_SET'}
 # places the app has its own furniture entry for (server.FURNITURE ids): those ids are used, so the Scene step, Magic
 # and the ready poses know them
 APP_IDS = {'DOUBLE_BED': 'double_bed', 'SINGLE_BED': 'single_bed', 'SOFA': 'sofa', 'LOVESEAT': 'loveseat',
-           'CHAIR_LIVING': 'chair_living', 'CHAIR_DINING': 'chair_dining', 'COUNTER': 'counter', 'TABLE_DINING_2X': 'table_dining'}
+           'CHAIR_LIVING': 'chair_living', 'CHAIR_DINING': 'chair_dining', 'COUNTER': 'counter', 'TABLE_DINING_2X': 'table_dining',
+           'TOILET': 'toilet'}
 _WALLISH = {'WINDOW', 'DOOR', 'MIRROR', 'MURPHY_CLOSED'}
 _FLOORISH = {'DANCE_FLOOR', 'PUBLIC_BATHROOM', 'SHOWER', 'OPEN_SHOWER'}
 

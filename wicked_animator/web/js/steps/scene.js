@@ -4,7 +4,7 @@ import { BODY_TYPES } from '../state.js';
 import { nice } from './common.js';
 import { spotsOf } from '../placing.js';
 
-const FURN_ICON = { floor: 'scene', double_bed: 'bed', single_bed: 'bed', sofa: 'bed', loveseat: 'bed', chair_living: 'pose', chair_dining: 'pose', counter: 'scene', table_dining: 'scene', wall: 'scene' };
+const FURN_ICON = { floor: 'scene', double_bed: 'bed', single_bed: 'bed', sofa: 'bed', loveseat: 'bed', chair_living: 'pose', chair_dining: 'pose', toilet: 'pose', counter: 'scene', table_dining: 'scene', wall: 'scene' };
 
 // "3 keys" counts the body's keys (like the timeline's lane); face keys between them are counted apart
 const keyCount = s => {
