@@ -43,16 +43,6 @@ class TestFindSimsDir(unittest.TestCase):
         self.assertIsNone(common.find_sims_dir(''))
 
 
-class TestArchiveOf(unittest.TestCase):
-    def test_extracts_archive_name(self):
-        p = r'C:\Sims\Mods\Novulon.ts4script\novulon\common.pyc'
-        self.assertEqual(common.archive_of(p), 'Novulon.ts4script')
-
-    def test_no_archive(self):
-        self.assertIsNone(common.archive_of(r'C:\Sims\Mods\notanarchive.py'))
-        self.assertIsNone(common.archive_of(None))
-
-
 class TestConfigureAndDirs(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix='novulon_test_')
@@ -66,19 +56,20 @@ class TestConfigureAndDirs(unittest.TestCase):
         self.assertEqual(common.sims_dir(), self.tmp)
 
     def test_novulon_dir_under_sims_dir_never_mods(self):
-        d = common.novulon_dir()
+        d = common.data_dir()
         self.assertEqual(d, os.path.join(self.tmp, 'Novulon'))
         self.assertNotIn('Mods', d)
 
     def test_logs_dir_created_on_first_use(self):
-        d = common.logs_dir()
+        d = common.data_dir('logs')
         self.assertTrue(os.path.isdir(d))
         self.assertEqual(d, os.path.join(self.tmp, 'Novulon', 'logs'))
 
     def test_none_sims_dir_gives_none_everywhere(self):
         common.configure(None)
-        self.assertIsNone(common.novulon_dir())
-        self.assertIsNone(common.logs_dir())
+        self.assertIsNone(common.data_dir())
+        self.assertIsNone(common.data_dir('logs'))
+        self.assertIsNone(common.log_path())
 
 
 class TestLogging(unittest.TestCase):

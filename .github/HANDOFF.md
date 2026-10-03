@@ -69,64 +69,54 @@ The animator redesign was stopped before anything was saved, so it has to be red
 - `wicked_animator/data/ww_example_objects.json` is WickedWhims' list of places, uploaded by the owner. Keep it.
 
 ## Novulon (Sims 4 script mod)
-A script mod, separate from the Hub and the animator: an in-game menu (`novulon.menu` / a "Novulon" pie-menu wedge
-on any computer or tablet) for browsing, filtering and editing Sims - a Sim browser MC Command Center doesn't have,
-plus household/gameplay/cheats/settings tools and an opt-in Adult section built on WickedWhims. Lives under
-`sims_hub/ingame/novulon/` (the mod's own code, subpackage per feature: `menukit/`, `sims/`, `household/`,
-`gameplay/`, `relationships/`, `compat/`, `adult/`, `settings_ui/`) and `sims_hub/tools/novulon_*` (the id registry,
-the API-existence manifest/checker, and the two build scripts). Full menu tree: `sims_hub/ingame/novulon/../design`
-docs kept the design; the shipped tree is the source of truth, and `MENU.md`-style trees belong in a design
-scratchpad, not this repo.
+A script mod, separate from the Hub and the animator. Version 2 (2026-10-03) is a full rewrite: the earlier version
+lagged the game (a repeating 8-second "obsession" timer over every Sim in the save, added by another tool) and its
+menus had no icons. The owner asked for obsession to be removed entirely; nothing of it is in version 2.
 
-**How it's built** - two artifacts, both from `sims_hub/`:
-```
-python tools/build_novulon.py            # dist/Novulon.ts4script (compiles ingame/novulon/** with the
-                                          #   game's own Python 3.7.0 - tools/game_python.py, magic 3394)
-python tools/build_novulon_package.py    # dist/Novulon_Tuning.package (the pie-menu interaction, one
-                                          #   STBL string table, one RAW DDS icon - tools/dbpf.py writer)
-```
-Both need the game installed at the path `tools/game_python.py`/`pyc37.py` read from (this machine:
-`E:/The Sims 4`) - they compile with and verify against the game's own files, never a copied `.pyc`.
+- **Entries**: "Novulon" on every computer and tablet opens the main menu (`novulon.menu`); "Novulon" on a Sim opens
+  that Sim's page (`novulon.sim <id>`). `ingame/novulon/entry.py` adds both to the object tuning once per game
+  session, after a lot loads.
+- **No background work**: no timers, no threads, no hooks on the game's simulation. The only hooks are the lot-load
+  pass above and forgetting open menus on the main menu. A delete waits for the Sim to leave the lot with a short
+  real-time check that exists only while that delete runs.
+- **Menus** (`ingame/novulon/menus/`): main tiles (My Sim, Sims, Household, Cheats, World, Settings, Adult), the Sim
+  page (Create a Sim, needs and moodlets, skills, career, traits, aspiration, age, occult, relationship, pregnancy,
+  household and Sims bar, bring here, reset, delete), the Sims browser (groups, find by name, life stage, several
+  at once). `ui.py` is the only file that builds the game's dialogs; every row has an icon (62 drawn by
+  `tools/build_novulon_icons.py`, `tools/novulon_glyphs.py`), and lists of traits, skills, moodlets and careers use
+  the game's own names and icons.
+- **Changes to Sims** (`ingame/novulon/actions.py`): direct game calls, never console commands (most cheats are
+  DebugOnly/Automation/Cheat and refuse to run without testingcheats). Each returns (worked, message).
+- **Age rules**: romance, pregnancy and the Adult page are only for young adult and older humans who aren't family
+  (the game's own `incest_prevention_test`). Adult-looking moodlets and traits are left out for younger Sims.
+- **Adult page off while child-content mods are installed**: any file in Mods whose name contains `allthefallen`
+  or `fallencore` turns the Adult page off with a note saying why (`compat.child_content_mods`). The owner's PC had
+  three such files in `Mods\Sexlife_Mods\` on 2026-10-03; the owner was told and asked to remove them.
 
-**Install**: `sims_hub/speedkit/novulon_install.py` (dry-run by default, `--apply` to actually copy both files
-into `<Sims 4>\Mods\`, quarantining any older copies first, refusing while the game is running). Not wired into
-the Hub's own automatic install yet, on purpose - it ships as an explicit step so a broken build never lands in
-a player's Mods folder before this mod has a release track of its own. A Hub button that turns this on is planned,
-not built.
-
-**Testing** (`sims_hub/tests/test_novulon_*.py`, from `sims_hub/`):
+**How it's built** - from `sims_hub/`, with the game installed (`tools/game_python.py` finds it: SIMS4_GAME_DIR,
+then the registry, then known folders; this PC: `C:\Program Files (x86)\Steam\steamapps\common\The Sims 4`):
 ```
-python -m unittest discover -s tests -p "test_novulon_*.py"   # 551 tests, no game needed (Tier 1/4)
-python tools/novulon_tier2_runner.py                            # imports every real module inside the
-                                                                  #   game's own Python (Tier 2)
-python tools/novulon_api_check.py                                # checks every EA name the code cites
-                                                                  #   still exists in the installed build
-                                                                  #   (Tier 3) - re-run after any game
-                                                                  #   patch, not just after a code change
+python tools/build_novulon.py            # dist/Novulon.ts4script, compiled by the game's own Python 3.7
+python tools/build_novulon_package.py    # dist/Novulon_Tuning.package: 2 entries, the label in 18 languages,
+                                         #   63 icons (83 resources)
 ```
-Full protocol, including the Tier 5 live-game smoke test, is in `sims_hub/ingame/novulon/TESTING.md`. Every EA
-name the mod uses is checked against this machine's own installed game files and listed in
-`sims_hub/tools/novulon_api_manifest/`; an API that couldn't be verified was left out of the menu rather than
-guessed at (see "Open items" below).
 
-**Open items**
-- Three Household rows never shipped: **Sell All Inventory** and **Transfer Selected** have no verified
-  command (only **Purge All Inventory** does); a v1.1 pass needs its own `pyc37.py --outline` session over
-  `objects/components/sim_inventory_component.pyc`.
-- Cheats' **Teleport to Me** was cut for the same reason (the only verified reposition command takes raw world
-  coordinates, not a target Sim) - the Sim Card's own **Teleport to Me** (Sims tile, per-Sim actions) does work,
-  reading the active Sim's live position instead.
-- A few Gameplay rows (Career Reset Branch, the Add Gig `sim_filter` argument, per-occult population control) and
-  the Sim Card's trait/aspiration/career/skill/relationship detail panels are still V1.1 - no verified command or
-  disassembled data shape yet, tracked inline in the relevant files' own docstrings.
-- Ghost/Servo/Plant Sim Advanced-filter chips need their own detection-mechanism pass (trait-based, unconfirmed);
-  the seven confirmed occult types ship instead.
-- Row status uses text badges (`"Vampire · Elder · Pregnant"`), not icon chips - whether `SimPickerRow` can carry
-  real icon badges is unconfirmed.
-- Family-relation detection (blocking only a V2 fertility-pairing feature, not anything in V1) still needs a
-  `family_tree_service` disassembly pass.
-- Adult's WickedWhims settings front door only covers boolean settings (menukit has no verified numeric/text
-  input widget yet); its per-switch "Stop Everything" duration is indefinite, not a timed re-enable.
+**Install**: `python -m speedkit.novulon_install install` shows the plan; add `--apply` to copy both files into
+`Mods\`, moving older copies aside (undo with `speedkit.journal.undo`). Refuses while the game runs. Installed on
+the owner's PC on 2026-10-03; the old build in `Mods\Novulon\` was moved aside.
+
+**Testing** (from `sims_hub/`):
+```
+python -m unittest discover -s tests -p "test_novulon_*.py"   # 152 tests, no game needed
+python tools/novulon_tier2_runner.py                            # imports every module in the game's own Python
+python tools/novulon_api_check.py                                # every game name the mod calls still exists
+```
+`tests/novulon_game.py` is a stand-in game: tests open the menus and press rows like a player, and
+`test_every_page_opens_and_every_button_works` walks every page. Any error Novulon catches and logs fails a test.
+The API list is `tools/novulon_api_manifest/novulon2.py` (94 names, all found in build 1.128.90.1030). Re-run the
+check after every game patch.
+
+**Not tested in the game yet**: the owner needs to open both entries in a save and try each page.
 
 ## Next steps, in order
 1. Done: `next` is released into `main`.

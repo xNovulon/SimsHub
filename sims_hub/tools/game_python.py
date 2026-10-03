@@ -3,7 +3,7 @@ r"""Run a Python 3.7 script inside The Sims 4's own python37_x64.dll, in a child
     python tools/game_python.py <script37.py> [--path DIR_OR_ZIP ...] [--args TEXT] [--ticks N --gap-ms MS]
 
 How (the approach of research/profiler/host37.py, verified there): a normal Python 3.12 process loads
-E:\The Sims 4\Game\Bin\python37_x64.dll with ctypes (read-only use of the file), sets the flags and
+<game>\Game\Bin\python37_x64.dll with ctypes (read-only use of the file), sets the flags and
 sys.path the way Simulation_x64.dll does (no site, no environment, no bytecode writing; path = the game's
 base.zip\lib + core.zip + extras), calls Py_Initialize + PyEval_InitThreads - the calling thread then owns
 the 3.7 GIL for good, like the game's simulation thread - and runs the script in 3.7's __main__ with
@@ -11,7 +11,8 @@ HOST_ARGS set to the --args text. With --ticks the host then calls the script's 
 --gap-ms between calls OUTSIDE 3.7 while still holding its GIL (like the game's C++ side between Python
 bursts), and finally calls finish(host_seconds).
 Each run is its own process because an embedded interpreter can be initialised only once.
-The game itself is never started and nothing under E:\The Sims 4 is written.
+The game itself is never started and nothing under the game folder is written. The game folder is found by
+game_dir(): SIMS4_GAME_DIR, else the install folder Windows records for The Sims 4, else the usual places.
 """
 import argparse
 import ctypes
@@ -20,8 +21,34 @@ import subprocess
 import sys
 import time
 
-BIN = r'E:\The Sims 4\Game\Bin'
-GAMEPLAY = r'E:\The Sims 4\Data\Simulation\Gameplay'
+KNOWN_DIRS = (r'C:\Program Files (x86)\Steam\steamapps\common\The Sims 4', r'C:\Program Files\EA Games\The Sims 4',
+              r'C:\Program Files (x86)\Origin Games\The Sims 4', r'E:\The Sims 4')
+
+
+def game_dir():
+    r"""The Sims 4's install folder (the one holding Game\Bin and Data\Simulation): SIMS4_GAME_DIR, else the
+    'Install Dir' the game's installer writes to the registry, else the first usual place that has it."""
+    tries = [os.environ.get('SIMS4_GAME_DIR')]
+    try:
+        import winreg
+        for key in (r'SOFTWARE\WOW6432Node\Maxis\The Sims 4', r'SOFTWARE\Maxis\The Sims 4'):
+            try:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key) as h:
+                    tries.append(winreg.QueryValueEx(h, 'Install Dir')[0])
+            except OSError:
+                pass
+    except ImportError:
+        pass
+    tries += list(KNOWN_DIRS)
+    for d in tries:
+        if d and os.path.isfile(os.path.join(d, 'Data', 'Simulation', 'Gameplay', 'simulation.zip')):
+            return os.path.normpath(d)
+    return KNOWN_DIRS[0]
+
+
+GAME_DIR = game_dir()
+BIN = os.path.join(GAME_DIR, 'Game', 'Bin')
+GAMEPLAY = os.path.join(GAME_DIR, 'Data', 'Simulation', 'Gameplay')
 DLL = os.path.join(BIN, 'python37_x64.dll')
 
 

@@ -1,18 +1,18 @@
-r"""Build dist/Novulon_Tuning.package: one interaction tuning resource, one STBL table, one pie-menu icon.
+r"""Build dist/Novulon_Tuning.package: Novulon's two pie-menu entries, their label in every language, and its icons.
 
     python tools/build_novulon_package.py
 
-Composes the three resources `SPEC.md` §14 describes with `speedkit/dbpf.py:PackageWriter` - the DBPF
-container writer this repo already has and already tests (`tests/test_dbpf_roundtrip.py`), NOT
-`wicked_animator/backend/dbpf.py` (that file is read-only: `read_index`/`read_resource`, no writer). Source
-art is `tools/novulon_assets/novulon-mark-32.png` (already rasterized during the design phase from
-`novulon-mark.svg` - see that folder's own note on provenance); this file only re-encodes it as the DDS
-bytes the game expects, it does not rasterize SVG itself.
-
-V1 scope only ships what tuning actually needs: the pie-menu interaction's own label and hover text.
-Everything else Novulon shows is a dynamically-built dialog (`common.notify`-style `get_raw_text`), which
-needs no STBL entry at all (SPEC.md §4's `menukit` design) - so this package's STBL table has exactly two
-strings, not a growing shared list every feature module has to append to.
+What goes in (all group 0, written with speedkit/dbpf.py's PackageWriter):
+  * two interactions (type 0xE882D22F, tools/novulon_tuning.py): "Novulon" on computers and tablets runs
+    'novulon.menu'; "Novulon" on a Sim runs 'novulon.sim <that Sim's id>'. ingame/novulon/entry.py adds them to the
+    objects and registers both commands.
+  * a string table (type 0x220557DA) per game language with the label "Novulon" (the same English text in each, so
+    no language shows a blank entry).
+  * the pie-menu icon (type 0x00B2D882, 32 x 32, from tools/novulon_assets/novulon-mark-32.png) and every menu icon
+    (128 x 128, from tools/novulon_assets/icons/<name>.png, drawn by tools/build_novulon_icons.py), each an
+    uncompressed RAW DDS (tools/novulon_icon.py) under icon_instance(name) - the instance ingame/novulon/icons.py
+    asks for.
+Everything Novulon's menus show beyond that is built at runtime from plain text.
 """
 import os
 import sys
@@ -23,22 +23,25 @@ if PROJECT not in sys.path:
 from speedkit.dbpf import Package, PackageWriter  # noqa: E402
 from tools import novulon_icon, novulon_stbl, novulon_tuning  # noqa: E402
 from tools import novulon_ids as ids  # noqa: E402
+from tools.novulon_ids.bp13_package_build import icon_instance, stbl_id  # noqa: E402
+from tools.novulon_glyphs import NAMES as ICON_NAMES  # noqa: E402
 
 DIST = os.path.join(PROJECT, 'dist', 'Novulon_Tuning.package')
 ASSET_DIR = os.path.join(PROJECT, 'tools', 'novulon_assets')
 ICON_PNG_32 = os.path.join(ASSET_DIR, 'novulon-mark-32.png')
+ICON_DIR = os.path.join(ASSET_DIR, 'icons')
+ICON_SIZE = 128
 
 T_INTERACTION = 0xE882D22F
 T_STBL = 0x220557DA
 T_DDS = 0x00B2D882
 
-COMMAND = 'novulon.menu'          # must be a command ingame/novulon/commands.py registers
+MENU_COMMAND = 'novulon.menu'      # ingame/novulon/entry.py registers both commands
+SIM_COMMAND = 'novulon.sim'
 MENU_TITLE = 'Novulon'
-MENU_HOVER = 'Open the Novulon menu.'
 
 
-def load_icon_rgba(path=ICON_PNG_32, size=32):
-    """The pie-menu icon's raw RGBA bytes, read from the already-rasterized PNG (design phase output)."""
+def load_rgba(path, size):
     from PIL import Image
     im = Image.open(path).convert('RGBA')
     if im.size != (size, size):
@@ -46,66 +49,78 @@ def load_icon_rgba(path=ICON_PNG_32, size=32):
     return im.tobytes()
 
 
-def build(dist=DIST, icon_png=ICON_PNG_32):
+def resources():
+    """[((type, group, instance), bytes)] - everything the package holds, in write order."""
+    out = [
+        ((T_INTERACTION, 0, ids.INTERACTION_OPEN_MENU), novulon_tuning.build_interaction_xml(
+            ids.INTERACTION_OPEN_MENU, 'Novulon_OpenMenu', ids.STR_MENU_TITLE, ids.ICON_PIE_MENU_32,
+            MENU_COMMAND).encode('utf-8')),
+        ((T_INTERACTION, 0, ids.INTERACTION_SIM_MENU), novulon_tuning.build_interaction_xml(
+            ids.INTERACTION_SIM_MENU, 'Novulon_SimMenu', ids.STR_MENU_TITLE, ids.ICON_PIE_MENU_32,
+            SIM_COMMAND, pass_target=True).encode('utf-8')),
+    ]
+    table = novulon_stbl.build_stbl({ids.STR_MENU_TITLE: MENU_TITLE})
+    for loc in ids.LOCALES:
+        out.append(((T_STBL, 0, stbl_id('Novulon_Strings', loc)), table))
+    out.append(((T_DDS, 0, ids.ICON_PIE_MENU_32), novulon_icon.encode_dds_rgba32(32, 32, load_rgba(ICON_PNG_32, 32))))
+    for name in ICON_NAMES:
+        rgba = load_rgba(os.path.join(ICON_DIR, name + '.png'), ICON_SIZE)
+        out.append(((T_DDS, 0, icon_instance(name)), novulon_icon.encode_dds_rgba32(ICON_SIZE, ICON_SIZE, rgba)))
+    return out
+
+
+def build(dist=DIST):
     """Write dist. Returns {'dist', 'bytes', 'entries': [(t, g, i), ...]}."""
-    xml = novulon_tuning.build_interaction_xml(
-        ids.INTERACTION_OPEN_MENU, 'Novulon_OpenMenu', ids.STR_MENU_TITLE, ids.ICON_PIE_MENU_32, COMMAND)
-    stbl = novulon_stbl.build_stbl({ids.STR_MENU_TITLE: MENU_TITLE, ids.STR_MENU_HOVER: MENU_HOVER})
-    rgba = load_icon_rgba(icon_png, 32)
-    dds = novulon_icon.encode_dds_rgba32(32, 32, rgba)
+    res = resources()
     os.makedirs(os.path.dirname(dist), exist_ok=True)
-    entries = [(T_INTERACTION, 0, ids.INTERACTION_OPEN_MENU), (T_STBL, 0, ids.STBL_MAIN_EN),
-               (T_DDS, 0, ids.ICON_PIE_MENU_32)]
     with PackageWriter(dist) as w:
-        w.add(entries[0], xml.encode('utf-8'))
-        w.add(entries[1], stbl)
-        w.add(entries[2], dds)
-    return {'dist': dist, 'bytes': os.path.getsize(dist), 'entries': entries}
+        for tgi, data in res:
+            w.add(tgi, data)
+    return {'dist': dist, 'bytes': os.path.getsize(dist), 'entries': [tgi for tgi, _ in res]}
 
 
 def verify(dist=DIST):
-    """Read dist back and check the three resources are present, the XML parses, and its display_name/
-    pie_menu_icon fields point at the STBL/icon instance ids actually written. Returns a problem list."""
+    """Read dist back: both interactions (right command, label and icon, the Sim one passing its target), a string
+    table per language holding the label, and every icon. Returns a list of problems (empty when it's right)."""
     import xml.etree.ElementTree as ET
     problems = []
-    try:
-        with Package(dist) as p:
-            byi = {e.i: e for e in p.entries}
-            interaction = byi.get(ids.INTERACTION_OPEN_MENU)
-            if interaction is None or interaction.t != T_INTERACTION:
-                problems.append('interaction tuning resource missing or wrong type')
-            else:
-                root = ET.fromstring(p.read(interaction))
-                display = root.findtext("T[@n='display_name']")
-                if display is None or int(display, 16) != ids.STR_MENU_TITLE:
-                    problems.append('display_name does not match STR_MENU_TITLE')
-                icon_field = novulon_tuning.icon_key_of(root)
-                icon_inst = icon_field.split(':')[-1] if icon_field else ''
-                if not icon_field or int(icon_inst, 16) != (ids.ICON_PIE_MENU_32 & 0xFFFFFFFFFFFFFFFF):
-                    problems.append('pie_menu_icon does not point at ICON_PIE_MENU_32')
-                if novulon_tuning.command_of(root) != COMMAND:
-                    problems.append('the do_command extra does not run %s' % COMMAND)
-                if root.findtext("E[@n='target_type']") != 'OBJECT':
-                    problems.append('target_type is not the enum OBJECT')
-            stbl_entry = byi.get(ids.STBL_MAIN_EN)
-            if stbl_entry is None or stbl_entry.t != T_STBL:
-                problems.append('STBL resource missing or wrong type')
-            icon_entry = byi.get(ids.ICON_PIE_MENU_32)
-            if icon_entry is None or icon_entry.t != T_DDS:
-                problems.append('icon resource missing or wrong type')
-    except Exception as e:
-        problems.append('could not read %s: %s' % (dist, e))
+    with Package(dist) as p:
+        by = {(e.t, e.i): e for e in p.entries}
+        for inst, command, target in ((ids.INTERACTION_OPEN_MENU, MENU_COMMAND, False),
+                                      (ids.INTERACTION_SIM_MENU, SIM_COMMAND, True)):
+            e = by.get((T_INTERACTION, inst))
+            if e is None:
+                problems.append('interaction %016X missing' % inst)
+                continue
+            root = ET.fromstring(p.read(e))
+            if novulon_tuning.command_of(root) != command:
+                problems.append('interaction %016X runs %r, not %r' % (inst, novulon_tuning.command_of(root), command))
+            if novulon_tuning.passes_target(root) != target:
+                problems.append('interaction %016X %s its target' % (inst, 'does not pass' if target else 'passes'))
+            if int(root.findtext("T[@n='display_name']") or '0', 16) != ids.STR_MENU_TITLE:
+                problems.append('interaction %016X has the wrong label key' % inst)
+            key = novulon_tuning.icon_key_of(root) or ''
+            if not key.upper().endswith('%016X' % ids.ICON_PIE_MENU_32):
+                problems.append('interaction %016X has the wrong icon %r' % (inst, key))
+        for loc in ids.LOCALES:
+            e = by.get((T_STBL, stbl_id('Novulon_Strings', loc)))
+            if e is None or novulon_stbl.read_stbl(p.read(e)).get(ids.STR_MENU_TITLE) != MENU_TITLE:
+                problems.append('string table for language %02X missing or without the label' % loc)
+        for name in ('pie_32',) + tuple(ICON_NAMES):
+            inst = ids.ICON_PIE_MENU_32 if name == 'pie_32' else icon_instance(name)
+            e = by.get((T_DDS, inst))
+            if e is None or p.read(e)[:4] != b'DDS ':
+                problems.append('icon %s missing' % name)
     return problems
 
 
 def main():
     r = build()
-    print('built %s: %d bytes, %d resources' % (r['dist'], r['bytes'], len(r['entries'])))
     problems = verify(r['dist'])
-    if problems:
-        print('PROBLEMS:', *problems, sep='\n  ')
-        return 1
-    return 0
+    print('%s: %d resources, %d bytes' % (r['dist'], len(r['entries']), r['bytes']))
+    for x in problems:
+        print('PROBLEM:', x)
+    return 1 if problems else 0
 
 
 if __name__ == '__main__':

@@ -54,9 +54,7 @@ if PROJECT not in sys.path:
     sys.path.insert(0, PROJECT)
 from tools import pyc37                       # noqa: E402
 from tools import novulon_api_manifest         # noqa: E402
-
-GAMEPLAY = r'E:\The Sims 4\Data\Simulation\Gameplay'
-GAME_DIR = r'E:\The Sims 4'
+from tools.game_python import GAME_DIR, GAMEPLAY   # noqa: E402  (found the same way the build finds it)
 ZIP_ORDER = ('core.zip', 'simulation.zip')     # base.zip is just 'lib' (the stdlib) - never an EA name
 
 

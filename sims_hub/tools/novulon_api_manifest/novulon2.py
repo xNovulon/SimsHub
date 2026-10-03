@@ -1,0 +1,117 @@
+"""Every EA name Novulon 2 (ingame/novulon) calls - see this package's __init__.py for the row shape.
+
+    python tools/novulon_api_check.py
+
+checks each row against the installed game's own compiled Python, so a game patch that renames or moves one of
+these shows up before the mod is shipped. Tunable fields (a trait's display_name, a buff's buff_name, a career
+track's career_name, ...) are not Python names and are read with getattr and a fallback in actions.py instead.
+"""
+ROWS = [
+    # services and the game's managers
+    ('services', 'sim_info_manager', 'function'),
+    ('services', 'object_manager', 'function'),
+    ('services', 'active_sim_info', 'function'),
+    ('services', 'active_household', 'function'),
+    ('services', 'get_active_sim', 'function'),
+    ('services', 'get_instance_manager', 'function'),
+    ('services', 'household_manager', 'function'),
+    ('services', 'client_manager', 'function'),
+    ('services', 'get_career_service', 'function'),
+    ('services', 'game_clock_service', 'function'),
+    ('services', 'time_service', 'function'),
+    ('services', 'autonomy_service', 'function'),
+    ('services', 'get_reset_and_delete_service', 'function'),
+    ('services', 'on_enter_main_menu', 'function'),
+    ('sims4.resources', 'Types', 'class'),
+    ('sims4.commands', 'Command', 'function'),
+    ('sims4.commands', 'CommandType.Live', 'member'),
+    ('sims4.commands', 'client_cheat', 'function'),
+    ('sims4.localization', 'LocalizationHelperTuning.get_raw_text', 'method'),
+    ('sims4.collections', 'AttributeDict', 'class'),
+    ('zone', 'Zone.start_services', 'method'),
+    ('sims.sim', 'Sim', 'class'),
+
+    # dialogs
+    ('ui.ui_dialog_picker', 'UiObjectPicker', 'class'),
+    ('ui.ui_dialog_picker', 'UiSimPicker', 'class'),
+    ('ui.ui_dialog_picker', 'ObjectPickerRow', 'class'),
+    ('ui.ui_dialog_picker', 'SimPickerRow', 'class'),
+    ('ui.ui_dialog_picker', 'ObjectPickerType.OBJECT', 'member'),
+    ('ui.ui_dialog_picker', 'ObjectPickerType.OBJECT_LARGE', 'member'),
+    ('ui.ui_dialog', 'UiDialogOkCancel', 'class'),
+    ('ui.ui_dialog_generic', 'UiDialogTextInputOkCancel', 'class'),
+    ('ui.ui_text_input', 'UiTextInput', 'class'),
+    ('ui.ui_dialog_notification', 'UiDialogNotification', 'class'),
+    ('distributor.shared_messages', 'IconInfoData', 'class'),
+
+    # Sims
+    ('sims.sim_info', 'SimInfo.incest_prevention_test', 'method'),
+    ('sims.sim_info', 'SimInfo.remove_permanently', 'method'),
+    ('sims.aging.aging_mixin', 'AgingMixin.callback_auto_age', 'method'),
+    ('sims.aging.aging_mixin', 'AgingMixin.reverse_age', 'method'),
+    ('objects.object_enums', 'ResetReason.RESET_EXPECTED', 'member'),
+    ('services.reset_and_delete_service', 'ResetAndDeleteService.trigger_destroy', 'method'),
+
+    # needs, skills, moodlets
+    ('statistics.base_statistic_tracker', 'BaseStatisticTracker.set_all_commodities_to_best_value', 'method'),
+    ('statistics.base_statistic_tracker', 'BaseStatisticTracker.get_statistic', 'method'),
+    ('statistics.base_statistic_tracker', 'BaseStatisticTracker.add_statistic', 'method'),
+    ('statistics.base_statistic_tracker', 'BaseStatisticTracker.set_value', 'method'),
+    ('statistics.base_statistic_tracker', 'BaseStatisticTracker.set_user_value', 'method'),
+    ('statistics.base_statistic_tracker', 'BaseStatisticTracker.remove_statistic', 'method'),
+    ('objects.components.buff_component', 'BuffComponent.get_active_buff_types', 'method'),
+    ('objects.components.buff_component', 'BuffComponent.has_buff', 'method'),
+
+    # traits, careers, aspiration, occult, pregnancy
+    ('traits.trait_tracker', 'TraitTracker.can_add_trait', 'method'),
+    ('traits.trait_tracker', 'TraitTracker.personality_traits', 'method'),
+    ('traits.trait_tracker', 'TraitTracker.empty_slot_number', 'method'),
+    ('traits.trait_tracker', 'TraitTracker.has_trait', 'method'),
+    ('traits.traits', 'Trait.is_personality_trait', 'method'),
+    ('careers.career_tracker', 'CareerTracker.add_career', 'method'),
+    ('careers.career_tracker', 'CareerTracker.remove_career', 'method'),
+    ('careers.career_tracker', 'CareerTracker.get_career_by_uid', 'method'),
+    ('careers.career_base', 'CareerBase.promote', 'method'),
+    ('careers.career_base', 'CareerBase.demote', 'method'),
+    ('careers.career_base', 'CareerBase.add_pto', 'method'),
+    ('careers.career_base', 'CareerBase.resend_career_data', 'method'),
+    ('careers.career_base', 'CareerBase.current_track_tuning', 'method'),
+    ('careers.career_base', 'CareerBase.is_career_available', 'method'),
+    ('careers.career_service', 'CareerService.get_shuffled_career_list', 'method'),
+    ('aspirations.aspirations', 'AspirationTracker.complete_milestone', 'method'),
+    ('event_testing.event_data_tracker', 'EventDataTracker.reset_data', 'method'),
+    ('sims.occult.occult_enums', 'OccultType.VAMPIRE', 'member'),
+    ('sims.occult.occult_enums', 'OccultType.WITCH', 'member'),
+    ('sims.occult.occult_tracker', 'OccultTracker.add_occult_type', 'method'),
+    ('sims.occult.occult_tracker', 'OccultTracker.remove_occult_type', 'method'),
+    ('sims.occult.occult_tracker', 'OccultTracker.has_occult_type', 'method'),
+    ('sims.pregnancy.pregnancy_tracker', 'PregnancyTracker.start_pregnancy', 'method'),
+    ('sims.pregnancy.pregnancy_tracker', 'PregnancyTracker.clear_pregnancy', 'method'),
+    ('sims.pregnancy.pregnancy_tracker', 'PregnancyTracker.is_pregnant', 'method'),
+
+    # relationships, household, the Sims bar, money
+    ('relationships.relationship_track', 'RelationshipTrack.FRIENDSHIP_TRACK', 'member'),
+    ('relationships.relationship_track', 'RelationshipTrack.ROMANCE_TRACK', 'member'),
+    ('relationships.relationship_tracker', 'RelationshipTracker.set_relationship_score', 'method'),
+    ('sims.household', 'Household.can_add_sim_info', 'method'),
+    ('sims.household', 'Household.sim_info_gen', 'method'),
+    ('sims.household_manager', 'HouseholdManager.switch_sim_household', 'method'),
+    ('sims.household_enums', 'HouseholdChangeOrigin.CHEAT', 'member'),
+    ('server.client', 'Client.add_selectable_sim_info', 'method'),
+    ('server.client', 'Client.remove_selectable_sim_info', 'method'),
+    ('server.client', 'Client.selectable_sims', 'method'),
+    ('sims.funds', '_Funds.add', 'method'),
+    ('sims.funds', '_Funds.try_remove', 'method'),
+
+    # the world
+    ('clock', 'GameClock.set_game_time', 'method'),
+    ('sims.sim_info_manager', 'SimInfoManager.auto_satisfy_sim_motives', 'method'),
+    ('autonomy.settings', 'AutonomyState.FULL', 'member'),
+    ('autonomy.settings', 'AutonomyState.LIMITED_ONLY', 'member'),
+    ('autonomy.settings', 'AutonomySettingsGroup.DEFAULT', 'member'),
+    ('objects.components.inventory', 'InventoryComponent.purge_inventory', 'method'),
+    ('alarms', 'add_alarm_real_time', 'function'),
+    ('alarms', 'cancel_alarm', 'function'),
+    ('clock', 'interval_in_real_seconds', 'function'),
+]
+MANIFEST = ROWS

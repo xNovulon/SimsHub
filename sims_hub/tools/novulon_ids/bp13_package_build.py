@@ -36,3 +36,13 @@ ICON_PIE_MENU_32 = custom_id('Novulon_PieMenu_Icon_32')
 STBL_MAIN_EN = stbl_id('Novulon_Strings')
 STR_MENU_TITLE = fnv64('Novulon.MenuTitle') & 0xFFFFFFFF          # pie-menu label: "Novulon"
 STR_MENU_HOVER = fnv64('Novulon.MenuHover') & 0xFFFFFFFF          # pie-menu hover: "Open the Novulon menu."
+INTERACTION_SIM_MENU = custom_id('Novulon_SimMenu_Interaction')    # the "Novulon" entry on every Sim
+
+# The game's languages: a string table per language (the top byte of its instance), all with the same English text,
+# so a game in another language still shows "Novulon" instead of a blank entry.
+LOCALES = (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x11, 0x12, 0x13, 0x15)
+
+
+def icon_instance(name):
+    """A menu icon's image instance (ingame/novulon/icons.py instance() computes the same at runtime)."""
+    return custom_id('novulon_icon_' + name)

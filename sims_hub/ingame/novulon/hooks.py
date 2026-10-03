@@ -3,7 +3,7 @@
 Same verified pattern as speedkit_monitor/hooks.py (that module's docstring cites the exact bytecode
 that makes attribute-replacement work: areaserver's C++ callers reach game functions through
 LOAD_GLOBAL/LOAD_METHOD on the module or class, at call time, so replacing the attribute takes effect
-for every later call). Novulon's own use is `zone.Zone.start_services` (inject.py) - the identical
+for every later call). Novulon's own use is `zone.Zone.start_services` (entry.py) - the identical
 attribute speedkit_monitor/loadtimer.py already wraps live, confirmed unchanged in this build's
 simulation.zip:zone.pyc this session (`Zone.start_services` is a method of the `Zone` class).
 

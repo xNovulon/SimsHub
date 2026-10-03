@@ -1,5 +1,5 @@
 r"""Tier 2 smoke test: import every Novulon module inside the game's own Python 3.7 (SPEC.md Sec 16,
-overridden to cover every module rather than just inject.py's own scenario: "the Tier 2 runner: import
+overridden to cover every module rather than one entry point's own scenario: "the Tier 2 runner: import
 every novulon module inside the game's own Python with simulation.zip on the path and minimal stubs
 only where a module can't load outside the running game; report which").
 

@@ -10,10 +10,10 @@ Same pipeline as `build_ingame.py` (SpeedKit Monitor), same facts it relies on:
 
 One real difference from `build_ingame.py`, not a copy-paste: SpeedKit Monitor's package is flat
 (`ingame/speedkit_monitor/*.py`, no sub-packages), so `build_ingame.sources()` just lists a directory.
-Novulon's tree has real sub-packages (`menukit/`, `sims/`, `gameplay/`, `adult/`, `compat/`, ...), so
+Novulon's tree has a real sub-package (`menus/`), so
 `sources()` here walks the whole tree with `os.walk` and every function below carries the file's relative
-path through, preserving it inside the archive (`novulon/menukit/page.pyc`, `novulon/sims/query.pyc`, ...)
-and in `co_filename` (`Novulon.ts4script/novulon/sims/query.py`) for readable tracebacks - `build_ingame.py`
+path through, preserving it inside the archive (`novulon/menus/simcard.pyc`, ...)
+and in `co_filename` (`Novulon.ts4script/novulon/menus/simcard.py`) for readable tracebacks - `build_ingame.py`
 cannot be reused unchanged for this (engineering.md §11).
 """
 import json

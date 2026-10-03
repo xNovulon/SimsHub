@@ -12,7 +12,7 @@ loader reads each field by its tunable type, and a field written the wrong way i
     placeholder type:group `2f7d0004:80000000` with our icon's instance id; the game resolves it to the packaged DDS
     resource at type `0x00B2D882` group `0` (the same pairing MCCC ships).
   - no `arguments` on the command: `novulon.menu` takes only the connection.
-`simless` is True and `test_globals` empty - the computer restriction happens at runtime in `ingame/novulon/inject.py`
+`simless` is True and `test_globals` empty - the computer, tablet and Sim placement happens at runtime in `ingame/novulon/entry.py`
 (SPEC.md §6). `_saveable` is disabled, so a save never records the interaction.
 
 No bytes are copied from any third-party mod's package - this XML is new text, built field by field.
@@ -23,7 +23,8 @@ ICON_PLACEHOLDER_TYPE = 0x2F7D0004
 ICON_PLACEHOLDER_GROUP = 0x80000000
 
 
-def build_interaction_xml(instance_id, name, title_stbl_key, icon_instance_id, command, pie_menu_priority=10):
+def build_interaction_xml(instance_id, name, title_stbl_key, icon_instance_id, command, pie_menu_priority=10,
+                          pass_target=False):
     """One ImmediateSuperInteraction resource, as UTF-8 XML text.
 
     instance_id: our own FNV64 custom id (top bit set) for this interaction.
@@ -31,8 +32,14 @@ def build_interaction_xml(instance_id, name, title_stbl_key, icon_instance_id, c
     title_stbl_key: the STBL key (u32) whose text is the pie-menu label (e.g. "Novulon").
     icon_instance_id: the instance id the DDS icon resource is written under (novulon_icon.py's output).
     command: the console command basic_extras.do_command runs - one the mod registers, e.g. 'novulon.menu'.
+    pass_target: give the command the clicked object's id as its one argument - do_command's `arguments` list with
+        one `participant` entry left at its default participant, Object (interactions/utils/tunable.pyc DoCommand:
+        arguments = TunableList(TunableVariant(participant=TunableTuple(argument=TunableEnumEntry(
+        ParticipantTypeSingle, default=Object)), string=..., number=..., tag=..., boolean=...)); the same shape MC
+        Command Center's working Sim menu uses. On a Sim the Object is that Sim, so the command gets its id.
     """
     icon_key = '%08x:%08x:%016X' % (ICON_PLACEHOLDER_TYPE, ICON_PLACEHOLDER_GROUP, icon_instance_id & 0xFFFFFFFFFFFFFFFF)
+    arguments = ('        <L n="arguments">\n          <V t="participant" />\n        </L>\n' if pass_target else '')
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<I c="ImmediateSuperInteraction" i="interaction" m="interactions.base.immediate_interaction" '
@@ -41,6 +48,7 @@ def build_interaction_xml(instance_id, name, title_stbl_key, icon_instance_id, c
         '  <L n="basic_extras">\n'
         '    <V t="do_command">\n'
         '      <U n="do_command">\n'
+        + arguments +
         '        <T n="command">%s</T>\n'
         '      </U>\n'
         '    </V>\n'
@@ -69,6 +77,11 @@ def build_interaction_xml(instance_id, name, title_stbl_key, icon_instance_id, c
 def icon_key_of(root):
     """The pie_menu_icon key text of a parsed interaction (xml.etree root), or None."""
     return root.findtext("V[@n='pie_menu_icon']/V[@t='resource_key']/U[@n='resource_key']/T[@n='key']")
+
+
+def passes_target(root):
+    """True when the do_command extra hands the clicked object's id to its command."""
+    return root.find("L[@n='basic_extras']/V[@t='do_command']/U[@n='do_command']/L[@n='arguments']/V[@t='participant']") is not None
 
 
 def command_of(root):
