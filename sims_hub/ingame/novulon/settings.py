@@ -6,6 +6,7 @@ from . import common
 DEFAULTS = {
     'adult_enabled': False,         # the Adult tile (needs WickedWhims); off until the player turns it on
     'adult_notice_seen': False,     # the one-time "for adult Sims only" note before the Adult page
+    'obsession': {},                # Sim id -> 1 (obsessed) or 2 (extremely obsessed): obsession.py
 }
 
 _values = dict(DEFAULTS)

@@ -4,7 +4,7 @@ The page is built for a Sim id, never a stored SimInfo, so it always shows the S
 the Sim is gone). Everything it does is in actions.py, shared with Cheats and Household. Romance and pregnancy rows
 only show for young adult or older humans, with an adult partner (game.is_adult_human).
 """
-from .. import actions, game, ui
+from .. import actions, game, obsession, ui
 
 
 def builder(sim_id):
@@ -58,6 +58,8 @@ def _page(si):
         if adult:
             rows.append(ui.Row('Pregnancy', lambda c: pregnancy_page(sid), icon='pregnancy',
                                desc='Pregnant' if actions.is_pregnant(si) else ''))
+            rows.append(ui.Row('Obsession', lambda c: obsession_page(sid), icon='heart',
+                               desc=obsession.LEVEL_NAMES[obsession.level(si)]))
     rows += [
         ui.Row('Household', lambda c: household_page(sid), icon='household', desc=game.household_name(si) or 'No household'),
         ui.Row('Bring here', _act(sid, actions.teleport_to_active, 'Here now.'), icon='teleport',
@@ -312,6 +314,27 @@ def _rel(sid, kind, value, ok_text):
         return _done('%s and %s' % (game.first_name(me), game.first_name(si)), msg or ok_text,
                      'heart' if worked else 'warning')
     return action
+
+
+# ------------------------------------------------------------------ obsession (adults only)
+def obsession_page(sid):
+    def build(conn):
+        si = game.sim_info_by_id(sid)
+        if si is None or not game.is_adult_human(si):
+            return ui.Page('Obsession', [ui.info('Only for young adult and older Sims.', icon='warning')])
+        now = obsession.level(si)
+
+        def pick(value):
+            return _act(sid, lambda s: obsession.set_level(s, value), '', icon='heart')
+        rows = [
+            ui.Row('Off', pick(obsession.OFF), icon='off', selected=now == obsession.OFF),
+            ui.Row('Obsessed', pick(obsession.OBSESSED), icon='heart', selected=now == obsession.OBSESSED,
+                   desc='Turn-ons and turn-offs stop counting. They fall in love.'),
+            ui.Row('Extremely obsessed', pick(obsession.EXTREME), icon='heart', selected=now == obsession.EXTREME,
+                   desc='Madly in love, and jealous of anyone %s talks to.' % game.first_name(si)),
+        ]
+        return ui.Page('Obsession', rows, subtitle='Every adult into %s\'s gender' % game.first_name(si), sim=si)
+    return build
 
 
 # ------------------------------------------------------------------ pregnancy (adults only)

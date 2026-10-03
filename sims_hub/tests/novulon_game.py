@@ -21,7 +21,8 @@ MODULE_NAMES = ('services', 'sims4', 'sims4.resources', 'sims4.localization', 's
                 'sims.sim_info_types', 'sims.household_enums', 'sims.occult', 'sims.occult.occult_enums',
                 'sims.occult.occult_tracker', 'objects', 'objects.object_enums', 'relationships',
                 'relationships.relationship_track', 'protocolbuffers', 'autonomy', 'autonomy.settings', 'sims4.math',
-                'alarms', 'clock')
+                'alarms', 'clock', 'relationships.attraction_tuning', 'sims.global_gender_preference_tuning',
+                'event_testing', 'event_testing.resolver', 'date_and_time')
 _saved = {}
 GAME = None
 
@@ -415,6 +416,9 @@ class FakeSim:
     def has_buff(self, b):
         return b in self.buffs
 
+    def get_main_group(self):
+        return GAME.groups.get(self.id)
+
     def remove_buff_by_type(self, b):
         self.buffs.remove(b)
 
@@ -445,6 +449,11 @@ class SimInfo:
         self.relationship_tracker = RelationshipTracker()
         self.family = set()
         self.primary_aspiration = None
+        self.attracted = set()                  # 'MALE' / 'FEMALE': who this Sim is romantically attracted to
+
+    def get_attracted_genders(self, preference_type):
+        assert preference_type == 1, 'only GenderPreferenceType.ROMANTIC is modelled'
+        return {Enum(n, 4096 if n == 'MALE' else 8192) for n in self.attracted}
 
     def get_sim_instance(self, **_kw):
         return self._sim
@@ -513,6 +522,20 @@ class FakeGame:
         self.autonomy = None
         self.selectable = []                    # the Sims bar
         self.destroyed = []
+        self.rel = {}                           # (a, b, track) -> score (both ways for two-way tracks)
+        self.groups = {}                        # Sim object id -> the conversation it is in (a list of Sim objects)
+        self.alarms = []                        # Sim-time alarms: .callback, .minutes, .repeating
+        self.attraction_value = -40             # what the stand-in attraction update works out (a turn-off)
+        self.attraction_service = None          # set by install(); None = no Lovestruck
+
+    def talk(self, *sim_infos):
+        """Put these Sims (on the lot) in one conversation."""
+        group = [si.get_sim_instance() for si in sim_infos]
+        for sim in group:
+            self.groups[sim.id] = group
+
+    def score(self, a, b, track):
+        return self.rel.get((a.id, b.id, track), 0)
 
     def manager(self, t):
         return self.managers.setdefault(t, InstanceManager())
@@ -560,7 +583,22 @@ def install():
     def satisfy():
         g.clock['satisfied'] += 1
     sim_info_manager = types.SimpleNamespace(get_all=lambda: list(g.sims.values()), get=lambda i: g.sims.get(i),
-                                             auto_satisfy_sim_motives=satisfy)
+                                             auto_satisfy_sim_motives=satisfy,
+                                             instanced_sims_gen=lambda allow_hidden_flags=0: iter(
+                                                 [si.get_sim_instance() for si in g.sims.values() if si.get_sim_instance()]))
+
+    def rel_set(a, b, value, track, threshold=None):
+        g.rel[(a, b, track)] = value
+        if not getattr(track, 'one_way', False):
+            g.rel[(b, a, track)] = value
+
+    def rel_get(a, b, track):
+        return g.rel.get((a, b, track), 0)
+
+    def rel_add(a, b, increment, track, threshold=None):
+        rel_set(a, b, rel_get(a, b, track) + increment, track)
+    relationship_service = types.SimpleNamespace(set_relationship_score=rel_set, get_relationship_score=rel_get,
+                                                 add_relationship_score=rel_add)
     object_manager = types.SimpleNamespace(get=lambda i: None)
 
     def switch(sim_info, target, reason=None):
@@ -598,7 +636,9 @@ def install():
                        time_service=lambda: types.SimpleNamespace(sim_now=now),
                        autonomy_service=lambda: types.SimpleNamespace(global_autonomy_settings=autonomy_settings),
                        get_reset_and_delete_service=lambda: types.SimpleNamespace(trigger_destroy=destroy),
-                       on_enter_main_menu=lambda *a, **k: None)
+                       on_enter_main_menu=lambda *a, **k: None,
+                       relationship_service=lambda: relationship_service,
+                       get_attraction_service=lambda: g.attraction_service)
     g.client = client
 
     class OccultType(int):
@@ -617,8 +657,27 @@ def install():
         def __call__(self, v):
             return next(m for m in occult_members if int(m) == int(v))
     OccultEnumObj = OccultEnum()
-    friendship_track, romance_track = tuning('LTR_Friendship_Main'), tuning('LTR_Romance_Main')
+    friendship_track, romance_track = tuning('LTR_Friendship_Main', max_value=100), tuning('LTR_Romance_Main', max_value=100)
+    attraction_track = tuning('RelTrack_Attraction', max_value=100, one_way=True)
     g.tracks = friendship_track, romance_track
+    g.attraction_track = attraction_track
+
+    class AttractionService:
+        """Lovestruck's: works out actor -> target attraction from turn-ons and turn-offs (here: g.attraction_value)."""
+        def _update_attraction_value(self, actor_sim_id, target_sim_id):
+            rel_set(actor_sim_id, target_sim_id, g.attraction_value, attraction_track)
+
+        def refresh_attraction(self, actor_sim_id, target_sim_id):
+            self._update_attraction_value(actor_sim_id, target_sim_id)
+    g.AttractionService = AttractionService
+    g.attraction_service = AttractionService()
+
+    def add_alarm(owner, time_span, callback, repeating=False, repeating_time_span=None, use_sleep_time=True,
+                  cross_zone=False):
+        handle = types.SimpleNamespace(owner=owner, minutes=time_span, repeating=repeating, cancelled=False)
+        handle.fire = lambda: callback(handle)
+        g.alarms.append(handle)
+        return handle
 
     def add_alarm_real_time(owner, interval, callback, repeating=False, **_kw):
         handle = types.SimpleNamespace(cancelled=False)
@@ -657,6 +716,9 @@ def install():
 
     class Zone:
         def start_services(self, *a, **k):
+            return None
+
+        def on_loading_screen_animation_finished(self):
             return None
 
     class Sim:
@@ -704,8 +766,18 @@ def install():
                                                                                         routing_surface=surface),
                               Transform=lambda pos, orientation: types.SimpleNamespace(translation=pos,
                                                                                        orientation=orientation)),
-        'alarms': _module('alarms', add_alarm_real_time=add_alarm_real_time,
+        'alarms': _module('alarms', add_alarm_real_time=add_alarm_real_time, add_alarm=add_alarm,
                           cancel_alarm=lambda h: setattr(h, 'cancelled', True)),
+        'date_and_time': _module('date_and_time', create_time_span=lambda days=0, hours=0, minutes=0:
+                                 days * 1440 + hours * 60 + minutes),
+        'relationships.attraction_tuning': _module('relationships.attraction_tuning', AttractionService=AttractionService,
+                                                   AttractionTuning=types.SimpleNamespace(
+                                                       ATTRACTION_RELATIONSHIP_TRACK=attraction_track)),
+        'sims.global_gender_preference_tuning': _module('sims.global_gender_preference_tuning',
+                                                        GenderPreferenceType=types.SimpleNamespace(ROMANTIC=1, WOOHOO=2)),
+        'event_testing': _module('event_testing'),
+        'event_testing.resolver': _module('event_testing.resolver',
+                                          DoubleSimResolver=lambda a, b: types.SimpleNamespace(actor=a, target=b)),
         'clock': _module('clock', interval_in_real_seconds=lambda s: s),
     }
     sys.modules.update(mods)
