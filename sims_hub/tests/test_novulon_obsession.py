@@ -3,10 +3,11 @@ stand-in game (tests/novulon_game.py). No game needed.
 
     python -m unittest tests.test_novulon_obsession
 
-Who is obsessed (adults attracted to the Sim's gender, never family, never teens), that nothing between them changes
-but the fans' own one-way attraction (turn-ons and turn-offs stop counting, also after the game works it out again),
-chasing, jealousy at whoever the Sim talks to, fights between fans, Sims the player plays never being pushed, the
-alarm, and Off.
+Fans are made only by seeing the Sim (near them on the same floor, or talking with them) - never everyone on the lot -
+and stay fans; only adults attracted to the Sim's gender, never family, never teens. Nothing between them changes but
+the fans' own one-way attraction (turn-ons and turn-offs stop counting, also after the game works it out again).
+Fans who can see the Sim come over now and then at low priority, get jealous of whoever the Sim talks to, and at the
+extreme level storm over and now and then fight each other. Sims the player plays are never pushed. The alarm, Off.
 """
 import os
 import sys
@@ -45,6 +46,7 @@ class ObsessionTest(unittest.TestCase):
         for name in (self.o.CHAT, self.o.FIGHT) + self.o.FLIRTS + self.o.CONFRONTS:
             g.manager(g.Types.INTERACTION).classes.append(G.tuning(name))
         self.settings._values['obsession'] = {}
+        self.settings._values['obsession_fans'] = {}
         self.o._alarm = None
         self.o._tuning.clear()
         self.o._roll = lambda: 0.0                   # every chance comes up
@@ -73,6 +75,13 @@ class ObsessionTest(unittest.TestCase):
         return sorted(si.first_name for si in self.game.sims.values()
                       if si.get_sim_instance() is not None and self.jealous in si.get_sim_instance().buffs)
 
+    def fans(self):
+        return sorted(self.game.sims[i].first_name for i in self.o.fans_of(self.adam))
+
+    def move(self, si, x, z, level=0):
+        sim = si.get_sim_instance()
+        sim.position, sim.level = G.Vector3(x, 0.0, z), level
+
     def open_sim(self, si):
         self.game.commands['novulon.sim'](si.id, _connection=7)
         return self.game.screen
@@ -88,13 +97,64 @@ class ObsessionTest(unittest.TestCase):
         self.assertEqual(page.labels(), ['Back', 'Off', 'Obsessed', 'Extremely obsessed'])
         page.pick('Obsessed')
         self.assertEqual(self.o.level(self.adam), self.o.OBSESSED)
-        self.assertEqual(G.text_of(self.game.notifications[-1].kw['text']), 'Everyone into Adam\'s gender is obsessed with them.')
+        self.assertEqual(G.text_of(self.game.notifications[-1].kw['text']),
+                         'Anyone into Adam\'s gender who sees them now becomes obsessed.')
         self.assertEqual(self.settings.get('obsession'), {str(self.adam.id): 1})
         self.assertEqual(self.open_sim(self.adam).row('Obsession').desc, 'Obsessed')
+
+    def test_the_page_says_how_many_are_obsessed(self):
+        for si in (self.bella, self.finn):
+            self.move(si, 50, 50)
+        self.open_sim(self.adam).pick('Obsession')
+        self.assertEqual(self.game.screen.text, 'No one has seen Adam yet')
+        self.o.set_level(self.adam, self.o.OBSESSED)
+        self.move(self.bella, 2, 3)
+        self.game.alarms[-1].fire()
+        self.open_sim(self.adam).pick('Obsession')
+        self.assertEqual(self.game.screen.text, '1 Sim obsessed so far')
 
     def test_a_teen_can_never_be_the_one_they_are_obsessed_with(self):
         self.assertEqual(self.o.set_level(self.dana, self.o.EXTREME), (False, 'Only for young adult and older Sims.'))
         self.assertEqual(self.settings.get('obsession'), {})
+
+    # ---------------------------------------------------------------- fans are made by seeing him
+    def test_only_those_who_see_him_become_fans(self):
+        self.move(self.finn, 40, 40)                                     # across the lot
+        self.o.set_level(self.adam, self.o.EXTREME)
+        self.assertEqual(self.fans(), ['Bella'])
+        self.assertEqual(self.attraction(self.finn), 0)
+        self.assertNotIn('Finn', [w for w, _, _ in self.pushes()])       # nobody far away comes running
+        self.move(self.finn, 5, 6)                                       # walks past him
+        self.game.alarms[-1].fire()
+        self.assertEqual(self.fans(), ['Bella', 'Finn'])
+        self.assertEqual(self.attraction(self.finn), 100)
+
+    def test_once_obsessed_always_obsessed_but_only_acts_while_he_can_see_him(self):
+        self.o.set_level(self.adam, self.o.EXTREME)
+        self.move(self.bella, 40, 40)
+        self.game.pushes.clear()
+        self.game.alarms[-1].fire()
+        self.assertIn('Bella', self.fans())
+        self.assertEqual(self.attraction(self.bella), 100)
+        self.assertNotIn('Bella', [w for w, _, _ in self.pushes()])
+        self.assertEqual(self.settings.get('obsession_fans')[str(self.adam.id)], [self.bella.id, self.finn.id])
+
+    def test_another_floor_doesnt_count_but_a_conversation_does(self):
+        self.move(self.bella, 1, 2, level=1)                             # right above him, upstairs
+        self.move(self.finn, 40, 40)
+        self.game.talk(self.adam, self.finn)                             # far off, but talking with him
+        self.o.set_level(self.adam, self.o.OBSESSED)
+        self.assertEqual(self.fans(), ['Finn'])
+
+    def test_nothing_happens_while_he_isnt_on_the_lot(self):
+        self.adam._sim = None
+        self.o.set_level(self.adam, self.o.EXTREME)
+        self.assertEqual((self.fans(), self.game.pushes, self.game.rel), ([], [], {}))
+
+    def test_only_adults_attracted_to_his_gender_who_arent_family(self):
+        self.o.set_level(self.adam, self.o.OBSESSED)
+        self.assertEqual(self.fans(), ['Bella', 'Finn'])                 # Cara: into women; Dana: a teen; Eve: family
+        self.assertFalse(self.o.is_fan(self.adam, self.adam))
 
     # ---------------------------------------------------------------- strangers stay strangers
     def test_nothing_between_them_changes_but_the_fans_own_attraction(self):
@@ -102,19 +162,9 @@ class ObsessionTest(unittest.TestCase):
         self.game.talk(self.adam, self.cara)
         for _ in range(5):
             self.game.alarms[-1].fire()
-        tracks = {key[2] for key in self.game.rel}
-        self.assertEqual(tracks, {self.game.attraction_track})          # no friendship, no romance
+        self.assertEqual({key[2] for key in self.game.rel}, {self.game.attraction_track})      # no friendship, no romance
         self.assertEqual(sorted((a, b) for a, b, _ in self.game.rel),
                          sorted([(self.bella.id, self.adam.id), (self.finn.id, self.adam.id)]))   # fan -> Adam only
-
-    # ---------------------------------------------------------------- who is obsessed
-    def test_only_adults_attracted_to_his_gender_who_arent_family(self):
-        self.o.set_level(self.adam, self.o.OBSESSED)
-        self.assertEqual(self.attraction(self.bella), 100)
-        self.assertEqual(self.attraction(self.finn), 100)        # an elder man into men
-        for si in (self.cara, self.dana, self.eve, self.gina):     # into women / a teen / family / not here
-            self.assertEqual(self.attraction(si), 0)
-        self.assertFalse(self.o.is_fan(self.adam, self.adam))
 
     def test_attraction_stays_perfect_and_his_own_is_left_alone(self):
         self.o.set_level(self.adam, self.o.OBSESSED)
@@ -124,31 +174,31 @@ class ObsessionTest(unittest.TestCase):
         self.assertEqual(self.attraction(self.adam, of=self.bella), -40)
         self.game.attraction_service.refresh_attraction(self.cara.id, self.adam.id)      # not into men
         self.assertEqual(self.attraction(self.cara), -40)
-        self.game.attraction_service.refresh_attraction(self.gina.id, self.adam.id)      # a fan arriving later
-        self.assertEqual(self.attraction(self.gina), 100)
+        self.game.attraction_service.refresh_attraction(self.gina.id, self.adam.id)      # never seen him
+        self.assertEqual(self.attraction(self.gina), -40)
 
-    def test_without_lovestruck_they_still_chase(self):
+    def test_without_lovestruck_they_still_come_over(self):
         self.game.attraction_service = None
         self.o.set_level(self.adam, self.o.OBSESSED)
         self.assertEqual(self.game.rel, {})
         self.assertIn(('Bella', 'Adam', self.o.FLIRTS[0]), self.pushes())
 
-    # ---------------------------------------------------------------- chasing
-    def test_obsessed_fans_come_after_him_sometimes(self):
+    # ---------------------------------------------------------------- coming over
+    def test_fans_who_see_him_come_over_now_and_then_at_low_priority(self):
         self.o.set_level(self.adam, self.o.OBSESSED)
         self.assertEqual(sorted(self.pushes()), [('Bella', 'Adam', self.o.FLIRTS[0]), ('Finn', 'Adam', self.o.FLIRTS[0])])
         p = self.game.pushes[0]
-        self.assertEqual((p[3], p[4], p[5]), ('sim_Chat', True, 'Low'))     # under a new chat, low priority
+        self.assertEqual((p[3], p[4], p[5]), ('sim_Chat', True, 'Low'))
         self.game.pushes.clear()
-        self.o._roll = lambda: 0.9                                           # above the 35% chance
+        self.o._roll = lambda: 0.2                                           # above Obsessed's 10%
         self.game.alarms[-1].fire()
         self.assertEqual(self.game.pushes, [])
 
-    def test_extreme_fans_chase_him_every_check(self):
-        self.o._roll = lambda: 0.9
+    def test_extreme_fans_come_over_more_often_still_at_low_priority(self):
+        self.o._roll = lambda: 0.2                                           # under Extreme's 30%
         self.o.set_level(self.adam, self.o.EXTREME)
         self.assertEqual(sorted(self.pushes()), [('Bella', 'Adam', self.o.FLIRTS[0]), ('Finn', 'Adam', self.o.FLIRTS[0])])
-        self.assertEqual(self.game.pushes[0][5], 'High')
+        self.assertEqual({p[5] for p in self.game.pushes}, {'Low'})
 
     def test_a_fan_already_with_him_isnt_sent_again_and_a_running_chat_is_used(self):
         self.game.talk(self.adam, self.bella)
@@ -174,17 +224,25 @@ class ObsessionTest(unittest.TestCase):
         self.assertEqual(self.jealous_ones(), ['Bella', 'Finn'])
         self.assertNotIn(self.o.CONFRONTS[0], [m for _, _, m in self.pushes()])
 
+    def test_only_fans_who_see_it_get_jealous(self):
+        self.o.set_level(self.adam, self.o.OBSESSED)
+        self.move(self.finn, 40, 40)
+        self.game.talk(self.adam, self.cara)
+        self.game.alarms[-1].fire()
+        self.assertEqual(self.jealous_ones(), ['Bella'])
+
     def test_extreme_fans_storm_over_to_whoever_he_talks_to(self):
-        self.o._roll = lambda: 0.5                                           # confronts (60%), no fight (12%)
+        self.o._roll = lambda: 0.5                                           # confronts (60%); no visit, no fight
         self.o.set_level(self.adam, self.o.EXTREME)
-        self.game.pushes.clear()                                           # confronts (60%), no fight (12%)
+        self.game.pushes.clear()
         self.game.talk(self.adam, self.cara)
         self.game.alarms[-1].fire()
         self.assertEqual(sorted(self.pushes()), [('Bella', 'Cara', self.o.CONFRONTS[0]), ('Finn', 'Cara', self.o.CONFRONTS[0])])
+        self.assertEqual({p[5] for p in self.game.pushes}, {'High'})
         self.assertEqual(self.jealous_ones(), ['Bella', 'Finn'])
 
     def test_the_one_he_talks_to_isnt_jealous_of_herself(self):
-        self.o._roll = lambda: 0.5                                           # confronts (60%), no fight (12%)
+        self.o._roll = lambda: 0.5
         self.o.set_level(self.adam, self.o.EXTREME)
         self.game.pushes.clear()
         self.game.talk(self.adam, self.bella)
@@ -204,8 +262,15 @@ class ObsessionTest(unittest.TestCase):
         self.assertIn(('Bella', 'Finn', self.o.CONFRONTS[0]), self.pushes())
 
     def test_fights_are_rare(self):
-        self.o._roll = lambda: 0.5
+        self.o._roll = lambda: 0.1
         self.o.set_level(self.adam, self.o.EXTREME)
+        self.assertNotIn(self.o.FIGHT, [m for _, _, m in self.pushes()])
+
+    def test_a_fight_needs_two_fans_who_are_both_there(self):
+        self.o.set_level(self.adam, self.o.EXTREME)
+        self.game.pushes.clear()
+        self.move(self.finn, 40, 40)
+        self.game.alarms[-1].fire()
         self.assertNotIn(self.o.FIGHT, [m for _, _, m in self.pushes()])
 
     def test_a_fight_needs_two_fans_the_player_doesnt_play(self):
@@ -214,9 +279,10 @@ class ObsessionTest(unittest.TestCase):
         self.assertNotIn(self.o.FIGHT, [m for _, _, m in self.pushes()])
 
     # ---------------------------------------------------------------- off, and a new lot
-    def test_off_stops_everything(self):
+    def test_off_stops_everything_and_forgets_the_fans(self):
         self.o.set_level(self.adam, self.o.EXTREME)
         self.assertEqual(self.o.set_level(self.adam, self.o.OFF), (True, 'No one is obsessed with Adam now.'))
+        self.assertEqual(self.fans(), [])
         self.game.pushes.clear()
         for si in self.game.sims.values():
             if si.get_sim_instance():

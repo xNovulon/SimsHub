@@ -329,11 +329,13 @@ def obsession_page(sid):
         rows = [
             ui.Row('Off', pick(obsession.OFF), icon='off', selected=now == obsession.OFF),
             ui.Row('Obsessed', pick(obsession.OBSESSED), icon='heart', selected=now == obsession.OBSESSED,
-                   desc='Turn-ons and turn-offs stop counting. They come after %s.' % game.first_name(si)),
+                   desc='Whoever sees %s finds them perfect and comes over now and then.' % game.first_name(si)),
             ui.Row('Extremely obsessed', pick(obsession.EXTREME), icon='heart', selected=now == obsession.EXTREME,
-                   desc='They chase %s and go after anyone %s talks to.' % (game.first_name(si), game.first_name(si))),
+                   desc='More often, and they go after anyone %s talks to.' % game.first_name(si)),
         ]
-        return ui.Page('Obsession', rows, subtitle='Every adult into %s\'s gender' % game.first_name(si), sim=si)
+        n = len(obsession.fans_of(si))
+        sub = '%d Sim%s obsessed so far' % (n, '' if n == 1 else 's') if n else 'No one has seen %s yet' % game.first_name(si)
+        return ui.Page('Obsession', rows, subtitle=sub, sim=si)
     return build
 
 

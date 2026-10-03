@@ -137,5 +137,8 @@ ROWS = [
     ('interactions.priority', 'Priority.Low', 'member'),
     ('interactions.aop', 'AffordanceObjectPair.test_and_execute', 'method'),
     ('sims.sim', 'Sim.running_interactions_gen', 'method'),
+    ('sims.sim', 'Sim.is_in_group_with', 'method'),
+    ('objects.client_object_mixin', 'ClientObjectMixin.position', 'method'),
+    ('objects.client_object_mixin', 'ClientObjectMixin.level', 'method'),
 ]
 MANIFEST = ROWS

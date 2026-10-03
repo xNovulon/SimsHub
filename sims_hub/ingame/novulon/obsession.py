@@ -1,8 +1,11 @@
-"""Obsession: a Sim everyone is obsessed with. Switched on per Sim on their own page (Novulon -> Obsession).
+"""Obsession: a Sim people become obsessed with once they've seen them. Switched on per Sim on their own page
+(Novulon -> Obsession).
 
-Who is obsessed with them: every young adult or older human who is romantically attracted to their gender (the game's
-own SimInfo.get_attracted_genders(GenderPreferenceType.ROMANTIC)) and isn't family (actions.related). Never children
-or teens, on either side.
+Who becomes obsessed: a young adult or older human who is romantically attracted to the Sim's gender (the game's own
+SimInfo.get_attracted_genders(GenderPreferenceType.ROMANTIC)), isn't family (actions.related) - and has seen them: on
+the same floor within SEE_RANGE metres, or in a conversation with them. Nobody far away reacts; the world goes on as
+normal and fans are made one by one, as the Sim goes about their life. Once someone is obsessed they stay obsessed
+(settings 'obsession_fans'). Never children or teens, on either side.
 
 Nothing about their relationship is touched: no friendship, no romance, no sentiments - they stay strangers until the
 game's own socials make them anything else, and the Sim they're obsessed with answers them as they normally would (a
@@ -11,10 +14,11 @@ attraction to the Sim (Lovestruck's AttractionTuning.ATTRACTION_RELATIONSHIP_TRA
 so their turn-ons and turn-offs stop counting - the Sim is perfect in their eyes. The Sim's attraction to them is left
 alone.
 
-  OBSESSED  They come after the Sim now and then to flirt, and whenever the Sim is in a conversation with anyone else
-            they get the game's jealous moodlet.
-  EXTREME   They chase the Sim every check, storm over to yell at or send away anyone the Sim talks to, and now and
-            then two of them fight each other over the Sim.
+  OBSESSED  While they can see the Sim, now and then they come over to flirt, and when they see the Sim talking with
+            someone else they get the game's jealous moodlet.
+  EXTREME   They come over more often, storm over to yell at or send away anyone they see the Sim talk to, and now
+            and then two fans who are both there fight each other over the Sim.
+Coming over is pushed at low priority, so they finish what they're doing first; nobody gathers round to wait.
 
 What they do is pushed the way the game pushes a reaction mixer (interactions/utils/reactions.pyc ReactionMixer): the
 game's own social mixers (flirt, compliment, kiss on the cheek; yell at, go away; fight) under the sim_Chat
@@ -36,10 +40,11 @@ from . import actions, common, game, hooks, settings
 
 OFF, OBSESSED, EXTREME = 0, 1, 2
 LEVEL_NAMES = {OFF: 'Off', OBSESSED: 'Obsessed', EXTREME: 'Extremely obsessed'}
-CHECK_MINUTES = 10
-CHASE_CHANCE = {OBSESSED: 0.35, EXTREME: 1.0}   # each check, a fan who isn't with the Sim comes over to flirt
-CONFRONT_CHANCE = 0.6       # EXTREME: a jealous fan storms over to the one the Sim is talking to
-FIGHT_CHANCE = 0.12         # EXTREME: two fans on the lot fight each other over the Sim
+CHECK_MINUTES = 5
+SEE_RANGE = 8.0             # metres, on the same floor: a Sim this close has seen the Sim
+CHASE_CHANCE = {OBSESSED: 0.1, EXTREME: 0.3}    # each check, a fan who sees the Sim comes over to flirt
+CONFRONT_CHANCE = 0.6       # EXTREME: a jealous fan storms over to the one they see the Sim talking to
+FIGHT_CHANCE = 0.06         # EXTREME: two fans who are both there fight each other over the Sim
 JEALOUS_BUFF = 'Buff_Jealousy_LoveInterest'
 CHAT = 'sim_Chat'
 FLIRTS = ('mixer_social_Flirt_targeted_romance_alwaysOn', 'mixer_social_ComplimentAppearance_targeted_romance_alwaysOn',
@@ -83,6 +88,9 @@ def set_level(sim_info, value):
     data = dict(_all())
     if value == OFF:
         data.pop(str(sim_info.id), None)
+        fans = dict(_fan_ids())
+        fans.pop(str(sim_info.id), None)
+        settings.set('obsession_fans', fans)
     else:
         data[str(sim_info.id)] = value
     settings.set('obsession', data)
@@ -91,8 +99,28 @@ def set_level(sim_info, value):
         return True, 'No one is obsessed with %s now.' % name
     start()
     common.guarded('obsession check', check)
-    return True, ('Everyone into %s\'s gender is obsessed with them.' if value == OBSESSED
-                  else 'Everyone into %s\'s gender is madly obsessed with them.') % name
+    return True, ('Anyone into %s\'s gender who sees them now becomes obsessed.' if value == OBSESSED
+                  else 'Anyone into %s\'s gender who sees them now becomes madly obsessed.') % name
+
+
+def _fan_ids():
+    v = settings.get('obsession_fans')
+    return v if isinstance(v, dict) else {}
+
+
+def fans_of(sim_info):
+    """Ids of the Sims who have seen sim_info and are obsessed with them."""
+    v = _fan_ids().get(str(sim_info.id)) if sim_info is not None else None
+    return set(v) if isinstance(v, list) else set()
+
+
+def _add_fan(idol, fan):
+    data = dict(_fan_ids())
+    ids = list(data.get(str(idol.id)) or [])
+    if fan.id not in ids:
+        ids.append(fan.id)
+        data[str(idol.id)] = ids
+        settings.set('obsession_fans', data)
 
 
 def idols():
@@ -179,6 +207,16 @@ def _push(sim, target, mixer_name, extreme):
     return False
 
 
+def sees(fan_sim, idol_sim):
+    """fan_sim can see idol_sim: talking with them, or on the same floor within SEE_RANGE metres."""
+    if fan_sim.is_in_group_with(idol_sim):
+        return True
+    if getattr(fan_sim, 'level', 0) != getattr(idol_sim, 'level', 0):
+        return False
+    a, b = fan_sim.position, idol_sim.position
+    return (a.x - b.x) ** 2 + (a.z - b.z) ** 2 <= SEE_RANGE ** 2
+
+
 def _pushable(sim):
     """A fan the mod may send somewhere: not one the player plays."""
     return not actions.is_controlled(sim.sim_info) and not game.in_active_household(sim.sim_info)
@@ -206,7 +244,7 @@ def _fight(fans_here):
 
 
 def _act_out(idol_sim, fans_here, lvl):
-    """What fans on the lot do about the Sim this check: jealousy at whoever the Sim talks to, chasing, fighting."""
+    """What fans who can see the Sim do this check: jealousy at whoever the Sim talks to, coming over, fighting."""
     group = idol_sim.get_main_group()
     with_idol = [s for s in group if s is not idol_sim] if group is not None else []
     for fan_sim in fans_here:
@@ -216,28 +254,38 @@ def _act_out(idol_sim, fans_here, lvl):
         if fan_sim in with_idol or not _pushable(fan_sim):
             continue
         if _roll() < CHASE_CHANCE[lvl]:
-            common.guarded('obsession chase', _push, fan_sim, idol_sim, _pick(FLIRTS), lvl == EXTREME)
+            common.guarded('obsession chase', _push, fan_sim, idol_sim, _pick(FLIRTS), False)
     if lvl == EXTREME:
         common.guarded('obsession fight', _fight, fans_here)
 
 
 # ------------------------------------------------------------------ the check
 def check(*_):
-    """Every Sim on the lot who is attracted to an obsession's gender finds them perfect, chases them, gets jealous."""
+    """Sims who see an obsession's Sim (and are attracted to their gender) become fans; fans who see them act on it."""
     ids = idols()
     if not ids:
         return
     import services
     here = [s for s in services.sim_info_manager().instanced_sims_gen() if getattr(s, 'sim_info', None) is not None]
     for idol, lvl in ids:
-        fans_here = []
-        for sim in here:
-            if is_fan(sim.sim_info, idol):
-                common.guarded('obsession %s' % game.first_name(sim.sim_info), perfect, sim.sim_info, idol)
-                fans_here.append(sim)
         idol_sim = game.instanced(idol)
-        if idol_sim is not None and fans_here:
-            common.guarded('obsession acting out', _act_out, idol_sim, fans_here, lvl)
+        if idol_sim is None:
+            continue
+        known, near = fans_of(idol), []
+        for sim in here:
+            fan = sim.sim_info
+            if sim is idol_sim or not is_fan(fan, idol):
+                continue
+            seen = common.guarded('obsession sight', sees, sim, idol_sim)
+            if seen and fan.id not in known:
+                _add_fan(idol, fan)
+                known.add(fan.id)
+            if fan.id in known:
+                common.guarded('obsession %s' % game.first_name(fan), perfect, fan, idol)
+                if seen:
+                    near.append(sim)
+        if near:
+            common.guarded('obsession acting out', _act_out, idol_sim, near, lvl)
 
 
 def _after_attraction(args, result):
@@ -248,7 +296,7 @@ def _after_attraction(args, result):
     if str(target_id) not in _all():
         return
     idol, fan = game.sim_info_by_id(target_id), game.sim_info_by_id(actor_id)
-    if level(idol) != OFF and is_fan(fan, idol):
+    if level(idol) != OFF and fan is not None and fan.id in fans_of(idol) and is_fan(fan, idol):
         perfect(fan, idol)
 
 

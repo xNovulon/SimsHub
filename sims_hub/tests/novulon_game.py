@@ -401,6 +401,7 @@ class FakeSim:
         self.sim_info, self.id = si, si.id
         self.buffs, self.resets = [], 0
         self.position = Vector3(1.0, 0.0, 2.0)
+        self.level = 0
         self.forward = Vector3(0.0, 0.0, 1.0)
         self.orientation = 'facing'
         self.location = types.SimpleNamespace(routing_surface='surface')
@@ -419,6 +420,10 @@ class FakeSim:
 
     def get_main_group(self):
         return GAME.groups.get(self.id)
+
+    def is_in_group_with(self, target_sim):
+        group = GAME.groups.get(self.id)
+        return group is not None and target_sim in group
 
     def running_interactions_gen(self, affordance):
         return iter([si for si in GAME.running.get(self.id, []) if si.affordance is affordance])
