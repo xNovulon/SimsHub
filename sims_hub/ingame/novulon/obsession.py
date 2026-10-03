@@ -19,6 +19,8 @@ alone.
   EXTREME   They come over more often, storm over to yell at or send away anyone they see the Sim talk to, and now
             and then two fans who are both there fight each other over the Sim.
 Coming over is pushed at low priority, so they finish what they're doing first; nobody gathers round to wait.
+Being taken doesn't stop them: a fan who is dating or married comes over all the same (their partner reacts as the
+game makes them), and when the game won't let them flirt - their own romantic boundaries - they come over to talk.
 
 What they do is pushed the way the game pushes a reaction mixer (interactions/utils/reactions.pyc ReactionMixer): the
 game's own social mixers (flirt, compliment, kiss on the cheek; yell at, go away; fight) under the sim_Chat
@@ -217,6 +219,23 @@ def sees(fan_sim, idol_sim):
     return (a.x - b.x) ** 2 + (a.z - b.z) ** 2 <= SEE_RANGE ** 2
 
 
+def _come_over(fan_sim, idol_sim):
+    """A fan comes over to the Sim: a flirt, a compliment or a kiss on the cheek - or, when the game turns all of
+    those down for them, just to talk."""
+    first = _pick(FLIRTS)
+    for mixer in (first,) + tuple(m for m in FLIRTS if m != first):
+        if _push(fan_sim, idol_sim, mixer, False):
+            return True
+    import sims4.resources
+    from interactions.context import InteractionContext, InteractionSource
+    from interactions.priority import Priority
+    chat = _named(sims4.resources.Types.INTERACTION, CHAT)
+    if chat is None:
+        return False
+    return bool(fan_sim.push_super_affordance(chat, idol_sim,
+                                              InteractionContext(fan_sim, InteractionSource.SCRIPT, Priority.Low)))
+
+
 def _pushable(sim):
     """A fan the mod may send somewhere: not one the player plays."""
     return not actions.is_controlled(sim.sim_info) and not game.in_active_household(sim.sim_info)
@@ -254,7 +273,7 @@ def _act_out(idol_sim, fans_here, lvl):
         if fan_sim in with_idol or not _pushable(fan_sim):
             continue
         if _roll() < CHASE_CHANCE[lvl]:
-            common.guarded('obsession chase', _push, fan_sim, idol_sim, _pick(FLIRTS), False)
+            common.guarded('obsession chase', _come_over, fan_sim, idol_sim)
     if lvl == EXTREME:
         common.guarded('obsession fight', _fight, fans_here)
 

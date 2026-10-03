@@ -138,6 +138,7 @@ ROWS = [
     ('interactions.aop', 'AffordanceObjectPair.test_and_execute', 'method'),
     ('sims.sim', 'Sim.running_interactions_gen', 'method'),
     ('sims.sim', 'Sim.is_in_group_with', 'method'),
+    ('sims.sim', 'Sim.push_super_affordance', 'method'),
     ('objects.client_object_mixin', 'ClientObjectMixin.position', 'method'),
     ('objects.client_object_mixin', 'ClientObjectMixin.level', 'method'),
 ]

@@ -200,6 +200,13 @@ class ObsessionTest(unittest.TestCase):
         self.assertEqual(sorted(self.pushes()), [('Bella', 'Adam', self.o.FLIRTS[0]), ('Finn', 'Adam', self.o.FLIRTS[0])])
         self.assertEqual({p[5] for p in self.game.pushes}, {'Low'})
 
+    def test_a_taken_fan_still_comes_over_and_just_talks_when_she_cant_flirt(self):
+        self.bella.partner = self.cara                                       # dating someone else
+        self.game.refuse.update(self.o.FLIRTS)                               # her boundaries: no flirting
+        self.o.set_level(self.adam, self.o.OBSESSED)
+        self.assertIn(('Bella', 'Adam', 'sim_Chat'), self.pushes())
+        self.assertIn('Bella', self.fans())
+
     def test_a_fan_already_with_him_isnt_sent_again_and_a_running_chat_is_used(self):
         self.game.talk(self.adam, self.bella)
         chat = self.o._named(self.game.Types.INTERACTION, self.o.CHAT)

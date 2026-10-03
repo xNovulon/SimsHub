@@ -421,6 +421,12 @@ class FakeSim:
     def get_main_group(self):
         return GAME.groups.get(self.id)
 
+    def push_super_affordance(self, super_affordance, target, context):
+        if super_affordance.__name__ in GAME.refuse:
+            return False
+        GAME.pushes.append((self, target, super_affordance.__name__, None, None, context.priority))
+        return True
+
     def is_in_group_with(self, target_sim):
         group = GAME.groups.get(self.id)
         return group is not None and target_sim in group
