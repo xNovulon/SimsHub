@@ -80,6 +80,11 @@ for (const s of ['L', 'R']) {
   HINGE[`b__${s}_Calf__`] = -1;
   for (const f of ['Thumb', 'Index', 'Mid', 'Ring', 'Pinky']) { HINGE[`b__${s}_${f}1__`] = 1; HINGE[`b__${s}_${f}2__`] = 1; }
 }
+// The forearm still bends like a hinge when a hand is dragged (the elbow folds cleanly), but turned by hand it goes
+// any way - all its rings are offered and only its bend has a natural limit.
+const TURNS_FREELY = new Set(['b__L_Forearm__', 'b__R_Forearm__']);
+// A joint the rings and curves only bend one way (its Z): knees and the finger joints.
+export const bendsOnly = name => !!HINGE[name] && !TURNS_FREELY.has(name);
 
 // Two-bone chains dragged by their end.
 export const LIMBS = {
@@ -408,7 +413,7 @@ export const LIMITS = {
   b__L_Mid0__: { x: [-19, 12], y: [-19, 12], z: [-11, 97] },
   b__L_Ring0__: { x: [-23, 10], y: [-20, 14], z: [-11, 97] },
   b__L_Pinky0__: { x: [-28, 10], y: [-30, 14], z: [-12, 100] },
-  b__L_Forearm__: HINGE_Z([-10, 155]),
+  b__L_Forearm__: { x: [-180, 180], y: [-180, 180], z: [-10, 155] },     // turns any way; the bend is the elbow's
   b__L_Calf__: HINGE_Z([-170, 5]),
   b__L_Clavicle__: { x: [-57, 38], y: [-15, 48], z: [-43, 36] },
   b__L_Toe__: { x: [-12, 12], y: [-10, 10], z: [-51, 77] },

@@ -1,7 +1,12 @@
-// three.js r160 TransformControls (MIT), with one change for Novulon's Wicked Animator: an X / Y / Z ring turns by
-// the angle the pointer goes round the ring's centre on the ring's own plane (a dial that follows the mouse), instead
-// of by how far the pointer moves along the ring's tangent where it was grabbed. Only when a ring is seen almost
-// edge-on does it keep the tangent behaviour (the ring's plane can't be pointed at then). See _ringAngle.
+// three.js r160 TransformControls (MIT), with two changes for Novulon's Wicked Animator:
+// - an X / Y / Z ring turns by the angle the pointer goes round the ring's centre on the ring's own plane (a dial that
+//   follows the mouse), instead of by how far the pointer moves along the ring's tangent where it was grabbed. Only
+//   when a ring is seen almost edge-on does it keep the tangent behaviour (the ring's plane can't be pointed at then).
+//   See _ringAngle.
+// - a drag always ends when the button is let go, even when no pointerup reaches the canvas (let go outside the
+//   window, the pointer cancelled, the capture lost, the window losing the focus), and when the gizmo is detached
+//   mid-drag: the part never keeps following the mouse after the release, and mouseUp is always sent once for every
+//   mouseDown (the app keeps the edit). See endDrag.
 import {
 	BoxGeometry,
 	BufferGeometry,
@@ -177,10 +182,15 @@ class TransformControls extends Object3D {
 		this._onPointerHover = onPointerHover.bind( this );
 		this._onPointerMove = onPointerMove.bind( this );
 		this._onPointerUp = onPointerUp.bind( this );
+		this._onPointerLost = onPointerLost.bind( this );
+		this._downSent = false;            // a mouseDown went out that no mouseUp has answered yet
 
 		this.domElement.addEventListener( 'pointerdown', this._onPointerDown );
 		this.domElement.addEventListener( 'pointermove', this._onPointerHover );
 		this.domElement.addEventListener( 'pointerup', this._onPointerUp );
+		this.domElement.addEventListener( 'pointercancel', this._onPointerLost );
+		this.domElement.addEventListener( 'lostpointercapture', this._onPointerLost );
+		window.addEventListener( 'blur', this._onPointerLost );
 
 	}
 
@@ -274,6 +284,7 @@ class TransformControls extends Object3D {
 			this._ringLast = 0;
 
 			this.dragging = true;
+			this._downSent = true;
 			_mouseDownEvent.mode = this.mode;
 			this.dispatchEvent( _mouseDownEvent );
 
@@ -590,8 +601,17 @@ class TransformControls extends Object3D {
 
 		if ( pointer.button !== 0 ) return;
 
-		if ( this.dragging && ( this.axis !== null ) ) {
+		this.endDrag();
 
+	}
+
+	// The end of a drag, however it ended: mouseUp once for the mouseDown (even when the axis was lost mid-drag - a
+	// detach, a re-attach), then not dragging any more.
+	endDrag() {
+
+		if ( this._downSent ) {
+
+			this._downSent = false;
 			_mouseUpEvent.mode = this.mode;
 			this.dispatchEvent( _mouseUpEvent );
 
@@ -608,6 +628,9 @@ class TransformControls extends Object3D {
 		this.domElement.removeEventListener( 'pointermove', this._onPointerHover );
 		this.domElement.removeEventListener( 'pointermove', this._onPointerMove );
 		this.domElement.removeEventListener( 'pointerup', this._onPointerUp );
+		this.domElement.removeEventListener( 'pointercancel', this._onPointerLost );
+		this.domElement.removeEventListener( 'lostpointercapture', this._onPointerLost );
+		window.removeEventListener( 'blur', this._onPointerLost );
 
 		this.traverse( function ( child ) {
 
@@ -628,8 +651,15 @@ class TransformControls extends Object3D {
 
 	}
 
-	// Detach from object
+	// Detach from object (a drag still going ends first, so the app hears its mouseUp and nothing stays mid-drag)
 	detach() {
+
+		if ( this.dragging || this._downSent ) {
+
+			this.domElement.removeEventListener( 'pointermove', this._onPointerMove );
+			this.endDrag();
+
+		}
 
 		this.object = undefined;
 		this.visible = false;
@@ -772,6 +802,15 @@ function onPointerMove( event ) {
 
 	if ( ! this.enabled ) return;
 
+	// a mouse moving with no button held while still dragging: the button was let go where no pointerup could reach
+	// the canvas - the drag ends here instead of the part following the mouse until the next click
+	if ( this.dragging && event.pointerType === 'mouse' && event.buttons === 0 ) {
+
+		onPointerLost.call( this, event );
+		return;
+
+	}
+
 	this.pointerMove( this._getPointer( event ) );
 
 }
@@ -780,11 +819,29 @@ function onPointerUp( event ) {
 
 	if ( ! this.enabled ) return;
 
-	this.domElement.releasePointerCapture( event.pointerId );
+	try { this.domElement.releasePointerCapture( event.pointerId ); } catch ( e ) { /* already released */ }
 
 	this.domElement.removeEventListener( 'pointermove', this._onPointerMove );
 
 	this.pointerUp( this._getPointer( event ) );
+
+}
+
+// The pointer went away mid-drag without a pointerup (cancelled, its capture lost, the window lost the focus): the
+// drag ends as if the button had been let go where the pointer last was.
+function onPointerLost( event ) {
+
+	if ( ! this.dragging && ! this._downSent ) return;
+
+	if ( event && event.pointerId !== undefined ) {
+
+		try { this.domElement.releasePointerCapture( event.pointerId ); } catch ( e ) { /* already released */ }
+
+	}
+
+	this.domElement.removeEventListener( 'pointermove', this._onPointerMove );
+
+	this.endDrag();
 
 }
 

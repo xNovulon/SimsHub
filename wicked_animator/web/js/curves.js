@@ -119,7 +119,7 @@ export class CurveView {
       if (!list.length) list.push('open', 'smile', 'eyes');
       return list.map((n, i) => ({ id: 'face:' + n, label: (FACE_SLIDERS[n] || { label: n }).label.replace(/\s*\(.*\)$/, ''), color: FACE_SHADES[i % FACE_SHADES.length], unit: '%', kind: 'face', slider: n }));
     }
-    const hinge = B.HINGE && B.HINGE[part];
+    const hinge = B.bendsOnly(part);
     const out = ROT.map(c => ({ ...c, unit: '°', kind: 'rot', label: hinge && c.axis === 2 ? 'Bend (hinge)' : c.label, locked: !!(hinge && c.axis !== 2) }));
     if (part === 'b__Pelvis__') out.push(...POS.map(c => ({ ...c, unit: 'cm', kind: 'pos' })));
     return out;

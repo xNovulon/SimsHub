@@ -11,7 +11,7 @@
 // bodies are picked - slot markers, bones in the see-through view, reference boards) and `attachGizmo(object3d,
 // {onChange, onEnd, onStart, modes, space, size})` for anything else the gizmo should move (props, boards).
 import * as THREE from 'three';
-import { LIMBS, HIPS, HINGE, KNUCKLE, TURN_GROUPS, LIMB_LABEL, isHold } from './bones.js';
+import { LIMBS, HIPS, HINGE, KNUCKLE, TURN_GROUPS, LIMB_LABEL, isHold, bendsOnly } from './bones.js';
 import { spacePos, worldToSpace, spaceToWorld, solveTwoBone, spaceQuat, setSpaceQuat, rotateInSpace, clampToLimits, limbPole } from './posemath.js';
 import * as K from './facekit.js';
 import * as Holds from './holds.js';
@@ -223,7 +223,7 @@ export class Interaction {
     const c = this.vp.canvas, gz = this.vp.gizmo;
     this.downAt = [e.clientX, e.clientY];
     try { c.setPointerCapture(e.pointerId); } catch { /* not a real pointer (tests) */ }
-    const drag = { x, from: [e.clientX, e.clientY], on: false, plane: null, grab: null };
+    const drag = { x, from: [e.clientX, e.clientY], on: false, plane: null, grab: null, done: false };
     const rayAt = ev => {
       const r = c.getBoundingClientRect(), rc = new THREE.Raycaster();
       rc.setFromCamera(new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1), this.vp.camera);
@@ -231,6 +231,8 @@ export class Interaction {
     };
     const move = ev => {
       if (ev.pointerId !== undefined && e.pointerId !== undefined && ev.pointerId !== e.pointerId) return;
+      // the button was let go where no pointerup reached the canvas: the drag ends here
+      if (ev.pointerType === 'mouse' && ev.buttons === 0) { up(ev); return; }
       if (!drag.on) {
         if (Math.hypot(ev.clientX - drag.from[0], ev.clientY - drag.from[1]) < 4) return;
         const a = this.active;
@@ -249,13 +251,19 @@ export class Interaction {
       this.proxy.position.copy(p.sub(drag.grab));
       gz.dispatchEvent({ type: 'objectChange' });
     };
+    // let go - or the pointer went away without a pointerup (cancelled, its capture lost, the window lost the focus):
+    // the drag ends once, as if the button had been let go where the pointer last was
     const up = ev => {
+      if (drag.done) return;
+      drag.done = true;
       c.removeEventListener('pointermove', move, true);
       c.removeEventListener('pointerup', up, true);
       c.removeEventListener('pointercancel', up, true);
+      c.removeEventListener('lostpointercapture', up, true);
+      window.removeEventListener('blur', up);
       try { c.releasePointerCapture(e.pointerId); } catch { /* already released */ }
       if (!drag.on) return;                     // no move: the click that follows selects the dot
-      this.lastPointer = { clientX: ev.clientX, clientY: ev.clientY };
+      if (ev && ev.clientX !== undefined) this.lastPointer = { clientX: ev.clientX, clientY: ev.clientY };
       this.downAt = null;
       gz.dispatchEvent({ type: 'mouseUp' });
       gz.dispatchEvent({ type: 'dragging-changed', value: false });
@@ -263,6 +271,8 @@ export class Interaction {
     c.addEventListener('pointermove', move, true);
     c.addEventListener('pointerup', up, true);
     c.addEventListener('pointercancel', up, true);
+    c.addEventListener('lostpointercapture', up, true);
+    window.addEventListener('blur', up);
   }
 
   // ---------------------------------------------------------------- the circle at a sim's feet (the whole sim)
@@ -339,7 +349,7 @@ export class Interaction {
     try { c.setPointerCapture(e.pointerId); } catch { /* not a real pointer (tests) */ }
     const a0 = this.active;
     const turning = !!(a0 && a0.kind === 'place' && a0.simId === simId && gz.mode === 'rotate' && gz.object === this.proxy);
-    const drag = { from: [e.clientX, e.clientY], on: false, plane: null, grab: null, ang0: null, q0: null };
+    const drag = { from: [e.clientX, e.clientY], on: false, plane: null, grab: null, ang0: null, q0: null, done: false };
     const rayAt = ev => {
       const r = c.getBoundingClientRect(), rc = new THREE.Raycaster();
       rc.setFromCamera(new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1), this.vp.camera);
@@ -347,6 +357,8 @@ export class Interaction {
     };
     const move = ev => {
       if (ev.pointerId !== undefined && e.pointerId !== undefined && ev.pointerId !== e.pointerId) return;
+      // the button was let go where no pointerup reached the canvas: the drag ends here
+      if (ev.pointerType === 'mouse' && ev.buttons === 0) { up(); return; }
       if (!drag.on) {
         if (Math.hypot(ev.clientX - drag.from[0], ev.clientY - drag.from[1]) < 4) return;
         const a = this.active;
@@ -391,10 +403,16 @@ export class Interaction {
       this.placeHandles();
       this.app.hud('Turned 45° - R again turns more, Shift+R the other way', { hold: 1400 });
     };
+    // let go - or the pointer went away without a pointerup (cancelled, its capture lost, the window lost the focus):
+    // the drag ends once
     const up = () => {
+      if (drag.done) return;
+      drag.done = true;
       c.removeEventListener('pointermove', move, true);
       c.removeEventListener('pointerup', up, true);
       c.removeEventListener('pointercancel', up, true);
+      c.removeEventListener('lostpointercapture', up, true);
+      window.removeEventListener('blur', up);
       window.removeEventListener('keydown', key, true);
       try { c.releasePointerCapture(e.pointerId); } catch { /* already released */ }
       if (!drag.on) {                           // no move: the click that follows picks the circle
@@ -408,6 +426,8 @@ export class Interaction {
     c.addEventListener('pointermove', move, true);
     c.addEventListener('pointerup', up, true);
     c.addEventListener('pointercancel', up, true);
+    c.addEventListener('lostpointercapture', up, true);
+    window.addEventListener('blur', up);
     window.addEventListener('keydown', key, true);
   }
 
@@ -791,9 +811,10 @@ export class Interaction {
     } else if (extra) {
       gz.showX = gz.showY = gz.showZ = true;
     } else {
-      // elbows, knees and the finger joints bend like a hinge (the game wants them turned about their own Z only):
-      // only that one ring is offered. With natural limits on, the knuckles spread and curl but don't twist.
-      const hinge = !!HINGE[boneName];
+      // knees and the finger joints bend like a hinge (the game wants them turned about their own Z only): only that
+      // one ring is offered. The forearm turns any way (bendsOnly is false for it). With natural limits on, the
+      // knuckles spread and curl but don't twist.
+      const hinge = bendsOnly(boneName);
       gz.showX = !(hinge || (this.limitsOn() && KNUCKLE.has(boneName)));
       gz.showY = !hinge;
       gz.showZ = true;

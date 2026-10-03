@@ -610,10 +610,11 @@ class App {
     this.syncViews();
     const v = this.simViews.get(s.id);
     v.resetPose();
-    this.interact.moveHips(v, new THREE.Vector3((p.sims.length - 1) * 0.8 - 0.4, 0, 0));
+    this._standBeside(v, s.id);
     s.keys.push({ frame: Math.round(this.store.frame), ease: 'auto', pose: this._bodyPose(v) });
     this.runHook('traySimAdded', s);
     this.refreshAll();
+    this._showAdded(v);
     toast(`${name} is in the scene. Pick a pose for them in step 2.`, 'ok');
     return s;
   }
@@ -1919,11 +1920,43 @@ class App {
     this.syncViews();
     const v = this.simViews.get(s.id);
     v.resetPose();
-    this.interact.moveHips(v, new THREE.Vector3((p.sims.length - 1) * 0.8, 0, 0));
+    this._standBeside(v, s.id);
     this._relaxArms(v);
     s.keys.push({ frame: Math.round(this.store.frame), ease: 'auto', pose: this._bodyPose(v) });
     this.refreshAll();
+    this._showAdded(v);
     toast(`${s.label} added. Put it in a pose in step 2.`, 'ok');
+  }
+
+  // A new sim stands next to the others: on their line, 0.9 m beside the outermost one - on the side that keeps the
+  // group nearest the middle of the scene (so sims are added right, left, right...) - and never on top of anyone.
+  _standBeside(v, simId) {
+    const others = [];
+    for (const [id, o] of this.simViews) if (id !== simId && o.group.visible && o.bone('b__Pelvis__')) others.push(o.worldPos('b__Pelvis__'));
+    if (!others.length) return;
+    const GAP = 0.9, here = v.worldPos('b__Pelvis__');
+    const xs = others.map(o => o.x), z = others.reduce((a, o) => a + o.z, 0) / others.length;
+    const free = x => others.every(o => Math.hypot(o.x - x, o.z - z) > GAP * 0.66);
+    const right = Math.max(...xs) + GAP, left = Math.min(...xs) - GAP;
+    let x = Math.abs(right) <= Math.abs(left) ? right : left;
+    for (let k = 0; k < 12 && !free(x); k++) x += x >= 0 ? GAP : -GAP;
+    v.space.updateWorldMatrix(true, false);
+    const toSpace = v.space.getWorldQuaternion(new THREE.Quaternion()).invert();
+    this.interact.moveHips(v, new THREE.Vector3(x - here.x, 0, z - here.z).applyQuaternion(toSpace));
+  }
+
+  // After adding a sim: the camera takes in every sim when the new one stands outside the view, and the Scene step's
+  // "Add a sim" buttons stay in sight (a long list of sims pushes them down).
+  _showAdded(v) {
+    const cam = this.vp.camera;
+    cam.updateMatrixWorld();
+    v.group.updateMatrixWorld(true);
+    const seen = ['b__Pelvis__', 'b__Head__'].filter(b => v.bone(b)).every(b => {
+      const p = v.worldPos(b).project(cam);
+      return p.z < 1 && Math.abs(p.x) < 0.92 && Math.abs(p.y) < 0.92;
+    });
+    if (!seen) this.frameSims();
+    if (this.step === 'scene') requestAnimationFrame(() => { const g = document.querySelector('#panel-body .add-grid'); if (g) g.scrollIntoView({ block: 'nearest' }); });
   }
 
   removeSim(id) {
