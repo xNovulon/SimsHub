@@ -117,9 +117,7 @@ ROWS = [
     # Obsession (obsession.py)
     ('services', 'relationship_service', 'function'),
     ('services', 'get_attraction_service', 'function'),
-    ('relationships.relationship_service', 'RelationshipService.get_relationship_score', 'method'),
     ('relationships.relationship_service', 'RelationshipService.set_relationship_score', 'method'),
-    ('relationships.relationship_service', 'RelationshipService.add_relationship_score', 'method'),
     ('relationships.attraction_tuning', 'AttractionTuning.ATTRACTION_RELATIONSHIP_TRACK', 'member'),
     ('relationships.attraction_tuning', 'AttractionService._update_attraction_value', 'method'),
     ('sims.global_gender_preference_tuning', 'GenderPreferenceType.ROMANTIC', 'member'),
@@ -128,11 +126,16 @@ ROWS = [
     ('sims.sim', 'Sim.get_main_group', 'method'),
     ('socials.group', 'SocialGroup.__iter__', 'method'),
     ('statistics.base_statistic', 'BaseStatistic.max_value', 'method'),
-    ('interactions.utils.loot', 'LootActions.apply_to_resolver', 'method'),
-    ('event_testing.resolver', 'DoubleSimResolver', 'class'),
     ('objects.components.buff_component', 'BuffComponent.debug_add_buff_by_type', 'method'),
     ('alarms', 'add_alarm', 'function'),
     ('date_and_time', 'create_time_span', 'function'),
     ('zone', 'Zone.on_loading_screen_animation_finished', 'method'),
+    ('autonomy.content_sets', 'get_valid_aops_gen', 'function'),
+    ('interactions.context', 'InteractionContext', 'class'),
+    ('interactions.context', 'InteractionSource.SCRIPT', 'member'),
+    ('interactions.priority', 'Priority.High', 'member'),
+    ('interactions.priority', 'Priority.Low', 'member'),
+    ('interactions.aop', 'AffordanceObjectPair.test_and_execute', 'method'),
+    ('sims.sim', 'Sim.running_interactions_gen', 'method'),
 ]
 MANIFEST = ROWS

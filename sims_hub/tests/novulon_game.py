@@ -22,7 +22,8 @@ MODULE_NAMES = ('services', 'sims4', 'sims4.resources', 'sims4.localization', 's
                 'sims.occult.occult_tracker', 'objects', 'objects.object_enums', 'relationships',
                 'relationships.relationship_track', 'protocolbuffers', 'autonomy', 'autonomy.settings', 'sims4.math',
                 'alarms', 'clock', 'relationships.attraction_tuning', 'sims.global_gender_preference_tuning',
-                'event_testing', 'event_testing.resolver', 'date_and_time')
+                'event_testing', 'event_testing.resolver', 'date_and_time', 'autonomy.content_sets', 'interactions',
+                'interactions.context', 'interactions.priority')
 _saved = {}
 GAME = None
 
@@ -419,6 +420,9 @@ class FakeSim:
     def get_main_group(self):
         return GAME.groups.get(self.id)
 
+    def running_interactions_gen(self, affordance):
+        return iter([si for si in GAME.running.get(self.id, []) if si.affordance is affordance])
+
     def remove_buff_by_type(self, b):
         self.buffs.remove(b)
 
@@ -527,6 +531,9 @@ class FakeGame:
         self.alarms = []                        # Sim-time alarms: .callback, .minutes, .repeating
         self.attraction_value = -40             # what the stand-in attraction update works out (a turn-off)
         self.attraction_service = None          # set by install(); None = no Lovestruck
+        self.pushes = []                        # (Sim object, target, mixer name, SI name, push_super_on_prepare, priority)
+        self.refuse = set()                     # mixer names the game's own tests turn down
+        self.running = {}                       # Sim object id -> running SIs (.affordance)
 
     def talk(self, *sim_infos):
         """Put these Sims (on the lot) in one conversation."""
@@ -672,6 +679,16 @@ def install():
     g.AttractionService = AttractionService
     g.attraction_service = AttractionService()
 
+    def get_valid_aops_gen(target, affordance, si_affordance, si, context, include_failed_aops_with_tooltip,
+                           push_super_on_prepare=False, considered=None, aop_kwargs=None, aop_pre_tests=None):
+        def test_and_execute(ctx):
+            if affordance.__name__ in g.refuse:
+                return False
+            g.pushes.append((ctx.sim, target, affordance.__name__, si_affordance.__name__, push_super_on_prepare,
+                             ctx.priority))
+            return True
+        yield types.SimpleNamespace(test_and_execute=test_and_execute), True
+
     def add_alarm(owner, time_span, callback, repeating=False, repeating_time_span=None, use_sleep_time=True,
                   cross_zone=False):
         handle = types.SimpleNamespace(owner=owner, minutes=time_span, repeating=repeating, cancelled=False)
@@ -775,6 +792,12 @@ def install():
                                                        ATTRACTION_RELATIONSHIP_TRACK=attraction_track)),
         'sims.global_gender_preference_tuning': _module('sims.global_gender_preference_tuning',
                                                         GenderPreferenceType=types.SimpleNamespace(ROMANTIC=1, WOOHOO=2)),
+        'autonomy.content_sets': _module('autonomy.content_sets', get_valid_aops_gen=get_valid_aops_gen),
+        'interactions': _module('interactions'),
+        'interactions.context': _module('interactions.context', InteractionSource=types.SimpleNamespace(SCRIPT='SCRIPT'),
+                                        InteractionContext=lambda sim, source, priority, **kw: types.SimpleNamespace(
+                                            sim=sim, source=source, priority=priority)),
+        'interactions.priority': _module('interactions.priority', Priority=types.SimpleNamespace(Low='Low', High='High')),
         'event_testing': _module('event_testing'),
         'event_testing.resolver': _module('event_testing.resolver',
                                           DoubleSimResolver=lambda a, b: types.SimpleNamespace(actor=a, target=b)),

@@ -1,34 +1,51 @@
-"""Obsession: a Sim everyone falls for. Switched on per Sim on their own page (Novulon -> Obsession).
+"""Obsession: a Sim everyone is obsessed with. Switched on per Sim on their own page (Novulon -> Obsession).
 
-Who falls for them: every young adult or older human who is romantically attracted to their gender (the game's own
-SimInfo.get_attracted_genders(GenderPreferenceType.ROMANTIC)) and isn't family (actions.related). Never children or
-teens, on either side.
+Who is obsessed with them: every young adult or older human who is romantically attracted to their gender (the game's
+own SimInfo.get_attracted_genders(GenderPreferenceType.ROMANTIC)) and isn't family (actions.related). Never children
+or teens, on either side.
 
-  OBSESSED  They find the Sim perfect: their turn-ons and turn-offs stop counting (Lovestruck's attraction track,
-            AttractionTuning.ATTRACTION_RELATIONSHIP_TRACK, goes to its top) and they fall for them - romance and
-            friendship rise every check until both are full - and they feel Enamored (the game's long-term
-            sentiment, added by its own loot).
-  EXTREME   All of that at once and kept at the top, and they are jealous: whenever the Sim is in a conversation with
-            anyone else, every one of them on the lot gets the game's jealous moodlet and likes that other Sim less.
+Nothing about their relationship is touched: no friendship, no romance, no sentiments - they stay strangers until the
+game's own socials make them anything else, and the Sim they're obsessed with answers them as they normally would (a
+flirt from someone they aren't into is turned down the usual way). The one thing changed is the fans' own one-way
+attraction to the Sim (Lovestruck's AttractionTuning.ATTRACTION_RELATIONSHIP_TRACK, fan -> Sim): it is kept at its top,
+so their turn-ons and turn-offs stop counting - the Sim is perfect in their eyes. The Sim's attraction to them is left
+alone.
+
+  OBSESSED  They come after the Sim now and then to flirt, and whenever the Sim is in a conversation with anyone else
+            they get the game's jealous moodlet.
+  EXTREME   They chase the Sim every check, storm over to yell at or send away anyone the Sim talks to, and now and
+            then two of them fight each other over the Sim.
+
+What they do is pushed the way the game pushes a reaction mixer (interactions/utils/reactions.pyc ReactionMixer): the
+game's own social mixers (flirt, compliment, kiss on the cheek; yell at, go away; fight) under the sim_Chat
+conversation, through autonomy.content_sets.get_valid_aops_gen, which starts the conversation first when there is
+none - the game's own tests still decide whether each one can happen, and its own outcomes decide how it goes. Sims in
+the player's Sims bar are never pushed.
 
 How it runs: nothing at all until a Sim's switch is on. Then a check every CHECK_MINUTES Sim minutes looks at the Sims
 on the current lot (an alarm started once each lot has loaded - Zone.on_loading_screen_animation_finished - and right
 away when a switch is turned on), and one wrapper on the game's attraction update
-(AttractionService._update_attraction_value): after the game works an attraction out, an obsessed Sim's attraction to
-the Sim they're obsessed with is set back to the top, so turn-ons and turn-offs never pull it down.
+(AttractionService._update_attraction_value): after the game works an attraction out, a fan's attraction to the Sim
+goes back to the top.
 
 The switches are kept in Novulon's settings (settings.json, 'obsession': {Sim id: level}).
 """
+import random
+
 from . import actions, common, game, hooks, settings
 
 OFF, OBSESSED, EXTREME = 0, 1, 2
 LEVEL_NAMES = {OFF: 'Off', OBSESSED: 'Obsessed', EXTREME: 'Extremely obsessed'}
 CHECK_MINUTES = 10
-ROMANCE_STEP = 10           # OBSESSED: romance and friendship rise this much every check, up to full
-FRIENDSHIP_STEP = 5
-RIVAL_STEP = 5              # EXTREME: friendship lost with whoever the Sim is talking to, every check
+CHASE_CHANCE = {OBSESSED: 0.35, EXTREME: 1.0}   # each check, a fan who isn't with the Sim comes over to flirt
+CONFRONT_CHANCE = 0.6       # EXTREME: a jealous fan storms over to the one the Sim is talking to
+FIGHT_CHANCE = 0.12         # EXTREME: two fans on the lot fight each other over the Sim
 JEALOUS_BUFF = 'Buff_Jealousy_LoveInterest'
-ENAMORED_LOOT = 'loot_Sentiment_AddSentiment_Enamored_generic_LT'
+CHAT = 'sim_Chat'
+FLIRTS = ('mixer_social_Flirt_targeted_romance_alwaysOn', 'mixer_social_ComplimentAppearance_targeted_romance_alwaysOn',
+          'mixer_social_KissCheek_targeted_romance_alwaysOn')
+CONFRONTS = ('mixer_social_YellAT_targeted_mean', 'mixer_social_GoAway_targeted_mean_alwaysOn')
+FIGHT = 'mixer_social_Fight_targeted_mean'
 
 
 class _AlarmOwner:
@@ -37,8 +54,9 @@ class _AlarmOwner:
 
 _owner = _AlarmOwner()
 _alarm = None
-_enamored = set()           # (fan id, Sim id): the sentiment was given this session
-_tuning = {}                # tuning name -> class (or None), looked up once
+_tuning = {}                # (resource type, tuning name) -> class (or None), looked up once
+_roll = random.random       # the dice (tests replace them)
+_pick = random.choice
 
 
 # ------------------------------------------------------------------ the switches
@@ -68,12 +86,13 @@ def set_level(sim_info, value):
     else:
         data[str(sim_info.id)] = value
     settings.set('obsession', data)
+    name = game.first_name(sim_info)
     if value == OFF:
-        return True, 'No one is obsessed with %s now.' % game.first_name(sim_info)
+        return True, 'No one is obsessed with %s now.' % name
     start()
     common.guarded('obsession check', check)
-    return True, ('Everyone into %s\'s gender falls for them.' if value == OBSESSED
-                  else 'Everyone into %s\'s gender is madly in love with them.') % game.first_name(sim_info)
+    return True, ('Everyone into %s\'s gender is obsessed with them.' if value == OBSESSED
+                  else 'Everyone into %s\'s gender is madly obsessed with them.') % name
 
 
 def idols():
@@ -86,7 +105,7 @@ def idols():
     return out
 
 
-# ------------------------------------------------------------------ who falls for whom
+# ------------------------------------------------------------------ who is obsessed
 def attracted_to(fan, idol):
     """Is fan romantically attracted to idol's gender (the game's own orientation)?"""
     try:
@@ -116,11 +135,6 @@ def _top(track):
     return v if isinstance(v, (int, float)) else 100
 
 
-def _tracks():
-    from relationships.relationship_track import RelationshipTrack
-    return RelationshipTrack.ROMANCE_TRACK, RelationshipTrack.FRIENDSHIP_TRACK
-
-
 def _attraction_track():
     try:
         from relationships.attraction_tuning import AttractionTuning
@@ -129,18 +143,9 @@ def _attraction_track():
         return None
 
 
-def _raise(rs, a, b, track, step):
-    """Raise a and b's track by step (or to the top for step None), never above it, never lowering it."""
-    top = _top(track)
-    now = rs.get_relationship_score(a.id, b.id, track)
-    now = now if isinstance(now, (int, float)) else 0
-    want = top if step is None else min(top, now + step)
-    if want > now:
-        rs.set_relationship_score(a.id, b.id, want, track)
-
-
-def _perfect(fan, idol):
-    """Turn-ons and turn-offs stop counting: fan's attraction to idol goes to the top (Lovestruck; else nothing)."""
+def perfect(fan, idol):
+    """Turn-ons and turn-offs stop counting: fan's own one-way attraction to idol goes to its top (Lovestruck; without
+    it there is no attraction to change). Nothing else between them changes."""
     import services
     track = _attraction_track()
     if track is None or services.get_attraction_service() is None:
@@ -148,59 +153,77 @@ def _perfect(fan, idol):
     services.relationship_service().set_relationship_score(fan.id, idol.id, _top(track), track)
 
 
-def _enamor(fan, idol):
-    if (fan.id, idol.id) in _enamored:
-        return
-    _enamored.add((fan.id, idol.id))
+def _jealous_mood(sim):
     import sims4.resources
-    from event_testing.resolver import DoubleSimResolver
-    loot = _named(sims4.resources.Types.ACTION, ENAMORED_LOOT)
-    if loot is not None:
-        loot.apply_to_resolver(DoubleSimResolver(fan, idol))
-
-
-def fall_for(fan, idol, lvl):
-    """One check of one fan for one idol."""
-    import services
-    rs = services.relationship_service()
-    romance, friendship = _tracks()
-    _perfect(fan, idol)
-    if lvl == EXTREME:
-        _raise(rs, fan, idol, romance, None)
-        _raise(rs, fan, idol, friendship, None)
-    else:
-        _raise(rs, fan, idol, romance, ROMANCE_STEP)
-        _raise(rs, fan, idol, friendship, FRIENDSHIP_STEP)
-    _enamor(fan, idol)
-
-
-def _jealous(fans_here, idol_sim):
-    """EXTREME: the idol is talking with someone - every fan on the lot gets jealous and likes that someone less."""
-    import services
-    import sims4.resources
-    group = idol_sim.get_main_group()
-    if group is None:
-        return
-    talking = [s for s in group if s is not idol_sim]
-    if not talking:
-        return
     buff = _named(sims4.resources.Types.BUFF, JEALOUS_BUFF)
-    rs = services.relationship_service()
-    _, friendship = _tracks()
+    if buff is not None and not sim.has_buff(buff):
+        sim.debug_add_buff_by_type(buff)
+
+
+def _push(sim, target, mixer_name, extreme):
+    """Push one of the game's social mixers on sim toward target, as the game pushes a reaction mixer: under the
+    sim_Chat conversation they are in, or one started for it first. -> True when the game took it."""
+    import sims4.resources
+    from autonomy.content_sets import get_valid_aops_gen
+    from interactions.context import InteractionContext, InteractionSource
+    from interactions.priority import Priority
+    mixer = _named(sims4.resources.Types.INTERACTION, mixer_name)
+    chat = _named(sims4.resources.Types.INTERACTION, CHAT)
+    if mixer is None or chat is None:
+        return False
+    si = next(iter(sim.running_interactions_gen(chat)), None)
+    context = InteractionContext(sim, InteractionSource.SCRIPT, Priority.High if extreme else Priority.Low)
+    for aop, result in get_valid_aops_gen(target, mixer, chat, si, context, False, push_super_on_prepare=si is None):
+        if result and aop.test_and_execute(context):
+            return True
+    return False
+
+
+def _pushable(sim):
+    """A fan the mod may send somewhere: not one the player plays."""
+    return not actions.is_controlled(sim.sim_info) and not game.in_active_household(sim.sim_info)
+
+
+# ------------------------------------------------------------------ what they do
+def _jealous(fan_sim, rivals, lvl):
+    """The Sim is talking with rivals: fan_sim is jealous - and at EXTREME may storm over. -> True when they went."""
+    _jealous_mood(fan_sim)
+    if lvl == EXTREME and _pushable(fan_sim) and _roll() < CONFRONT_CHANCE:
+        return _push(fan_sim, _pick(rivals), _pick(CONFRONTS), True)
+    return False
+
+
+def _fight(fans_here):
+    """EXTREME: two fans on the lot fight each other over the Sim (yelling, when the game won't let them fight)."""
+    free = [s for s in fans_here if _pushable(s)]
+    if len(free) < 2 or _roll() >= FIGHT_CHANCE:
+        return False
+    a = _pick(free)
+    b = _pick([s for s in fans_here if s is not a])
+    for s in (a, b):
+        _jealous_mood(s)
+    return _push(a, b, FIGHT, True) or _push(a, b, CONFRONTS[0], True)
+
+
+def _act_out(idol_sim, fans_here, lvl):
+    """What fans on the lot do about the Sim this check: jealousy at whoever the Sim talks to, chasing, fighting."""
+    group = idol_sim.get_main_group()
+    with_idol = [s for s in group if s is not idol_sim] if group is not None else []
     for fan_sim in fans_here:
-        others = [s for s in talking if s is not fan_sim]
-        if not others:
+        rivals = [s for s in with_idol if s is not fan_sim]
+        if rivals and common.guarded('obsession jealousy', _jealous, fan_sim, rivals, lvl):
             continue
-        if buff is not None and not fan_sim.has_buff(buff):
-            fan_sim.debug_add_buff_by_type(buff)
-        for other in others:
-            if other.sim_info is not None and other.sim_info.id != fan_sim.sim_info.id:
-                rs.add_relationship_score(fan_sim.sim_info.id, other.sim_info.id, -RIVAL_STEP, friendship)
+        if fan_sim in with_idol or not _pushable(fan_sim):
+            continue
+        if _roll() < CHASE_CHANCE[lvl]:
+            common.guarded('obsession chase', _push, fan_sim, idol_sim, _pick(FLIRTS), lvl == EXTREME)
+    if lvl == EXTREME:
+        common.guarded('obsession fight', _fight, fans_here)
 
 
 # ------------------------------------------------------------------ the check
 def check(*_):
-    """Every Sim on the lot who is attracted to an obsession's gender falls for them (and, at EXTREME, gets jealous)."""
+    """Every Sim on the lot who is attracted to an obsession's gender finds them perfect, chases them, gets jealous."""
     ids = idols()
     if not ids:
         return
@@ -209,17 +232,16 @@ def check(*_):
     for idol, lvl in ids:
         fans_here = []
         for sim in here:
-            fan = sim.sim_info
-            if is_fan(fan, idol):
-                common.guarded('obsession %s' % game.first_name(fan), fall_for, fan, idol, lvl)
+            if is_fan(sim.sim_info, idol):
+                common.guarded('obsession %s' % game.first_name(sim.sim_info), perfect, sim.sim_info, idol)
                 fans_here.append(sim)
         idol_sim = game.instanced(idol)
-        if lvl == EXTREME and idol_sim is not None and fans_here:
-            common.guarded('obsession jealousy', _jealous, fans_here, idol_sim)
+        if idol_sim is not None and fans_here:
+            common.guarded('obsession acting out', _act_out, idol_sim, fans_here, lvl)
 
 
 def _after_attraction(args, result):
-    """After the game works out actor -> target attraction: an obsessed fan's goes back to the top."""
+    """After the game works out actor -> target attraction: a fan's goes back to the top."""
     if len(args) < 3:
         return
     actor_id, target_id = args[1], args[2]
@@ -227,7 +249,7 @@ def _after_attraction(args, result):
         return
     idol, fan = game.sim_info_by_id(target_id), game.sim_info_by_id(actor_id)
     if level(idol) != OFF and is_fan(fan, idol):
-        _perfect(fan, idol)
+        perfect(fan, idol)
 
 
 # ------------------------------------------------------------------ running
@@ -259,7 +281,6 @@ def _lot_loaded():
     """A new lot: the old lot's alarm went with it - start a fresh one (and check right away)."""
     global _alarm
     _alarm = None
-    _enamored.clear()
     if _all():
         start()
         check()
